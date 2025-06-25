@@ -22,8 +22,13 @@ const data = [
   }
 ]
 
+// ROOT endpoint: http://localhost:8080
+app.get('/', (req, res) => {
+  res.send('Backend is running');
+});
 
-// the endpoint http://localhost/8080/fakedata should display the data object in a form of JSON
+
+// http://localhost/8080/fakedata should display the data object in a form of JSON
 app.get('/fakedata', (req, res) => {
   res.json(data);
 })
