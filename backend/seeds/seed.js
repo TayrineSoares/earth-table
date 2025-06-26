@@ -11,6 +11,8 @@ async function seed() {
     await supabase.from('categories').delete().neq('id', 0);
     await supabase.from('user').delete().neq('id', 0);
 
+    await supabase.rpc('reset_id_sequences');
+
     // Categories
     const { data: categories, error: catErr } = await supabase
       .from('categories')
@@ -29,6 +31,7 @@ async function seed() {
       .from('products')
       .insert([
         {
+          slug: 'nourish-bowl',
           image_url: 'https://example.com/nourish.jpg',
           description: 'Nourish Bowl with quinoa, sweet potato, kale, tahini dressing.',
           price_cents: 1499,
@@ -36,6 +39,7 @@ async function seed() {
           is_available: true
         },
         {
+          slug: 'reset-juice-pack',
           image_url: 'https://example.com/reset.jpg',
           description: 'Reset Juice Pack of 3 cold-pressed juices.',
           price_cents: 2200,
@@ -43,6 +47,7 @@ async function seed() {
           is_available: true
         },
         {
+          slug: 'vegan-feast',
           image_url: 'https://example.com/feast.jpg',
           description: 'Family Style Vegan Feast for 4-6 people.',
           price_cents: 8500,
@@ -50,6 +55,7 @@ async function seed() {
           is_available: true
         },
         {
+          slug: 'custom-meal-plan',
           image_url: 'https://example.com/custom.jpg',
           description: 'Custom Meal Plan tailored to your health goals.',
           price_cents: 12000,
@@ -132,19 +138,19 @@ async function seed() {
       .insert([
         {
           order_id: orders[0].id,
-          product_id: products.find(p => p.description.includes('Nourish')).id,
+          product_id: products.find(p => p.slug === 'nourish-bowl').id,
           quantity: 2,
           unit_price_cents: 1499
         },
         {
           order_id: orders[0].id,
-          product_id: products.find(p => p.description.includes('Reset')).id,
+          product_id: products.find(p => p.slug === 'reset-juice-pack').id,
           quantity: 1,
           unit_price_cents: 2200
         },
         {
           order_id: orders[1].id,
-          product_id: products.find(p => p.description.includes('Custom')).id,
+          product_id: products.find(p => p.slug === 'custom-meal-plan').id,
           quantity: 1,
           unit_price_cents: 12000
         }
