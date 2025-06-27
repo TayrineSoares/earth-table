@@ -20,7 +20,6 @@ async function getUserById(id) {
   return data;
 };
 
-
 module.exports = {
   getAllUsers,
   getUserById,

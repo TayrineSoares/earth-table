@@ -85,7 +85,7 @@ async function seed() {
 
     // Users
     const { data: users, error: userErr } = await supabase
-      .from('user')
+      .from('users')
       .insert([
         {
           first_name: 'Selena',
