@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../db/db');
+const supabase = require('../../supabase/db');
 
 // GET /categories
 router.get('/', async (req, res) => {
