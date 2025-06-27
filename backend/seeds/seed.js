@@ -39,6 +39,22 @@ async function seed() {
           is_available: true
         },
         {
+          slug: 'green-goddess-bowl',
+          image_url: 'https://example.com/green-goddess.jpg',
+          description: 'Green Goddess Bowl with avocado, greens, and herbed dressing.',
+          price_cents: 1599,
+          category_id: categories.find(c => c.name === 'Bowls').id,
+          is_available: true
+        },
+        {
+          slug: 'protein-power-bowl',
+          image_url: 'https://example.com/protein-power.jpg',
+          description: 'Protein Power Bowl with lentils, tofu, and edamame.',
+          price_cents: 1699,
+          category_id: categories.find(c => c.name === 'Bowls').id,
+          is_available: true
+        },
+        {
           slug: 'reset-juice-pack',
           image_url: 'https://example.com/reset.jpg',
           description: 'Reset Juice Pack of 3 cold-pressed juices.',
