@@ -7,7 +7,21 @@ const {
   getOrderByUserId
 } = require('../queries/order')
 
+const { getProductsForOrder } = require('../queries/order_product')
+
 // MORE SPECIFIC ROUTES GO FIRST
+
+// GET PRODUCTS FOR AN ORDER
+router.get('/:id/products', async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const products = await getProductsForOrder(orderId);
+    res.json(products);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // GET ORDERS BY USER ID 
 router.get('/user/:id', async (req, res) => {
