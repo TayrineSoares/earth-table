@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
+const ordersRouter = require('./src/routes/ordersRoutes')
 
 
 const app = express();
@@ -18,11 +19,12 @@ app.get('/', (req, res) => {
 });
 
 
-// Use router for categories, testing connection with supabase
+//ROUTES
 app.use('/categories', categoriesRouter);
 
-
 app.use('/products', productsRouter);
+
+app.use('/orders', ordersRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);

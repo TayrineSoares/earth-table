@@ -9,11 +9,11 @@ async function getAllOrders() {
   return data;
 }
 
-async function getOrderById(id) {
+async function getOrderById(orderId) {
   const { data, error } = await supabase
     .from('orders')
     .select('*')
-    .eq('id', id)
+    .eq('id', orderId)
     .single();
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
