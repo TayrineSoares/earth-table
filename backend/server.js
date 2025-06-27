@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const categoriesRouter = require('./src/routes/categories');
+const productsRouter = require('./src/routes/products');
+
 
 const app = express();
 const PORT = 8080;
@@ -20,6 +22,7 @@ app.get('/', (req, res) => {
 app.use('/categories', categoriesRouter);
 
 
+app.use('/products', productsRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
