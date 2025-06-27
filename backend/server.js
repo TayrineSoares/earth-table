@@ -15,19 +15,11 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-app.get('/fakedata', (req, res) => {
-  const data = [
-    {
-      id: 123,
-      title: 'FAKE DATA TEST',
-      instructions: 'Bacon ipsum dolor amet buffalo boudin ham...'
-    }
-  ];
-  res.json(data);
-});
 
-// Use router for categories
+// Use router for categories, testing connection with supabase
 app.use('/categories', categoriesRouter);
+
+
 
 
 
