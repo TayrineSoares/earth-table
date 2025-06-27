@@ -119,32 +119,51 @@ async function seed() {
 
     if (userErr) throw userErr;
 
-    // Orders
     const { data: orders, error: orderErr } = await supabase
-      .from('orders')
-      .insert([
-        {
-          user_id: users[1].id,
-          total_cents: 5198,
-          buyer_first_name: 'Jane',
-          buyer_last_name: 'Wellness',
-          buyer_phone_number: '4445556666',
-          buyer_address: '123 Health St.',
-          buyer_stripe_payment_info: 'stripe_jane_001',
-          status: 'completed'
-        },
-        {
-          user_id: users[2].id,
-          total_cents: 12000,
-          buyer_first_name: 'Mike',
-          buyer_last_name: 'Greens',
-          buyer_phone_number: '7778889999',
-          buyer_address: '456 Wellness Rd.',
-          buyer_stripe_payment_info: 'stripe_mike_002',
-          status: 'pending'
-        }
-      ])
-      .select();
+  .from('orders')
+  .insert([
+    {
+      user_id: users[1].id,
+      total_cents: 5198,
+      buyer_first_name: 'Jane',
+      buyer_last_name: 'Wellness',
+      buyer_phone_number: '4445556666',
+      buyer_address: '123 Health St.',
+      buyer_stripe_payment_info: 'stripe_jane_001',
+      status: 'completed'
+    },
+    {
+      user_id: users[1].id,
+      total_cents: 8999,
+      buyer_first_name: 'Jane',
+      buyer_last_name: 'Wellness',
+      buyer_phone_number: '4445556666',
+      buyer_address: '123 Health St.',
+      buyer_stripe_payment_info: 'stripe_jane_002',
+      status: 'pending'
+    },
+    {
+      user_id: users[1].id,
+      total_cents: 4500,
+      buyer_first_name: 'Jane',
+      buyer_last_name: 'Wellness',
+      buyer_phone_number: '4445556666',
+      buyer_address: '123 Health St.',
+      buyer_stripe_payment_info: 'stripe_jane_003',
+      status: 'cancelled'
+    },
+    {
+      user_id: users[2].id,
+      total_cents: 12000,
+      buyer_first_name: 'Mike',
+      buyer_last_name: 'Greens',
+      buyer_phone_number: '7778889999',
+      buyer_address: '456 Wellness Rd.',
+      buyer_stripe_payment_info: 'stripe_mike_002',
+      status: 'pending'
+    }
+  ])
+  .select();
 
     if (orderErr) throw orderErr;
 
