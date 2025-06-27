@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   getAllProducts,
   getProductById,
-  getProductByCategory
+  getProductsByCategory
 } = require('../queries/product')
 
 
@@ -35,7 +35,7 @@ router.get('/:id', async (req, res) => {
 router.get('/category/:categoryId', async (req, res) => {
   try {
     const categoryId = req.params.categoryId;
-    const categoryProducts = await getProductByCategory(categoryId);
+    const categoryProducts = await getProductsByCategory(categoryId);
     res.json(categoryProducts);
   } catch (error) {
     console.error(error);

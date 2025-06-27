@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const categoriesRouter = require('./src/routes/categories');
-const productsRouter = require('./src/routes/products');
+const categoriesRouter = require('./src/routes/categoriesRoutes');
+const productsRouter = require('./src/routes/productsRoutes');
 
 
 const app = express();
