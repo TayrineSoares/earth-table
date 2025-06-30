@@ -41,9 +41,11 @@ nav a.active {
   font-weight: bold;
 }
 
-nav .logo {
+nav .logo a {
+  color: var(--nav-text-color);
   font-family: var(--heading-font);
   font-weight: bold;
-  font-size: 1.5rem;
-  color: var(--nav-text-color);
+  font-size: 1.8rem;
+  text-decoration: none;
 }
+

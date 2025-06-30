@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom"
+import { Link, NavLink } from "react-router-dom"
 import '../styles/NavBar.css'
 
 const Navbar = () => {
@@ -15,7 +15,7 @@ const Navbar = () => {
 
   return (
     <nav>
-      <div className="logo">Earth Table</div>
+      <div className="logo"> <Link to='/'> Earth Table</Link> </div>
       <ul className="open">
         {links.map((link) => (
           <li key={link.to}>
