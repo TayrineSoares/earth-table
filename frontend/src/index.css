@@ -91,12 +91,15 @@
 }
 
 body {
+  width: 100%; /* prevents horizontal scrollbars */
+  overflow-x: hidden; /* prevents horizontal scrollbars */
   font-family: var(--body-font);
   background-color: var(--primary-bg);
   color: var(--primary-text);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  
 
 }
 
@@ -106,9 +109,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-main {
+.main {
   flex: 1;
   padding: 2rem;
+  min-height: calc(100vh - 4.5rem - 3rem); /*body height -navbar height - footer height */
 }
 
 /* Buttons */
