@@ -41,7 +41,7 @@ const Products = () => {
 
   if (isLoading) {
     return (
-      <div className="loading-container" style={{ width: 150, margin: 'auto' }}>
+      <div className="loading-container">
         <Lottie animationData={loadingAnimation} loop={true} />
       </div>
     );
