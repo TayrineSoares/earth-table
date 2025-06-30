@@ -1,7 +1,18 @@
 nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 5rem;
+  padding: 0 1.5rem;
+  z-index: 10;
   background-color: var(--nav-bg);
   color: var(--nav-text-color);
-  padding: 1rem;
+  
+
 }
 
 nav a {
@@ -17,6 +28,22 @@ nav a:hover {
   color: var(--accent-color);
 }
 
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+}
+
 nav a.active {
   color: var(--accent-color);
+  font-weight: bold;
+}
+
+nav .logo {
+  font-family: var(--heading-font);
+  font-weight: bold;
+  font-size: 1.5rem;
+  color: var(--nav-text-color);
 }

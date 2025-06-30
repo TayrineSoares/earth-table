@@ -22,6 +22,7 @@
   color: var(--primary-text);
   background-color: var(--primary-bg);
 
+
 }
 
 /* ===============================================
@@ -114,21 +115,7 @@ a:hover {
   color: var(--accent-color);
 }
 
-nav {
-  background-color: var(--secondary-bg);
-  padding: 1rem;
-}
 
-nav ul {
-  list-style: none;
-  display: flex;
-  gap: 1rem;
-}
-
-nav a.active {
-  color: var(--accent-color);
-  font-weight: bold;
-}
 
 main {
   flex: 1;

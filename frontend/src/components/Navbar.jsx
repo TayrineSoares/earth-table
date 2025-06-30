@@ -15,6 +15,7 @@ const Navbar = () => {
 
   return (
     <nav>
+      <div className="logo">Earth Table</div>
       <ul className="open">
         {links.map((link) => (
           <li key={link.to}>
