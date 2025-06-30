@@ -1,32 +1,47 @@
+/* ===============================================
+   FRESH AND ORGANIC PALETTE
+   =============================================== */
 :root {
-  /* FRESH AND ORGANIC PALETTE */
-  --primary-bg: #F7F4EF;         /* Creamy White */
-  --primary-text: #3C493F;       /* Dark Olive Green */
-  --accent-color: #D6A77A;       /* Terracotta */
-  --secondary-bg: #C8D5B9;       /* Soft Sage */
-  --highlight-color: #C2B280;    /* Accent Gold */
+  --primary-bg: #F7F4EF;
+  --primary-text: #3C493F;
+  --primary-solid: #3C493F;
+  --accent-color: #D6A77A;
+  --secondary-bg: #C8D5B9;   
+  --highlight-color: #C2B280;
 
-  /* =============================================== */
-  /* WARM AND WHOLESOME PALETTE */
-  /* =============================================== */
-  /* --primary-bg: #FAF9F6;         /* Off-White */
-  /* --primary-text: #4B3F3F;       Charcoal Brown */
-  /* --accent-color: #A9746E;       Deep Clay */
-  /* --secondary-bg: #A3B18A;       Muted Olive */ 
-  /* --highlight-color: #E6DACE;    Warm Sand */
+  --nav-bg: var(--primary-solid);
+  --nav-text-color: #F7F4EF;
 
-  /* =============================================== */
-  /* MINIMAL AND CLEAR */
-  /* =============================================== */
-    /* --primary-bg: #FFFFFF;         Bright White */
-    /* --primary-text: #333333;       Graphite Grey */
-    /* --accent-color: #8FA998;       Muted Green */
-    /* --secondary-bg: #FFEDE1;       Soft Peach */
-    /* --highlight-color: #DDD6CE;    Stone Beige */
-  
+  --heading-font: 'Playfair Display', serif;
+  --body-font: 'Inter', sans-serif;
 
+  line-height: 1.5;
+  font-weight: 400;
 
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+  color: var(--primary-text);
+  background-color: var(--primary-bg);
+
+}
+
+/* ===============================================
+   WARM AND WHOLESOME PALETTE
+   =============================================== */
+
+/* :root {
+  --primary-bg: #FAF9F6;         
+  --primary-text: #4B3F3F;   
+  --primary-solid: #E6DACE;   
+  --accent-color: #A9746E;      
+  --secondary-bg: #A3B18A;       
+  --highlight-color: #E6DACE;    
+
+  --nav-bg: var(--highlight-color);
+  --nav-text-color: var(--primary-text);
+
+  --heading-font: 'Quicksand', sans-serif;
+  --body-font: 'Lora', serif;
+
   line-height: 1.5;
   font-weight: 400;
 
@@ -34,62 +49,105 @@
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+} */
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+
+/* ===============================================
+   MINIMAL AND CLEAN PALETTE
+   =============================================== */
+
+/* :root {
+  --primary-bg: #faf5f0;          
+  --primary-text: #333333;        
+  --primary-solid: #EDE6D6;       
+  --accent-color: #8FA998;       
+  --secondary-bg: #F1E8D9;        
+  --highlight-color: #DDD6CE;     
+
+  --nav-bg: #f8f0dc;             
+  --nav-text-color: var(--primary-text);
+
+  --heading-font: 'Poppins', sans-serif;
+  --body-font: 'Source Sans Pro', sans-serif;
+
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--primary-text);
+  background-color: var(--primary-bg);
+
+} */
+
+
+/* ===============================================
+   BASE STYLES
+   =============================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  font-family: var(--body-font);
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--heading-font);
+  color: var(--primary-text);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+a {
+  color: var(--primary-text);
+  text-decoration: none;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+a:hover {
+  color: var(--accent-color);
+}
+
+nav {
+  background-color: var(--secondary-bg);
+  padding: 1rem;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+}
+
+nav a.active {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+main {
+  flex: 1;
+  padding: 2rem;
+}
+
+/* Buttons */
+button {
+  border: none;
+  border-radius: 4px;
+  background-color: var(--accent-color);
+  color: var(--primary-bg);
+  font-family: var(--body-font);
+  font-size: 1rem;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--highlight-color);
 }

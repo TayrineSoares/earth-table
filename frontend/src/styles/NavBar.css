@@ -1,28 +1,22 @@
 nav {
-  background: #f4f4f4;
-  padding: 10px;
-}
-
-nav ul {
-  list-style: none;
-  display: flex;
-  gap: 20px;
-  margin: 0;
-  padding: 0;
-}
-
-nav li {
-  display: inline;
+  background-color: var(--nav-bg);
+  color: var(--nav-text-color);
+  padding: 1rem;
 }
 
 nav a {
+  color: inherit;
   text-decoration: none;
-  color: #333;
-  font-weight: normal;
+  font-family: var(--heading-font);
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: color 0.3s ease;
+}
+
+nav a:hover {
+  color: var(--accent-color);
 }
 
 nav a.active {
-  color: tomato;
-  font-weight: bold;
-  text-decoration: underline;
+  color: var(--accent-color);
 }
