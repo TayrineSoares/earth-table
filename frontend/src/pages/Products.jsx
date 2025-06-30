@@ -1,14 +1,29 @@
-import { Link, NavLink } from "react-router-dom"
-import '../styles/Products.css'
+import Lottie from 'lottie-react';
 import { useEffect, useState } from "react";
+import '../styles/Products.css'
+import loadingAnimation from '../assets/loading.json'
 
 const Products = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true);
 
   const filteredCategory = selectedCategoryId 
   ? allProducts.filter(product => product.category_id === selectedCategoryId) :  allProducts;
+
+  useEffect(() => {
+    fetch('http://localhost:8080/products')
+      .then(res => res.json())
+      .then(data => {
+        setAllProducts(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setIsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     fetch('http://localhost:8080/products')
@@ -23,6 +38,14 @@ const Products = () => {
       .then(data => setAllCategories(data))
       .catch(console.error);
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="loading-container" style={{ width: 150, margin: 'auto' }}>
+        <Lottie animationData={loadingAnimation} loop={true} />
+      </div>
+    );
+  }
 
   return (
     <div>
