@@ -24,3 +24,28 @@
 .social-icons svg:hover {
   color: var(--accent-color);
 }
+
+/* Mobile nav styles */
+@media (max-width: 931px) {
+  .footer {
+    flex-direction: column;
+    height: auto;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .footer-info {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .footer-info span {
+    font-size: 0.9rem;
+  }
+
+  .social-icons {
+    margin-top: 0.5rem;
+  }
+
+}
