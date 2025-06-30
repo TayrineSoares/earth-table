@@ -9,6 +9,7 @@ import {
   Checkout,
   Confirmation,
   Admin,
+  Login,
 } from './pages/index.js';
 
 
@@ -22,6 +23,7 @@ const App = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/products" element={<Products />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/admin" element={<Admin />} />
