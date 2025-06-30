@@ -9,7 +9,7 @@ async function seed() {
     await supabase.from('orders').delete().neq('id', 0);
     await supabase.from('products').delete().neq('id', 0);
     await supabase.from('categories').delete().neq('id', 0);
-    await supabase.from('user').delete().neq('id', 0);
+    await supabase.from('users').delete().neq('id', 0);
 
     await supabase.rpc('reset_id_sequences');
 
@@ -32,7 +32,7 @@ async function seed() {
       .insert([
         {
           slug: 'nourish-bowl',
-          image_url: 'https://example.com/nourish.jpg',
+          image_url: 'https://plus.unsplash.com/premium_photo-1661759410516-945250a82834?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Ym93bHxlbnwwfHwwfHx8MA%3D%3D',
           description: 'Nourish Bowl with quinoa, sweet potato, kale, tahini dressing.',
           price_cents: 1499,
           category_id: categories.find(c => c.name === 'Bowls').id,
@@ -40,7 +40,7 @@ async function seed() {
         },
         {
           slug: 'green-goddess-bowl',
-          image_url: 'https://example.com/green-goddess.jpg',
+          image_url: 'https://images.unsplash.com/photo-1701109876066-7fc0c08da447?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Z3JlZW4lMjBib3dsfGVufDB8fDB8fHww',
           description: 'Green Goddess Bowl with avocado, greens, and herbed dressing.',
           price_cents: 1599,
           category_id: categories.find(c => c.name === 'Bowls').id,
@@ -48,7 +48,7 @@ async function seed() {
         },
         {
           slug: 'protein-power-bowl',
-          image_url: 'https://example.com/protein-power.jpg',
+          image_url: 'https://plus.unsplash.com/premium_photo-1673580742886-1129e6e1f829?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvdGVpbiUyMGJvd2x8ZW58MHx8MHx8fDA%3D',
           description: 'Protein Power Bowl with lentils, tofu, and edamame.',
           price_cents: 1699,
           category_id: categories.find(c => c.name === 'Bowls').id,
@@ -56,7 +56,7 @@ async function seed() {
         },
         {
           slug: 'reset-juice-pack',
-          image_url: 'https://example.com/reset.jpg',
+          image_url: 'https://plus.unsplash.com/premium_photo-1663126827264-409d695e0be7?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8anVpY2V8ZW58MHx8MHx8fDA%3D',
           description: 'Reset Juice Pack of 3 cold-pressed juices.',
           price_cents: 2200,
           category_id: categories.find(c => c.name === 'Cleansing').id,
@@ -64,7 +64,7 @@ async function seed() {
         },
         {
           slug: 'vegan-feast',
-          image_url: 'https://example.com/feast.jpg',
+          image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8dmVnYW58ZW58MHx8MHx8fDA%3D',
           description: 'Family Style Vegan Feast for 4-6 people.',
           price_cents: 8500,
           category_id: categories.find(c => c.name === 'Catering').id,
@@ -72,12 +72,60 @@ async function seed() {
         },
         {
           slug: 'custom-meal-plan',
-          image_url: 'https://example.com/custom.jpg',
+          image_url: 'https://plus.unsplash.com/premium_photo-1669056783712-a3b0b8505f71?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bWVhbCUyMHBsYW58ZW58MHx8MHx8fDA%3D',
           description: 'Custom Meal Plan tailored to your health goals.',
           price_cents: 12000,
           category_id: categories.find(c => c.name === 'Personalized Meals').id,
           is_available: true
-        }
+        },
+        {
+          slug: 'nourish-bowl',
+          image_url: 'https://plus.unsplash.com/premium_photo-1661759410516-945250a82834?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Ym93bHxlbnwwfHwwfHx8MA%3D%3D',
+          description: 'Nourish Bowl with quinoa, sweet potato, kale, tahini dressing.',
+          price_cents: 1499,
+          category_id: categories.find(c => c.name === 'Bowls').id,
+          is_available: true
+        },
+        {
+          slug: 'green-goddess-bowl',
+          image_url: 'https://images.unsplash.com/photo-1701109876066-7fc0c08da447?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Z3JlZW4lMjBib3dsfGVufDB8fDB8fHww',
+          description: 'Green Goddess Bowl with avocado, greens, and herbed dressing.',
+          price_cents: 1599,
+          category_id: categories.find(c => c.name === 'Bowls').id,
+          is_available: true
+        },
+        {
+          slug: 'protein-power-bowl',
+          image_url: 'https://plus.unsplash.com/premium_photo-1673580742886-1129e6e1f829?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvdGVpbiUyMGJvd2x8ZW58MHx8MHx8fDA%3D',
+          description: 'Protein Power Bowl with lentils, tofu, and edamame.',
+          price_cents: 1699,
+          category_id: categories.find(c => c.name === 'Bowls').id,
+          is_available: true
+        },
+        {
+          slug: 'reset-juice-pack',
+          image_url: 'https://plus.unsplash.com/premium_photo-1663126827264-409d695e0be7?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8anVpY2V8ZW58MHx8MHx8fDA%3D',
+          description: 'Reset Juice Pack of 3 cold-pressed juices.',
+          price_cents: 2200,
+          category_id: categories.find(c => c.name === 'Cleansing').id,
+          is_available: true
+        },
+        {
+          slug: 'vegan-feast',
+          image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8dmVnYW58ZW58MHx8MHx8fDA%3D',
+          description: 'Family Style Vegan Feast for 4-6 people.',
+          price_cents: 8500,
+          category_id: categories.find(c => c.name === 'Catering').id,
+          is_available: true
+        },
+        {
+          slug: 'custom-meal-plan',
+          image_url: 'https://plus.unsplash.com/premium_photo-1669056783712-a3b0b8505f71?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bWVhbCUyMHBsYW58ZW58MHx8MHx8fDA%3D',
+          description: 'Custom Meal Plan tailored to your health goals.',
+          price_cents: 12000,
+          category_id: categories.find(c => c.name === 'Personalized Meals').id,
+          is_available: true
+        },
       ])
       .select();
 

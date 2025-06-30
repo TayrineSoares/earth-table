@@ -1,0 +1,21 @@
+.products-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.categories-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.products {
+  width: 330px;
+  padding: 1rem;
+  background-color: var(--secondary-bg);
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+}
