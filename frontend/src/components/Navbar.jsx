@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, NavLink } from "react-router-dom"
 import '../styles/NavBar.css'
 
@@ -13,10 +14,24 @@ const Navbar = () => {
   { to: "/login", label: "Login" },
 ];
 
+//state for mobile hamburger menu
+const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <nav>
-      <div className="logo"> <Link to='/'> Earth Table</Link> </div>
-      <ul className="open">
+      <div className="logo"> 
+        <Link to='/'> Earth Table</Link> 
+      </div>
+
+      <div className="menu" onClick={() =>{
+        setMenuOpen(!menuOpen);
+      }}>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <ul className={menuOpen ? "open" : ""}>
         {links.map((link) => (
           <li key={link.to}>
             <NavLink

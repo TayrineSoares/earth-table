@@ -12,7 +12,6 @@ nav {
   background-color: var(--nav-bg);
   color: var(--nav-text-color);
   
-
 }
 
 nav a {
@@ -20,7 +19,7 @@ nav a {
   text-decoration: none;
   font-family: var(--heading-font);
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   transition: color 0.3s ease;
 }
 
@@ -49,3 +48,53 @@ nav .logo a {
   text-decoration: none;
 }
 
+/* Hamburger menu button for mobile */
+.menu {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 5px;
+}
+
+.menu span {
+  height: 3px;
+  width: 25px;
+  background-color: var(--nav-text-color);
+  display: block;
+  border-radius: 2px;
+}
+
+/* Mobile nav styles */
+@media (max-width: 931px) {
+  nav {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 2rem;
+    width: 100%;
+  }
+
+  nav ul {
+    position: absolute;
+    top: 100%;
+    right: 0; 
+    width: 150px;
+    display: none;
+    flex-direction: column;
+    background-color: var(--nav-bg);
+    padding: 1rem;
+  }
+
+   nav ul li {
+    width: 100%;
+    margin: 0;
+    text-align: center;
+  }
+
+  nav ul.open {
+    display: flex;
+  }
+
+  .menu {
+    display: flex;
+  }
+}
