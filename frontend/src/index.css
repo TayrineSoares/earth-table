@@ -1,4 +1,31 @@
 :root {
+  /* FRESH AND ORGANIC PALETTE */
+  --primary-bg: #F7F4EF;         /* Creamy White */
+  --primary-text: #3C493F;       /* Dark Olive Green */
+  --accent-color: #D6A77A;       /* Terracotta */
+  --secondary-bg: #C8D5B9;       /* Soft Sage */
+  --highlight-color: #C2B280;    /* Accent Gold */
+
+  /* =============================================== */
+  /* WARM AND WHOLESOME PALETTE */
+  /* =============================================== */
+  /* --primary-bg: #FAF9F6;         /* Off-White */
+  /* --primary-text: #4B3F3F;       Charcoal Brown */
+  /* --accent-color: #A9746E;       Deep Clay */
+  /* --secondary-bg: #A3B18A;       Muted Olive */ 
+  /* --highlight-color: #E6DACE;    Warm Sand */
+
+  /* =============================================== */
+  /* MINIMAL AND CLEAR */
+  /* =============================================== */
+    /* --primary-bg: #FFFFFF;         Bright White */
+    /* --primary-text: #333333;       Graphite Grey */
+    /* --accent-color: #8FA998;       Muted Green */
+    /* --secondary-bg: #FFEDE1;       Soft Peach */
+    /* --highlight-color: #DDD6CE;    Stone Beige */
+  
+
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;

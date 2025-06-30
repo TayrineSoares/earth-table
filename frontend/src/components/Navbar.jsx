@@ -1,31 +1,34 @@
 import { NavLink } from "react-router-dom"
+import '../styles/NavBar.css'
 
 const Navbar = () => {
+
+  //links array to avoid code repetition
+  const links = [
+  { to: "/", label: "Home" },
+  { to: "/about", label: "About" },
+  { to: "/products", label: "Order" },
+  { to: "/contact", label: "Contact Us" },
+  { to: "/cart", label: "Cart" },
+  { to: "/login", label: "Login" },
+];
+
   return (
     <nav>
       <ul className="open">
-        <li>
-          <NavLink to='/'> Home </NavLink>
-        </li>
-        <li>
-          <NavLink to='/about'> About </NavLink>
-        </li>
-        <li>
-          <NavLink to='/products'> Order </NavLink>
-        </li>
-        <li>
-          <NavLink to='/contact'> Contact Us </NavLink>
-        </li>
-        <li>
-          <NavLink to='/cart'> Cart </NavLink>
-        </li>
-        <li>
-          <NavLink to='/login'> Login </NavLink>
-        </li>
+        {links.map((link) => (
+          <li key={link.to}>
+            <NavLink
+              to={link.to}
+              className={({ isActive }) => (isActive ? "active" : undefined)}
+            >
+              {link.label}
+            </NavLink>
+
+          </li>
+        ))}
+
       </ul>
-
-
-
     </nav>
   )
 };
