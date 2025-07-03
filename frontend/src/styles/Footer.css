@@ -1,7 +1,8 @@
 .footer {
   background-color: var(--nav-bg);
   color: var(--nav-text-color);
-  height: 3rem;
+  min-height: 3rem;
+  line-height: 1.4;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -19,6 +20,7 @@
   cursor: pointer;
   transition: color 0.3s ease;
   color: var(--nav-text-color);
+  padding: 0.1rem;
 }
 
 .social-icons svg:hover {
@@ -32,6 +34,7 @@
     height: auto;
     padding: 1rem;
     gap: 0.5rem;
+    text-align: center;
   }
 
   .footer-info {

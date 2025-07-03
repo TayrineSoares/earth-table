@@ -31,9 +31,7 @@ const About = () => {
         <p> Drawing on years of experience in high-end kitchens and personal chef services, her food is all about <strong>clean ingredients, bold flavors, and luxurious simplicity.</strong> </p> 
 
         <p> Whether she's designing a personalized meal plan or preparing an elegant dinner, Selena believes that eating well should feel joyful and effortless. </p>
-        
       </section>
-      
     </div>
     
   )
