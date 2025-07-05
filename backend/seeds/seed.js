@@ -17,10 +17,33 @@ async function seed() {
     const { data: categories, error: catErr } = await supabase
       .from('categories')
       .insert([
-        { name: 'Bowls' },
-        { name: 'Cleansing' },
-        { name: 'Catering' },
-        { name: 'Personalized Meals' }
+        { 
+          name: 'Bowls',
+          image_url: 'https://plus.unsplash.com/premium_photo-1705056547195-a68c45f2d77e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Zm9vZCUyMGJvd2x8ZW58MHx8MHx8fDA%3D',
+          show_on_homepage: true
+        },
+
+        { 
+          name: 'Cleansing',
+          image_url: 'https://images.unsplash.com/photo-1613637069941-06b7dbc394a4?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZGV0b3h8ZW58MHx8MHx8fDA%3D',
+          show_on_homepage: false
+
+         },
+
+        { 
+          name: 'Catering',
+          image_url: 'https://images.unsplash.com/photo-1518619745898-93e765966dcd?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Zm9vZCUyMGNhdGVyaW5nfGVufDB8fDB8fHww',
+          show_on_homepage: true
+            
+        },
+
+
+        { 
+          name: 'Personalized Meals',
+          image_url: 'https://images.unsplash.com/photo-1543352632-5a4b24e4d2a6?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8bWVhbCUyMHBsYW58ZW58MHx8MHx8fDA%3D',
+          show_on_homepage: false
+        
+        }
       ])
       .select();
 
