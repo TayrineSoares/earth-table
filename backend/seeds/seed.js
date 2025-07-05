@@ -13,7 +13,7 @@ async function seed() {
 
     await supabase.rpc('reset_id_sequences');
 
-    // Categories
+     // Categories
     const { data: categories, error: catErr } = await supabase
       .from('categories')
       .insert([
@@ -28,7 +28,7 @@ async function seed() {
           image_url: 'https://images.unsplash.com/photo-1613637069941-06b7dbc394a4?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZGV0b3h8ZW58MHx8MHx8fDA%3D',
           show_on_homepage: false
 
-         },
+        },
 
         { 
           name: 'Catering',
@@ -36,7 +36,6 @@ async function seed() {
           show_on_homepage: true
             
         },
-
 
         { 
           name: 'Personalized Meals',
