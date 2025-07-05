@@ -1,9 +1,18 @@
 import '../styles/Home.css'
-import bowlsImage from '../assets/images/bowls.jpg';
-import cateringImage from '../assets/images/catering.jpg'
+import { useState, useEffect } from 'react';
 
 
 const Home = () => {
+  const [homepageCategories, setHomepageCategories] = useState([]); 
+
+   useEffect(() => {
+    fetch('http://localhost:8080/categories/homepage')
+      .then((res) => res.json()) // Parse the JSON response
+      .then((data) => setHomepageCategories(data))
+      .catch((err) => console.error(err));
+  }, []); // Empty array = runs only once on mount
+
+
   return (
     <div className="homepage">
       <section className="heading">
@@ -12,38 +21,23 @@ const Home = () => {
 
       </section>
 
-      {/* Zig-Zag Section 1 */}
-      <section className="zigzag-section">
-        <div className="zigzag-content">
-          <div className="zigzag-text">
-            <h2>BOWLS</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. </p>
-            <button>Shop Now</button>
-          </div>
-          <div className="zigzag-image">
-            <img src={bowlsImage} alt="Section 1" />
-          </div>
-        </div>
-      </section>
+      {/* Zig-Zag Section */}
+      {homepageCategories.map((category, index) => (
+        <section className="zigzag-section" key={category.id}>
+          <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
+            <div className="zigzag-text">
+              <h2>{category.name}</h2>
+              <p>{category.description} </p>
+              <button>Shop Now</button>
+            </div>
 
-      {/* Zig-Zag Section 2 */}
-      <section className="zigzag-section">
-        <div className="zigzag-content reverse">
-          <div className="zigzag-text">
-            <h2>CATERING</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. </p>
-            <button>Shop Now</button>
+            <div className="zigzag-image">
+              <img src={category.image_url} alt="Section 1" />
+            </div>
           </div>
-          <div className="zigzag-image">
-            <img src={cateringImage} alt="Section 1" />
-          </div>
-        </div>
-      </section>
-
-
-  
-      
-      
+        </section>
+      )
+    )}
     </div>
   )
 };
