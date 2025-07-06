@@ -61,11 +61,14 @@ const Products = ({ addToCart, cart }) => {
 
       <div className='products-container'>
       {filteredCategory.map((product) => {
-        console.log('Rendering button for', product.slug);
         return (
           <div className='products' key={product.id}>
             <h3>{product.slug}</h3>
-            <img src={product.image_url} alt={product.slug} style={{ width: '300px', height: '200px', objectFit: 'cover' }} />
+            <img 
+              className='product-image' 
+              src={product.image_url} 
+              alt={product.slug}
+            />
             <p>{product.description}</p>
             <h3>${(product.price_cents / 100).toFixed(2)}</h3>
             <button onClick={() => addToCart(product)}>

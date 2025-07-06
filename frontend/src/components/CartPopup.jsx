@@ -4,7 +4,7 @@ import '../styles/CartPopup.css'
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function CartPopup({ cart, onClose }) {
+function CartPopup({ cart, removeFromCart }) {
   const [isMinimized, setIsMinimized] = useState(false);
   const navigate = useNavigate();
 
@@ -30,6 +30,7 @@ function CartPopup({ cart, onClose }) {
                       alt={item.slug}
                     />
                     {item.slug} × {item.quantity}
+                    <button onClick={() => removeFromCart(item)}>remove</button>
                   </li>
                 ))}
               </ul>

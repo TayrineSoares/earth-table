@@ -12,7 +12,7 @@ import {
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
 
-const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup }) => {
+const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFromCart }) => {
   const location = useLocation();
 
   return (
@@ -24,9 +24,16 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup }) => {
           <Route path="/contact" element={<Contact />} />
           <Route
             path="/products"
-            element={<Products addToCart={addToCart} cart={cart} />}
+            element={<Products 
+              addToCart={addToCart} 
+              cart={cart} 
+            />}
           />
-          <Route path="/cart" element={<Cart cart={cart} />} />
+          <Route path="/cart" element={<Cart 
+                                        cart={cart}
+                                        removeFromCart={removeFromCart}
+                                      />} 
+                                    />
           <Route path="/login" element={<Login />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/confirmation" element={<Confirmation />} />
@@ -35,7 +42,11 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup }) => {
       </div>
 
       {showCartPopup && location.pathname !== '/cart' && (
-        <CartPopup cart={cart} onClose={() => setShowCartPopup(false)} />
+        <CartPopup 
+          cart={cart}
+          removeFromCart={removeFromCart}
+          onClose={() => setShowCartPopup(false)} 
+        />
       )}
     </>
   );
