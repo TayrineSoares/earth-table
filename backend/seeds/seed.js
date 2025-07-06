@@ -7,6 +7,8 @@ async function seed() {
     // Clear existing data
     await supabase.from('order_products').delete().neq('id', 0);
     await supabase.from('orders').delete().neq('id', 0);
+    await supabase.from('cart_items').delete().neq('id', 0);
+    await supabase.from('carts').delete().neq('id', 0);
     await supabase.from('products').delete().neq('id', 0);
     await supabase.from('categories').delete().neq('id', 0);
     await supabase.from('users').delete().neq('id', 0);
@@ -77,55 +79,7 @@ async function seed() {
           price_cents: 12000,
           category_id: categories.find(c => c.name === 'Personalized Meals').id,
           is_available: true
-        },
-        {
-          slug: 'nourish-bowl',
-          image_url: 'https://plus.unsplash.com/premium_photo-1661759410516-945250a82834?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Ym93bHxlbnwwfHwwfHx8MA%3D%3D',
-          description: 'Nourish Bowl with quinoa, sweet potato, kale, tahini dressing.',
-          price_cents: 1499,
-          category_id: categories.find(c => c.name === 'Bowls').id,
-          is_available: true
-        },
-        {
-          slug: 'green-goddess-bowl',
-          image_url: 'https://images.unsplash.com/photo-1701109876066-7fc0c08da447?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Z3JlZW4lMjBib3dsfGVufDB8fDB8fHww',
-          description: 'Green Goddess Bowl with avocado, greens, and herbed dressing.',
-          price_cents: 1599,
-          category_id: categories.find(c => c.name === 'Bowls').id,
-          is_available: true
-        },
-        {
-          slug: 'protein-power-bowl',
-          image_url: 'https://plus.unsplash.com/premium_photo-1673580742886-1129e6e1f829?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvdGVpbiUyMGJvd2x8ZW58MHx8MHx8fDA%3D',
-          description: 'Protein Power Bowl with lentils, tofu, and edamame.',
-          price_cents: 1699,
-          category_id: categories.find(c => c.name === 'Bowls').id,
-          is_available: true
-        },
-        {
-          slug: 'reset-juice-pack',
-          image_url: 'https://plus.unsplash.com/premium_photo-1663126827264-409d695e0be7?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8anVpY2V8ZW58MHx8MHx8fDA%3D',
-          description: 'Reset Juice Pack of 3 cold-pressed juices.',
-          price_cents: 2200,
-          category_id: categories.find(c => c.name === 'Cleansing').id,
-          is_available: true
-        },
-        {
-          slug: 'vegan-feast',
-          image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8dmVnYW58ZW58MHx8MHx8fDA%3D',
-          description: 'Family Style Vegan Feast for 4-6 people.',
-          price_cents: 8500,
-          category_id: categories.find(c => c.name === 'Catering').id,
-          is_available: true
-        },
-        {
-          slug: 'custom-meal-plan',
-          image_url: 'https://plus.unsplash.com/premium_photo-1669056783712-a3b0b8505f71?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bWVhbCUyMHBsYW58ZW58MHx8MHx8fDA%3D',
-          description: 'Custom Meal Plan tailored to your health goals.',
-          price_cents: 12000,
-          category_id: categories.find(c => c.name === 'Personalized Meals').id,
-          is_available: true
-        },
+        }
       ])
       .select();
 
@@ -167,55 +121,93 @@ async function seed() {
 
     if (userErr) throw userErr;
 
+    // Carts
+    const { data: carts, error: cartErr } = await supabase
+      .from('carts')
+      .insert([
+        { user_id: users[1].id, created_at: new Date().toISOString() },
+        { user_id: users[2].id, created_at: new Date().toISOString() }
+      ])
+      .select();
+
+    if (cartErr) throw cartErr;
+
+    // Cart Items
+    const { error: cartItemsErr } = await supabase
+      .from('cart_items')
+      .insert([
+        {
+          cart_id: carts[0].id,
+          product_id: products.find(p => p.slug === 'green-goddess-bowl').id,
+          quantity: 1,
+          unit_price_cents: 1599,
+        },
+        {
+          cart_id: carts[0].id,
+          product_id: products.find(p => p.slug === 'protein-power-bowl').id,
+          quantity: 2,
+          unit_price_cents: 1699,
+        },
+        {
+          cart_id: carts[1].id,
+          product_id: products.find(p => p.slug === 'reset-juice-pack').id,
+          quantity: 3,
+          unit_price_cents: 2200,
+        }
+      ]);
+
+    if (cartItemsErr) throw cartItemsErr;
+
+    // Orders
     const { data: orders, error: orderErr } = await supabase
-  .from('orders')
-  .insert([
-    {
-      user_id: users[1].id,
-      total_cents: 5198,
-      buyer_first_name: 'Jane',
-      buyer_last_name: 'Wellness',
-      buyer_phone_number: '4445556666',
-      buyer_address: '123 Health St.',
-      buyer_stripe_payment_info: 'stripe_jane_001',
-      status: 'completed'
-    },
-    {
-      user_id: users[1].id,
-      total_cents: 8999,
-      buyer_first_name: 'Jane',
-      buyer_last_name: 'Wellness',
-      buyer_phone_number: '4445556666',
-      buyer_address: '123 Health St.',
-      buyer_stripe_payment_info: 'stripe_jane_002',
-      status: 'pending'
-    },
-    {
-      user_id: users[1].id,
-      total_cents: 4500,
-      buyer_first_name: 'Jane',
-      buyer_last_name: 'Wellness',
-      buyer_phone_number: '4445556666',
-      buyer_address: '123 Health St.',
-      buyer_stripe_payment_info: 'stripe_jane_003',
-      status: 'cancelled'
-    },
-    {
-      user_id: users[2].id,
-      total_cents: 12000,
-      buyer_first_name: 'Mike',
-      buyer_last_name: 'Greens',
-      buyer_phone_number: '7778889999',
-      buyer_address: '456 Wellness Rd.',
-      buyer_stripe_payment_info: 'stripe_mike_002',
-      status: 'pending'
-    }
-  ])
-  .select();
+      .from('orders')
+      .insert([
+        {
+          user_id: users[1].id,
+          total_cents: 5198,
+          buyer_first_name: 'Jane',
+          buyer_last_name: 'Wellness',
+          buyer_phone_number: '4445556666',
+          buyer_address: '123 Health St.',
+          buyer_stripe_payment_info: 'stripe_jane_001',
+          status: 'completed'
+        },
+        {
+          user_id: users[1].id,
+          total_cents: 8999,
+          buyer_first_name: 'Jane',
+          buyer_last_name: 'Wellness',
+          buyer_phone_number: '4445556666',
+          buyer_address: '123 Health St.',
+          buyer_stripe_payment_info: 'stripe_jane_002',
+          status: 'pending'
+        },
+        {
+          user_id: users[1].id,
+          total_cents: 4500,
+          buyer_first_name: 'Jane',
+          buyer_last_name: 'Wellness',
+          buyer_phone_number: '4445556666',
+          buyer_address: '123 Health St.',
+          buyer_stripe_payment_info: 'stripe_jane_003',
+          status: 'cancelled'
+        },
+        {
+          user_id: users[2].id,
+          total_cents: 12000,
+          buyer_first_name: 'Mike',
+          buyer_last_name: 'Greens',
+          buyer_phone_number: '7778889999',
+          buyer_address: '456 Wellness Rd.',
+          buyer_stripe_payment_info: 'stripe_mike_002',
+          status: 'pending'
+        }
+      ])
+      .select();
 
     if (orderErr) throw orderErr;
 
-    // Order_products
+    // Order Products
     const { error: opErr } = await supabase
       .from('order_products')
       .insert([
