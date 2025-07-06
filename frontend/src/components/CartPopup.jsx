@@ -3,6 +3,7 @@ import React from 'react'
 import '../styles/CartPopup.css'
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Minus } from 'lucide-react';
 
 function CartPopup({ cart, removeFromCart }) {
   const [isMinimized, setIsMinimized] = useState(false);
@@ -12,11 +13,22 @@ function CartPopup({ cart, removeFromCart }) {
     return null;
   }
 
+  const totalPrice = cart.reduce((sum, item) => {
+    return sum + item.price_cents * item.quantity;
+  }, 0)
+
   return (
     <div className={`cart-popup ${isMinimized ? 'minimized' : ''}`}>
       {!isMinimized ? (
         <>
-          <h3 className='cart-popup-header'>Your Cart</h3>
+          <h3 className='cart-popup-header'>
+            <span className='popup-nav-text'>Your Cart</span>
+            <button 
+              onClick={() => setIsMinimized(true)}
+            >
+              <Minus />
+            </button>
+          </h3>
           {cart.length === 0 ? (
             <p>Cart is empty</p>
           ) : (
@@ -29,24 +41,22 @@ function CartPopup({ cart, removeFromCart }) {
                       src={item.image_url}
                       alt={item.slug}
                     />
-                    {item.slug} × {item.quantity}
-                    <button onClick={() => removeFromCart(item)}>remove</button>
+                    {item.slug} × {item.quantity} = ${(item.price_cents * item.quantity / 100).toFixed(2)}
+                    <button onClick={() => removeFromCart(item)}>X</button>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <div className="cart-popup-footer">
+            <div className="cart-popup-footer">
               <button 
                 onClick={() => navigate('/cart')}
-              >
+                >
                 View Cart
               </button>
-              <button 
-                onClick={() => setIsMinimized(true)}
-              >
-                Close
-              </button>
+              <span className='cart-total'>
+                Total: ${(totalPrice / 100).toFixed(2)}
+              </span>
           </div>
         </>
       ) : (

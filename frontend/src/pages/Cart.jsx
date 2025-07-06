@@ -18,6 +18,10 @@ const Cart = ({ cart, removeFromCart }) => {
       });
   }, []);
 
+  const totalPrice = cart.reduce((sum, item) => {
+    return sum + item.price_cents * item.quantity;
+  }, 0)
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -36,6 +40,7 @@ const Cart = ({ cart, removeFromCart }) => {
             src={item.image_url}
             className='product-image'
           />
+          <div>${(item.price_cents * item.quantity / 100).toFixed(2)}</div>
           <button
             onClick={() => removeFromCart(item)}
           >
@@ -43,6 +48,11 @@ const Cart = ({ cart, removeFromCart }) => {
           </button>
         </div>
       ))}
+      <div>
+        <span>
+          Total: ${(totalPrice / 100).toFixed(2)}
+        </span>
+      </div>
     </div>
   )
 };
