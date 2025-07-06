@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
 
-const Products = () => {
+const Products = ({ addToCart, cart }) => {
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [isLoading, setIsLoading] = useState(true);
-  const [ cart, setCart ] = useState([]);
+  
 
   const filteredCategory = selectedCategoryId 
   ? allProducts.filter(product => product.category_id === selectedCategoryId) :  allProducts;
@@ -34,22 +34,6 @@ const Products = () => {
         console.error('Error fetching categories:', err);
       });
   }, []);
-
-  const addToCart = (product) => {
-    console.log('addToCart called for', product.slug);
-  
-    setCart((prevCart) => {
-      const existingItemIndex = prevCart.findIndex(item => item.id === product.id);
-  
-      if (existingItemIndex !== -1) {
-        const updatedCart = [...prevCart];
-        updatedCart[existingItemIndex].quantity += 1;
-        return updatedCart;
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
-      }
-    });
-  };
 
   if (isLoading) {
     return (

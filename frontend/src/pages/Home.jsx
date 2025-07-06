@@ -1,17 +1,22 @@
 import '../styles/Home.css'
 import { useState, useEffect } from 'react';
+import loadingAnimation from '../assets/loading.json';
+import Lottie from 'lottie-react';
 
 
 const Home = () => {
-  const [homepageCategories, setHomepageCategories] = useState([]); 
+  const [homepageCategories, setHomepageCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
    useEffect(() => {
     fetch('http://localhost:8080/categories/homepage')
       .then((res) => res.json()) // Parse the JSON response
-      .then((data) => setHomepageCategories(data))
+      .then(data => {
+        setHomepageCategories(data);
+        setIsLoading(false);
+      })
       .catch((err) => console.error(err));
   }, []); // Empty array = runs only once on mount
-
 
   return (
     <div className="homepage">
@@ -22,22 +27,28 @@ const Home = () => {
       </section>
 
       {/* Zig-Zag Section */}
-      {homepageCategories.map((category, index) => (
-        <section className="zigzag-section" key={category.id}>
-          <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
-            <div className="zigzag-text">
-              <h2>{category.name}</h2>
-              <p>{category.description} </p>
-              <button>Shop Now</button>
+      {isLoading ? (
+        <div className="loading-container">
+          <Lottie animationData={loadingAnimation} loop={true} />
+        </div>
+      ) : (
+        homepageCategories.map((category, index) => (
+          <section className="zigzag-section" key={category.id}>
+            <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
+              <div className="zigzag-text">
+                <h2>{category.name}</h2>
+                <p>{category.description} </p>
+                <button>Shop Now</button>
+              </div>
+  
+              <div className="zigzag-image">
+                <img src={category.image_url} alt="Section 1" />
+              </div>
             </div>
-
-            <div className="zigzag-image">
-              <img src={category.image_url} alt="Section 1" />
-            </div>
-          </div>
-        </section>
-      )
-    )}
+          </section>
+        ))
+      )}
+      
     </div>
   )
 };

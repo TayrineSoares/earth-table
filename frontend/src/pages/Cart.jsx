@@ -1,6 +1,8 @@
 import loadingAnimation from '../assets/loading.json'
+import { useState, useEffect } from 'react';
+import Lottie from 'lottie-react';
 
-const Cart = () => {
+const Cart = ({ cart }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +28,12 @@ const Cart = () => {
 
   return (
     <div>
-
-      
       <h1>Cart Page!</h1>
-      
+      {cart.map(item => (
+        <div key={item.id}>
+          <h3>{item.slug} x {item.quantity}</h3>
+        </div>
+      ))}
     </div>
   )
 };
