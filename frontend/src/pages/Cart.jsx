@@ -31,6 +31,7 @@ const Cart = ({ cart }) => {
       <h1>Cart Page!</h1>
       {cart.map(item => (
         <div key={item.id}>
+          <img src={item.image_url} />
           <h3>{item.slug} x {item.quantity}</h3>
         </div>
       ))}
