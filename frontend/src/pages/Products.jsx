@@ -3,22 +3,20 @@ import { ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 
 const Products = ({ addToCart, cart }) => {
 
   const { categoryId } = useParams();
-  
+
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(
-  categoryId ? Number(categoryId) : null
-  );
+  
   const [isLoading, setIsLoading] = useState(true);
   
 
-  const filteredCategory = selectedCategoryId 
-  ? allProducts.filter(product => product.category_id === selectedCategoryId) :  allProducts;
+  const filteredProducts = categoryId
+  ? allProducts.filter(product => product.category_id === Number(categoryId)) :  allProducts;
 
   useEffect(() => {
     fetch('http://localhost:8080/products')
@@ -41,6 +39,7 @@ const Products = ({ addToCart, cart }) => {
       });
   }, []);
 
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -53,20 +52,25 @@ const Products = ({ addToCart, cart }) => {
     <div>
 
       <div className='categories-container'>
-        <button onClick={() => setSelectedCategoryId(null)}>All</button>
+
+        <Link to="/products">
+          <button>All</button>
+        </Link>
+       
         {allCategories.map((category) => (
-          <button 
-          className='categories' 
-          key={category.id}
-          onClick={() => setSelectedCategoryId(category.id)}
+          <Link
+            key={category.id}
+            to={`/products/${category.id}`}
           >
-            {category.name}
-          </button>
+            <button className="categories">
+              {category.name}
+            </button>
+          </Link>
         ))}
       </div>
 
       <div className='products-container'>
-      {filteredCategory.map((product) => {
+      {filteredProducts.map((product) => {
         return (
           <div className='products' key={product.id}>
             <h3>{product.slug}</h3>
