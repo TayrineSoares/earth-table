@@ -2,6 +2,7 @@ import '../styles/Home.css'
 import { useState, useEffect } from 'react';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
+import { Link } from "react-router-dom";
 
 
 const Home = () => {
@@ -39,7 +40,10 @@ const Home = () => {
               <div className="zigzag-text">
                 <h2>{category.name}</h2>
                 <p>{category.description} </p>
-                <button>Shop Now</button>
+                <Link to={`/products/${category.id}`}>
+                  <button>Shop Now</button>                
+                </Link>
+                
               </div>
   
               <div className="zigzag-image">
