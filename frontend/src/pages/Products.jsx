@@ -14,7 +14,6 @@ const Products = ({ addToCart, cart }) => {
   
   const [isLoading, setIsLoading] = useState(true);
   
-
   const filteredProducts = categoryId
   ? allProducts.filter(product => product.category_id === Number(categoryId)) :  allProducts;
 
