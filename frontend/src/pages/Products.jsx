@@ -3,11 +3,17 @@ import { ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
+import { useParams } from "react-router-dom";
 
 const Products = ({ addToCart, cart }) => {
+
+  const { categoryId } = useParams();
+  
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+  categoryId ? Number(categoryId) : null
+  );
   const [isLoading, setIsLoading] = useState(true);
   
 
