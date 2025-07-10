@@ -8,6 +8,7 @@ const Home = () => {
   const [homepageCategories, setHomepageCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+
    useEffect(() => {
     fetch('http://localhost:8080/categories/homepage')
       .then((res) => res.json()) // Parse the JSON response

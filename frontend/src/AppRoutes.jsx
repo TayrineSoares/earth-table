@@ -23,7 +23,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route
-            path="/products"
+            path="/products/:categoryId?"
             element={<Products 
               addToCart={addToCart} 
               cart={cart} 
