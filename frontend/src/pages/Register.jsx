@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { use, useState } from 'react';
 
 const Register = () => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
+  const [ message, setMessage ] = useState("");
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
@@ -17,9 +18,16 @@ const Register = () => {
     });
 
     const data = await res.json();
-    console.log(`You are registerd as ${data.user.email}`, data);  
 
-  }
+    if (data.error) {
+      setMessage(`Registration failed: ${data.error}`);
+    } else {
+      setMessage(`You are registered as ${data.user.email}`);
+      console.log(`User registerd as ${data.user.email}`, data);  
+      
+    }
+  };
+
 
   return (
     <div className="register page">
@@ -45,7 +53,6 @@ const Register = () => {
             required
           
           />
-
           <br></br>
 
           <button type="submit"> Register </button>
@@ -53,6 +60,8 @@ const Register = () => {
         </form>
 
       </div>
+      {/* Display success or error message */}
+      {message && <p>{message}</p>}
 
       
     </div>
