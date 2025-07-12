@@ -20,7 +20,7 @@ const Login = () => {
     });
 
     const data = await res.json();
-    console.log(data);
+    console.log(`You are logged in as ${data.user.email}`,  data);
   }
 
   return (
