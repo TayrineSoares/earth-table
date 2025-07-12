@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, NavLink } from 'react-router-dom'; 
 
 
 const Login = () => {
@@ -52,6 +53,14 @@ const Login = () => {
         <button type="submit">Login</button>
 
       </form>
+      <br></br>
+
+      <div className='register'>
+        <p>Not a member yet? </p>
+        
+        <Link to='/register'>Sign up here</Link> 
+
+      </div>
       
     </div>
   )
