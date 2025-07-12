@@ -7,7 +7,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
 
     const res = await fetch('http://localhost:8080/login', {
@@ -24,10 +24,10 @@ const Login = () => {
   }
 
   return (
-    <div>
+    <div className='login page'>
       <h1>Login Page!</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleLoginSubmit}>
         <input
         type="email"
         placeholder="Email"
@@ -55,7 +55,7 @@ const Login = () => {
       </form>
       <br></br>
 
-      <div className='register'>
+      <div className='register section'>
         <p>Not a member yet? </p>
         
         <Link to='/register'>Sign up here</Link> 
