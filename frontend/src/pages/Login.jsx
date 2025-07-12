@@ -10,7 +10,8 @@ const Login = () => {
     e.preventDefault();
 
     const res = await fetch('http://localhost:8080/login', {
-      method: 'POST', 
+      method: 'POST',
+      // needs to specify content type when sending JSON with fetch or Axios
       headers: {
         'Content-Type': 'application/json',
       },
@@ -47,7 +48,6 @@ const Login = () => {
 
         <br></br>
         <br></br>
-
 
         <button type="submit">Login</button>
 

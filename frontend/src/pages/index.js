@@ -7,3 +7,4 @@ export { default as Checkout } from './Checkout';
 export { default as Confirmation } from './Confirmation';
 export { default as Admin } from './Admin';
 export { default as Login } from './Login';
+export { default as Register } from './Register';
