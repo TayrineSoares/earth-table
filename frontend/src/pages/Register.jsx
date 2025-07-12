@@ -4,7 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 const Register = () => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
+
   const [ message, setMessage ] = useState("");
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   
 
   const navigate = useNavigate();
@@ -25,8 +27,15 @@ const Register = () => {
 
     if (data.error) {
       setMessage(`Registration failed: ${data.error}`);
+      if (data.error === "User already registered") {
+        setAlreadyRegistered(true);
+      } else {
+        setAlreadyRegistered(false)
+      }
+
     } else {
       setMessage(`You have been registered as ${data.user.email}`);
+      setAlreadyRegistered(false);
       console.log(`User registered as ${data.user.email}`, data); 
 
       // Wait before redirecting to login page
@@ -69,8 +78,11 @@ const Register = () => {
         </form>
 
       </div>
+
       {/* Display success or error message */}
       {message && <p>{message}</p>}
+         
+      {alreadyRegistered && (
       
       <div className='register section'>
         <p>Already Registered? </p>
@@ -78,6 +90,7 @@ const Register = () => {
         <Link to='/login'>Login here</Link> 
 
       </div>
+      )}
       
     </div>
   )
