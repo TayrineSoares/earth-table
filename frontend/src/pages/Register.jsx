@@ -1,9 +1,13 @@
-import { use, useState } from 'react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom'; 
 
 const Register = () => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
   const [ message, setMessage ] = useState("");
+  
+
+  const navigate = useNavigate();
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
@@ -22,8 +26,13 @@ const Register = () => {
     if (data.error) {
       setMessage(`Registration failed: ${data.error}`);
     } else {
-      setMessage(`You are registered as ${data.user.email}`);
-      console.log(`User registerd as ${data.user.email}`, data);  
+      setMessage(`You have been registered as ${data.user.email}`);
+      console.log(`User registered as ${data.user.email}`, data); 
+
+      // Wait before redirecting to login page
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
       
     }
   };
@@ -62,7 +71,13 @@ const Register = () => {
       </div>
       {/* Display success or error message */}
       {message && <p>{message}</p>}
+      
+      <div className='register section'>
+        <p>Already Registered? </p>
+        
+        <Link to='/login'>Login here</Link> 
 
+      </div>
       
     </div>
   )
