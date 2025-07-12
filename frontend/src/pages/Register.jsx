@@ -5,10 +5,9 @@ const Register = () => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
 
-  const [ message, setMessage ] = useState("");
+  const [message, setMessage] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   
-
   const navigate = useNavigate();
 
   const handleRegisterSubmit = async (e) => {
@@ -81,7 +80,7 @@ const Register = () => {
 
       {/* Display success or error message */}
       {message && <p>{message}</p>}
-         
+
       {alreadyRegistered && (
       
       <div className='register section'>

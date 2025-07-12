@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom'; 
+import { Link, useNavigate } from 'react-router-dom'; 
 
 
 const Login = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const [message, setMessage] = useState("");
+
+  const navigate = useNavigate();
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -20,8 +24,19 @@ const Login = () => {
     });
 
     const data = await res.json();
-    console.log(`You are logged in as ${data.user.email}`,  data);
-  }
+
+    if (data.error) {
+      setMessage(`Login failed: ${data.error}`);
+    } else {
+      setMessage(`You are logged in as ${data.user.email}`);
+      console.log(`User logged in as ${data.user.email}`, data);
+
+      // redirect after a short delay
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    }
+  };
 
   return (
     <div className='login page'>
@@ -53,6 +68,10 @@ const Login = () => {
         <button type="submit">Login</button>
 
       </form>
+      <br></br>
+
+      {message && <p>{message}</p>}
+
       <br></br>
 
       <div className='register section'>
