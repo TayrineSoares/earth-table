@@ -3,10 +3,11 @@ const cors = require('cors');
 const morgan = require('morgan');
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
-const ordersRouter = require('./src/routes/ordersRoutes')
-const usersRouter = require('./src/routes/usersRoutes')
-const loginRouter = require('./src/routes/loginRoutes')
-const registerRouter = require('./src/routes/registerRoutes')
+const ordersRouter = require('./src/routes/ordersRoutes');
+const usersRouter = require('./src/routes/usersRoutes');
+const loginRouter = require('./src/routes/loginRoutes');
+const registerRouter = require('./src/routes/registerRoutes');
+const logoutRouter = require('./src/routes/logoutRoutes');
 
 
 const app = express();
@@ -34,6 +35,8 @@ app.use('/users', usersRouter);
 app.use('/login', loginRouter);
 
 app.use('/register', registerRouter);
+
+app.use('/logout', logoutRouter);
 
 
 app.listen(PORT, () => {

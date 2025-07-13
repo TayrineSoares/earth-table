@@ -2,15 +2,16 @@ import './App.css';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import { useEffect, useState } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
-import React from 'react';
+
 
 const App = () => {
   const [cart, setCart] = useState([]);
   const [showCartPopup, setShowCartPopup] = useState(false);
-
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -20,6 +21,39 @@ const App = () => {
       setUser (JSON.parse(userInfo));
     }
   }, []);
+
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/logout', {
+    method: 'POST',
+    });
+
+    //handle http errors
+    if (!res.ok) {
+      throw new Error(`HTTP error. Status: ${res.status}`);
+    }
+
+    const data = await res.json(); 
+    console.log(data.message);
+
+    //check if the backend returned an error message in the JSON
+    if (data.error) {
+      console.error('Logout failed:', data.error);
+    } else {
+      console.log(data.message);
+    }
+
+    //clear local storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/login');
+      } catch (err) {
+      //catch network errors or thrown errors and log them
+       console.error('Logout request failed:', err.message);
+      }
+    };
 
   const addToCart = (product) => {
 
@@ -57,7 +91,7 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <Navbar user={user}/>
+      <Navbar user={user} onLogout={handleLogout}/>
       <AppRoutes
         cart={cart}
         addToCart={addToCart}
