@@ -1,7 +1,7 @@
 import './App.css';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
 import React from 'react';
@@ -9,6 +9,17 @@ import React from 'react';
 const App = () => {
   const [cart, setCart] = useState([]);
   const [showCartPopup, setShowCartPopup] = useState(false);
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userInfo = localStorage.getItem('user');
+
+    if (token && userInfo) {
+      setUser (JSON.parse(userInfo));
+    }
+  }, []);
 
   const addToCart = (product) => {
 
@@ -46,7 +57,7 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <Navbar />
+      <Navbar user={user}/>
       <AppRoutes
         cart={cart}
         addToCart={addToCart}

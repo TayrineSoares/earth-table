@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link, NavLink } from "react-router-dom"
 import '../styles/NavBar.css'
 
-const Navbar = () => {
+const Navbar = ({user}) => {
+
+  
 
   //links array to avoid code repetition
   const links = [
@@ -19,9 +21,14 @@ const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <nav>
+      
       <div className="logo"> 
         <Link to='/'> Earth Table</Link> 
       </div>
+      
+      {user && (
+        <p>Welcome back, {user.email}!</p>
+      )}
 
       <div className="menu" onClick={() =>{
         setMenuOpen(!menuOpen);
