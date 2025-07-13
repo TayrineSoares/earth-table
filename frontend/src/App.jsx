@@ -93,6 +93,8 @@ const App = () => {
     <div>
       <Navbar user={user} onLogout={handleLogout}/>
       <AppRoutes
+        user={user}
+        setUser={setUser}
         cart={cart}
         addToCart={addToCart}
         removeFromCart={removeFromCart}

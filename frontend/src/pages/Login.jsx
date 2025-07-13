@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 
-const Login = () => {
+const Login = ({setUser}) => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const [message, setMessage] = useState("");
+
 
   const navigate = useNavigate();
 
@@ -37,6 +38,9 @@ const Login = () => {
 
       // Save user info
       localStorage.setItem('user', JSON.stringify(data.user)); 
+
+      setUser(data.user);
+      
 
       // // for debuging
       // const token = localStorage.getItem('token');
