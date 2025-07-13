@@ -2,7 +2,7 @@ import './App.css';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import { useEffect, useState } from 'react';
-import { BrowserRouter, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
 
 
@@ -90,7 +90,7 @@ const App = () => {
 };
 
   return (
-    <BrowserRouter>
+    <div>
       <Navbar user={user} onLogout={handleLogout}/>
       <AppRoutes
         cart={cart}
@@ -100,7 +100,8 @@ const App = () => {
         setShowCartPopup={setShowCartPopup}
       />
       <Footer />
-    </BrowserRouter>
+    </div>
+   
   );
 };
 
