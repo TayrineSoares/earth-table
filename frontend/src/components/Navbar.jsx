@@ -2,9 +2,8 @@ import { useState } from "react";
 import { Link, NavLink } from "react-router-dom"
 import '../styles/NavBar.css'
 
-const Navbar = ({user}) => {
+const Navbar = ({user, onLogout}) => {
 
-  
 
   //links array to avoid code repetition
   const links = [
@@ -25,7 +24,7 @@ const [menuOpen, setMenuOpen] = useState(false);
       <div className="logo"> 
         <Link to='/'> Earth Table</Link> 
       </div>
-      
+
       {user && (
         <p>Welcome back, {user.email}!</p>
       )}
@@ -47,9 +46,18 @@ const [menuOpen, setMenuOpen] = useState(false);
             >
               {link.label}
             </NavLink>
-
+            
           </li>
         ))}
+
+        {/* Add Logout link if user is logged in */}
+        {user && (
+          <li>
+            <button onClick={onLogout} className="logout-button">
+              Logout
+            </button>
+          </li>
+        )}
 
       </ul>
     </nav>
