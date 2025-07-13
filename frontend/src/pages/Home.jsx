@@ -12,13 +12,18 @@ const Home = () => {
 
    useEffect(() => {
     fetch('http://localhost:8080/categories/homepage')
-      .then((res) => res.json()) // Parse the JSON response
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP Error.${res.status}`);
+        }
+        return res.json()
+      }) 
       .then(data => {
         setHomepageCategories(data);
         setIsLoading(false);
       })
       .catch((err) => console.error(err));
-  }, []); // Empty array = runs only once on mount
+  }, []); 
 
   return (
     <div className="homepage">

@@ -7,7 +7,12 @@ const Cart = ({ cart, removeFromCart }) => {
 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
-      .then(res => res.json())
+      .then(res => {
+        if(!res.ok) {
+          throw new Error(`HTTP Error.${res.status}`);
+        }
+        return res.json()
+      })
       .then(data => {
         setAllProducts(data);
         setIsLoading(false);

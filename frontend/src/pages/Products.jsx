@@ -19,7 +19,12 @@ const Products = ({ addToCart, cart }) => {
 
   useEffect(() => {
     fetch('http://localhost:8080/products')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! :${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
         setAllProducts(data);
         setIsLoading(false);
@@ -29,7 +34,12 @@ const Products = ({ addToCart, cart }) => {
         setIsLoading(false);
       });
     fetch('http://localhost:8080/categories')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! :${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
         setAllCategories(data);
       })
