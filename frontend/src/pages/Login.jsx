@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 
-
 const Login = () => {
 
   const [email, setEmail] = useState('');
@@ -31,6 +30,23 @@ const Login = () => {
       setMessage(`You are logged in as ${data.user.email}`);
       console.log(`User logged in as ${data.user.email}`, data);
 
+      // Save token in localStorage
+      //setItem is a built-in browser method for storing data in your web browser
+      // browsers give every website a little place to store data called localStorage.
+      localStorage.setItem('token', data.session.access_token);
+
+      // Save user info
+      localStorage.setItem('user', JSON.stringify(data.user)); 
+
+      // // for debuging
+      // const token = localStorage.getItem('token');
+      // console.log('Token:', token);
+
+      // // Get user (parse because it's stored as a string)
+      // const user = JSON.parse(localStorage.getItem('user'));
+      // console.log('User:', user);
+      // console.log('User email:', user.email);
+
       // redirect after a short delay
       setTimeout(() => {
         navigate('/');
@@ -48,9 +64,8 @@ const Login = () => {
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        required>
-
-        </input>
+        required
+        />
 
         <br></br>
 

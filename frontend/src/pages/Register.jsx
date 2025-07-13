@@ -35,7 +35,7 @@ const Register = () => {
     } else {
       setMessage(`You have been registered as ${data.user.email}`);
       setAlreadyRegistered(false);
-      console.log(`User registered as ${data.user.email}`, data); 
+      console.log(`User registered as ${data.user.email}`, data);
 
       // Wait before redirecting to login page
       setTimeout(() => {
@@ -58,8 +58,8 @@ const Register = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            
           />
+          
           <br></br>
 
           <input
@@ -68,12 +68,10 @@ const Register = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-          
           />
           <br></br>
 
           <button type="submit"> Register </button>
-
         </form>
 
       </div>
@@ -85,9 +83,7 @@ const Register = () => {
       
       <div className='register section'>
         <p>Already Registered? </p>
-        
         <Link to='/login'>Login here</Link> 
-
       </div>
       )}
       
