@@ -12,7 +12,6 @@ const Navbar = ({user, onLogout}) => {
   { to: "/products", label: "Order" },
   { to: "/contact", label: "Contact Us" },
   { to: "/cart", label: "Cart" },
-  { to: "/login", label: "Login" },
 ];
 
 //state for mobile hamburger menu
@@ -29,8 +28,10 @@ const [menuOpen, setMenuOpen] = useState(false);
         <p>Welcome back, {user.email}!</p>
       )}
 
-      <div className="menu" onClick={() =>{
-        setMenuOpen(!menuOpen);
+      <div 
+        className="menu" 
+        onClick={() =>{
+          setMenuOpen(!menuOpen);
       }}>
         <span></span>
         <span></span>
@@ -51,17 +52,33 @@ const [menuOpen, setMenuOpen] = useState(false);
         ))}
 
         {/* Add Logout link if user is logged in */}
-        {user && (
+        {!user && (
           <li>
-            <button onClick={onLogout} className="logout-button">
-              Logout
-            </button>
+            <NavLink
+              to="/login"
+              className={({ isActive }) => (isActive ? "active" : undefined)}
+            >
+              Login
+            </NavLink>
           </li>
         )}
-
+        {user && (
+          <li>
+            <Link
+              to="#"
+              
+              onClick={(e) => {
+                e.preventDefault();
+                onLogout();
+              }}
+            >
+              Logout
+            </Link>
+          </li>
+        )}
       </ul>
     </nav>
-  )
+  );
 };
 
 export default Navbar;
