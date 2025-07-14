@@ -116,7 +116,6 @@ async function seed() {
           last_name: 'Founder',
           email: 'selena@earthtable.com',
           country: 'Canada',
-          password_hash: 'hashed_pw',
           phone_number: '1112223333',
           is_admin: true
         },
@@ -125,7 +124,6 @@ async function seed() {
           last_name: 'Wellness',
           email: 'jane@example.com',
           country: 'Canada',
-          password_hash: 'hashed_pw',
           phone_number: '4445556666',
           is_admin: false
         },
@@ -134,7 +132,6 @@ async function seed() {
           last_name: 'Greens',
           email: 'mike@example.com',
           country: 'Canada',
-          password_hash: 'hashed_pw',
           phone_number: '7778889999',
           is_admin: false
         }
