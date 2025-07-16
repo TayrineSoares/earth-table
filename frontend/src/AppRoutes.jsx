@@ -10,8 +10,10 @@ import {
   Admin,
   Login,
   Register,
+  Profile,
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
+import UpdateProfile from './pages/UpdateProfile.jsx';
 
 const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFromCart, setUser }) => {
   const location = useLocation();
@@ -40,6 +42,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/update-profile" element={<UpdateProfile setUser={setUser} />} />
         </Routes>
       </div>
 

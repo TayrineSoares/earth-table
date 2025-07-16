@@ -38,9 +38,13 @@ const Register = () => {
       setAlreadyRegistered(false);
       console.log(`User registered as ${data.user.email}`, data);
 
-      // Wait before redirecting to login page
+      // Wait before redirecting to profile details page
       setTimeout(() => {
-        navigate('/login');
+        navigate('/update-profile', {
+          state:{
+            user: data.user // send user data to the next page so we can read it with useLocation
+          }
+        });
       }, 1500);
       
     }
