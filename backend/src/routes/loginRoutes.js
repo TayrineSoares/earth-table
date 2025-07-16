@@ -21,7 +21,7 @@ router.post('/', async (req, res) => {
     if (error) {
       return res.status(401).json({error: error.message});
     }
-
+    
     // Extract the logged-in user's unique Supabase ID
     return res.status(200).json({
       user:data.user,
