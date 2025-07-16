@@ -9,14 +9,14 @@ const UpdateProfile = () => {
   // WARNING: refreshing the page loses this data.
   const location = useLocation();
   const user = location.state?.user;
-  console.log(user);
+  console.log("user id", user.id, "user email", user.email);
 
   // Initialize form fields with any data that already exists
   const [formData, setFormData] = useState({
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
-    country: user?.country || "",
-    phone_number: user?.phone_number || "",
+    first_name: "",
+    last_name: "",
+    country: "",
+    phone_number: "",
   });
 
   const handleChange = (e) => {
@@ -37,7 +37,8 @@ const UpdateProfile = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: user?.id,
+          auth_user_id: user?.id,
+          email: user?.email,
           ...formData
         }),
       });
@@ -47,6 +48,7 @@ const UpdateProfile = () => {
       }
 
       const data = await res.json(); 
+      
       console.log('Profile updated:', data);
     } catch (err) {
       console.error("Error updating profile", err.message);
