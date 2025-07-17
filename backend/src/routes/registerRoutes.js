@@ -18,6 +18,29 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
+    //insert record into users table
+    const { data: insertData, error: insertError } = await supabase
+      .from ('users')
+      .insert({
+        auth_user_id: data.user.id, 
+        email: data.user.email,
+        first_name: "",
+        last_name: "", 
+        country: "",
+        phone_number: "", 
+        is_admin: false,
+      });
+      // .select();
+      
+
+    if (insertError) {
+      console.error("Error inserting user record", insertError.message);
+      return res.status(500).json({error: 'Failed to create user record'});
+    } 
+      
+    console.log("User Record:", insertData);
+    
+  
     return res.status(201).json({
       user: data.user,
       session: data.session,
@@ -28,6 +51,9 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: 'Server error' });
   }
 });
+
+
+
 
 
 module.exports = router;
