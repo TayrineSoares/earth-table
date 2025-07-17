@@ -64,7 +64,7 @@ router.post('/profile', async (req, res) => {
     
       })
       .eq('auth_user_id', auth_user_id) 
-      .select();  // returns updated rows
+      .select('auth_user_id, email, first_name, last_name, country, phone_number, is_admin');  // returns updated rows
 
       //console.log("Supabase update returned data:", data);
       //console.log("Supabase update returned error:", error);
@@ -74,7 +74,7 @@ router.post('/profile', async (req, res) => {
       return res.status(500).json({ error: error.message });
       }
 
-    console.log(data[0]);
+    console.log("Updated user:", data[0]);
     return res.status(200).json({ user: data[0]});
 
   } catch (err) {

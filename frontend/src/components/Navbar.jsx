@@ -16,6 +16,7 @@ const Navbar = ({user, onLogout}) => {
 
 //state for mobile hamburger menu
 const [menuOpen, setMenuOpen] = useState(false);
+console.log(user);
 
   return (
     <nav>

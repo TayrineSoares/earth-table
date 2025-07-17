@@ -1,7 +1,8 @@
 import { useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const UpdateProfile = () => {
+const UpdateProfile = ({ setUser }) => {
 
   // We use useLocation to access data passed via navigate()
   // from the previous page (Register). This allows us to retrieve
@@ -10,6 +11,8 @@ const UpdateProfile = () => {
   const location = useLocation();
   const user = location.state?.user;
   console.log("user id", user.id, "user email", user.email);
+
+  const navigate = useNavigate();
 
   // Initialize form fields with any data that already exists
   const [formData, setFormData] = useState({
@@ -30,6 +33,8 @@ const UpdateProfile = () => {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault(); 
 
+    
+
     try {
       const res = await fetch('http://localhost:8080/register/profile', {
         method: "POST",
@@ -37,6 +42,7 @@ const UpdateProfile = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          
           auth_user_id: user?.id,
           email: user?.email,
           ...formData
@@ -50,6 +56,14 @@ const UpdateProfile = () => {
       const data = await res.json(); 
       
       console.log('Profile updated:', data);
+
+      // Save updated user
+      localStorage.setItem('user', JSON.stringify(data));
+
+      // Update user state in App
+      setUser(data);
+      
+      // navigate('/');
     } catch (err) {
       console.error("Error updating profile", err.message);
     }
