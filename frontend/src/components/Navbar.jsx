@@ -14,6 +14,7 @@ const Navbar = ({user, onLogout}) => {
   { to: "/cart", label: "Cart" },
 ];
 
+console.log(" THIS IS THE USER", user);
 //state for mobile hamburger menu
 const [menuOpen, setMenuOpen] = useState(false);
 
@@ -51,6 +52,17 @@ const [menuOpen, setMenuOpen] = useState(false);
           </li>
         ))}
 
+        {user && (
+          <li>
+            <NavLink
+              to={`/profile/${user.id}`}
+              className={({ isActive }) => (isActive ? "active" : undefined)}
+            > 
+            Profile
+            </NavLink>
+          </li>
+        )}
+
         {/* Add Logout link if user is logged in */}
         {!user && (
           <li>
@@ -76,6 +88,8 @@ const [menuOpen, setMenuOpen] = useState(false);
             </Link>
           </li>
         )}
+
+        
       </ul>
     </nav>
   );
