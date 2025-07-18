@@ -81,7 +81,8 @@ const Profile = () => {
   
    return (
     <div>
-      <h1>Profile</h1>
+      <h1>Profile page! </h1>
+      <br></br>
 
       {message && <p style={{ color: "green" }}>{message}</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}

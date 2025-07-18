@@ -35,7 +35,7 @@ const Register = ({setUser}) => {
         setUser(data.user);
       
         setTimeout(() => {
-          navigate('/');
+          navigate(`/profile/${data.user.id}`);
         }, 1500);
       }
 
