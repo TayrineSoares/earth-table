@@ -25,7 +25,28 @@ async function getUserByAuthId(authUserId) {
   
 }
 
+async function updateUserByAuthId(authUserId, updates) {
+  if (!authUserId) {
+    throw new Error("authUserId is required");
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('auth_user_id', authUserId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Error updating user: ${error.message}`);
+  }
+
+  return data;
+  
+}
+
 module.exports = {
   getAllUsers,
   getUserByAuthId,
+  updateUserByAuthId,
 };
