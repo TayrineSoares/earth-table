@@ -7,9 +7,16 @@ const Profile = () => {
   const [ user, setUser ] = useState(null); 
   const [ error, setError ] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false); // to disable button during update
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  //console.log("this is my auth user id" , auth_user_id);
+  const editableFields = [
+    { label: "First Name", name: "first_name", type: "text" },
+    { label: "Last Name", name: "last_name", type: "text" },
+    { label: "Country", name: "country", type: "text" },
+    { label: "Phone Number", name: "phone_number", type: "tel" }
+  ];
+
 
   useEffect (() => { 
     const fetchUser = async () => {
@@ -71,47 +78,52 @@ const Profile = () => {
   if (error) return <p>{error}</p>;
   if (!user) return <p>Loading...</p>;
 
-  const editableFields = [
-    { label: "First Name", name: "first_name", type: "text" },
-    { label: "Last Name", name: "last_name", type: "text" },
-    { label: "Country", name: "country", type: "text" },
-    { label: "Phone Number", name: "phone_number", type: "tel" }
-  ];
-
-  return (
+  
+   return (
     <div>
       <h1>Profile</h1>
 
       {message && <p style={{ color: "green" }}>{message}</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <form onSubmit={handleUpdate}>
-        <label>Email:</label>
-        <input name="email" value={user.email} disabled /><br />
-
-        {editableFields.map(({ label, name, type }) => (
-          <div key={name}>
-            <label>{label}:</label>
-            <input
-              type={type}
-              name={name}
-              value={user[name] || ""}
-              onChange={handleChange}
-            />
-            <br />
+      {!isEditing ? (
+        <div>
+          <p><strong>Email:</strong> {user.email}</p>
+          {editableFields.map(({ label, name }) => (
+            <p key={name}>
+              <strong>{label}:</strong> {user[name] || "(not set)"}
+            </p>
+          ))}
+          <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+        </div>
+      ) : (
+        <form onSubmit={handleUpdate}>
+          <div>
+            <label>Email:</label>
+            <input name="email" value={user.email} disabled /><br />
           </div>
-        ))}
 
-        <button type="submit" disabled={loading}>
-          Update Profile
-        </button>
+          {editableFields.map(({ label, name, type }) => (
+            <div key={name}>
+              <label>{label}:</label>
+              <input
+                type={type}
+                name={name}
+                value={user[name] || ""}
+                onChange={handleChange}
+              />
+              <br />
+            </div>
+          ))}
 
-
-      </form>
-
-      
+          <button type="submit" disabled={loading}>Update Profile</button> 
+          <br></br>
+          <br></br>
+          <button type="button" onClick={() => setIsEditing(false)}>Go back</button>
+        </form>
+      )}
     </div>
-  )
+  );
 };
 
 export default Profile;
