@@ -29,8 +29,8 @@ router.post('/', async (req, res) => {
         country: "",
         phone_number: "", 
         is_admin: false,
-      });
-      // .select();
+      })
+      .select();
       
 
     if (insertError) {
@@ -39,8 +39,7 @@ router.post('/', async (req, res) => {
     } 
       
     console.log("User Record:", insertData);
-    
-  
+      
     return res.status(201).json({
       user: data.user,
       session: data.session,
@@ -51,8 +50,6 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: 'Server error' });
   }
 });
-
-
 
 
 
