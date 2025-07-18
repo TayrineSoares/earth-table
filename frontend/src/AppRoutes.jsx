@@ -10,6 +10,7 @@ import {
   Admin,
   Login,
   Register,
+  Profile,
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
 
@@ -40,6 +41,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register setUser={setUser} />} />
+          <Route path="/profile/:userAuthId" element={<Profile />} />
         </Routes>
       </div>
 
