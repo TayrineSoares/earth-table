@@ -39,7 +39,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Register setUser={setUser} />} />
         </Routes>
       </div>
 

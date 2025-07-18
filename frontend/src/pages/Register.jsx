@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 
-const Register = () => {
+const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
 
@@ -10,41 +10,76 @@ const Register = () => {
   
   const navigate = useNavigate();
 
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    try {
 
-    const res = await fetch ('http://localhost:8080/register', {
-      method: 'POST',
-      // needs to specify content type when sending JSON with fetch or Axios
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({email, password})
-    });
+      const res = await fetch('http://localhost:8080/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({email, password})
+      });
+      const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.error) {
-      setMessage(`Registration failed: ${data.error}`);
-      if (data.error === "User already registered") {
-        setAlreadyRegistered(true);
+      if (data.error) {
+        setMessage(`Login failed: ${data.error}`);
       } else {
-        setAlreadyRegistered(false)
+        setMessage(`You are logged in as ${data.user.email}`);
+        console.log(`User logged in as ${data.user.email}`, data);
+
+        // Save token in localStorage
+        localStorage.setItem('token', data.session.access_token);
+        // Save user info
+        localStorage.setItem('user', JSON.stringify(data.user)); 
+        setUser(data.user);
+      
+        setTimeout(() => {
+          navigate('/');
+        }, 1500);
       }
 
-    } else {
-      setMessage(`You have been registered as ${data.user.email}`);
-      setAlreadyRegistered(false);
-      console.log(`User registered as ${data.user.email}`, data);
-
-      // Wait before redirecting to login page
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);
-      
+    } catch (error) {
+      setMessage("Login error:" + error.message);
     }
   };
 
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch ('http://localhost:8080/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({email, password})
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setMessage(`Registration failed: ${data.error}`);
+        if (data.error === "User already registered") {
+          setAlreadyRegistered(true);
+        } else {
+          setAlreadyRegistered(false)
+        }
+
+      } else {
+        setMessage(`You have been registered as ${data.user.email}`);
+        setAlreadyRegistered(false);
+        console.log(`User registered as ${data.user.email}`, data);
+
+        //proceed to automatic login
+        handleLogin();
+        
+      }
+    } catch (error) {
+      setMessage("Registration error:" + error.message);
+    }
+
+  };
 
   return (
     <div className="register page">
