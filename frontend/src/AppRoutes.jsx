@@ -41,7 +41,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register setUser={setUser} />} />
-          <Route path="/profile/:userAuthId" element={<Profile />} />
+          <Route path="/profile/:auth_user_id" element={<Profile />} />
         </Routes>
       </div>
 

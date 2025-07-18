@@ -52,7 +52,7 @@ const [menuOpen, setMenuOpen] = useState(false);
           </li>
         ))}
 
-        {user && (
+        {user?.id && (
           <li>
             <NavLink
               to={`/profile/${user.id}`}
