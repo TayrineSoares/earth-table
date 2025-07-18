@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, getUserById } = require('../queries/user')
+const { getAllUsers, getUserByAuthId } = require('../queries/user')
 
 // GET /users          ALL USERS
 router.get('/', async (req, res) => {
@@ -13,20 +13,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /users/:id       SINGLE USER BY ID
-router.get('/:id', async (req, res) => {
-  const userId = req.params.id;
+// GET /users/:auth_user_id    SINGLE USER BY AUTH ID
+router.get('/:auth_user_id', async (req,res) => {
+  const authUserId = req.params.auth_user_id;
 
   try {
-    const user = await getUserById(userId);
+    const user = await getUserByAuthId(authUserId);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found'} );
     }
     res.json(user);
+
   } catch (error) {
     console.error(error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({error: error.message})
   }
+
 });
+
+
 
 module.exports = router;

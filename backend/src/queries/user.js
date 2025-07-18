@@ -9,18 +9,23 @@ async function getAllUsers() {
   return data;
 };
 
-async function getUserById(id) {
+async function getUserByAuthId(authUserId) {
+  if (!authUserId) {
+    throw new Error("authUserId is required");
+  }
+
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('id', id)
+    .eq('auth_user_id', authUserId)
     .single();
 
-  if (error) throw new Error(`Error fetching user by id: ${error.message}`);
+  if (error) throw new Error(`Error fetching user by Auth Id: ${error.message}`);
   return data;
-};
+  
+}
 
 module.exports = {
   getAllUsers,
-  getUserById,
+  getUserByAuthId,
 };
