@@ -7,6 +7,7 @@ const Profile = () => {
   const [ user, setUser ] = useState(null); 
   const [ error, setError ] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false); // to disable button during update
 
   //console.log("this is my auth user id" , auth_user_id);
 
@@ -37,6 +38,8 @@ const Profile = () => {
   const handleUpdate = async (e) =>{
     e.preventDefault(); 
     setMessage("");
+    setError("");
+    setLoading(true);
 
     try {
       const res = await fetch (`http://localhost:8080/users/${auth_user_id}`, {
@@ -59,6 +62,8 @@ const Profile = () => {
       }
     } catch (err) {
       setError(`Server error: ${err.message}`);
+    } finally {
+    setLoading(false); // Ensures the button re-enables
     }
   };
   
@@ -66,27 +71,40 @@ const Profile = () => {
   if (error) return <p>{error}</p>;
   if (!user) return <p>Loading...</p>;
 
+  const editableFields = [
+    { label: "First Name", name: "first_name", type: "text" },
+    { label: "Last Name", name: "last_name", type: "text" },
+    { label: "Country", name: "country", type: "text" },
+    { label: "Phone Number", name: "phone_number", type: "tel" }
+  ];
+
   return (
     <div>
       <h1>Profile</h1>
+
+      {message && <p style={{ color: "green" }}>{message}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <form onSubmit={handleUpdate}>
         <label>Email:</label>
         <input name="email" value={user.email} disabled /><br />
 
-        <label>First Name:</label>
-        <input name="first_name" value={user.first_name || ""} onChange={handleChange} /><br />
+        {editableFields.map(({ label, name, type }) => (
+          <div key={name}>
+            <label>{label}:</label>
+            <input
+              type={type}
+              name={name}
+              value={user[name] || ""}
+              onChange={handleChange}
+            />
+            <br />
+          </div>
+        ))}
 
-        <label>Last Name:</label>
-        <input name="last_name" value={user.last_name || ""} onChange={handleChange} /><br />
-
-        <label>Country:</label>
-        <input name="country" value={user.country || ""} onChange={handleChange} /><br />
-
-        <label>Phone Number:</label>
-        <input name="phone_number" value={user.phone_number || ""} onChange={handleChange} /><br />
-
-        <button type="submit">Update Profile</button>
+        <button type="submit" disabled={loading}>
+          Update Profile
+        </button>
 
 
       </form>
