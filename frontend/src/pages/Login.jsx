@@ -91,14 +91,22 @@ const Login = ({setUser}) => {
 
       {message && <p>{message}</p>}
 
+
+      <div className='forgot-password section'>
+        <p>
+          <Link to='/reset-password'>Forgot password</Link> 
+        </p>
+
+      </div>
       <br></br>
 
       <div className='register section'>
         <p>Not a member yet? </p>
         
         <Link to='/register'>Sign up here</Link> 
-
       </div>
+
+      
       
     </div>
   )
