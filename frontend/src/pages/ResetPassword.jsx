@@ -5,7 +5,28 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Reset Password for", email);
+    
+    try {
+      const res = await fetch('http://localhost:8080/login/reset-password', {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('✅ Reset email sent. Check your inbox!');
+      } else {
+        alert(`❌ ${data.error}`);
+      }
+    } catch (err) {
+      alert('❌ Something went wrong.');
+      console.error(err);
+
+    }
   }
 
   return (
