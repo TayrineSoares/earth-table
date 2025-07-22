@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const CategoryForm = ({ onSubmit, onCancel }) => {
+const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
     name: '',
     image_url: '',
     description: '',
     show_on_homepage: false,
   });
+
+  useEffect(() => {
+    // If initialData is provided (editing), pre-fill the form
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData({
+        name: initialData.name || '',
+        image_url: initialData.image_url || '',
+        description: initialData.description || '',
+        show_on_homepage: initialData.show_on_homepage || false,
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

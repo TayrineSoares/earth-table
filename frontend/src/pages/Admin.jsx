@@ -8,6 +8,8 @@ const Admin = () => {
   const [user, setUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,6 +64,8 @@ const Admin = () => {
     }
   }
 
+  
+
 
   return (
     <div>
@@ -75,7 +79,15 @@ const Admin = () => {
         >
           {showForm ? 'Close Form' : 'Add New Category'}
         </button>
-      {showForm && <CategoryForm onSubmit={handleAddCategory} onCancel={() => setShowForm(false)} />}
+      {showForm && (
+        <CategoryForm 
+          onSubmit={handleAddCategory} 
+          onCancel={() => {
+            setShowForm(false)
+            setCategoryToEdit(null);
+          }}
+          initialData={categoryToEdit}
+        />)}
 
       <div className='categories'>
         <h1>CATEGORIES</h1>
@@ -104,7 +116,14 @@ const Admin = () => {
               <p><strong>Updated at:</strong> {category.update_at}</p>
               
               <div className='manage buttons'> 
-                <button style={{ marginRight: '0.5rem' }}>Edit</button>
+                <button 
+                  style={{ marginRight: '0.5rem' }}
+                  onClick={() => {
+                    setCategoryToEdit(category); // set the selected category
+                    setShowForm(true);            // show the form
+                  }}
+                                  
+                  >Edit</button>
                 <button>Delete</button>
 
               </div>
