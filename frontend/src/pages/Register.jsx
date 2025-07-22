@@ -103,7 +103,6 @@ const Register = ({setUser}) => {
             required
           />
           
-          
           <br></br>
 
           <div className='password section'>
