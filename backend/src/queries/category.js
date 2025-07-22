@@ -19,8 +19,28 @@ async function getHomepageCategories() {
   return data;
 }
 
+async function createCategory({ name, image_url, description, show_on_homepage }) {
+  const { data, error } = await supabase
+    .from('categories')
+    .insert([
+      {
+        name,
+        image_url,
+        description,
+        show_on_homepage,
+      }
+    ])
+    .select(); //  returns the inserted row
+
+  if (error) throw new Error(`Error creating category: ${error.message}`);
+  return data[0]; // return the newly created category
+}
+
+
+
 module.exports = {
   getAllCategories,
-  getHomepageCategories
+  getHomepageCategories, 
+  createCategory,
 };
 

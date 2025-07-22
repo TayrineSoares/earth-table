@@ -48,5 +48,4 @@ const addCategory = async (categoryData) => {
 
 
 
-
 export {fetchUserByAuthId, fetchAllCategories, addCategory }; 
