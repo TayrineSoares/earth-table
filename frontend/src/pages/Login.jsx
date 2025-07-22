@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
+import { Eye, EyeOff } from 'lucide-react';
+
 
 const Login = ({setUser}) => {
 
@@ -7,6 +9,8 @@ const Login = ({setUser}) => {
   const [password, setPassword] = useState('');
 
   const [message, setMessage] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
 
 
   const navigate = useNavigate();
@@ -73,13 +77,30 @@ const Login = ({setUser}) => {
 
         <br></br>
 
-        <input 
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        />
+        <div>
+          <input 
+          type={showPassword ? 'text' : 'password'}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+
+          />
+
+          <button 
+            type="button" 
+            onMouseDown={() => setShowPassword(true)}
+            onMouseUp={() => setShowPassword(false)}
+            onMouseLeave={() => setShowPassword(false)}
+            tabIndex={-1} // skip this element when tabbing with the keyboard
+            aria-label="Show password while holding"
+          >
+            {showPassword ? <EyeOff /> : <Eye />}
+          </button>
+
+
+        </div>
+        
 
         <br></br>
         <br></br>

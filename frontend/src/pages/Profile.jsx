@@ -74,7 +74,6 @@ const Profile = () => {
     }
   };
   
-
   if (error) return <p>{error}</p>;
   if (!user) return <p>Loading...</p>;
 

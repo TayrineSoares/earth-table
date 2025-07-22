@@ -44,6 +44,8 @@ const Register = ({setUser}) => {
     }
   };
 
+
+
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
