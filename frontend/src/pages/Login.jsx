@@ -77,14 +77,15 @@ const Login = ({setUser}) => {
 
         <br></br>
 
-        <div>
+        <div className='password section'>
           <input 
           type={showPassword ? 'text' : 'password'}
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+    
           required
-
+       
           />
 
           <button 
@@ -94,8 +95,15 @@ const Login = ({setUser}) => {
             onMouseLeave={() => setShowPassword(false)}
             tabIndex={-1} // skip this element when tabbing with the keyboard
             aria-label="Show password while holding"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              marginLeft: '0.1rem', 
+              color: 'black',
+            }}
           >
-            {showPassword ? <EyeOff /> : <Eye />}
+            {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
           </button>
 
 
