@@ -60,6 +60,13 @@ const Admin = () => {
 
       <div className='categories'>
         <h1>CATEGORIES</h1>
+        <button 
+          style={{ marginBottom: '1rem' }} 
+          onClick={() => console.log('Add category clicked')} 
+        >
+          Add New Category
+        </button>
+        
         {categories.map((category) => (
           <div
             key={category.id}
@@ -81,6 +88,13 @@ const Admin = () => {
               <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
               <p><strong>Created at:</strong> {category.created_at}</p>
               <p><strong>Updated at:</strong> {category.update_at}</p>
+              
+              <div className='manage buttons'> 
+                <button style={{ marginRight: '0.5rem' }}>Edit</button>
+                <button>Delete</button>
+
+              </div>
+              
             </div>
           </div>
         ))}
