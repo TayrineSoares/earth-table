@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserByAuthId, fetchAllCategories } from '../helpers/adminHelpers'
+import CategoryForm from '../components/CategoryForm'
 
 
 const Admin = () => {
@@ -57,6 +58,7 @@ const Admin = () => {
       <h1>Admin Page!</h1>
       <p>Welcome, {user.first_name || user.email}</p>
 
+      <CategoryForm />
 
       <div className='categories'>
         <h1>CATEGORIES</h1>
