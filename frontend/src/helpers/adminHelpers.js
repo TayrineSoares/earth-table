@@ -13,5 +13,14 @@ const fetchUserByAuthId = async (authUserId) => {
   return data;
 };
 
+const fetchAllCategories = async () => {
+  const res = await fetch('http://localhost:8080/categories');
+  const data = await res.json(); 
 
-export {fetchUserByAuthId}; 
+  if (!res.ok) throw new Error(data.error || "Failed to fetch user");
+
+  return data;
+}
+
+
+export {fetchUserByAuthId, fetchAllCategories}; 
