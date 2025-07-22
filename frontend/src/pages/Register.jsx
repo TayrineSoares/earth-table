@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
+import { Eye, EyeOff } from 'lucide-react';
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -7,6 +8,8 @@ const Register = ({setUser}) => {
 
   const [message, setMessage] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
+    const [showPassword, setShowPassword] = useState(false);
   
   const navigate = useNavigate();
 
@@ -96,16 +99,40 @@ const Register = ({setUser}) => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+
+          
           
           <br></br>
 
-          <input
-            type="password"
+          <div className='password section'>
+            <input
+            type={showPassword ? 'text' : 'password'}
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-          />
+            />
+
+            <button 
+            type="button" 
+            onMouseDown={() => setShowPassword(true)}
+            onMouseUp={() => setShowPassword(false)}
+            onMouseLeave={() => setShowPassword(false)}
+            tabIndex={-1} // skip this element when tabbing with the keyboard
+            aria-label="Show password while holding"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              marginLeft: '0.1rem', 
+              color: 'black',
+            }}
+            >
+            {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+
+          </div>
+          
           <br></br>
 
           <button type="submit"> Register </button>

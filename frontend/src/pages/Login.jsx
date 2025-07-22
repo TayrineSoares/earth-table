@@ -83,11 +83,8 @@ const Login = ({setUser}) => {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-    
           required
-       
           />
-
           <button 
             type="button" 
             onMouseDown={() => setShowPassword(true)}
@@ -106,9 +103,7 @@ const Login = ({setUser}) => {
             {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
           </button>
 
-
         </div>
-        
 
         <br></br>
         <br></br>
