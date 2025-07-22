@@ -9,6 +9,7 @@ const UpdatePassword = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Capture session from URL token
   useEffect(() => {
@@ -19,10 +20,16 @@ const UpdatePassword = () => {
     });
   }, []);
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords do not match");
+      return;
+    }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
 
@@ -50,6 +57,8 @@ const UpdatePassword = () => {
             required
           />
 
+          
+
           <button 
             type="button" 
             onMouseDown={() => setShowPassword(true)}
@@ -68,11 +77,26 @@ const UpdatePassword = () => {
             {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
           </button>
 
+          <div className="confirm-password section">
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
         
         </div>
+        <br></br>
+
+        {confirmPassword && (
+          <p>
+            {newPassword === confirmPassword ? '' : ' Passwords do not match'}
+          </p>
+        )}
         
-        <br /><br />
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading || newPassword !== confirmPassword}>
           {loading ? 'Updating...' : 'Update Password'}
         </button>
       </form>
