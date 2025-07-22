@@ -5,11 +5,10 @@ import { Eye, EyeOff } from 'lucide-react';
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
-
   const [message, setMessage] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const navigate = useNavigate();
 
@@ -51,6 +50,11 @@ const Register = ({setUser}) => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match");
+      return;
+    }
 
     try {
       const res = await fetch ('http://localhost:8080/register', {
@@ -99,7 +103,6 @@ const Register = ({setUser}) => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-
           
           
           <br></br>
@@ -132,11 +135,29 @@ const Register = ({setUser}) => {
             </button>
 
           </div>
-          
+
+          <div className="confirm-password section">
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+                    
           <br></br>
 
-          <button type="submit"> Register </button>
+          {confirmPassword && (
+          <p>
+            {password === confirmPassword ? '' : ' Passwords do not match'}
+          </p>
+        )}
+
+          <button type="submit" disabled={password !== confirmPassword}> Register </button>
         </form>
+
+        
         <br></br>
         
         <Link to='/'>Back to Home Page</Link> 
