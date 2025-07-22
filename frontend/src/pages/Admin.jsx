@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchUserByAuthId } from '../helpers/adminHelpers'
+
 
 const Admin = () => {
   const [user, setUser] = useState(null);
@@ -9,29 +11,27 @@ const Admin = () => {
     const fetchUser = async () => {
       const storedUser = JSON.parse(localStorage.getItem('user'));
 
-      if (!storedUser ) {
+      if (!storedUser) {
         navigate('/');
         return;
       }
 
       try {
-        const res = await fetch(`http://localhost:8080/users/${storedUser.id}`);
-        const data = await res.json();
+        const userInfo = await fetchUserByAuthId(storedUser.id);
 
-        if (!res.ok || !data.is_admin) {
+        if (!userInfo.is_admin) {
           navigate('/');
-
         } else {
-          setUser(data);
+          setUser(userInfo);
         }
-      } catch (err) {
-        console.error("Error fetching user from backend:", err);
+      } catch (error) {
+        console.error("Error fetching user:", error);
         navigate('/');
       }
     };
-    
+
     fetchUser();
-  
+
   }, [navigate]);
 
   if (!user) return null;
