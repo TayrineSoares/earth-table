@@ -8,44 +8,80 @@ const CategoryForm = ({ onSubmit, onCancel }) => {
     show_on_homepage: false,
   });
 
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault(); 
+    onSubmit(formData);
+  }
 
 
   return (
 
     <div>
       <h1>I AM THE CATEGORY FORM </h1>
-      <div className='category form'>
+  
+      <form onSubmit={handleSubmit} className='category-form'>
         <h2>Add New Category</h2>
-
         <div>
           <label>Name:</label>
-          <input type="text" value={formData.name} placeholder='Add Category Name'/><br /><br />
+          <input 
+            type="text"
+            name="name"
+            value={formData.name} 
+            placeholder='Add Category Name'
+            onChange={handleChange}
+          /><br /><br />
         </div>
 
         <div>
           <label>Image:</label>
-          <input type="text" value={formData.image_url} placeholder='Add Category Image URL'/><br /><br />
+          <input 
+            type="text"
+            name="image_url"
+            value={formData.image_url} 
+            placeholder='Add Category Image URL'
+            onChange={handleChange}
+          /><br /><br />
         </div>
 
         <div>
           <label>Description</label>
-          <input type="text" value={formData.description} placeholder='Add Category Description'/><br /><br />
+          <input 
+            type="text" 
+            name="description"
+            value={formData.description} 
+            placeholder='Add Category Description'
+            onChange={handleChange}
+          /><br /><br />
         </div>
 
         <div>
           <label>
-            <input type="checkbox" checked={formData.show_on_homepage} />
+            <input 
+              type="checkbox"
+              name="show_on_homepage"
+              checked={formData.show_on_homepage} 
+              onChange={handleChange}
+            />
             Show on homepage
           </label><br /><br />
         </div>
 
-      </div>
-        <button>Submit</button>
-        <button style={{ marginLeft: '1rem' }}>Cancel</button>
+        <button type="submit">Submit</button>
+        <button type="button" style={{ marginLeft: '1rem' }} onClick={onCancel}>Cancel</button>
+
+      </form>
       
       
     </div>
-  )
+  );
 };
 
 export default CategoryForm;
