@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserByAuthId, fetchAllCategories } from '../helpers/adminHelpers'
+import { fetchUserByAuthId, fetchAllCategories, addCategory } from '../helpers/adminHelpers'
 import CategoryForm from '../components/CategoryForm'
 
 
 const Admin = () => {
   const [user, setUser] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,23 +52,34 @@ const Admin = () => {
   if (!user) return null;
   //console.log(categories);
 
+  const handleAddCategory = async (newCategory) => {
+    try {
+      const data = await addCategory(newCategory);
+      setCategories(prev => [...prev, data]);
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error adding category:", err)
+    }
+  }
+
 
   return (
     <div>
 
       <h1>Admin Page!</h1>
       <p>Welcome, {user.first_name || user.email}</p>
-
-      <CategoryForm />
+      <br />
+      <button 
+          style={{ marginBottom: '1rem' }} 
+          onClick={() => setShowForm(prev => !prev)}
+        >
+          {showForm ? 'Close Form' : 'Add New Category'}
+        </button>
+      {showForm && <CategoryForm onSubmit={handleAddCategory} onCancel={() => setShowForm(false)} />}
 
       <div className='categories'>
         <h1>CATEGORIES</h1>
-        <button 
-          style={{ marginBottom: '1rem' }} 
-          onClick={() => console.log('Add category clicked')} 
-        >
-          Add New Category
-        </button>
+        
         
         {categories.map((category) => (
           <div
