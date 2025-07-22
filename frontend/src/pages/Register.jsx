@@ -137,6 +137,10 @@ const Register = ({setUser}) => {
 
           <button type="submit"> Register </button>
         </form>
+        <br></br>
+        
+        <Link to='/'>Back to Home Page</Link> 
+
 
       </div>
 
