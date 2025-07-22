@@ -18,7 +18,7 @@ const ResetPassword = () => {
       const data = await res.json();
 
       if (res.ok) {
-        alert('✅ Reset email sent. Check your inbox!');
+        alert(' Reset email sent. Check your inbox!');
       } else {
         alert(`❌ ${data.error}`);
       }

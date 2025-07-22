@@ -9,7 +9,7 @@ const Register = ({setUser}) => {
   const [message, setMessage] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
-    const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const navigate = useNavigate();
 
