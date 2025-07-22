@@ -48,6 +48,7 @@ const Admin = () => {
 
 
   if (!user) return null;
+  //console.log(categories);
 
 
   return (
@@ -56,15 +57,33 @@ const Admin = () => {
       <h1>Admin Page!</h1>
       <p>Welcome, {user.first_name || user.email}</p>
 
-      < div className='categories'>
-      {categories.map((category) => (
-        <div key={category.id}>
-          <h3>{category.name}</h3>
-          <p>{category.description}</p>
-        </div>
 
-      ))}      
-    
+      <div className='categories'>
+        <h1>CATEGORIES</h1>
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            style={{
+              display: 'flex',
+              gap: '1rem',
+              border: '3px solid #ccc',
+              padding: '1rem',
+              marginBottom: '1rem',
+              alignItems: 'center',
+              maxWidth: '70vw',
+            }}
+          >
+            <img src={category.image_url} alt={category.name} width="150" />
+            <div>
+              <h2>{category.name}</h2>
+              <p><strong>Image Url:</strong> {category.image_url}</p>
+              <p><strong>Description:</strong> {category.description}</p>
+              <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
+              <p><strong>Created at:</strong> {category.created_at}</p>
+              <p><strong>Updated at:</strong> {category.update_at}</p>
+            </div>
+          </div>
+        ))}
       </div>
       
       
