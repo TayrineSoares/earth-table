@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchAllProducts, fetchAllCategories } from '../helpers/adminHelpers';
+import { fetchAllProducts, fetchAllCategories, addProduct, deleteProduct, updateProduct } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
 
 const ProductAdmin = () => {
@@ -29,10 +29,21 @@ const ProductAdmin = () => {
     loadProducts(); 
     loadCategories();
   },[]);
-
-  const handleAddProduct = (newProductData) => {
-    console.log("Submitting new product:", newProductData);
   
+
+  const handleAddProduct = async (newProductData) => {
+    try {
+      const createdProduct = await addProduct(newProductData);
+
+      // Add the new product to the state
+      setProducts(prev => [...prev, createdProduct]);
+
+      // Hide the form 
+      setShowForm(false);
+      
+    } catch (err) {
+      console.error("Failed to add product:", err.message);
+    }  
   };
 
   

@@ -48,25 +48,25 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
 
   return (
     <div>
-      <h1>Product form</h1>
-      <form onSubmit={handleSubmit}>
+      <h2>Add or update a Product</h2>
+      <form onSubmit={handleSubmit} className='product-form'>
         <label>
           Slug:
           <input name="slug" value={formData.slug} onChange={handleChange} required />
         </label>
-        <br />
+        <br /> <br />
 
         <label>
           Image URL:
           <input name="image_url" value={formData.image_url} onChange={handleChange} required />
         </label>
-        <br />
+        <br /> <br />
 
         <label>
           Description:
           <textarea name="description" value={formData.description} onChange={handleChange} />
         </label>
-        <br />
+        <br /> <br />
 
         <label>
           Price ($):
@@ -79,7 +79,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
             min="0"
           />
         </label>
-        <br />
+        <br /> <br />
 
         <label>
           Category:
@@ -97,7 +97,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
             ))}
           </select>
         </label>
-        <br />
+        <br /> <br />
 
         <label>
           Available:
@@ -108,13 +108,15 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
             onChange={handleChange}
           />
         </label>
-        <br />
+        <br /> <br />
 
-        <button type="submit">Save</button>
+        <button type="submit">Submit</button>
         <button type="button" onClick={onCancel} style={{ marginLeft: '1rem' }}>
           Cancel
         </button>
       </form>
+      <br /> 
+      <br /> 
       
     </div>
   )

@@ -71,10 +71,9 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   return (
 
     <div>
-      <h1>I AM THE CATEGORY FORM </h1>
   
       <form onSubmit={handleSubmit} className='category-form'>
-        <h2>Add New Category</h2>
+        <h2>Add or Update a Category</h2>
         <div>
           {initialData?.id && (
             <div>
