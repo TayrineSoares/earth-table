@@ -20,6 +20,7 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     }
   }, [initialData]);
 
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -28,12 +29,11 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     }));
   };
 
+
   const handleSubmit = (e) => {
   e.preventDefault(); 
 
   const submission = { ...formData, id: initialData?.id };
-  console.log('Form submitted:', submission);
-
   onSubmit(submission);
 };
 
@@ -57,7 +57,7 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
               <br /><br />
             </div>
           )}
-          
+
           <label>Name:</label>
           <input 
             type="text"

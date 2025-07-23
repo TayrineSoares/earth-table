@@ -64,6 +64,20 @@ const updateCategory = async (categoryToUpdate) => {
 
 };
 
+//Delete an existing category 
+const deleteCategory = async (id) => {
+  const res = await fetch(`http://localhost:8080/categories/${id}` , {
+    method: 'DELETE',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to delete category");
+
+  return data;
+
+}
 
 
-export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory }; 
+
+export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory }; 

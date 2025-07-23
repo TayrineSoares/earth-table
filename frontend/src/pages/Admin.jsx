@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory } from '../helpers/adminHelpers'
+import { fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory } from '../helpers/adminHelpers'
 import CategoryForm from '../components/CategoryForm'
 
 
@@ -61,7 +61,7 @@ const Admin = () => {
     } catch (err) {
       console.error("Error adding category:", err)
     }
-  }
+  };
 
   const handleUpdateCategory = async (categoryToUpdate) => {
     try {
@@ -77,6 +77,16 @@ const Admin = () => {
       setShowForm(false); 
     } catch (err) {
       console.error("Error updating category", err);
+    }
+
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await deleteCategory(id);
+      setCategories(prev => prev.filter(category => category.id !==id));
+    } catch (err) {
+      console.error("Error deleting category:", err);
     }
 
   };
@@ -144,8 +154,14 @@ const Admin = () => {
                     setShowForm(true);            // show the form
                   }}
                                   
-                  >Edit</button>
-                <button>Delete</button>
+                >
+                    Edit
+                </button>
+                <button 
+                  onClick={() => handleDeleteCategory(category.id)}
+                >
+                  Delete
+                </button>
 
               </div>
               

@@ -48,6 +48,16 @@ async function updateCategory (id, infoToUpdate ) {
     return data[0];
 }
 
+async function deleteCategory(id) {
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(`Error deleting category: ${error.message}`);
+  
+}
+
 
 
 module.exports = {
@@ -55,5 +65,6 @@ module.exports = {
   getHomepageCategories, 
   createCategory,
   updateCategory,
+  deleteCategory,
 };
 

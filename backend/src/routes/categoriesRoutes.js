@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { getAllCategories, getHomepageCategories, createCategory, updateCategory } = require('../queries/category');
+const { getAllCategories, getHomepageCategories, createCategory, updateCategory, deleteCategory } = require('../queries/category');
 
 // GET /categories
 router.get('/', async (req, res) => {
@@ -62,5 +62,18 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+
+//DELETE /categories/:id
+router.delete('/:id', async (req, res) => {
+  const categoryId = req.params.id;
+
+  try {
+    await deleteCategory(categoryId);
+    res.json({ message: `Category ${categoryId} deleted` });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;
