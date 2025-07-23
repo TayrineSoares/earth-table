@@ -91,7 +91,7 @@ const Register = ({setUser}) => {
 
   return (
     <div className="register page">
-      <h1>Register page </h1>
+      <h1>Register </h1>
 
       <div className="register form">
         <form onSubmit={handleRegisterSubmit}>

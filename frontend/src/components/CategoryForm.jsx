@@ -30,7 +30,8 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault(); 
-    onSubmit(formData);
+    onSubmit({ ...formData, id: initialData?.id });
+    console.log('Form submitted:', formData);
   }
 
 

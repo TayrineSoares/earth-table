@@ -45,4 +45,6 @@ router.post('/', async (req, res) => {
   }
 });
 
+//PATCH /categories 
+
 module.exports = router;

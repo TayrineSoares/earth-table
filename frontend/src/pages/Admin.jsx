@@ -64,8 +64,12 @@ const Admin = () => {
     }
   }
 
-  
 
+  const handleUpdateCategory = async () => {
+
+  }
+
+  
 
   return (
     <div>
@@ -81,7 +85,13 @@ const Admin = () => {
         </button>
       {showForm && (
         <CategoryForm 
-          onSubmit={handleAddCategory} 
+          onSubmit={(formData) => {
+            if (categoryToEdit) {
+              handleUpdateCategory(formData); 
+            } else {
+              handleAddCategory(formData);
+            }
+          }} 
           onCancel={() => {
             setShowForm(false)
             setCategoryToEdit(null);
