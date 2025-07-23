@@ -9,6 +9,7 @@ import UserAdmin from '../components/UserAdmin';
 
 const Admin = () => {
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState(null);
   
 
   const navigate = useNavigate();
@@ -49,10 +50,19 @@ const Admin = () => {
       <h1>Admin Page!</h1>
       <p>Welcome, {user.first_name || user.email}</p>
       <br />
-      <CategoryAdmin />
+      <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+        <button onClick={() => setActiveTab('categories')}>Categories</button>
+        <button onClick={() => setActiveTab('products')}>Products</button>
+        <button onClick={() => setActiveTab('orders')}>Orders</button>
+        <button onClick={() => setActiveTab('users')}>Users</button>
+      </div>
+
+      {activeTab === 'categories' && <CategoryAdmin />}
+      {activeTab === 'products' && <ProductAdmin />}
+      {activeTab === 'orders' && <OrderAdmin />}
+      {activeTab === 'users' && <UserAdmin />}
       
-      
-      
+    
     </div>
   )
 };
