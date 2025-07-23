@@ -78,6 +78,8 @@
   line-height: normal;
   margin-bottom: 0;
   margin-top: 0;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
 }
 
 .category-description-container {
@@ -123,4 +125,29 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.homepage-footer  {
+  position: relative;
+  width: 100vw;
+}
+
+.footer-starter-text{
+  color: #000;
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  border-bottom: 2px solid #709E30;
+  display: inline-block;
+}
+
+.footer-secondary-text{
+  color: #000;
+  font-family: var(--body-font);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
 }

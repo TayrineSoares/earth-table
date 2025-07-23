@@ -65,7 +65,14 @@ const Home = () => {
             ))
             )}
           
+          <div className='homepage-footer'>
+            <p className='footer-starter-text'>There's plenty more to discover!</p>
+            <p className='footer-secondary-text'>Shop out other services such as...</p>
+          </div>
+
       </div>
+
+      
     </div>
   )
 };
