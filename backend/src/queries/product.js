@@ -42,6 +42,14 @@ async function createProduct({ slug, description, price_cents, image_url, catego
   return data[0]; // return the created product
 }
 
+async function deleteProductById(id) {
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(`Error deleting product: ${error.message}`);
+}
 
 
 
@@ -49,5 +57,6 @@ module.exports = {
   getAllProducts,
   getProductById,
   getProductsByCategory, 
-  createProduct
+  createProduct, 
+  deleteProductById,
 };

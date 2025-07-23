@@ -6,6 +6,7 @@ const {
   getProductById,
   getProductsByCategory, 
   createProduct,
+  deleteProductById,
 } = require('../queries/product')
 
 
@@ -33,7 +34,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-
+// DELETE /products/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await deleteProductById(id);
+    res.json({ message: `Product ${id} deleted successfully` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // GET /products/:id    SINGLE PRODUCT BY ID
 router.get('/:id', async (req, res) => {
