@@ -1,15 +1,21 @@
 import { Link, NavLink } from "react-router-dom";
+import { useState } from "react";
 import "../styles/NavBar.css";
 import earthLogo from "../assets/images/earthLogo.png";
 import earthLogoText from "../assets/images/earthLogoText.png";
-import cartImage from "../assets/images/cartImage.png"
+import cartImage from "../assets/images/cartImage.png";
 
 const Navbar = ({ user, onLogout }) => {
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+
   const links = [
     { to: "/about", label: "ABOUT" },
     { to: "/products", label: "PRODUCTS" },
     { to: "/contact", label: "CONTACT" },
   ];
+
+  const toggleMenu = () => setShowAccountMenu((prev) => !prev);
+  const closeMenu = () => setShowAccountMenu(false);
 
   return (
     <nav>
@@ -19,19 +25,15 @@ const Navbar = ({ user, onLogout }) => {
             src={earthLogo}
             className="earth-logo"
             alt="Earth Logo"
-            />
+          />
           <Link to="/">
             <img
               src={earthLogoText}
               className="web-title"
               alt="Earth Table Co"
-              />
+            />
           </Link>
         </div>
-
-        {user && (
-          <p className="welcome-message">Welcome back, {user.email}!</p>
-          )}
 
         <div className="nav-links-wrapper">
           <ul className="nav-links">
@@ -43,38 +45,80 @@ const Navbar = ({ user, onLogout }) => {
               </li>
             ))}
 
-            {user?.id && (
-              <li>
-                <NavLink to={`/profile/${user.id}`} className="nav-link">
-                  Profile
-                </NavLink>
-              </li>
-            )}
-
-            {!user && (
-              <li>
-                <NavLink to="/login" className="nav-link">
-                  ACCOUNT
-                </NavLink>
-              </li>
-            )}
-
-            {user && (
-              <li>
-                <Link
-                  to="#"
-                  className="nav-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onLogout();
-                  }}
-                  >
-                  Logout
-                </Link>
-              </li>
-            )}
+            <li className="account-menu-container">
+              <div
+                className="nav-link account-link"
+                onClick={toggleMenu}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") toggleMenu();
+                }}
+              >
+                ACCOUNT
+              </div>
+              {showAccountMenu && (
+                <ul className="account-dropdown-menu">
+                  {!user && (
+                    <>
+                      <li>
+                        <NavLink to="/login" className="dropdown-link" onClick={closeMenu}>
+                          LOGIN
+                        </NavLink>
+                      </li>
+                      <li>
+                        <NavLink to="/register" className="dropdown-link" onClick={closeMenu}>
+                          REGISTER
+                        </NavLink>
+                      </li>
+                    </>
+                  )}
+                  {user && (
+                    <>
+                      <li>
+                        <NavLink
+                          to={`/profile/${user.id}`}
+                          className="dropdown-link"
+                          onClick={closeMenu}
+                        >
+                          PROFILE
+                        </NavLink>
+                      </li>
+                      <li>
+                        <NavLink
+                          to="/orders"
+                          className="dropdown-link"
+                          onClick={closeMenu}
+                        >
+                          ORDER HISTORY
+                        </NavLink>
+                      </li>
+                      <li>
+                        <div
+                          className="dropdown-link"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            closeMenu();
+                            onLogout();
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              closeMenu();
+                              onLogout();
+                            }
+                          }}
+                        >
+                          LOGOUT
+                        </div>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              )}
+            </li>
           </ul>
-
         </div>
 
         <div className="cart-header">
@@ -83,7 +127,7 @@ const Navbar = ({ user, onLogout }) => {
               src={cartImage}
               className="cart-image"
               alt="Cart"
-              />
+            />
           </Link>
         </div>
       </div>
