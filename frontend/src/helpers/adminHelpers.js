@@ -39,7 +39,6 @@ const updateUserAdmin = async (authUserId, isAdmin) => {
   if (!res.ok) throw new Error(data.error || "Failed to update admin status");
   return data;
 
-
 }
 
 
@@ -146,8 +145,16 @@ const updateProduct = async () => {
 };
 
 //Delete a product
-const deleteProduct = async () => {
-  
+const deleteProduct = async (productId) => {
+  const res = await fetch(`http://localhost:8080/products/${productId}`, {
+    method: 'DELETE',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to delete product");
+
+  return data;
 };
 
 

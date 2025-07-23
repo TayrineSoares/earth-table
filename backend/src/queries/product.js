@@ -43,6 +43,8 @@ async function createProduct({ slug, description, price_cents, image_url, catego
 }
 
 
+
+
 module.exports = {
   getAllProducts,
   getProductById,

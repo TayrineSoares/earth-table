@@ -51,6 +51,8 @@ const CategoryAdmin = () => {
   };
 
   const handleDeleteCategory = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    
     try {
       await deleteCategory(id);
       setCategories(prev => prev.filter(category => category.id !==id));
@@ -59,8 +61,6 @@ const CategoryAdmin = () => {
     }
 
   };
-
-
 
 
   return (

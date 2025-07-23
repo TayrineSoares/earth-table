@@ -46,6 +46,19 @@ const ProductAdmin = () => {
     }  
   };
 
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteProduct(productId);
+
+      // Remove deleted product from local state
+      setProducts(prev => prev.filter(p => p.id !== productId));
+    } catch (err) {
+      console.error("Failed to delete product:", err.message);
+    }
+  };
+
   
   return (
     <div>
@@ -94,7 +107,7 @@ const ProductAdmin = () => {
                     onClick={() => (console.log("edit button clicked"))}> 
                     Edit 
                   </button>
-                  <button onClick={() => (console.log("delete button clicked"))}> Delete </button>
+                  <button onClick={() => handleDeleteProduct(product.id)}> Delete </button>
                 </div>
               </div>
             </div>
