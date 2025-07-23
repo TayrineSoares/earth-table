@@ -127,9 +127,11 @@
   display: block;
 }
 
-.homepage-footer  {
+.homepage-footer {
   position: relative;
-  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .footer-starter-text{
@@ -162,4 +164,45 @@
   height: 259px;
   flex-shrink: 0;
   object-fit: cover;
+}
+
+.footer-category-name{
+  color: #000;
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  font-variant: small-caps;
+}
+
+.explore-button-container {
+  align-self: flex-end;
+  display: flex;
+  gap: 20px;
+  cursor: pointer;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 104px;
+  padding-top: 66px;
+}
+
+.explore-button-text{
+  width: auto;
+  height: auto;
+  color: #000;
+  text-align: center;
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  margin-top: 5px;
+}
+
+.homepage-arrow{
+  width: 117.5px;
+  height: 26px;
 }
