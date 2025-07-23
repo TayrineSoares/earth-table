@@ -14,6 +14,20 @@ const fetchUserByAuthId = async (authUserId) => {
 
   return data;
 };
+
+// Fetch all users
+const fetchAllUsers = async () => {
+  const res = await fetch('http://localhost:8080/users');
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to fetch users");
+
+  return data;
+};
+
+
+
+
 // -------------------------------------
 // CATEGORIES FUNCTIONS 
 
@@ -80,4 +94,4 @@ const deleteCategory = async (id) => {
 
 
 
-export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory }; 
+export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory, fetchAllUsers }; 
