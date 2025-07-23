@@ -25,6 +25,23 @@ const fetchAllUsers = async () => {
   return data;
 };
 
+// Update user's admin permission 
+const updateUserAdmin = async (authUserId, isAdmin) => {
+  const res = await fetch(`http://localhost:8080/users/${authUserId}`, {
+    method: 'PATCH', 
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_admin: isAdmin }),
+
+  });
+
+  const data = await res.json(); 
+
+  if (!res.ok) throw new Error(data.error || "Failed to update admin status");
+  return data;
+
+
+}
+
 
 
 
@@ -93,5 +110,12 @@ const deleteCategory = async (id) => {
 }
 
 
-
-export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory, fetchAllUsers }; 
+export { 
+  fetchUserByAuthId, 
+  fetchAllCategories, 
+  addCategory, 
+  updateCategory, 
+  deleteCategory, 
+  fetchAllUsers, 
+  updateUserAdmin,
+}; 

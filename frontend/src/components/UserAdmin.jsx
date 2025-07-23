@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchAllUsers } from '../helpers/adminHelpers';
+import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
 
 const UserAdmin = () => {
   const [users, setUsers] = useState([]); 
@@ -15,6 +15,21 @@ const UserAdmin = () => {
     };
     loadUsers();
   }, []); 
+
+
+  const handleAdminToggle = async (user) => {
+  try {
+    // Flip current admin status and update in backend
+    const updatedUser = await updateUserAdmin(user.auth_user_id, !user.is_admin);
+
+    // Replace the updated user in the local state
+    setUsers(prev =>
+      prev.map(user => user.auth_user_id === updatedUser.auth_user_id ? updatedUser : user)
+    );
+  } catch (err) {
+    console.error("Failed to update admin status:", err.message);
+  }
+};
 
 
   return (
@@ -43,6 +58,13 @@ const UserAdmin = () => {
                 <td>{user.country}</td>
                 <td>{user.phone_number}</td>
                 <td>{user.is_admin ? 'Yes' : 'No'}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={user.is_admin}
+                    onChange={() => handleAdminToggle(user)}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
