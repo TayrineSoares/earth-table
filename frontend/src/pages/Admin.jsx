@@ -52,7 +52,6 @@ const Admin = () => {
 
 
   if (!user) return null;
-  //console.log(categories);
 
   const handleAddCategory = async (newCategory) => {
     try {
@@ -64,10 +63,23 @@ const Admin = () => {
     }
   }
 
+  const handleUpdateCategory = async (categoryToUpdate) => {
+    try {
+      const updatedCategory = await updateCategory(categoryToUpdate);
+      
+      //replace updated category in state
+      setCategories(prev => 
+        prev.map(category => (category.id === updatedCategory.id ? updatedCategory : category))
+      );
 
-  const handleUpdateCategory = async () => {
+      //reseet the form 
+      setCategoryToEdit(null); 
+      setShowForm(false); 
+    } catch (err) {
+      console.error("Error updating category", err);
+    }
 
-  }
+  };
 
   
 
@@ -122,8 +134,7 @@ const Admin = () => {
               <p><strong>Image Url:</strong> {category.image_url}</p>
               <p><strong>Description:</strong> {category.description}</p>
               <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
-              <p><strong>Created at:</strong> {category.created_at}</p>
-              <p><strong>Updated at:</strong> {category.update_at}</p>
+
               
               <div className='manage buttons'> 
                 <button 

@@ -37,10 +37,23 @@ async function createCategory({ name, image_url, description, show_on_homepage }
 }
 
 
+async function updateCategory (id, infoToUpdate ) {
+  const { data, error } = await supabase
+    .from('categories')
+    .update(infoToUpdate)
+    .eq('id', id)
+    .select();
+
+    if (error) throw new Error(`Error updating category: ${error.message}`);
+    return data[0];
+}
+
+
 
 module.exports = {
   getAllCategories,
   getHomepageCategories, 
   createCategory,
+  updateCategory,
 };
 

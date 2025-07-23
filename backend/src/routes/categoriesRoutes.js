@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { getAllCategories, getHomepageCategories, createCategory } = require('../queries/category');
+const { getAllCategories, getHomepageCategories, createCategory, updateCategory } = require('../queries/category');
 
 // GET /categories
 router.get('/', async (req, res) => {
@@ -45,6 +45,22 @@ router.post('/', async (req, res) => {
   }
 });
 
-//PATCH /categories 
+//PATCH /categories/:id
+router.patch('/:id', async (req, res) => {
+  const categoryId = req.params.id;
+  const updatedFields = req.body; 
+
+  //console.log("Updating category:", categoryId, updatedFields);
+
+  try {
+    const updatedCategory = await updateCategory(categoryId, updatedFields);
+    res.json(updatedCategory);
+
+  } catch (error) {
+    console.error("Error updating category:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;

@@ -29,10 +29,13 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault(); 
-    onSubmit({ ...formData, id: initialData?.id });
-    console.log('Form submitted:', formData);
-  }
+  e.preventDefault(); 
+
+  const submission = { ...formData, id: initialData?.id };
+  console.log('Form submitted:', submission);
+
+  onSubmit(submission);
+};
 
 
   return (
@@ -43,6 +46,18 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
       <form onSubmit={handleSubmit} className='category-form'>
         <h2>Add New Category</h2>
         <div>
+          {initialData?.id && (
+            <div>
+              <label>ID:</label>
+              <input 
+                type="text"
+                value={initialData.id}
+                disabled
+              />
+              <br /><br />
+            </div>
+          )}
+          
           <label>Name:</label>
           <input 
             type="text"
