@@ -6,6 +6,7 @@ const ProductAdmin = () => {
   const [products, setProducts] = useState([]); 
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -59,6 +60,21 @@ const ProductAdmin = () => {
     }
   };
 
+
+  const handleUpdateProduct = async (updatedData) => {
+    try {
+      const updatedProduct = await updateProduct(updatedData);
+      setProducts(prev => 
+        prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+      );
+      setShowForm(false);
+      setEditProduct(null);
+    } catch (err) {
+      console.error("Failed to update product:", err.message);
+    }
+  };
+
+
   
   return (
     <div>
@@ -71,9 +87,12 @@ const ProductAdmin = () => {
         </button>
       {showForm && (
         <ProductForm 
-          onSubmit={handleAddProduct}
-          onCancel={() => setShowForm(false)}
-          initialData={null}
+          onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
+          onCancel={() => {
+            setShowForm(false);
+            setEditProduct(null); 
+          }}
+          initialData={editProduct}
           categories={categories}
         
         />)}
@@ -104,8 +123,12 @@ const ProductAdmin = () => {
                 <div className='manage buttons'> 
                   <button 
                     style={{ marginRight: '0.5rem' }} 
-                    onClick={() => (console.log("edit button clicked"))}> 
-                    Edit 
+                    onClick={() => {
+                      setEditProduct(product);     // set the selected product
+                      setShowForm(true);           // show the form
+                    }}
+                  >
+                    Edit
                   </button>
                   <button onClick={() => handleDeleteProduct(product.id)}> Delete </button>
                 </div>

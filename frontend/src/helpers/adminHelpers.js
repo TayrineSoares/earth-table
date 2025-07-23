@@ -140,8 +140,20 @@ const addProduct = async (productData) => {
 };
 
 //Update an existing product
-const updateProduct = async () => {
-  
+const updateProduct = async (updatedProduct) => {
+  const res = await fetch(`http://localhost:8080/products/${updatedProduct.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updatedProduct),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || 'Failed to update product');
+
+  return data;
 };
 
 //Delete a product
