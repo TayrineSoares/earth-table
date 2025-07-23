@@ -30,8 +30,22 @@ async function getProductsByCategory(categoryId) {
   return data;
 };
 
+async function createProduct({ slug, description, price_cents, image_url, category_id }) {
+  const { data, error } = await supabase
+    .from('products')
+    .insert([
+      { slug, description, price_cents, image_url, category_id }
+    ])
+    .select();
+
+  if (error) throw new Error(`Error creating product: ${error.message}`);
+  return data[0]; // return the created product
+}
+
+
 module.exports = {
   getAllProducts,
   getProductById,
-  getProductsByCategory
+  getProductsByCategory, 
+  createProduct
 };

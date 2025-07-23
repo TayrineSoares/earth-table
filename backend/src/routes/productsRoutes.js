@@ -4,7 +4,8 @@ const router = express.Router();
 const {
   getAllProducts,
   getProductById,
-  getProductsByCategory
+  getProductsByCategory, 
+  createProduct,
 } = require('../queries/product')
 
 
@@ -18,6 +19,21 @@ router.get('/', async (req, res) => {
     res.status(500).json({error: error.message})
   }
 });
+
+// POST /products
+router.post('/', async (req, res) => {
+  const { slug, description, price_cents, image_url, category_id } = req.body;
+
+  try {
+    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id });
+    res.status(201).json(newProduct);
+  } catch (error) {
+    console.error('Error creating product:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 
 // GET /products/:id    SINGLE PRODUCT BY ID
 router.get('/:id', async (req, res) => {
@@ -42,5 +58,8 @@ router.get('/category/:categoryId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 }); 
+
+
+
 
 module.exports = router;
