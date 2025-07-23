@@ -43,6 +43,15 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     };
 
     onSubmit(processedForm);
+    //reset the form
+    setFormData({
+      slug: '',
+      image_url: '',
+      description: '',
+      is_available: true,
+      price_cents: 0,
+      category_id: '',
+    });
   };
 
 

@@ -5,7 +5,7 @@ import ProductForm from './ProductForm';
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]); 
   const [categories, setCategories] = useState([]);
-  const [showForm, setShowForm] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -29,7 +29,7 @@ const ProductAdmin = () => {
     loadProducts(); 
     loadCategories();
   },[]);
-  
+
 
   const handleAddProduct = async (newProductData) => {
     try {
@@ -50,13 +50,21 @@ const ProductAdmin = () => {
   return (
     <div>
       <h1>Product Management </h1>
-      <ProductForm 
-        onSubmit={handleAddProduct}
-        onCancel={() => setShowForm(false)}
-        initialData={null}
-        categories={categories}
-      
-      />
+      <button 
+          style={{ marginBottom: '1rem' }} 
+          onClick={() => setShowForm(prev => !prev)}
+        >
+          {showForm ? 'Close Form' : 'Add New Product'}
+        </button>
+      {showForm && (
+        <ProductForm 
+          onSubmit={handleAddProduct}
+          onCancel={() => setShowForm(false)}
+          initialData={null}
+          categories={categories}
+        
+        />)}
+
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (
