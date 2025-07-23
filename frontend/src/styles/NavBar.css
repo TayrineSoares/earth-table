@@ -1,100 +1,126 @@
 nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  left: 0;
+  height: 123px;
+  background: #FFFBF3;
   width: 100%;
-  height: 4.5rem;
-  padding: 0 1.5rem;
-  z-index: 10;
-  background-color: var(--nav-bg);
-  color: var(--nav-text-color);
-  
 }
 
-nav a {
-  color: inherit;
-  text-decoration: none;
-  font-family: var(--heading-font);
-  font-weight: 600;
-  font-size: 1.2rem;
-  transition: color 0.3s ease;
+.page-wrapper {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 120px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
-nav a:hover {
-  color: var(--accent-color);
-}
-
-nav ul {
-  list-style: none;
+.logo-header {
   display: flex;
-  gap: 2rem;
+  align-items: center;
+  position: relative;
+}
+
+.earth-logo {
+  position: absolute;
+  top: 26px;
+  left: 44px;
+}
+
+.web-title {
+  position: absolute;
+  top: 66px;
+  left: 112px;
+}
+
+.nav-links-wrapper {
+  position: absolute;
+  top: 53px;
+  left: 0;
+  right: 0;
+  width: 565px;
+  margin: 0 auto;
+  display: flex;
+  gap: 38px;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: row;
+  list-style: none;
   margin: 0;
   padding: 0;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  height: 39px;
 }
 
-nav a.active {
-  color: var(--accent-color);
-  font-weight: bold;
-}
-
-nav .logo a {
-  color: var(--nav-text-color);
-  font-family: var(--heading-font);
-  font-weight: bold;
-  font-size: 1.8rem;
+.nav-link {
+  display: flex;
+  align-items: end;
+  color: black;
   text-decoration: none;
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  font-variant: small-caps;
+  height: 39px;
+  line-height: normal;
 }
 
-/* Hamburger menu button for mobile */
-.menu {
-  display: none;
+.nav-item.about {
+  margin-left: 20px;
+}
+
+.nav-item.products {
+  margin-left: 40px;
+}
+
+.nav-item.contact {
+  margin-left: 60px;
+}
+
+.cart-header {
+  position: absolute;
+  top: 41px;
+  right: 111px;
+}
+
+.account-menu-container {
+  position: relative;
+}
+
+.account-dropdown-menu {
+  display: flex;
+  position: absolute;
+  top: 70px;
+  background-color: #FFFBF3;
+  list-style: none;
+  width: 220px;
+  gap: 10px;
+  z-index: 1000;
+  padding: 15px 8px;
+  flex-shrink: 0;
   flex-direction: column;
-  cursor: pointer;
-  gap: 5px;
+  border-radius: 0px 0px 15px 15px;
 }
 
-.menu span {
-  height: 3px;
-  width: 25px;
-  background-color: var(--nav-text-color);
-  display: block;
-  border-radius: 2px;
+.account-dropdown-menu li {
+  padding: 8px 16px;
 }
 
-/* Mobile nav styles */
-@media (max-width: 931px) {
-  nav {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 2rem;
-    width: 100%;
-  }
+.account-dropdown-menu li:hover {
+  background-color: #FFFBF3;
+}
 
-  nav ul {
-    position: absolute;
-    top: 100%;
-    right: 0; 
-    width: 150px;
-    display: none;
-    flex-direction: column;
-    background-color: var(--nav-bg);
-    padding: 1rem;
-  }
-
-   nav ul li {
-    width: 100%;
-    margin: 0;
-    text-align: center;
-  }
-
-  nav ul.open {
-    display: flex;
-  }
-
-  .menu {
-    display: flex;
-  }
+.dropdown-link {
+  color: #000;
+  font-family: "Encode Sans";
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  text-decoration: none;
 }

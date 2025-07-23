@@ -1,96 +1,136 @@
+import { Link, NavLink } from "react-router-dom";
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom"
-import '../styles/NavBar.css'
+import "../styles/NavBar.css";
+import earthLogo from "../assets/images/earthLogo.png";
+import earthLogoText from "../assets/images/earthLogoText.png";
+import cartImage from "../assets/images/cartImage.png";
 
-const Navbar = ({user, onLogout}) => {
+const Navbar = ({ user, onLogout }) => {
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
 
-
-  //links array to avoid code repetition
   const links = [
-  { to: "/", label: "Home" },
-  { to: "/about", label: "About" },
-  { to: "/products", label: "Order" },
-  { to: "/contact", label: "Contact Us" },
-  { to: "/cart", label: "Cart" },
-];
+    { to: "/about", label: "ABOUT" },
+    { to: "/products", label: "PRODUCTS" },
+    { to: "/contact", label: "CONTACT" },
+  ];
 
-console.log(" THIS IS THE USER", user);
-//state for mobile hamburger menu
-const [menuOpen, setMenuOpen] = useState(false);
+  const toggleMenu = () => setShowAccountMenu((prev) => !prev);
+  const closeMenu = () => setShowAccountMenu(false);
 
   return (
     <nav>
-      
-      <div className="logo"> 
-        <Link to='/'> Earth Table</Link> 
+      <div className="pager-wrapper">
+        <div className="logo-header">
+          <img
+            src={earthLogo}
+            className="earth-logo"
+            alt="Earth Logo"
+          />
+          <Link to="/">
+            <img
+              src={earthLogoText}
+              className="web-title"
+              alt="Earth Table Co"
+            />
+          </Link>
+        </div>
+
+        <div className="nav-links-wrapper">
+          <ul className="nav-links">
+            {links.map((link) => (
+              <li key={link.to}>
+                <NavLink to={link.to} className="nav-link">
+                  {link.label}
+                </NavLink>
+              </li>
+            ))}
+
+            <li className="account-menu-container">
+              <div
+                className="nav-link account-link"
+                onClick={toggleMenu}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") toggleMenu();
+                }}
+              >
+                ACCOUNT
+              </div>
+              {showAccountMenu && (
+                <ul className="account-dropdown-menu">
+                  {!user && (
+                    <>
+                      <li>
+                        <NavLink to="/login" className="dropdown-link" onClick={closeMenu}>
+                          LOGIN
+                        </NavLink>
+                      </li>
+                      <li>
+                        <NavLink to="/register" className="dropdown-link" onClick={closeMenu}>
+                          REGISTER
+                        </NavLink>
+                      </li>
+                    </>
+                  )}
+                  {user && (
+                    <>
+                      <li>
+                        <NavLink
+                          to={`/profile/${user.id}`}
+                          className="dropdown-link"
+                          onClick={closeMenu}
+                        >
+                          PROFILE
+                        </NavLink>
+                      </li>
+                      <li>
+                        <NavLink
+                          to="/orders"
+                          className="dropdown-link"
+                          onClick={closeMenu}
+                        >
+                          ORDER HISTORY
+                        </NavLink>
+                      </li>
+                      <li>
+                        <div
+                          className="dropdown-link"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            closeMenu();
+                            onLogout();
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              closeMenu();
+                              onLogout();
+                            }
+                          }}
+                        >
+                          LOGOUT
+                        </div>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              )}
+            </li>
+          </ul>
+        </div>
+
+        <div className="cart-header">
+          <Link to="/cart">
+            <img
+              src={cartImage}
+              className="cart-image"
+              alt="Cart"
+            />
+          </Link>
+        </div>
       </div>
-
-      {user && (
-        <p>Welcome back, {user.email}!</p>
-      )}
-
-      <div 
-        className="menu" 
-        onClick={() =>{
-          setMenuOpen(!menuOpen);
-      }}>
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
-      <ul className={menuOpen ? "open" : ""}>
-        {links.map((link) => (
-          <li key={link.to}>
-            <NavLink
-              to={link.to}
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            >
-              {link.label}
-            </NavLink>
-            
-          </li>
-        ))}
-
-        {user?.id && (
-          <li>
-            <NavLink
-              to={`/profile/${user.id}`}
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            > 
-            Profile
-            </NavLink>
-          </li>
-        )}
-
-        {/* Add Logout link if user is logged in */}
-        {!user && (
-          <li>
-            <NavLink
-              to="/login"
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            >
-              Login
-            </NavLink>
-          </li>
-        )}
-        {user && (
-          <li>
-            <Link
-              to="#"
-              
-              onClick={(e) => {
-                e.preventDefault();
-                onLogout();
-              }}
-            >
-              Logout
-            </Link>
-          </li>
-        )}
-
-        
-      </ul>
     </nav>
   );
 };
