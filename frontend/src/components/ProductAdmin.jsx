@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { fetchAllProducts, fetchAllCategories } from '../helpers/adminHelpers';
+import ProductForm from './ProductForm';
 
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]); 
+  const [categories, setCategories] = useState([]);
+  const [showForm, setShowForm] = useState(true);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -13,13 +16,36 @@ const ProductAdmin = () => {
         console.error("Error fetching products:", err);
       }
     };
+
+    const loadCategories = async () => {
+      try {
+        const data = await fetchAllCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
     loadProducts(); 
+    loadCategories();
   },[]);
+
+  const handleAddProduct = (newProductData) => {
+    console.log("Submitting new product:", newProductData);
+  
+  };
 
   
   return (
     <div>
       <h1>Product Management </h1>
+      <ProductForm 
+        onSubmit={handleAddProduct}
+        onCancel={() => setShowForm(false)}
+        initialData={null}
+        categories={categories}
+      
+      />
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (

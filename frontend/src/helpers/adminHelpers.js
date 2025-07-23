@@ -127,6 +127,7 @@ const fetchAllProducts = async () => {
 
 //Add a new product
 const addProduct = async () => {
+  
 
 };
 
