@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserByAuthId, fetchAllCategories, addCategory } from '../helpers/adminHelpers'
+import { fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory } from '../helpers/adminHelpers'
 import CategoryForm from '../components/CategoryForm'
 
 

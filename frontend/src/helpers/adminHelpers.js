@@ -27,8 +27,8 @@ const fetchAllCategories = async () => {
   return data;
 }
 
-// Add New Category 
 
+// Add New Category 
 const addCategory = async (categoryData) => {
   const res = await fetch('http://localhost:8080/categories', {
     method: 'POST',
@@ -46,6 +46,24 @@ const addCategory = async (categoryData) => {
 };
 
 
+// Update an existing category 
+const updateCategory = async (categoryToUpdate) => {
+  const res = await fetch(`http://localhost:8080/categories/${categoryToUpdate.id}` , {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    }, 
+    body: JSON.stringify(categoryToUpdate),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to update category");
+
+  return data;
+
+};
 
 
-export {fetchUserByAuthId, fetchAllCategories, addCategory }; 
+
+export {fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory }; 
