@@ -1,8 +1,9 @@
-import React from "react";
+
 
 const UserAdmin = () => {
   return (
     <div>
+      <h1>User admin tab</h1>
       
     </div>
   )
