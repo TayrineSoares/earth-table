@@ -19,23 +19,45 @@ const ProductAdmin = () => {
   
   return (
     <div>
-      <h1>Produc Management </h1>
+      <h1>Product Management </h1>
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (
-        <ul>
+        <div>
           {products.map(product => (
-            <li key={product.id}>
-              {product.slug} - ${(product.price_cents / 100).toFixed(2)}
-            </li>
+            <div
+              key={product.id}
+              style={{
+                display: 'flex',
+                gap: '1rem',
+                border: '2px solid #ccc',
+                padding: '1rem',
+                marginBottom: '1rem',
+                alignItems: 'center',
+              }}
+            >
+              <img src={product.image_url} alt={product.slug} width="100" />
+              <div>
+                <p><strong>Slug:</strong> {product.slug}</p>
+                <p><strong>Description:</strong> {product.description}</p>
+                <p><strong>Price:</strong> ${(product.price_cents / 100).toFixed(2)}</p>
+                <p><strong>Category ID:</strong> {product.category_id}</p>
 
+                <div className='manage buttons'> 
+                  <button 
+                    style={{ marginRight: '0.5rem' }} 
+                    onClick={() => (console.log("edit button clicked"))}> 
+                    Edit 
+                  </button>
+                  <button onClick={() => (console.log("delete button clicked"))}> Delete </button>
+                </div>
+              </div>
+            </div>
           ))}
-        </ul>
-      
+        </div>
       )}
-      
     </div>
-  )
+  );
 };
 
 export default ProductAdmin;
