@@ -1,96 +1,92 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom"
-import '../styles/NavBar.css'
+import { Link, NavLink } from "react-router-dom";
+import "../styles/NavBar.css";
+import earthLogo from "../assets/images/earthLogo.png";
+import earthLogoText from "../assets/images/earthLogoText.png";
+import cartImage from "../assets/images/cartImage.png"
 
-const Navbar = ({user, onLogout}) => {
-
-
-  //links array to avoid code repetition
+const Navbar = ({ user, onLogout }) => {
   const links = [
-  { to: "/", label: "Home" },
-  { to: "/about", label: "About" },
-  { to: "/products", label: "Order" },
-  { to: "/contact", label: "Contact Us" },
-  { to: "/cart", label: "Cart" },
-];
-
-console.log(" THIS IS THE USER", user);
-//state for mobile hamburger menu
-const [menuOpen, setMenuOpen] = useState(false);
+    { to: "/about", label: "ABOUT" },
+    { to: "/products", label: "PRODUCTS" },
+    { to: "/contact", label: "CONTACT" },
+  ];
 
   return (
     <nav>
-      
-      <div className="logo"> 
-        <Link to='/'> Earth Table</Link> 
-      </div>
+      <div className="pager-wrapper">
+        <div className="logo-header">
+          <img
+            src={earthLogo}
+            className="earth-logo"
+            alt="Earth Logo"
+            />
+          <Link to="/">
+            <img
+              src={earthLogoText}
+              className="web-title"
+              alt="Earth Table Co"
+              />
+          </Link>
+        </div>
 
-      {user && (
-        <p>Welcome back, {user.email}!</p>
-      )}
-
-      <div 
-        className="menu" 
-        onClick={() =>{
-          setMenuOpen(!menuOpen);
-      }}>
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
-      <ul className={menuOpen ? "open" : ""}>
-        {links.map((link) => (
-          <li key={link.to}>
-            <NavLink
-              to={link.to}
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            >
-              {link.label}
-            </NavLink>
-            
-          </li>
-        ))}
-
-        {user?.id && (
-          <li>
-            <NavLink
-              to={`/profile/${user.id}`}
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            > 
-            Profile
-            </NavLink>
-          </li>
-        )}
-
-        {/* Add Logout link if user is logged in */}
-        {!user && (
-          <li>
-            <NavLink
-              to="/login"
-              className={({ isActive }) => (isActive ? "active" : undefined)}
-            >
-              Login
-            </NavLink>
-          </li>
-        )}
         {user && (
-          <li>
-            <Link
-              to="#"
-              
-              onClick={(e) => {
-                e.preventDefault();
-                onLogout();
-              }}
-            >
-              Logout
-            </Link>
-          </li>
-        )}
+          <p className="welcome-message">Welcome back, {user.email}!</p>
+          )}
 
-        
-      </ul>
+        <div className="nav-links-wrapper">
+          <ul className="nav-links">
+            {links.map((link) => (
+              <li key={link.to}>
+                <NavLink to={link.to} className="nav-link">
+                  {link.label}
+                </NavLink>
+              </li>
+            ))}
+
+            {user?.id && (
+              <li>
+                <NavLink to={`/profile/${user.id}`} className="nav-link">
+                  Profile
+                </NavLink>
+              </li>
+            )}
+
+            {!user && (
+              <li>
+                <NavLink to="/login" className="nav-link">
+                  ACCOUNT
+                </NavLink>
+              </li>
+            )}
+
+            {user && (
+              <li>
+                <Link
+                  to="#"
+                  className="nav-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onLogout();
+                  }}
+                  >
+                  Logout
+                </Link>
+              </li>
+            )}
+          </ul>
+
+        </div>
+
+        <div className="cart-header">
+          <Link to="/cart">
+            <img
+              src={cartImage}
+              className="cart-image"
+              alt="Cart"
+              />
+          </Link>
+        </div>
+      </div>
     </nav>
   );
 };
