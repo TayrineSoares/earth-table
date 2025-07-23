@@ -151,3 +151,15 @@
   font-weight: 400;
   line-height: normal;
 }
+
+.footer-category-container{
+  display: flex;
+  gap: 20px;
+}
+
+.footer-category-image{
+  width: 590px;
+  height: 259px;
+  flex-shrink: 0;
+  object-fit: cover;
+}

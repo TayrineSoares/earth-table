@@ -1,31 +1,32 @@
-import '../styles/Home.css'
+import '../styles/Home.css';
 import { useState, useEffect } from 'react';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
 import { Link } from "react-router-dom";
-import headerImage from "../assets/images/headerImage.png"
-import logoNoBackground from "../assets/images/logoNoBackground.png"
-
+import headerImage from "../assets/images/headerImage.png";
+import logoNoBackground from "../assets/images/logoNoBackground.png";
 
 const Home = () => {
-  const [homepageCategories, setHomepageCategories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-
-   useEffect(() => {
-    fetch('http://localhost:8080/categories/homepage')
+  useEffect(() => {
+    fetch('http://localhost:8080/categories')
       .then((res) => {
         if (!res.ok) {
-          throw new Error(`HTTP Error.${res.status}`);
+          throw new Error(`HTTP Error. ${res.status}`);
         }
-        return res.json()
+        return res.json();
       }) 
       .then(data => {
-        setHomepageCategories(data);
+        setCategories(data);
         setIsLoading(false);
       })
       .catch((err) => console.error(err));
-  }, []); 
+  }, []);
+
+  const homepageCategories = categories.filter(cat => cat.show_on_homepage);
+  const footerCategories = categories.filter(cat => !cat.show_on_homepage).slice(0, 2);
 
   return (
     <div className="homepage">
@@ -36,45 +37,55 @@ const Home = () => {
       </div>
 
       <div className="page-wrapper">
-
-          {isLoading ? (
-            <div className="loading-container">
-              <Lottie animationData={loadingAnimation} loop={true} />
-            </div>
-          ) : (
-            homepageCategories.map((category, index) => (
-              <section className="zigzag-section" key={category.id}>
-                <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
-                  <div className="zigzag-text">
-                    <h2 className="category-title">{category.name}</h2>
-                    <div className="category-description-container">
-                      <p className="category-description">{category.description}</p>
-                    </div>
-                    <div className="shop-button-container">
-                      <Link to={`/products/${category.id}`}>
-                        <button className="shop-button">Shop Now</button>
-                      </Link>
-                    </div>
+        {isLoading ? (
+          <div className="loading-container">
+            <Lottie animationData={loadingAnimation} loop={true} />
+          </div>
+        ) : (
+          homepageCategories.map((category, index) => (
+            <section className="zigzag-section" key={category.id}>
+              <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
+                <div className="zigzag-text">
+                  <h2 className="category-title">{category.name}</h2>
+                  <div className="category-description-container">
+                    <p className="category-description">{category.description}</p>
                   </div>
-      
-                  <div className="zigzag-image">
-                    <img src={category.image_url} alt="Section 1" />
+                  <div className="shop-button-container">
+                    <Link to={`/products/${category.id}`}>
+                      <button className="shop-button">Shop Now</button>
+                    </Link>
                   </div>
                 </div>
-              </section>
-            ))
-            )}
-          
+
+                <div className="zigzag-image">
+                  <img src={category.image_url} alt={category.name} />
+                </div>
+              </div>
+            </section>
+          ))
+        )}
+
+        {!isLoading && (
           <div className='homepage-footer'>
             <p className='footer-starter-text'>There's plenty more to discover!</p>
-            <p className='footer-secondary-text'>Shop out other services such as...</p>
+            <p className='footer-secondary-text'>Shop our other services such as...</p>
+
+            <div className="footer-category-container">
+              {footerCategories.map(category => (
+                <div className="footer-category-card" key={category.id}>
+                  <img 
+                    src={category.image_url} 
+                    className="footer-category-image" 
+                  />
+                  <h3 className="footer-category-name">{category.name}</h3>
+                </div>
+              ))}
+            </div>
           </div>
-
+        )}
       </div>
-
-      
     </div>
-  )
+  );
 };
 
 export default Home;
