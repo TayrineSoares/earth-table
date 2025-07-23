@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer(); // using memory storage
 
-const { getAllCategories, getHomepageCategories, createCategory, updateCategory, deleteCategory } = require('../queries/category');
+const { getAllCategories, getHomepageCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage } = require('../queries/category');
 
 // GET /categories
 router.get('/', async (req, res) => {
@@ -72,6 +74,19 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: `Category ${categoryId} deleted` });
   } catch (error) {
     console.error("Error deleting category:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPLOAD CATEGORY IMAGE
+router.post('/upload', upload.single('image'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const url = await uploadCategoryImage(file.buffer, file.originalname, file.mimetype);
+    res.json({ url });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

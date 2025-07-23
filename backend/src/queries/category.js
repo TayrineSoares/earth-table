@@ -59,6 +59,25 @@ async function deleteCategory(id) {
 }
 
 
+async function uploadCategoryImage(fileBuffer, fileName, mimeType) {
+  const filePath = `category-${Date.now()}-${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('category-images')
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+    });
+
+  if (error) throw new Error(`Error uploading image: ${error.message}`);
+
+  const { data: publicUrlData } = supabase.storage
+    .from('category-images')
+    .getPublicUrl(filePath);
+
+  return publicUrlData.publicUrl;
+}
+
+
 
 module.exports = {
   getAllCategories,
@@ -66,5 +85,6 @@ module.exports = {
   createCategory,
   updateCategory,
   deleteCategory,
+  uploadCategoryImage,
 };
 
