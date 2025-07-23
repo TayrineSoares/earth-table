@@ -1,4 +1,4 @@
-import React from "react";
+import { fetchAllProducts, fetchAllCategories } from '../helpers/adminHelpers';
 
 const ProductAdmin = () => {
   return (

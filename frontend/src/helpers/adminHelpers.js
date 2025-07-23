@@ -43,8 +43,6 @@ const updateUserAdmin = async (authUserId, isAdmin) => {
 }
 
 
-
-
 // -------------------------------------
 // CATEGORIES FUNCTIONS 
 
@@ -109,6 +107,39 @@ const deleteCategory = async (id) => {
 
 }
 
+//------------------------------------------------------
+// PRODUCTS FUNCTIONS
+
+//Fetch ALL products 
+const fetchAllProducts = async () => {
+  const res = await fetch('http://localhost:8080/products');
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to fetch products');
+  }
+
+  const data = await res.json();
+  return data;
+
+};
+
+
+//Add a new product
+const addProduct = async () => {
+
+};
+
+//Update an existing product
+const updateProduct = async () => {
+  
+};
+
+//Delete a product
+const deleteProduct = async () => {
+  
+};
+
 
 export { 
   fetchUserByAuthId, 
@@ -118,4 +149,8 @@ export {
   deleteCategory, 
   fetchAllUsers, 
   updateUserAdmin,
+  fetchAllProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
 }; 
