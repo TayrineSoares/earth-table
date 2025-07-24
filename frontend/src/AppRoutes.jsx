@@ -15,8 +15,9 @@ import {
   UpdatePassword,
 
 } from './pages/index.js';
+import CartPopup from './components/CartPopup.jsx';
 
-const AppRoutes = ({ cart, addToCart, removeFromCart, setUser }) => {
+const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFromCart, setUser }) => {
   const location = useLocation();
 
   return (
@@ -49,6 +50,13 @@ const AppRoutes = ({ cart, addToCart, removeFromCart, setUser }) => {
         </Routes>
       </div>
 
+      {showCartPopup && location.pathname !== '/cart' && (
+        <CartPopup 
+          cart={cart}
+          removeFromCart={removeFromCart}
+          onClose={() => setShowCartPopup(false)} 
+        />
+      )}
     </>
   );
 };
