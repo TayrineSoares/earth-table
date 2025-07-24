@@ -17,7 +17,7 @@ import {
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
 
-const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFromCart, setUser }) => {
+const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll }) => {
   const location = useLocation();
 
   return (
@@ -36,7 +36,9 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
           />
           <Route path="/cart" element={<Cart 
                                         cart={cart}
-                                        removeFromCart={removeFromCart}
+                                        removeOneFromCart={removeOneFromCart}
+                                        addOneFromCart={addOneFromCart}
+                                        removeAll={removeAll}
                                       />} 
                                     />
           <Route path="/login" element={<Login setUser={setUser} />} />
@@ -53,7 +55,9 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeFro
       {showCartPopup && location.pathname !== '/cart' && (
         <CartPopup 
           cart={cart}
-          removeFromCart={removeFromCart}
+          removeOneFromCart={removeOneFromCart}
+          addOneFromCart={addOneFromCart}
+          removeAll={removeAll}
           onClose={() => setShowCartPopup(false)} 
         />
       )}

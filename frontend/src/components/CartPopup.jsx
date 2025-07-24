@@ -2,12 +2,10 @@ import '../styles/Products.css'
 import React from 'react'
 import '../styles/CartPopup.css'
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Minus } from 'lucide-react';
 
-function CartPopup({ cart, removeFromCart }) {
+function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const navigate = useNavigate();
 
   if (cart.length === 0 && !isMinimized) {
     return null;
@@ -43,13 +41,27 @@ function CartPopup({ cart, removeFromCart }) {
                       />
                       <div className="cart-popup-item-details-1">
                         <span className="cart-popup-item-name">{item.slug}</span>
-                        <span className="cart-popup-item-quantity">QTY: {item.quantity}</span>
+                        <span className="cart-popup-item-quantity">QTY:
+                          <div className='quantity-button-container'>
+                            <button 
+                                onClick={() => removeOneFromCart(item)}
+                                className='cart-popup-add-remove-button'
+                                >-
+                            </button>
+                            {item.quantity}
+                            <button 
+                              onClick={() => addOneFromCart(item)}
+                              className='cart-popup-add-remove-button'
+                              > + 
+                            </button>
+                          </div>
+                        </span>
                       </div>
                       <div className="cart-popup-item-details-2">
                         <span className="cart-popup-item-total-price">
                           ${(item.price_cents * item.quantity / 100).toFixed(2)}
                         </span>
-                        <button className="cart-popup-remove-button"onClick={() => removeFromCart(item)}>REMOVE</button>
+                        <button className="cart-popup-remove-button"onClick={() => removeAll(item)}>REMOVE</button>
                       </div>
                     </li>
                   ))}

@@ -2,7 +2,7 @@ import loadingAnimation from '../assets/loading.json'
 import { useState, useEffect } from 'react';
 import Lottie from 'lottie-react';
 
-const Cart = ({ cart, removeFromCart }) => {
+const Cart = ({ cart, removeOneFromCart }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ const Cart = ({ cart, removeFromCart }) => {
           />
           <div>${(item.price_cents * item.quantity / 100).toFixed(2)}</div>
           <button
-            onClick={() => removeFromCart(item)}
+            onClick={() => removeOneFromCart(item)}
           >
             Remove
           </button>

@@ -72,7 +72,13 @@ const App = () => {
     setShowCartPopup(true);
   };
 
-  const removeFromCart = (product) => {
+  const removeAll = (product) => {
+    setCart((prevCart) => {
+      return prevCart.filter(item => item.id !== product.id);
+    });
+  };
+
+  const removeOneFromCart = (product) => {
 
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
@@ -89,6 +95,20 @@ const App = () => {
   });
 };
 
+const addOneFromCart = (product) => {
+
+  setCart((prevCart) => {
+    const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
+
+    const updatedCart = [...prevCart];
+
+  if (updatedCart[existingItemIndex].quantity >= 1) {
+    updatedCart[existingItemIndex].quantity += 1;
+    return updatedCart;
+  }
+});
+};
+
   return (
     <div>
       <Navbar user={user} onLogout={handleLogout}/>
@@ -97,7 +117,9 @@ const App = () => {
         setUser={setUser}
         cart={cart}
         addToCart={addToCart}
-        removeFromCart={removeFromCart}
+        removeOneFromCart={removeOneFromCart}
+        addOneFromCart={addOneFromCart}
+        removeAll={removeAll}
         showCartPopup={showCartPopup}
         setShowCartPopup={setShowCartPopup}
       />
