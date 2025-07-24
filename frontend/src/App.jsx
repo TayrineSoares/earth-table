@@ -98,8 +98,6 @@ const App = () => {
         cart={cart}
         addToCart={addToCart}
         removeFromCart={removeFromCart}
-        showCartPopup={showCartPopup}
-        setShowCartPopup={setShowCartPopup}
       />
       <Footer />
     </div>
