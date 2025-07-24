@@ -1,95 +1,59 @@
 .footer {
   background-color: #D9C7B0;
-  height: 166px;
+  min-height: 166px; 
   width: 100%;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 120px;
+  box-sizing: border-box;
+  border: 2px solid red;
 }
 
 .logo-footer {
   display: flex;
   align-items: center;
-  position: relative;
+  gap: 20px;
 }
 
-.footer-earth-logo{
-  position: absolute;
+.footer-earth-logo {
   width: 83px;
   height: 83px;
-  flex-shrink: 0;
-  top: 50px;
-  left: 120px;
 }
 
-.footer-web-title{
-  position: absolute;
-  width: 246px;
-  height: 48px;
-  flex-shrink: 0;
-  top: 75px;
-  left: 222px;
+.footer-web-title {
   color: black;
   font-family: var(--body-font);
-  letter-spacing: 0.6px;
   font-size: 20px;
+  letter-spacing: 0.6px;
 }
 
-.copyright-contatiner{
-  position: absolute;
-  left: 640px;
-  top: 100px;
-  width: 170px;
-  height: 19px;
+.footer-center {
+  flex: 1;
+  text-align: center;
 }
 
-.copyright{
+.copyright {
   color: #000;
   font-family: "Encode Sans";
   font-size: 15px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
   font-variant: small-caps;
 }
 
-.footer-number-container{
-  width: 106px;
-  height: 19px;
-  position: absolute;
-  top: 10px;
-  left: 1137px;
-}
-
-.footer-number{
-  color: #000;
-  font-family: var(--body-font);
-  font-size: 15px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  font-variant: small-caps;
-}
-
-.footer-address-container{
-  position: absolute;
-  top: 36px;
-  left: 1137px;
-}
-
-.footer-address{
-  color: #000;
-  font-family: var(--body-font);
-  font-size: 15px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  font-variant: small-caps;
-}
-
-.social-icons{
+.footer-right {
   display: flex;
-  padding: 5px;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 90px;
-  margin-right: 275px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.footer-number,
+.footer-address {
+  color: #000;
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-variant: small-caps;
+}
+
+.social-icons {
+  margin-top: 8px;
 }

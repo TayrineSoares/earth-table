@@ -84,10 +84,12 @@ const Home = () => {
             </div>
             <div className='explore-button-container'>
               <p className='explore-button-text'>EXPLORE ALL CATEGORIES</p>
-              <img 
-                src={arrow}
-                className='homepage-arrow'
-              />
+              <Link to={`/products`}>
+                <img 
+                  src={arrow}
+                  className='homepage-arrow'
+                  />
+              </Link>
             </div>
           </div>
         )}

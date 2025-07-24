@@ -4,14 +4,6 @@ nav {
   width: 100%;
 }
 
-.page-wrapper {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0 120px;
-  box-sizing: border-box;
-  width: 100%;
-}
-
 .logo-header {
   display: flex;
   align-items: center;

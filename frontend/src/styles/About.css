@@ -1,55 +1,117 @@
 .about-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem;
-  font-family: var(--body-font);
-  color: var(--primary-text);
-  line-height: 1.8;
-}
-
-.about-page h1 {
-  font-family: var(--heading-font);
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  color: var(--primary-solid);
-  font-weight: 600;
-}
-
-.about-page p {
-  font-size: 1.1rem;
-  color: var(--primary-text);
-}
-
-.about-page section {
-  margin-bottom: 3rem;
-}
-
-.about-page ul {
-  list-style: none;
-  padding-left: 0;
-  margin-bottom: 1.5rem;
-}
-
-.about-page li {
-  margin-bottom: 0.5rem;
   position: relative;
-  padding-left: 1.5rem;
+  flex-direction: column;
 }
 
-
-
-@media (max-width: 931px) {
-  .about-page {
-    padding: 2rem 1rem;
-  }
-
-  .about-page h1 {
-    font-size: 2rem;
-  }
-
-  .about-page p {
-    font-size: 1rem;
-  }
+.about-images {
+  position: relative;
+  height: 234px;
+  overflow: hidden;
 }
 
+.about-header-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
+.about-section-details {
+  display: flex;
+  gap: 1rem;
+  padding-top: 55px;
+  height: auto;
+}
+
+.about-me-text {
+  flex: 1;
+  margin-top: 0;
+}
+
+.about-title {
+  color: #000;
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-weight: 400;
+  line-height: normal;
+  margin-bottom: 1rem;
+  margin-top: 0;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+}
+
+.about-description-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.about-description-container {
+  flex: 2;
+}
+
+.about-description {
+  margin: 0;
+  width: 588px;
+  left: 122px;
+  padding-bottom: 20px;
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 100%;
+  letter-spacing: 0%;
+
+}
+
+.owner-image {
+  flex: 1;
+}
+
+.owner-image img {
+  max-width: 536px;
+  height: 635px;
+  object-fit: cover;
+  padding-bottom: 55px;
+}
+
+.signature-container {
+  position: relative;
+  width: fit-content;
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-direction: column;
+  margin-left: 350px;
+}
+
+.signature-one {
+  width: 127px;
+  height: 154px;
+  z-index: 2;
+  position: relative;
+}
+
+.signature-two {
+  width: 93.17px;
+  height: 48.19px;
+  position: absolute;
+  top: 53px;
+  left: 85px;
+  z-index: 1;
+}
+
+.sub-footer{
+  display: flex;
+  background-color: #202211;
+  height: 222px;
+  justify-content: center;
+  align-items: center;
+}
+
+.sub-footer-quote{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 62px;
+  letter-spacing: 0%;
+  color: white;
+}
