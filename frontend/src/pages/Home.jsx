@@ -5,6 +5,7 @@ import Lottie from 'lottie-react';
 import { Link } from "react-router-dom";
 import headerImage from "../assets/images/headerImage.png";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
+import arrow from  "../assets/images/arrow.png"
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
@@ -80,6 +81,13 @@ const Home = () => {
                   <h3 className="footer-category-name">{category.name}</h3>
                 </div>
               ))}
+            </div>
+            <div className='explore-button-container'>
+              <p className='explore-button-text'>EXPLORE ALL CATEGORIES</p>
+              <img 
+                src={arrow}
+                className='homepage-arrow'
+              />
             </div>
           </div>
         )}
