@@ -11,15 +11,24 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   });
 
   useEffect(() => {
-    // If initialData is provided (editing), pre-fill the form
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData({
         slug: initialData.slug || '',
         image_url: initialData.image_url || '',
         description: initialData.description || '',
-        is_available: initialData.is_available || true,
-        price_cents: initialData.price_cents || 0,
+        is_available: initialData.is_available ?? true,
+        price_cents: (initialData.price_cents / 100).toFixed(2) || 0,
         category_id: initialData.category_id || '',
+      });
+    } else {
+      // Reset the form when initialData is cleared (after editing)
+      setFormData({
+        slug: '',
+        image_url: '',
+        description: '',
+        is_available: true,
+        price_cents: 0,
+        category_id: '',
       });
     }
   }, [initialData]);
