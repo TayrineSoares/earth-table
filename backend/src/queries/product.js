@@ -51,6 +51,18 @@ async function deleteProductById(id) {
   if (error) throw new Error(`Error deleting product: ${error.message}`);
 }
 
+async function updateProductById(id, updatedData) {
+  const { data, error } = await supabase
+    .from('products')
+    .update(updatedData)
+    .eq('id', id)
+    .select() 
+    .single();
+
+  if (error) throw new Error(`Error updating product: ${error.message}`);
+  return data;
+}
+
 
 
 module.exports = {
@@ -59,4 +71,5 @@ module.exports = {
   getProductsByCategory, 
   createProduct, 
   deleteProductById,
+  updateProductById,
 };

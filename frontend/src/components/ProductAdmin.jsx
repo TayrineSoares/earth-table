@@ -62,17 +62,23 @@ const ProductAdmin = () => {
 
 
   const handleUpdateProduct = async (updatedData) => {
-    try {
-      const updatedProduct = await updateProduct(updatedData);
-      setProducts(prev => 
-        prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-      );
-      setShowForm(false);
-      setEditProduct(null);
-    } catch (err) {
-      console.error("Failed to update product:", err.message);
+  try {
+    const updatedProduct = await updateProduct(updatedData);
+    console.log("Returned from PATCH:", updatedProduct); // ← ADD THIS
+
+    if (!updatedProduct || !updatedProduct.id) {
+      throw new Error("Invalid updated product data");
     }
-  };
+
+    setProducts(prev => 
+      prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    );
+    setShowForm(false);
+    setEditProduct(null);
+  } catch (err) {
+    console.error("Failed to update product:", err.message);
+  }
+};
 
 
   

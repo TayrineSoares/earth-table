@@ -7,6 +7,7 @@ const {
   getProductsByCategory, 
   createProduct,
   deleteProductById,
+  updateProductById,
 } = require('../queries/product')
 
 
@@ -40,6 +41,20 @@ router.delete('/:id', async (req, res) => {
     const id = req.params.id;
     await deleteProductById(id);
     res.json({ message: `Product ${id} deleted successfully` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /products/:id — Update product
+router.patch('/:id', async (req, res) => {
+  const id = req.params.id;
+  const updatedData = req.body;
+
+  try {
+    const updatedProduct = await updateProductById(id, updatedData);
+    res.json(updatedProduct);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });

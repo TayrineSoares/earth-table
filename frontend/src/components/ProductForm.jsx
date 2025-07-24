@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   const [formData, setFormData] = useState({
+    id: '',
     slug: '',
     image_url: '',
     description: '',
@@ -13,16 +14,18 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData({
+        id: initialData.id || '',
         slug: initialData.slug || '',
         image_url: initialData.image_url || '',
         description: initialData.description || '',
         is_available: initialData.is_available ?? true,
-        price_cents: (initialData.price_cents / 100).toFixed(2) || 0,
+        price_cents: initialData.price_cents / 100 || 0,
         category_id: initialData.category_id || '',
       });
     } else {
       // Reset the form when initialData is cleared (after editing)
       setFormData({
+        id: '',
         slug: '',
         image_url: '',
         description: '',
@@ -54,6 +57,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     onSubmit(processedForm);
     //reset the form
     setFormData({
+      id: '',
       slug: '',
       image_url: '',
       description: '',
