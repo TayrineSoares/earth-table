@@ -69,14 +69,14 @@ const Products = ({ addToCart }) => {
 
       <div className='categories-container'>
 
-        <Link to="/products">
+        <Link to="/products/category/">
           <button className="categories">All</button>
         </Link>
        
         {allCategories.map((category) => (
           <Link
             key={category.id}
-            to={`/products/${category.id}`}
+            to={`/products/category/${category.id}`}
           >
             <button className="categories">
               {category.name}
