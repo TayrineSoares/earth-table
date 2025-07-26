@@ -84,7 +84,7 @@ const Home = () => {
             </div>
             <div className='explore-button-container'>
               <p className='explore-button-text'>EXPLORE ALL CATEGORIES</p>
-              <Link to={`/products`}>
+              <Link to={`/products/category`}>
                 <img 
                   src={arrow}
                   className='homepage-arrow'
