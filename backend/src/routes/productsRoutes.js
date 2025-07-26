@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 // POST /products
 router.post('/', async (req, res) => {
   const { slug, description, price_cents, image_url, category_id, tag_ids = [] } = req.body;
-  console.log("Creating product with data:", req.body);
+
 
   try {
     const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id, tag_ids });
