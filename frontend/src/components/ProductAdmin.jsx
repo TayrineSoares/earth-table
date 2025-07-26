@@ -81,15 +81,25 @@ const ProductAdmin = () => {
     }
   };
 
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : '';
+  };
+
+
   const filteredProducts = products.filter(product => {
     const term = searchTerm.toLowerCase();
+    const categoryName = getCategoryName(product.category_id).toLowerCase();
+
     return (
       product.slug?.toLowerCase().includes(term) ||
       product.description?.toLowerCase().includes(term) ||
-      (product.price_cents / 100).toFixed(2).includes(term)
+      (product.price_cents / 100).toFixed(2).includes(term) ||
+      categoryName.includes(term)
     );
   });
 
+  
 
   
   return (
@@ -98,7 +108,7 @@ const ProductAdmin = () => {
 
       <input
         type="text"
-        placeholder="Search by slug, description, or price"
+        placeholder="Search by category, slug, description, or price"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
@@ -146,7 +156,7 @@ const ProductAdmin = () => {
                 <p><strong>Slug:</strong> {product.slug}</p>
                 <p><strong>Description:</strong> {product.description}</p>
                 <p><strong>Price:</strong> ${(product.price_cents / 100).toFixed(2)}</p>
-                <p><strong>Category ID:</strong> {product.category_id}</p>
+                <p><strong>Category:</strong> {getCategoryName(product.category_id)}</p>
 
                 <div className='manage buttons'> 
                   <button 
