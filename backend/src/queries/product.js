@@ -30,7 +30,11 @@ async function getProductsByCategory(categoryId) {
   return data;
 };
 
-async function createProduct({ slug, description, price_cents, image_url, category_id }) {
+async function createProduct({ slug, description, price_cents, image_url, category_id, tag_ids = [] }) {
+
+  console.log("→ In createProduct");
+  console.log("Received tag_ids:", tag_ids);
+
   const { data, error } = await supabase
     .from('products')
     .insert([
@@ -39,7 +43,15 @@ async function createProduct({ slug, description, price_cents, image_url, catego
     .select();
 
   if (error) throw new Error(`Error creating product: ${error.message}`);
-  return data[0]; // return the created product
+  const product =  data[0]; 
+  console.log("Product created:", product);
+
+  if (tag_ids.length > 0) {
+    console.log("→ Calling updateProductTags");
+    await updateProductTags(product.id, tag_ids)
+  }
+
+  return product;
 }
 
 async function deleteProductById(id) {
@@ -52,6 +64,10 @@ async function deleteProductById(id) {
 }
 
 async function updateProductById(id, updatedData) {
+  const { tag_ids = [], ...productData } = updatedData;
+
+  console.log("Updating product:", { id, productData, tag_ids });
+
   const { data, error } = await supabase
     .from('products')
     .update(updatedData)
@@ -60,6 +76,9 @@ async function updateProductById(id, updatedData) {
     .single();
 
   if (error) throw new Error(`Error updating product: ${error.message}`);
+
+  await updateProductTags(id, tag_ids);
+
   return data;
 }
 
@@ -83,6 +102,9 @@ async function uploadProductImage(fileBuffer, fileName, mimeType) {
 
 // link products to tags 
 async function updateProductTags(productId, tagIds) {
+  console.log("→ In updateProductTags");
+  console.log("Product ID:", productId);
+  console.log("Tag IDs:", tagIds);
 
   //delete existing tags if any
   const { error: deleteError } = await supabase
@@ -100,11 +122,14 @@ async function updateProductTags(productId, tagIds) {
     tag_id: tagId,
   }));
 
+  console.log("Inserting:", inserts);
+
   const { error: insertError } = await supabase
     .from('product_tags')
     .insert(inserts);
 
   if (insertError) throw new Error(`Error inserting new tags: ${insertError.message}`);
+  console.log("Tags inserted successfully");
 }
 
 // Get all tag IDs associated with a specific product

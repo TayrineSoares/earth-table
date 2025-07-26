@@ -29,10 +29,11 @@ router.get('/', async (req, res) => {
 
 // POST /products
 router.post('/', async (req, res) => {
-  const { slug, description, price_cents, image_url, category_id } = req.body;
+  const { slug, description, price_cents, image_url, category_id, tag_ids = [] } = req.body;
+  console.log("Creating product with data:", req.body);
 
   try {
-    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id });
+    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id, tag_ids });
     res.status(201).json(newProduct);
   } catch (error) {
     console.error('Error creating product:', error.message);
