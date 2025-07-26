@@ -104,10 +104,36 @@ router.post('/upload', upload.single('image'), async (req, res) => {
 });
 
 // POST /products/:id/tags
-router.post('/products/:id/tags', async (req, res) => {
+router.post('/:id/tags', async (req, res) => {
   const productId = parseInt(req.params.id); 
+  const { tag_ids } = req.body;
 
-})
+  if (!Array.isArray(tag_ids)) {
+    return res.status(400).json({ error: 'tag_ids must be an array of integers' });
+  }
+
+  try {
+    await updateProductTags(productId, tag_ids);
+    res.status(200).json({ message: 'Tags updated successfully' });
+  } catch (err) {
+    console.error('Error updating tags:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// GET /products/:id/tags
+router.get('/:id/tags', async (req, res) => {
+  const productId = parseInt(req.params.id);
+
+  try {
+    const tagIds = await getProductTagIds(productId);
+    res.json({ tag_ids: tagIds });
+  } catch (err) {
+    console.error('Error fetching tags:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 
