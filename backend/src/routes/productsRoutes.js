@@ -105,6 +105,7 @@ router.post('/upload', upload.single('image'), async (req, res) => {
 
 // POST /products/:id/tags
 router.post('/products/:id/tags', async (req, res) => {
+  const productId = parseInt(req.params.id); 
 
 })
 

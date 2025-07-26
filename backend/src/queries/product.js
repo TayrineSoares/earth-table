@@ -120,9 +120,6 @@ async function getProductTagIds(productId) {
   
 
 
-
-
-
 module.exports = {
   getAllProducts,
   getProductById,
