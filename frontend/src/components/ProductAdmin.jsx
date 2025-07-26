@@ -7,6 +7,7 @@ const ProductAdmin = () => {
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -62,29 +63,49 @@ const ProductAdmin = () => {
 
 
   const handleUpdateProduct = async (updatedData) => {
-  try {
-    const updatedProduct = await updateProduct(updatedData);
-    console.log("Returned from PATCH:", updatedProduct); // ← ADD THIS
+    try {
+      const updatedProduct = await updateProduct(updatedData);
+      console.log("Returned from PATCH:", updatedProduct); // ← ADD THIS
 
-    if (!updatedProduct || !updatedProduct.id) {
-      throw new Error("Invalid updated product data");
+      if (!updatedProduct || !updatedProduct.id) {
+        throw new Error("Invalid updated product data");
+      }
+
+      setProducts(prev => 
+        prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+      );
+      setShowForm(false);
+      setEditProduct(null);
+    } catch (err) {
+      console.error("Failed to update product:", err.message);
     }
+  };
 
-    setProducts(prev => 
-      prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+  const filteredProducts = products.filter(product => {
+    const term = searchTerm.toLowerCase();
+    return (
+      product.slug?.toLowerCase().includes(term) ||
+      product.description?.toLowerCase().includes(term) ||
+      (product.price_cents / 100).toFixed(2).includes(term)
     );
-    setShowForm(false);
-    setEditProduct(null);
-  } catch (err) {
-    console.error("Failed to update product:", err.message);
-  }
-};
+  });
 
 
   
   return (
     <div>
       <h1>Product Management </h1>
+
+      <input
+        type="text"
+        placeholder="Search by slug, description, or price"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
+      />
+
+      <br />
+
       <button 
           style={{ marginBottom: '1rem' }} 
           onClick={() => setShowForm(prev => !prev)}
@@ -100,14 +121,15 @@ const ProductAdmin = () => {
           }}
           initialData={editProduct}
           categories={categories}
-        
-        />)}
+  
+        />)
+      }  
 
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (
         <div>
-          {products.map(product => (
+          {filteredProducts.map(product => (
             <div
               key={product.id}
               style={{
