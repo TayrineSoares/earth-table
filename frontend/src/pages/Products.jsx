@@ -118,10 +118,14 @@ const Products = ({ addToCart }) => {
               <p className='product-description'>{product.description}</p>
             </div>
 
-            {product.tag_ids && product.tag_ids.length > 0 && (
+            {product.tags && product.tags.length > 0 && (
               <div className="product-tags">
-                <Tags size={16} style={{ marginRight: '4px' }} />
-                <span>{product.tag_ids.length} tag{product.tag_ids.length > 1 ? 's' : ''}</span>
+                {product.tags.map((tag) => (
+                  <div key={tag} className="tag-icon">
+                    {tagIcons[tag.toLowerCase()] || null}
+                    <span style={{ marginLeft: '4px' }}>{tag}</span>
+                  </div>
+                ))}
               </div>
             )}
             
