@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
 
 const UserAdmin = () => {
-  const [users, setUsers] = useState([]); 
+  const [users, setUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect (() => {
     const loadUsers = async () => {
@@ -18,23 +19,44 @@ const UserAdmin = () => {
 
 
   const handleAdminToggle = async (user) => {
-  try {
-    // Flip current admin status and update in backend
-    const updatedUser = await updateUserAdmin(user.auth_user_id, !user.is_admin);
+    try {
+      // Flip current admin status and update in backend
+      const updatedUser = await updateUserAdmin(user.auth_user_id, !user.is_admin);
 
-    // Replace the updated user in the local state
-    setUsers(prev =>
-      prev.map(user => user.auth_user_id === updatedUser.auth_user_id ? updatedUser : user)
+      // Replace the updated user in the local state
+      setUsers(prev =>
+        prev.map(user => user.auth_user_id === updatedUser.auth_user_id ? updatedUser : user)
+      );
+    } catch (err) {
+      console.error("Failed to update admin status:", err.message);
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    const term = searchTerm.toLowerCase();
+    return (
+      user.email?.toLowerCase().includes(term) ||
+      user.first_name?.toLowerCase().includes(term) ||
+      user.last_name?.toLowerCase().includes(term) ||
+      user.phone_number?.toLowerCase().includes(term)
     );
-  } catch (err) {
-    console.error("Failed to update admin status:", err.message);
-  }
-};
+  });
+
 
 
   return (
     <div>
       <h1>User Management</h1>
+
+      <input
+        type="text"
+        placeholder="Search by email, name, or phone"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
+      />
+
+
       {users.length === 0 ? (
       <p>No users found.</p>
       ) : (
@@ -50,7 +72,7 @@ const UserAdmin = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map(user => (
+            {filteredUsers.map(user => (
               <tr key={user.auth_user_id || user.id || user.email}>
                 <td>{user.email}</td>
                 <td>{user.first_name}</td>

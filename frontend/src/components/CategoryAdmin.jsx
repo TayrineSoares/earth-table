@@ -71,7 +71,8 @@ const CategoryAdmin = () => {
           onClick={() => setShowForm(prev => !prev)}
         >
           {showForm ? 'Close Form' : 'Add New Category'}
-        </button>
+      </button>
+
       {showForm && (
         <CategoryForm 
           onSubmit={(formData) => {
@@ -88,7 +89,7 @@ const CategoryAdmin = () => {
           initialData={categoryToEdit}
         />)}
 
-      <div className='categories'>
+      <div >
         <h1>CATEGORIES</h1>
         
         
