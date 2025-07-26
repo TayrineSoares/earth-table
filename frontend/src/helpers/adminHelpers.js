@@ -106,6 +106,24 @@ const deleteCategory = async (id) => {
 
 }
 
+// Upload a category image 
+const uploadCategoryImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch('http://localhost:8080/categories/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+
+  return data.url;
+};
+
+
+
 //------------------------------------------------------
 // PRODUCTS FUNCTIONS
 
@@ -169,6 +187,22 @@ const deleteProduct = async (productId) => {
   return data;
 };
 
+//Upload a produc image 
+const uploadProductImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch('http://localhost:8080/products/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+
+  return data.url; // the public image URL
+};
+
 
 export { 
   fetchUserByAuthId, 
@@ -176,10 +210,12 @@ export {
   addCategory, 
   updateCategory, 
   deleteCategory, 
+  uploadCategoryImage,
   fetchAllUsers, 
   updateUserAdmin,
   fetchAllProducts,
   addProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
 }; 

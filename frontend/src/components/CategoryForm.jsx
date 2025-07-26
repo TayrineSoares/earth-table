@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { uploadCategoryImage } from '../helpers/adminHelpers';
 
 const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
@@ -38,34 +39,19 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files[0]; //get first file selected by user
-    if (!file) return; // if no file exit 
-
-    //create new formData object
-    const formData = new FormData();
-    formData.append('image', file); //add the file with the key "image"
+    const file = e.target.files[0];
+    if (!file) return;
 
     try {
-      //send file to backend API route to upload on supabase storage
-      // the backend will return an URL
-      const res = await fetch('http://localhost:8080/categories/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    // parse the response 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-
-    //update the form state with image's public URL returned from backend
-    setFormData(prev => ({
-      ...prev,
-      image_url: data.url
-    }));
-  } catch (err) {
-    console.error("Error uploading image:", err.message);
-  }
-};
+      const url = await uploadCategoryImage(file);
+      setFormData(prev => ({
+        ...prev,
+        image_url: url,
+      }));
+    } catch (err) {
+      console.error("Error uploading image:", err.message);
+    }
+  };
 
   
   return (
