@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { uploadProductImage } from '../helpers/adminHelpers';
+import { uploadProductImage, fetchAllTags, fetchProductTags } from '../helpers/adminHelpers';
 
 const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   const [formData, setFormData] = useState({
@@ -15,33 +15,50 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   const [allTags, setAllTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
 
+  const resetForm = () => {
+    setFormData({
+      id: '',
+      slug: '',
+      image_url: '',
+      description: '',
+      is_available: true,
+      price_cents: 0,
+      category_id: '',
+    });
+    setSelectedTags([]);
+  };
+
   useEffect(() => {
+    const initializeForm = async () => {
+      try {
+        const tags = await fetchAllTags(); 
+        setAllTags(tags);
+
+        if (initialData && Object.keys(initialData).length > 0) {
+          setFormData({
+            id: initialData.id || '',
+            slug: initialData.slug || '',
+            image_url: initialData.image_url || '',
+            description: initialData.description || '',
+            is_available: initialData.is_available ?? true,
+            price_cents: initialData.price_cents / 100 || 0,
+            category_id: initialData.category_id || '',
+          });
+
+          const productTagIds = await fetchProductTags(initialData.id);
+          setSelectedTags(productTagIds);
+        } else {
+          resetForm();
+        }
+      } catch (err) {
+        console.error("Error initializing form:", err.message);
+      }
+    }; 
+    initializeForm();
     
-
-
-    if (initialData && Object.keys(initialData).length > 0) {
-      setFormData({
-        id: initialData.id || '',
-        slug: initialData.slug || '',
-        image_url: initialData.image_url || '',
-        description: initialData.description || '',
-        is_available: initialData.is_available ?? true,
-        price_cents: initialData.price_cents / 100 || 0,
-        category_id: initialData.category_id || '',
-      });
-    } else {
-      // Reset the form when initialData is cleared (after editing)
-      setFormData({
-        id: '',
-        slug: '',
-        image_url: '',
-        description: '',
-        is_available: true,
-        price_cents: 0,
-        category_id: '',
-      });
-    }
   }, [initialData]);
+
+
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,6 +76,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     const processedForm = {
       ...formData,
       price_cents: Math.round(parseFloat(formData.price_cents) * 100),
+      tag_ids: selectedTags,
     };
 
     onSubmit(processedForm);
@@ -153,6 +171,28 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
           </select>
         </label>
         <br /> <br />
+
+        <label>Tags:</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+            {allTags.map(tag => (
+              <label key={tag.id}>
+                <input
+                  type="checkbox"
+                  value={tag.id}
+                  checked={selectedTags.includes(tag.id)}
+                  onChange={(e) => {
+                    const tagId = parseInt(e.target.value);
+                    if (e.target.checked) {
+                      setSelectedTags(prev => [...prev, tagId]);
+                    } else {
+                      setSelectedTags(prev => prev.filter(id => id !== tagId));
+                    }
+                  }}
+                />
+                {tag.name}
+              </label>
+            ))}
+          </div>
 
         <label>
           Available:

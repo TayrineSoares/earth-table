@@ -9,6 +9,7 @@ const loginRouter = require('./src/routes/loginRoutes');
 const registerRouter = require('./src/routes/registerRoutes');
 const logoutRouter = require('./src/routes/logoutRoutes');
 const contactRouter = require('./src/routes/contactRoutes');
+const tagsRouter = require('./src/routes/tagsRoutes');
 
 
 const app = express();
@@ -40,6 +41,8 @@ app.use('/register', registerRouter);
 app.use('/logout', logoutRouter);
 
 app.use('/contact', contactRouter);
+
+app.use('/tags', tagsRouter);
 
 
 app.listen(PORT, () => {
