@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
 import { useParams, Link } from "react-router-dom";
-import { Tags } from 'lucide-react';
+import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff } from 'lucide-react';
+
 
 const Products = ({ addToCart }) => {
 
@@ -20,6 +21,14 @@ const Products = ({ addToCart }) => {
   const selectedCategory = categoryId
   ? allCategories.find(cat => cat.id === Number(categoryId))
   : null;
+
+  const tagIcons = {
+    vegan: <Vegan size={16} />,
+    vegetarian: <LeafyGreen size={16} />,
+    keto: <Ham size={16} />,
+    'dairy free': <MilkOff size={16} />,
+    paleo: <BeanOff size={16} />
+  };
 
   useEffect(() => {
     fetch('http://localhost:8080/products')

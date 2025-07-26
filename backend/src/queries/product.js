@@ -9,8 +9,8 @@ async function getAllProducts() {
 
   // Fetch tags for each product
   const productsWithTags = await Promise.all(products.map(async (product) => {
-    const tag_ids = await getProductTagIds(product.id);
-    return { ...product, tag_ids };
+    const tagsNames = await getProductTags(product.id);
+    return { ...product, tags: tagsNames };
   }));
 
   return productsWithTags;
@@ -25,8 +25,8 @@ async function getProductById(id) {
 
   if (error) throw new Error(`Error fetching product by id: ${error.message}`);
   
-  const tag_ids = await getProductTagIds(id); // fetch tag ids
-  return { ...product, tag_ids }; // include them in the response
+  const tagsNames = await getProductTags(id); // fetch tags names
+  return { ...product, tags:tagsNames }; // include them in the response
 };
 
 async function getProductsByCategory(categoryId) {
@@ -134,14 +134,14 @@ async function updateProductTags(productId, tagIds) {
 }
 
 // Get all tag IDs associated with a specific product
-async function getProductTagIds(productId) {
+async function getProductTags(productId) {
   const { data, error } = await supabase
     .from('product_tags')
-    .select('tag_id')
+    .select('tags(name)')
     .eq('product_id', productId);
 
   if (error) throw new Error(`Error fetching product tags: ${error.message}`);
-  return data.map(row => row.tag_id);
+  return data.map(row => row.tags.name);
 }
   
 
@@ -155,5 +155,5 @@ module.exports = {
   updateProductById,
   uploadProductImage,
   updateProductTags,
-  getProductTagIds,
+  getProductTags,
 };

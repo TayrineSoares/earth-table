@@ -12,7 +12,7 @@ const {
   updateProductById,
   uploadProductImage,
   updateProductTags, 
-  getProductTagIds,
+  getProductTags,
 } = require('../queries/product')
 
 
@@ -62,7 +62,7 @@ router.patch('/:id', async (req, res) => {
     const updatedProduct = await updateProductById(id, updatedData);
     await updateProductTags(id, tag_ids);
 
-    const updatedTags = await getProductTagIds(id);
+    const updatedTags = await getProductTags(id);
 
     res.json({ ...updatedProduct, tag_ids: updatedTags });
   } catch (error) {
@@ -132,7 +132,7 @@ router.get('/:id/tags', async (req, res) => {
   const productId = parseInt(req.params.id);
 
   try {
-    const tagIds = await getProductTagIds(productId);
+    const tagIds = await getProductTags(productId);
     res.json({ tag_ids: tagIds });
   } catch (err) {
     console.error('Error fetching tags:', err.message);
