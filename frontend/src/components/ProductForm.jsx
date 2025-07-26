@@ -67,6 +67,36 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     });
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]; //get first file selected by user
+    if (!file) return; // if no file exit 
+
+    //create new formData object
+    const formData = new FormData();
+    formData.append('image', file); //add the file with the key "image"
+
+    try {
+      //send file to backend API route to upload on supabase storage
+      // the backend will return an URL
+      const res = await fetch('http://localhost:8080/products/upload', {
+      method: 'POST',
+      body: formData,
+      });
+
+      // parse the response 
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      //update the form state with image's public URL returned from backend
+      setFormData(prev => ({
+        ...prev,
+        image_url: data.url
+      }));
+    } catch (err) {
+      console.error("Error uploading image:", err.message);
+    }
+  };
+
 
   return (
     <div>
@@ -83,6 +113,17 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
           <input name="image_url" value={formData.image_url} onChange={handleChange} required />
         </label>
         <br /> <br />
+        <h3>OR</h3>
+
+        <div>
+          <label>Upload Image:</label>
+          <input 
+            type="file" 
+            accept="image/*"
+            onChange={handleFileUpload}
+          /><br /><br />
+        </div>
+
 
         <label>
           Description:

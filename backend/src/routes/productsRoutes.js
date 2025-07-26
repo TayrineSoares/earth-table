@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer(); 
 
 const {
   getAllProducts,
@@ -8,6 +10,7 @@ const {
   createProduct,
   deleteProductById,
   updateProductById,
+  uploadProductImage,
 } = require('../queries/product')
 
 
@@ -85,7 +88,18 @@ router.get('/category/:categoryId', async (req, res) => {
   }
 }); 
 
+// UPLOAD PRODUCT IMAGE
+router.post('/upload', upload.single('image'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
+    const url = await uploadProductImage(file.buffer, file.originalname, file.mimetype);
+    res.json({ url });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
 module.exports = router;

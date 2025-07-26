@@ -63,6 +63,25 @@ async function updateProductById(id, updatedData) {
   return data;
 }
 
+async function uploadProductImage(fileBuffer, fileName, mimeType) {
+  const filePath = `product-${Date.now()}-${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('products-images')
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+    });
+
+  if (error) throw new Error(`Error uploading image: ${error.message}`);
+
+  const { data: publicUrlData } = supabase.storage
+    .from('products-images')
+    .getPublicUrl(filePath);
+
+  return publicUrlData.publicUrl;
+}
+
+
 
 
 module.exports = {
@@ -72,4 +91,5 @@ module.exports = {
   createProduct, 
   deleteProductById,
   updateProductById,
+  uploadProductImage,
 };

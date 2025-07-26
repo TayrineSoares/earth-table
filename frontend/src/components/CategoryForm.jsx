@@ -105,7 +105,8 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
             value={formData.image_url} 
             placeholder='Add Category Image URL'
             onChange={handleChange}
-          /><br /><br />
+          />
+          <br /><br />
         </div>
         <h3>OR</h3>
         <div>
