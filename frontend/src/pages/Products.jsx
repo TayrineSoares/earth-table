@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
 import { useParams, Link } from "react-router-dom";
+import { Tags } from 'lucide-react';
 
 const Products = ({ addToCart }) => {
 
@@ -107,6 +108,13 @@ const Products = ({ addToCart }) => {
             <div className='product-description-container'>
               <p className='product-description'>{product.description}</p>
             </div>
+
+            {product.tag_ids && product.tag_ids.length > 0 && (
+              <div className="product-tags">
+                <Tags size={16} style={{ marginRight: '4px' }} />
+                <span>{product.tag_ids.length} tag{product.tag_ids.length > 1 ? 's' : ''}</span>
+              </div>
+            )}
             
             <div className='product-add-button-container'>
               <button 

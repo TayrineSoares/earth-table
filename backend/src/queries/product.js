@@ -10,14 +10,16 @@ async function getAllProducts() {
 };
 
 async function getProductById(id) {
-  const { data, error } = await supabase
+  const { data: product, error } = await supabase
     .from('products')
     .select('*')
     .eq('id', id)
     .single();
 
   if (error) throw new Error(`Error fetching product by id: ${error.message}`);
-  return data;
+  
+  const tag_ids = await getProductTagIds(id); // fetch tag ids
+  return { ...product, tag_ids }; // include them in the response
 };
 
 async function getProductsByCategory(categoryId) {
