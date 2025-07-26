@@ -1,13 +1,20 @@
 const supabase = require('../../supabase/db')
 
 async function getAllProducts() {
-  const { data, error } = await supabase
+  const { data: products, error } = await supabase
     .from('products')
     .select('*');
 
   if (error) throw new Error(`Error fetching products: ${error.message}`);
-  return data;
-};
+
+  // Fetch tags for each product
+  const productsWithTags = await Promise.all(products.map(async (product) => {
+    const tag_ids = await getProductTagIds(product.id);
+    return { ...product, tag_ids };
+  }));
+
+  return productsWithTags;
+}
 
 async function getProductById(id) {
   const { data: product, error } = await supabase
