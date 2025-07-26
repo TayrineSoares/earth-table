@@ -11,6 +11,8 @@ const {
   deleteProductById,
   updateProductById,
   uploadProductImage,
+  updateProductTags, 
+  getProductTagIds,
 } = require('../queries/product')
 
 
@@ -100,6 +102,12 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// POST /products/:id/tags
+router.post('/products/:id/tags', async (req, res) => {
+
+})
+
 
 
 module.exports = router;

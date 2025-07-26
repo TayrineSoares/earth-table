@@ -81,6 +81,45 @@ async function uploadProductImage(fileBuffer, fileName, mimeType) {
   return publicUrlData.publicUrl;
 }
 
+// link products to tags 
+async function updateProductTags(productId, tagIds) {
+
+  //delete existing tags if any
+  const { error: deleteError } = await supabase
+    .from('product_tags')
+    .delete()
+    .eq('product_id', productId);
+  
+  if (deleteError) throw new Error(`Error removing old tags: ${deleteError.message}`);
+
+  if (tagIds.length === 0) return; // skip insert if no tags selected
+
+  // Insert new product-tag pairs
+  const inserts = tagIds.map(tagId => ({
+    product_id: productId,
+    tag_id: tagId,
+  }));
+
+  const { error: insertError } = await supabase
+    .from('product_tags')
+    .insert(inserts);
+
+  if (insertError) throw new Error(`Error inserting new tags: ${insertError.message}`);
+}
+
+// Get all tag IDs associated with a specific product
+async function getProductTagIds(productId) {
+  const { data, error } = await supabase
+    .from('product_tags')
+    .select('tag_id')
+    .eq('product_id', productId);
+
+  if (error) throw new Error(`Error fetching product tags: ${error.message}`);
+  return data.map(row => row.tag_id);
+}
+  
+
+
 
 
 
@@ -92,4 +131,6 @@ module.exports = {
   deleteProductById,
   updateProductById,
   uploadProductImage,
+  updateProductTags,
+  getProductTagIds,
 };
