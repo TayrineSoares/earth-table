@@ -72,7 +72,6 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Convert price from string dollars to cents
     const processedForm = {
       ...formData,
       price_cents: Math.round(parseFloat(formData.price_cents) * 100),
@@ -80,7 +79,8 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     };
 
     onSubmit(processedForm);
-    //reset the form
+
+    // Reset form state
     setFormData({
       id: '',
       slug: '',
@@ -90,6 +90,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
       price_cents: 0,
       category_id: '',
     });
+    setSelectedTags([]); 
   };
 
   const handleFileUpload = async (e) => {

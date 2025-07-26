@@ -30,12 +30,12 @@ async function getProductsByCategory(categoryId) {
   return data;
 };
 
-async function createProduct({ slug, description, price_cents, image_url, category_id, tag_ids = [] }) {
+async function createProduct({ slug, description, price_cents, image_url, category_id, is_available, tag_ids = [] }) {
 
   const { data, error } = await supabase
     .from('products')
     .insert([
-      { slug, description, price_cents, image_url, category_id }
+      { slug, description, price_cents, image_url, category_id, is_available }
     ])
     .select();
 

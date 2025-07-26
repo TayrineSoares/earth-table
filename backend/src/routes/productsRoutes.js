@@ -29,11 +29,11 @@ router.get('/', async (req, res) => {
 
 // POST /products
 router.post('/', async (req, res) => {
-  const { slug, description, price_cents, image_url, category_id, tag_ids = [] } = req.body;
+  const { slug, description, price_cents, image_url, category_id, is_available, tag_ids = [] } = req.body;
 
 
   try {
-    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id, tag_ids });
+    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id, is_available, tag_ids });
     res.status(201).json(newProduct);
   } catch (error) {
     console.error('Error creating product:', error.message);
@@ -56,11 +56,15 @@ router.delete('/:id', async (req, res) => {
 // PATCH /products/:id — Update product
 router.patch('/:id', async (req, res) => {
   const id = req.params.id;
-  const updatedData = req.body;
+  const { tag_ids = [], ...updatedData } = req.body;
 
   try {
     const updatedProduct = await updateProductById(id, updatedData);
-    res.json(updatedProduct);
+    await updateProductTags(id, tag_ids);
+
+    const updatedTags = await getProductTagIds(id);
+
+    res.json({ ...updatedProduct, tag_ids: updatedTags });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });

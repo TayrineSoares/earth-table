@@ -65,7 +65,7 @@ const ProductAdmin = () => {
   const handleUpdateProduct = async (updatedData) => {
     try {
       const updatedProduct = await updateProduct(updatedData);
-      console.log("Returned from PATCH:", updatedProduct); // ← ADD THIS
+      console.log("Returned from PATCH:", updatedProduct); 
 
       if (!updatedProduct || !updatedProduct.id) {
         throw new Error("Invalid updated product data");
