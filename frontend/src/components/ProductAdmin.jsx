@@ -100,8 +100,6 @@ const ProductAdmin = () => {
   });
 
   
-
-  
   return (
     <div>
       <h1>Product Management </h1>

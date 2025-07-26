@@ -7,6 +7,7 @@ const CategoryAdmin = () => {
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -62,10 +63,31 @@ const CategoryAdmin = () => {
 
   };
 
+  const filteredCategories = categories.filter(category => {
+    const term = searchTerm.toLowerCase();
+    return (
+      category.name?.toLowerCase().includes(term) ||
+      category.description?.toLowerCase().includes(term)
+   
+    );
+  });
+
 
   return (
     <div>
       <h2>Category Management</h2>
+
+      <input
+        type="text"
+        placeholder="Search by category name or description"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
+      />
+    
+      <br /> <br />
+
+
       <button 
           style={{ marginBottom: '1rem' }} 
           onClick={() => setShowForm(prev => !prev)}
@@ -93,7 +115,7 @@ const CategoryAdmin = () => {
         <h1>CATEGORIES</h1>
         
         
-        {categories.map((category) => (
+        {filteredCategories.map((category) => (
           <div
             key={category.id}
             style={{
