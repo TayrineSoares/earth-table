@@ -203,6 +203,46 @@ const uploadProductImage = async (file) => {
   return data.url; // the public image URL
 };
 
+//------------------------------------------------------------------------------
+// TAGS FUNCTIONS
+
+// fetch all tags 
+const fetchAllTags = async () => {
+  const res = await fetch('http://localhost:8080/tags');
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to fetch tags");
+
+  return data;
+};
+
+// fetch tags for a specific product by id 
+const fetchProductTags = async (productId) => {
+  const res = await fetch(`http://localhost:8080/products/${productId}/tags`);
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Failed to fetch product tags");
+
+  return data.tag_ids; // returns an array of tags IDs
+};
+
+// update tags of a selected product
+const updateProductTags = async (productId, tagIds) => {
+  const res = await fetch(`http://localhost:8080/products/${productId}/tags`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tag_ids: tagIds }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to update product tags");
+
+  return data;
+};
+
+
 
 export { 
   fetchUserByAuthId, 
@@ -218,4 +258,9 @@ export {
   updateProduct,
   deleteProduct,
   uploadProductImage,
+  fetchAllTags,
+  fetchProductTags,
+  updateProductTags
+
+
 }; 

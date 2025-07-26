@@ -12,7 +12,13 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     category_id: '',
   });
 
+  const [allTags, setAllTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+
   useEffect(() => {
+    
+
+
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData({
         id: initialData.id || '',
@@ -82,7 +88,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
       console.error("Error uploading image:", err.message);
     }
   };
-  
+
 
   return (
     <div>
