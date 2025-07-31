@@ -109,13 +109,14 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
 
         <div>
           <label>Description</label>
-          <input 
-            type="text" 
+          <textarea
             name="description"
-            value={formData.description} 
-            placeholder='Add Category Description'
+            value={formData.description}
+            placeholder="Add Category Description"
             onChange={handleChange}
-          /><br /><br />
+            rows={4} 
+
+          />
         </div>
 
         <div>

@@ -1,3 +1,15 @@
+textarea {
+  font-family: var(--body-font);
+  width: 100%;
+  font-size: 16px;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fff8f0;
+  resize: vertical; /* allows the user to drag it taller */
+}
+
+
 .category-form {
   background-color: #FFFBF3;
   padding: 2rem;
