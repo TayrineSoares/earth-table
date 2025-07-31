@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import "../styles/Login.css"
+import loginImage from "../assets/images/accountImage.png"
 
 
 const Login = ({setUser}) => {
@@ -37,77 +39,96 @@ const Login = ({setUser}) => {
   };
 
   return (
-    <div className='login page'>
-      <h1>Login </h1>
-
-      <form onSubmit={handleLoginSubmit}>
-        <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
+      <div className='login-page'>
+      <div className="contact-header-image-container">
+        <img
+          className="contact-header-image"
+          src={loginImage}
         />
+      </div>
 
-        <br></br>
-
-        <div className='password section'>
-          <input 
-          type={showPassword ? 'text' : 'password'}
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          />
-          <button 
-            type="button" 
-            onMouseDown={() => setShowPassword(true)}
-            onMouseUp={() => setShowPassword(false)}
-            onMouseLeave={() => setShowPassword(false)}
-            tabIndex={-1} // skip this element when tabbing with the keyboard
-            aria-label="Show password while holding"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              marginLeft: '0.1rem', 
-              color: 'black',
-            }}
-          >
-            {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-          </button>
-
+      <div className="page-wrapper">
+        <div className="login-header">
+          <p className="account-text">Account</p>
+          <div className="login-header-footer">
+            <Link to="/login" className="account-sign-in active">
+              Sign In
+            </Link>
+            <Link className="account-register" to="/register">
+              Create Account
+            </Link>
+          </div>
         </div>
 
-        <br></br>
-        <br></br>
+        <div className="login-form-container">
+          <form onSubmit={handleLoginSubmit}>
+            <div className="login-details">
+              <p className="login-detail-header-text">Email</p>
+              <input
+                className="login-detail-input-field"
+                type="email"
+                placeholder="EMAIL"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <br />
 
-        <button type="submit">Login</button>
+            <div className="login-details">
+              <p className="login-detail-header-text">Password</p>
+              <input
+                className="login-detail-input-field"
+                type={showPassword ? "text" : "password"}
+                placeholder="PASSWORD"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onMouseDown={() => setShowPassword(true)}
+                onMouseUp={() => setShowPassword(false)}
+                onMouseLeave={() => setShowPassword(false)}
+                tabIndex={-1}
+                aria-label="Show password while holding"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  marginLeft: "0.5rem",
+                  color: "black",
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-      </form>
-      <br></br>
+            <br />
+            <br />
 
-      {message && <p>{message}</p>}
+            <button className="login-submit-button" type="submit">
+              Login
+            </button>
+          </form>
+        </div>
+        <br />
 
+        {message && <p>{message}</p>}
 
-      <div className='forgot-password section'>
-        <p>
-          <Link to='/reset-password'>Forgot password</Link> 
-        </p>
-
+            <Link 
+            className='forgot-password-text'
+            to="/reset-password">Forgot password?</Link>
+            
+            <p className='dont-have-account'>Don't Have An Account?{' '}
+              <Link className="footer-account-register" to="/register">
+              Sign up
+              </Link>
+            </p>
+        <br />
       </div>
-      <br></br>
-
-      <div className='register section'>
-        <p>Not a member yet? </p>
-        
-        <Link to='/register'>Sign up here</Link> 
-      </div>
-
-      
-      
     </div>
-  )
+  );
 };
 
 export default Login;

@@ -76,6 +76,9 @@
   text-align: center;
   font-variant: small-caps;
   cursor: pointer;
+  box-shadow: none;
+  border-style: solid;
+  outline: none;
 }
 
 .contact-submit-button:active {
