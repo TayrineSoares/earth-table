@@ -13,8 +13,14 @@ const Profile = () => {
   const editableFields = [
     { label: "First Name", name: "first_name", type: "text" },
     { label: "Last Name", name: "last_name", type: "text" },
+    { label: "Phone Number", name: "phone_number", type: "tel" }, 
+    { label: "Address Line 1", name: "address_line1", type: "text" },
+    { label: "Address Line 2", name: "address_line2", type: "text" },
+    { label: "City", name: "city", type: "text" },
+    { label: "Province", name: "province", type: "text" },
+    { label: "Postal Code", name: "postal_code", type: "text" },
     { label: "Country", name: "country", type: "text" },
-    { label: "Phone Number", name: "phone_number", type: "tel" }
+    
   ];
 
 
@@ -42,6 +48,7 @@ const Profile = () => {
     setUser({...user, [e.target.name]: e.target.value});
   };
 
+
   const handleUpdate = async (e) =>{
     e.preventDefault(); 
     setMessage("");
@@ -55,6 +62,11 @@ const Profile = () => {
         body: JSON.stringify({
           first_name: user.first_name,
           last_name: user.last_name,
+          address_line1: user.address_line1,
+          address_line2: user.address_line2,
+          city: user.city,
+          province: user.province,
+          postal_code: user.postal_code,
           country: user.country,
           phone_number: user.phone_number
         })
