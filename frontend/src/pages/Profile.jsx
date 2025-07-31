@@ -24,6 +24,36 @@ const Profile = () => {
     
   ];
 
+  const validateForm = () => {
+    const formErrors = []; 
+
+    const nameRegex = /^[a-zA-ZÀ-ÿ' -]{2,}$/;
+
+    if (!user.first_name || !nameRegex.test(user.first_name.trim())) {
+      formErrors.push("First name is required and must contain only letters.");
+    }
+
+    if (!user.last_name || !nameRegex.test(user.last_name.trim())) {
+      formErrors.push("Last name is required and must contain only letters.");
+    }
+
+    const phoneRegex = /^\d{10}$/;
+
+    if (user.phone_number && !phoneRegex.test(user.phone_number.trim())) {
+      formErrors.push("Phone number must be 10 digits (no dashes or spaces).");
+    }
+
+    const postalCodeRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+
+    if (user.postal_code && !postalCodeRegex.test(user.postal_code.trim())) {
+      formErrors.push("Postal code must be a valid Canadian format (e.g., M4B1B3 or M4B 1B3).");
+    }
+
+     return formErrors;
+  };
+
+
+
 
   useEffect (() => { 
     const loadUser = async () => {
@@ -54,6 +84,13 @@ const Profile = () => {
     setError("");
     setLoading(true);
 
+    const validationErrors = validateForm();
+      if (validationErrors.length > 0) {
+        setError(validationErrors.join("\n"));
+        setLoading(false);
+        return;
+      }
+
     try {
       const updates = {
         first_name: user.first_name,
@@ -78,8 +115,7 @@ const Profile = () => {
     setLoading(false); // Ensures the button re-enables
     }
   };
-  
-  if (error) return <p>{error}</p>;
+    
   if (!user) return <p>Loading...</p>;
 
   
@@ -99,7 +135,15 @@ const Profile = () => {
               <strong>{label}:</strong> {user[name] || "(not set)"}
             </p>
           ))}
-          <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+          <button 
+            onClick={() => {
+              setIsEditing(true); 
+              setMessage("");
+              setError("");
+            }}
+          >
+            Edit Profile
+          </button>
         </div>
       ) : (
         <form onSubmit={handleUpdate}>
@@ -124,7 +168,14 @@ const Profile = () => {
           <button type="submit" disabled={loading}>Update Profile</button> 
           <br></br>
           <br></br>
-          <button type="button" onClick={() => setIsEditing(false)}>Go back</button>
+          <button type="button" onClick={() => {
+            setIsEditing(false); 
+            setMessage("");
+            setError("");
+            }}
+          >
+            Go back
+          </button>
         </form>
       )}
     </div>
