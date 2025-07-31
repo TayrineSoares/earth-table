@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -12,41 +13,7 @@ const Register = ({setUser}) => {
   
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    try {
-
-      const res = await fetch('http://localhost:8080/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({email, password})
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        setMessage(`Login failed: ${data.error}`);
-      } else {
-        setMessage(`You are logged in as ${data.user.email}`);
-        console.log(`User logged in as ${data.user.email}`, data);
-
-        // Save token in localStorage
-        localStorage.setItem('token', data.session.access_token);
-        // Save user info
-        localStorage.setItem('user', JSON.stringify(data.user)); 
-        setUser(data.user);
-      
-        setTimeout(() => {
-          navigate(`/profile/${data.user.id}`);
-        }, 1500);
-      }
-
-    } catch (error) {
-      setMessage("Login error:" + error.message);
-    }
-  };
-
-
+  
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
@@ -56,37 +23,37 @@ const Register = ({setUser}) => {
     }
 
     try {
-      const res = await fetch ('http://localhost:8080/register', {
+      const res = await fetch('http://localhost:8080/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({email, password})
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
       if (data.error) {
         setMessage(`Registration failed: ${data.error}`);
-        if (data.error === "User already registered") {
+        if (data.error.includes("already registered")) {
           setAlreadyRegistered(true);
         } else {
-          setAlreadyRegistered(false)
+          setAlreadyRegistered(false);
         }
-
       } else {
         setMessage(`You have been registered as ${data.user.email}`);
         setAlreadyRegistered(false);
-        console.log(`User registered as ${data.user.email}`, data);
+        setUser(data.user);
 
-        //proceed to automatic login
-        handleLogin();
-        
+        // Supabase already created session ; Navbar will update automatically
+        setTimeout(() => {
+          navigate(`/profile/${data.user.id}`);
+        }, 1500);
       }
-    } catch (error) {
-      setMessage("Registration error:" + error.message);
-    }
 
+    } catch (err) {
+      setMessage("Registration error: " + err.message);
+    }
   };
 
   return (

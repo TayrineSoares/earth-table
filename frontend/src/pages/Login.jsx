@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 
 const Login = ({setUser}) => {
@@ -16,46 +17,21 @@ const Login = ({setUser}) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch('http://localhost:8080/login', {
-      method: 'POST',
-      // needs to specify content type when sending JSON with fetch or Axios
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({email, password})
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
 
-    const data = await res.json();
-
-    if (data.error) {
-      setMessage(`Login failed: ${data.error}`);
+    if (error) {
+      setMessage(`Login failed: ${error.message}`);
     } else {
       setMessage(`You are logged in as ${data.user.email}`);
       console.log(`User logged in as ${data.user.email}`, data);
 
-      // Save token in localStorage
-      //setItem is a built-in browser method for storing data in your web browser
-      // browsers give every website a little place to store data called localStorage.
-      localStorage.setItem('token', data.session.access_token);
-
-      // Save user info
-      localStorage.setItem('user', JSON.stringify(data.user)); 
-
       setUser(data.user);
-      
 
-      // // for debuging
-      // const token = localStorage.getItem('token');
-      // console.log('Token:', token);
-
-      // // Get user (parse because it's stored as a string)
-      // const user = JSON.parse(localStorage.getItem('user'));
-      // console.log('User:', user);
-      // console.log('User email:', user.email);
-
-      // redirect after a short delay
       setTimeout(() => {
-        navigate('/');
+        navigate(`/profile/${data.user.id}`);
       }, 1500);
     }
   };

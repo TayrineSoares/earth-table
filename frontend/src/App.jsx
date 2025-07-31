@@ -4,6 +4,7 @@ import Footer from './components/Footer.jsx';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
+import { supabase } from './supabaseClient';
 
 
 const App = () => {
@@ -14,46 +15,36 @@ const App = () => {
 
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userInfo = localStorage.getItem('user');
+    // Check if a session exists (only during this sessionStorage lifespan)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+    });
 
-    if (token && userInfo) {
-      setUser (JSON.parse(userInfo));
-    }
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
 
   const handleLogout = async () => {
     try {
-      const res = await fetch('http://localhost:8080/logout', {
-    method: 'POST',
-    });
+      const { error } = await supabase.auth.signOut(); // Supabase logout
 
-    //handle http errors
-    if (!res.ok) {
-      throw new Error(`HTTP error. Status: ${res.status}`);
-    }
-
-    const data = await res.json(); 
-    console.log(data.message);
-
-    //check if the backend returned an error message in the JSON
-    if (data.error) {
-      console.error('Logout failed:', data.error);
-    } else {
-      console.log(data.message);
-    }
-
-    //clear local storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/login');
-      } catch (err) {
-      //catch network errors or thrown errors and log them
-       console.error('Logout request failed:', err.message);
+      if (error) {
+        console.error('Logout failed:', error.message);
       }
-    };
+
+      setUser(null);
+      navigate('/login');
+    } catch (err) {
+      console.error('Logout error:', err.message);
+    }
+  };
 
   const addToCart = (product) => {
 
