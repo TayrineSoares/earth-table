@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchUserByAuthId, fetchAllCategories, addCategory, updateCategory, deleteCategory } from '../helpers/adminHelpers'
+import { 
+  fetchAllCategories, 
+  addCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '../helpers/adminHelpers'
 import CategoryForm from './CategoryForm'
+import '../styles/CategoryAdmin.css'
 
 const CategoryAdmin = () => {
   const [categories, setCategories] = useState([]);
@@ -72,30 +77,30 @@ const CategoryAdmin = () => {
     );
   });
 
-  
-
 
   return (
-    <div>
-      <h2>Category Management</h2>
+    <div className="category-admin-container">
+      <h1 className="category-admin-title">Categories Management</h1>
+      <br />
 
       <input
         type="text"
-        placeholder="Search by category name or description"
+        className="category-search-input"
+        placeholder="Search by Category Name or Description"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
       />
     
       <br /> <br />
 
 
       <button 
-          style={{ marginBottom: '1rem' }} 
+          className="toggle-form-button"
           onClick={() => setShowForm(prev => !prev)}
         >
           {showForm ? 'Close Form' : 'Add New Category'}
       </button>
+      
 
       {showForm && (
         <CategoryForm 
@@ -114,40 +119,36 @@ const CategoryAdmin = () => {
         />)}
 
       <div >
-        <h1>CATEGORIES</h1>
+      <br /> <br /> 
         
         
         {filteredCategories.map((category) => (
           <div
+            className="category-card"
             key={category.id}
-            style={{
-              display: 'flex',
-              gap: '1rem',
-              border: '3px solid #ccc',
-              padding: '1rem',
-              marginBottom: '1rem',
-              alignItems: 'center',
-              maxWidth: '70vw',
-            }}
+            
           >
-            <img src={category.image_url} alt={category.name} width="150" />
-            <div>
+            <img 
+              className="category-image"
+              src={category.image_url} 
+              alt={category.name} 
+               />
+
+            <div className="category-details">
               <h2>{category.name}</h2>
               <p><strong>Image Url:</strong> {category.image_url}</p>
               <p><strong>Description:</strong> {category.description}</p>
               <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
 
               
-              <div className='manage buttons'> 
+              <div className='manage-buttons'> 
                 <button 
-                  style={{ marginRight: '0.5rem' }}
                   onClick={() => {
                     setCategoryToEdit(category); // set the selected category
                     setShowForm(true);            // show the form
-                  }}
-                                  
+                  }}         
                 >
-                    Edit
+                  Edit
                 </button>
                 <button 
                   onClick={() => handleDeleteCategory(category.id)}

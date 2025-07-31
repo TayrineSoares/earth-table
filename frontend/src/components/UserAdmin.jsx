@@ -44,10 +44,9 @@ const UserAdmin = () => {
   });
 
 
-
   return (
     <div className="user-admin-container">
-      <h1 className="user-admin-title">User Management</h1>
+      <h1 className="user-admin-title">Users Management</h1>
       <br/> 
 
       <input

@@ -1,0 +1,107 @@
+
+.category-admin-container {
+  padding: 2rem;
+}
+
+.category-admin-title {
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-weight: 400;
+  color: #000;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+
+.category-search-input {
+  padding: 0.5rem;
+  width: 300px;
+  font-size: 16px;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-color: #fff8f0;
+}
+
+.category-card {
+  display: flex;
+  gap: 1rem;
+  border: 2px solid #EDA413;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+  background-color: #FFFBF3;
+  border-radius: 15px;
+  max-width: 70vw;
+}
+
+.category-image {
+  width: 150px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.category-details h2 {
+  font-family: var(--heading-font);
+  font-size: 24px;         
+  font-weight: 400;             
+  margin-bottom: 0.25rem;
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
+}
+
+.category-details p {
+  font-family: var(--body-font);
+  font-size: 16px;
+  margin: 0.25rem 0;
+}
+
+.manage-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.manage-buttons button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  line-height: 100%;
+  letter-spacing: 4%;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.manage-buttons button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.manage-buttons button.active {
+  background-color: #EDA413;
+  color: white;
+}
+
+.toggle-form-button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  line-height: 100%;
+  letter-spacing: 4%;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
