@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   fetchAllCategories, 
   addCategory, 
@@ -13,6 +13,7 @@ const CategoryAdmin = () => {
   const [showForm, setShowForm] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const formRef = useRef();
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -104,20 +105,23 @@ const CategoryAdmin = () => {
       
 
       {showForm && (
-        <CategoryForm 
-          onSubmit={(formData) => {
-            if (categoryToEdit) {
-              handleUpdateCategory(formData); 
-            } else {
-              handleAddCategory(formData);
-            }
-          }} 
-          onCancel={() => {
-            setShowForm(false)
-            setCategoryToEdit(null);
-          }}
-          initialData={categoryToEdit}
-        />)}
+        <div ref={formRef}>
+          <CategoryForm 
+            onSubmit={(formData) => {
+              if (categoryToEdit) {
+                handleUpdateCategory(formData); 
+              } else {
+                handleAddCategory(formData);
+              }
+            }} 
+            onCancel={() => {
+              setShowForm(false)
+              setCategoryToEdit(null);
+            }}
+            initialData={categoryToEdit}
+          />
+        </div>
+      )}
 
       <div >
       <br /> <br /> 
@@ -147,6 +151,9 @@ const CategoryAdmin = () => {
                   onClick={() => {
                     setCategoryToEdit(category); // set the selected category
                     setShowForm(true);            // show the form
+                    setTimeout(() => {
+                      formRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    }, 0); // ensures it scrolls after form renders
                   }}         
                 >
                   Edit
