@@ -137,11 +137,11 @@ async function updateProductTags(productId, tagIds) {
 async function getProductTags(productId) {
   const { data, error } = await supabase
     .from('product_tags')
-    .select('tags(name)')
+    .select('tag_id')
     .eq('product_id', productId);
 
   if (error) throw new Error(`Error fetching product tags: ${error.message}`);
-  return data.map(row => row.tags.name);
+  return data.map(row => row.tag_id);
 }
   
 

@@ -12,6 +12,8 @@ const Products = ({ addToCart }) => {
 
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  
   
   const [isLoading, setIsLoading] = useState(true);
   
@@ -39,6 +41,7 @@ const Products = ({ addToCart }) => {
         return res.json()
       })
       .then(data => {
+        console.log("Fetched products:", data);
         setAllProducts(data);
         setIsLoading(false);
       })
@@ -55,11 +58,23 @@ const Products = ({ addToCart }) => {
       })
       .then(data => {
         setAllCategories(data);
-      })
-      .catch(err => {
-        console.error('Error fetching categories:', err);
       });
+    fetch('http://localhost:8080/tags')
+      .then(res => res.json())
+      .then(data => {
+        console.log("Fetched tags:", data);  
+        setAllTags(data)
+      })
+        
+      .catch(err => console.error("Error fetching tags:", err));
   }, []);
+
+  const getTagNames = (tagIds) => {
+    return tagIds
+      .map(id => allTags.find(tag => tag.id === id))
+      .filter(Boolean) // filter out undefined
+      .map(tag => tag.name);
+  };
 
 
   if (isLoading) {
@@ -120,14 +135,14 @@ const Products = ({ addToCart }) => {
 
             {product.tags && product.tags.length > 0 && (
               <div className="product-tags">
-                {product.tags.map((tag) => (
-                  <div key={tag} className="tag-icon">
-                    {tagIcons[tag.toLowerCase()] || null}
-                    <span style={{ marginLeft: '4px' }}>{tag}</span>
+                {getTagNames(product.tags).map((tagName) => (
+                  <div key={tagName} className="tag-icon">
+                    {tagIcons[tagName.toLowerCase()] || null}
+                    <span style={{ marginLeft: '4px' }}>{tagName}</span>
                   </div>
                 ))}
               </div>
-            )}
+            )}  
             
             <div className='product-add-button-container'>
               <button 
