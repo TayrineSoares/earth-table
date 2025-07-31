@@ -5,7 +5,7 @@ import CategoryAdmin from '../components/CategoryAdmin';
 import OrderAdmin from '../components/OrderAdmin';
 import ProductAdmin from '../components/ProductAdmin';
 import UserAdmin from '../components/UserAdmin'; 
-
+import { supabase } from '../supabaseClient';
 
 const Admin = () => {
   const [user, setUser] = useState(null);
@@ -16,15 +16,16 @@ const Admin = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (!storedUser) {
+      if (error || !session?.user) {
         navigate('/');
         return;
       }
 
+
       try {
-        const userInfo = await fetchUserByAuthId(storedUser.id);
+        const userInfo = await fetchUserByAuthId(session.user.id);
 
         if (!userInfo.is_admin) {
           navigate('/');
