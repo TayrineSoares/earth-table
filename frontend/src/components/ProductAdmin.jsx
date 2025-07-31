@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { fetchAllProducts, fetchAllCategories, addProduct, deleteProduct, updateProduct } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
+import '../styles/ProductAdmin.css'
 
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]); 
@@ -8,6 +9,7 @@ const ProductAdmin = () => {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const formRef = useRef(null);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -101,67 +103,69 @@ const ProductAdmin = () => {
 
   
   return (
-    <div>
-      <h1>Product Management </h1>
+    <div className="product-admin-container">
+      <h1 className="product-admin-title">Products Management </h1>
+      <br />
 
       <input
         type="text"
+        className="product-search-input"
         placeholder="Search by category, slug, description, or price"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
+      
       />
 
-      <br />
+      <br /> <br/>
 
       <button 
-          style={{ marginBottom: '1rem' }} 
+          className="toggle-form-button" 
           onClick={() => setShowForm(prev => !prev)}
         >
           {showForm ? 'Close Form' : 'Add New Product'}
         </button>
       {showForm && (
-        <ProductForm 
-          onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
-          onCancel={() => {
-            setShowForm(false);
-            setEditProduct(null); 
-          }}
-          initialData={editProduct}
-          categories={categories}
-  
-        />)
-      }  
+        <>
+          <div ref={formRef}></div>
+          <ProductForm 
+            onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
+            onCancel={() => {
+              setShowForm(false);
+              setEditProduct(null); 
+            }}
+            initialData={editProduct}
+            categories={categories}
+    
+          />
+        </>
+      )}  
 
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (
-        <div>
+        <div className="product-card-container">
           {filteredProducts.map(product => (
             <div
               key={product.id}
-              style={{
-                display: 'flex',
-                gap: '1rem',
-                border: '2px solid #ccc',
-                padding: '1rem',
-                marginBottom: '1rem',
-                alignItems: 'center',
-              }}
+              className="product-card"
             >
-              <img src={product.image_url} alt={product.slug} width="100" />
-              <div>
+              <img src={product.image_url} alt={product.slug} className="product-image" />
+              <div className="product-details">
                 <p><strong>Slug:</strong> {product.slug}</p>
                 <p><strong>Description:</strong> {product.description}</p>
                 <p><strong>Price:</strong> ${(product.price_cents / 100).toFixed(2)}</p>
                 <p><strong>Category:</strong> {getCategoryName(product.category_id)}</p>
 
-                <div className='manage buttons'> 
+                <div className='manage-buttons'> 
                   <button 
                     style={{ marginRight: '0.5rem' }} 
                     onClick={() => {
                       setEditProduct(product);     // set the selected product
                       setShowForm(true);           // show the form
+                      // Wait for the form to render, then scroll
+                      setTimeout(() => {
+                        formRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
                     }}
                   >
                     Edit

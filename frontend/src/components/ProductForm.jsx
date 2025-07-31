@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { uploadProductImage, fetchAllTags, fetchProductTags } from '../helpers/adminHelpers';
+import '../styles/ProductForm.css'
 
 const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   const [formData, setFormData] = useState({
@@ -111,36 +112,51 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
 
   return (
     <div>
-      <h2>Add or update a Product</h2>
+      
       <form onSubmit={handleSubmit} className='product-form'>
-        <label>
-          Slug:
-          <input name="slug" value={formData.slug} onChange={handleChange} required />
-        </label>
-        <br /> <br />
+        <h2 className="product-form-title">
+          {initialData?.id ? 'Update Product' : 'Add New Product'}
+        </h2>
+        
+        <label> Slug: </label>
+        <input 
+          name="slug" 
+          type="text"
+          value={formData.slug} 
+          onChange={handleChange} 
+          required 
+        />
 
-        <label>
-          Image URL:
-          <input name="image_url" value={formData.image_url} onChange={handleChange} required />
-        </label>
-        <br /> <br />
+        <label> Image URL: </label>
+        <input 
+          name="image_url" 
+          type="text"
+          value={formData.image_url} 
+          onChange={handleChange} 
+          required 
+        />
+        
+
         <h3>OR</h3>
 
-        <div>
-          <label>Upload Image:</label>
-          <input 
-            type="file" 
-            accept="image/*"
-            onChange={handleFileUpload}
-          /><br /><br />
-        </div>
+   
+        <label>Upload Image:</label>
+        <input 
+          type="file" 
+          accept="image/*"
+          onChange={handleFileUpload}
+        />
+    
 
-
-        <label>
-          Description:
-          <textarea name="description" value={formData.description} onChange={handleChange} />
-        </label>
-        <br /> <br />
+        <label> Description: </label>
+        <textarea 
+          name="description" 
+          value={formData.description} 
+          placeholder="Add Product Description"
+          onChange={handleChange} 
+          rows={4}
+        />
+        
 
         <label>
           Price ($):
@@ -153,24 +169,22 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
             min="0"
           />
         </label>
-        <br /> <br />
-
-        <label>
-          Category:
-          <select
-            name="category_id"
-            value={formData.category_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select a category</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
+       
+        <label> Category: </label>
+        <select
+          name="category_id"
+          value={formData.category_id}
+          onChange={handleChange}
+          required
+        >
+          <option value="">Select a category</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
             ))}
           </select>
-        </label>
+        
         <br /> <br />
 
         <label>Tags:</label>
@@ -196,13 +210,13 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
           </div>
 
         <label>
-          Available:
           <input
             type="checkbox"
             name="is_available"
             checked={formData.is_available}
             onChange={handleChange}
           />
+          Available:
         </label>
         <br /> <br />
 

@@ -1,0 +1,86 @@
+.product-form {
+  background-color: #FFFBF3;
+  padding: 2rem;
+  border-radius: 15px;
+  max-width: 600px;
+  border: 2px solid #EDA413;
+  margin-bottom: 2rem;
+}
+
+.product-form-title {
+  font-family: var(--heading-font);
+  font-size: 28px;
+  font-weight: 400;
+  color: #3a3a3a;
+  border-bottom: 2px solid #EDA413;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.product-form label {
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #444;
+}
+
+.product-form input[type="text"],
+.product-form input[type="file"],
+.product-form input[type="number"],
+.product-form select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fff8f0;
+  font-family: var(--body-font);
+  font-size: 14px;
+  margin-bottom: 1rem;
+}
+
+.product-form textarea {
+  font-family: var(--body-font);
+  width: 100%;
+  font-size: 16px;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fff8f0;
+  resize: vertical;
+  margin-bottom: 1rem;
+}
+
+.product-form h3 {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 1rem 0 0.5rem;
+}
+
+.product-form input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.product-form button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  line-height: 100%;
+  letter-spacing: 4%;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.product-form button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
