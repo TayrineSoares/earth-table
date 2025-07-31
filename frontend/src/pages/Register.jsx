@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import loginImage from "../assets/images/accountImage.png"
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -58,7 +59,25 @@ const Register = ({setUser}) => {
 
   return (
     <div className="register page">
-      <h1>Register </h1>
+      <div className="contact-header-image-container">
+        <img
+          className="contact-header-image"
+          src={loginImage}
+        />
+      </div>
+    
+    <div className='page-wrapper'>
+      <div className="login-header">
+        <p className="account-text">Account</p>
+        <div className="login-header-footer">
+            <Link to="/login" className="account-sign-in">
+              Sign In
+            </Link>
+            <Link className="account-register active" to="/register">
+              Create Account
+            </Link>
+        </div>
+      </div>
 
       <div className="register form">
         <form onSubmit={handleRegisterSubmit}>
@@ -68,7 +87,7 @@ const Register = ({setUser}) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-          />
+            />
           
           <br></br>
 
@@ -108,13 +127,13 @@ const Register = ({setUser}) => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-            />
+              />
           </div>
                     
           <br></br>
 
           {confirmPassword && (
-          <p>
+            <p>
             {password === confirmPassword ? '' : ' Passwords do not match'}
           </p>
         )}
@@ -134,13 +153,14 @@ const Register = ({setUser}) => {
       {message && <p>{message}</p>}
 
       {alreadyRegistered && (
-      
+        
       <div className='register section'>
         <p>Already Registered? </p>
         <Link to='/login'>Login here</Link> 
       </div>
       )}
       
+      </div>
     </div>
   )
 };

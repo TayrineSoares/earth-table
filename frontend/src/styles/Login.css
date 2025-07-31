@@ -1,0 +1,139 @@
+.account-text{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 62px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  width: 207px;
+  height: 68px;
+  margin-bottom: 0;
+}
+
+.login-header-footer{
+  display: flex;
+  flex-direction: row;
+  gap: 58px;
+}
+
+.account-sign-in, .account-register{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  width: 107;
+  margin-top: 17px;
+  text-decoration: none;
+}
+
+.account-sign-in:visited,
+.account-register:visited {
+  color: inherit;
+}
+
+.account-sign-in.active, .account-register.active{
+  color: black;
+  text-decoration: underline;
+  text-decoration-color: #EDA413;
+  text-underline-offset: 10px; 
+}
+
+.login-detail-header-text{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  font-variant: small-caps;
+  width: 550px;
+  height: 33px;
+  color: #BE7200;
+  margin-bottom: 0;
+}
+
+.login-detail-input-field{
+  margin-top: 15px;
+  width: 550px;
+  opacity: 1;
+  gap: 10px;
+  border-radius: 15px;
+  border-width: 1px;
+  padding-top: 19px;
+  padding-right: 51px;
+  padding-bottom: 19px;
+  padding-left: 51px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-style: Medium;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 4%;
+  font-variant: small-caps;
+}
+
+.login-submit-button{
+  width: 311px;
+  height: 58px;
+  margin-bottom: 73px;
+  top: 1077px;
+  left: 120px;
+  opacity: 1;
+  border-radius: 15px;
+  border-width: 1px;
+  border-color: #EDA413;
+  background-color: #FFFBF3;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-style: Medium;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 4%;
+  text-align: center;
+  font-variant: small-caps;
+  cursor: pointer;
+  box-shadow: none;
+  border-style: solid;
+  outline: none;
+  margin-bottom: 20px;
+}
+
+.forgot-password{
+  margin-top: 0;
+  width: 133px;
+  height: 19px;
+  top: 969px;
+  left: 120px;
+  opacity: 1;
+}
+
+.forgot-password-text{
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  font-variant: small-caps;
+  text-decoration: none;
+  color: #525448;
+}
+
+.forgot-password-text:visited {
+  color: inherit;
+}
+
+.dont-have-account{
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  font-variant: small-caps;
+  text-decoration: none;
+  color: #525448;
+}
+
+.footer-account-register{
+  color: #BE7200;
+  text-decoration: none;
+  cursor: pointer;
+}

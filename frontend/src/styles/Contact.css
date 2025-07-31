@@ -1,0 +1,33 @@
+.contact-header-image-container{
+  position: relative;
+  overflow: hidden;
+  height: 234px;
+}
+
+.contact-header-image{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.contact-text{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 62px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  width: 195px;
+  height: 68px;
+  margin-bottom: 0;
+}
+
+.have-question{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  width: 601px;
+  height: 42px; 
+  margin-top: 17px;
+}

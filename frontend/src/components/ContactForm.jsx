@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import "../styles/ContactForm.css"
 
 const ContactForm = () => {
   const [form, setForm] = useState({
@@ -40,35 +41,49 @@ const ContactForm = () => {
 
   return (
     <div className="contact-form">
-      <h2>Contact Us</h2>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Your name"
-          value={form.name}
-          onChange={handleChange}
-          required
-        />
+        <div className='your-name-container'>
+          <p className='your-name-header'>Your Name</p>
+          <input
+            className='your-name-input'
+            type="text"
+            name="name"
+            placeholder="FULL NAME"
+            value={form.name}
+            onChange={handleChange}
+            required
+          />
+        </div>
         <br />
-        <input
-          type="email"
-          name="email"
-          placeholder="Your email"
-          value={form.email}
-          onChange={handleChange}
-          required
-        />
+        <div className='your-name-container'>
+          <p className='your-name-header'>Email</p>
+          <input
+            className='your-name-input'
+            type="email"
+            name="email"
+            placeholder="NAME@EXAMPLE.COM"
+            value={form.email}
+            onChange={handleChange}
+            required
+            />
+        </div>
         <br />
-        <textarea
-          name="message"
-          placeholder="Your message"
-          value={form.message}
-          onChange={handleChange}
-          required
-        />
+        <div className='your-message-container'>
+          <p className='your-name-header'>Message</p>
+          <textarea
+          className='your-message-input'
+            name="message"
+            placeholder="TYPE YOUR MESSAGE HERE"
+            value={form.message}
+            onChange={handleChange}
+            required
+            />
+        </div>
         <br />
-        <button type="submit">Send Message</button>
+          <button
+            className='contact-submit-button'
+            type="submit"
+          >Send Message</button>
       </form>
       {status && <p>{status}</p>}
     </div>
