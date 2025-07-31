@@ -1,0 +1,63 @@
+.admin-page {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #FFFBF3;
+  border-radius: 15px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.admin-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 62px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  color: #000;
+  margin-bottom: 0.5rem;
+}
+
+.admin-header p {
+  font-family: var(--body-font);
+  font-size: 20px;
+  font-weight: 400;
+  color: #BE7200;
+}
+
+.admin-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+
+.admin-tabs button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  line-height: 100%;
+  letter-spacing: 4%;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.admin-tabs button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.admin-tabs button.active {
+  background-color: #EDA413;
+  color: white;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
+import '../styles/UsersAdmin.css'
 
 const UserAdmin = () => {
   const [users, setUsers] = useState([]);
@@ -45,30 +46,35 @@ const UserAdmin = () => {
 
 
   return (
-    <div>
-      <h1>User Management</h1>
+    <div className="user-admin-container">
+      <h1 className="user-admin-title">User Management</h1>
+      <br/> 
 
       <input
+        className="user-search-input"
         type="text"
         placeholder="Search by email, name, or phone"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ marginBottom: '1rem', padding: '0.5rem', width: '300px' }}
       />
-
+      
 
       {users.length === 0 ? (
-      <p>No users found.</p>
+        <p>No users found.</p>
       ) : (
-        <table border="1" cellPadding="8">
+        <table className="user-table">
           <thead>
             <tr>
               <th>Email</th>
               <th>First Name</th>
               <th>Last Name</th>
+              <th>Address</th>
+              <th>City</th>
+              <th>Province</th>
               <th>Country</th>
               <th>Phone</th>
               <th>Admin?</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +83,9 @@ const UserAdmin = () => {
                 <td>{user.email}</td>
                 <td>{user.first_name}</td>
                 <td>{user.last_name}</td>
+                <td>{user.address_line1} {user.address_line2}</td>
+                <td>{user.city}</td>
+                <td>{user.province}</td>
                 <td>{user.country}</td>
                 <td>{user.phone_number}</td>
                 <td>{user.is_admin ? 'Yes' : 'No'}</td>
@@ -92,7 +101,6 @@ const UserAdmin = () => {
           </tbody>
         </table>
       )}
-      
     </div>
   )
 };
