@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
 
 const Profile = () => {
 
@@ -25,24 +26,22 @@ const Profile = () => {
 
 
   useEffect (() => { 
-    const fetchUser = async () => {
+    const loadUser = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/users/${auth_user_id}`);
-        const data = await res.json();
-
-        if (res.ok) {
-          setUser(data);
-        } else {
-          setError(data.error || "Failed to fetch user.");
-        }
+        const data = await fetchUserByAuthId(auth_user_id);
+        setUser(prev => ({
+          ...data, 
+          country: data.country || "Canada"
+        }))
       } catch (err) {
-        setError(`Server error: ${err.message}`);
+        setError(`Error: ${err.message}`)
       }
     };
 
-    fetchUser();
-
+    loadUser(); 
   }, [auth_user_id]);
+  
+
 
   const handleChange = (e) => {
     setUser({...user, [e.target.name]: e.target.value});
@@ -56,29 +55,23 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      const res = await fetch (`http://localhost:8080/users/${auth_user_id}`, {
-        method: "PATCH", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: user.first_name,
-          last_name: user.last_name,
-          address_line1: user.address_line1,
-          address_line2: user.address_line2,
-          city: user.city,
-          province: user.province,
-          postal_code: user.postal_code,
-          country: user.country,
-          phone_number: user.phone_number
-        })
-      });
+      const updates = {
+        first_name: user.first_name,
+        last_name: user.last_name,
+        address_line1: user.address_line1,
+        address_line2: user.address_line2,
+        city: user.city,
+        province: user.province,
+        postal_code: user.postal_code,
+        country: user.country,
+        phone_number: user.phone_number
+      };
 
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Profile updated successfully!");
-        setUser(data); //Update UI
-      } else {
-        setError(data.error || "Failed to update profile.");
-      }
+      const updated = await patchUserProfile(auth_user_id, updates);
+          
+      setMessage("Profile updated successfully!");
+      setUser(updated); //Update UI
+     
     } catch (err) {
       setError(`Server error: ${err.message}`);
     } finally {
