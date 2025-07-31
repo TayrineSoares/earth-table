@@ -25,9 +25,15 @@ router.post('/', async (req, res) => {
         auth_user_id: data.user.id, 
         email: data.user.email,
         first_name: "",
-        last_name: "", 
+        last_name: "",
+        phone_number: "",
+        address_line1: "",
+        address_line2: "",
+        city: "", 
+        province: "",
+        postal_code: "",
         country: "",
-        phone_number: "", 
+        
         is_admin: false,
       })
       .select();
