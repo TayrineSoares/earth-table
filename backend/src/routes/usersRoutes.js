@@ -36,7 +36,18 @@ router.get('/:auth_user_id', async (req,res) => {
 //PATCH /users/:auth_user_id 
 router.patch('/:auth_user_id', async (req, res) => {
   const authUserId = req.params.auth_user_id;
-  const allowedFields = ['first_name', 'last_name', 'country', 'phone_number', 'is_admin'];
+  const allowedFields = [
+    'first_name',
+    'last_name',
+    'country',
+    'phone_number',
+    'is_admin',
+    'address_line1',
+    'address_line2',
+    'city',
+    'province',
+    'postal_code'
+  ];
   const updates = {};
 
   // Only keep fields that are allowed and present in the request

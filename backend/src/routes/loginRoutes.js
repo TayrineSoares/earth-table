@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../supabase/db');
 
-const { getAllUsers, getUserById } = require('../queries/user')
 
 // Supabase Auth handles login and returns you the user’s id and info if the email + password are correct.
 // POST /login
