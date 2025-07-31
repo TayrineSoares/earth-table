@@ -100,6 +100,7 @@ const CategoryAdmin = () => {
         >
           {showForm ? 'Close Form' : 'Add New Category'}
       </button>
+      <br /> <br />
       
 
       {showForm && (

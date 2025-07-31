@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { uploadCategoryImage } from '../helpers/adminHelpers';
+import '../styles/CategoryForm.css'
 
 const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
@@ -59,7 +60,9 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     <div>
   
       <form onSubmit={handleSubmit} className='category-form'>
-        <h2>Add or Update a Category</h2>
+        <h2 className="category-form-title">
+          {initialData?.id ? 'Update Category' : 'Add New Category'}
+        </h2>
         <div>
           {initialData?.id && (
             <div>
