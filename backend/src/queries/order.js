@@ -31,8 +31,51 @@ async function getOrderByUserId(userId) {
   return data;
 };
 
+async function createOrderWithProducts({ 
+  buyer_last_name,
+  buyer_phone_number,
+  buyer_address,
+  buyer_stripe_payment_info,
+  status = 'pending', // default status if not provided
+  products = []
+}) {
+  // insert order into orders table
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert([{
+      buyer_last_name,
+      buyer_phone_number,
+      buyer_address,
+      buyer_stripe_payment_info,
+      status
+    }])
+    .select()
+    .single();
+
+  if (orderError) throw new Error(`Error creating order: ${orderError.message}`);
+  
+  // create array of records to insert into orders_products table
+  const orderProducts = products.map(product => ({
+    order_id: order.id,
+    product_id: product.id,
+    quantity: product.quantity,
+    unit_price_cents: product.price_cents
+  }));
+
+  // insert all the products entries into the orders_products table
+  const { error: orderProductsError } = await supabase
+    .from('order_products')
+    .insert(orderProducts);
+
+  if (orderProductsError) throw new Error(`Error inserting order products: ${orderProductsError.message}`);
+
+  return order;
+}
+
+
 module.exports = {
   getAllOrders,
   getOrderById,
-  getOrderByUserId
+  getOrderByUserId,
+  createOrderWithProducts
 };
