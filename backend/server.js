@@ -15,9 +15,49 @@ const cartRouter = require('./src/routes/cartRoutes');
 require('dotenv').config();
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 const app = express();
 const PORT = 8080;
+
+//MAKE SURE THIS COMES BEFORE EXPRESS.JSON
+// This route is called by Stripe (not the frontend) after a customer successfully pays
+app.post('/webhook', express.raw({ type: 'application/json' }), (request, response) => {
+  const sig = request.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+
+    //Log only the relevant event
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+
+      //console.log("Full checkout session:", JSON.stringify(session, null, 2));
+
+      const metadata = session.metadata;
+      const email = 
+        session.customer_email || 
+        session.customer_details?.email ||
+        metadata?.email ||
+        'unknown';
+
+      const userId = metadata?.userId || null;
+      const cart = JSON.parse(metadata?.cart || '[]');
+
+      console.log("Payment succeeded");
+      console.log("User email:", email);
+      console.log("Cart:", cart);
+    } else {
+      console.log(`Skipped event: ${event.type}`);
+    }
+
+    response.status(200).send();
+  } catch (err) {
+    console.error(`Webhook Error: ${err.message}`);
+    response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -37,6 +77,9 @@ app.get('/cart', (req, res) => {
     items: []
   });
 });
+
+
+
 
 app.post('/create-checkout-session', async (req, res) => {
   const { cartItems, email, userId } = req.body;
@@ -58,6 +101,7 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: 'http://localhost:5173/confirmation',
       cancel_url: 'http://localhost:5173/cart',
+      customer_email: email,
       metadata: {
         email: email || '',
         userId: userId || '',
@@ -71,6 +115,7 @@ app.post('/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 
 //ROUTES
@@ -93,6 +138,8 @@ app.use('/contact', contactRouter);
 app.use('/tags', tagsRouter);
 
 app.use('/cart', cartRouter);
+
+
 
 
 app.listen(PORT, () => {
