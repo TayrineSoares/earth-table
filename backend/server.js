@@ -66,7 +66,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             customer_name: session.customer_details?.name || '',
             customer_address: session.customer_details?.address || {}
           }),
-          status: 'pending',
+          status: session.payment_status,
           products: cart
         });
 
