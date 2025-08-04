@@ -1,0 +1,67 @@
+.register-form{
+  display: flex;
+  flex-direction: column;
+
+}
+.register-form-name-container{
+  display: flex;
+  gap: 71px;
+}
+
+.first-name-container{
+  width: 550px;
+}
+
+.register-text{
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  font-variant: small-caps;
+  color: #BE7200;
+  height: 33px;
+  margin-bottom: 0;
+}
+
+.register-last{
+  margin: auto;
+}
+
+.register-input{
+  margin-top: 15px;
+  width: 455px;
+  opacity: 1;
+  gap: 10px;
+  border-radius: 15px;
+  border-width: 1px;
+  padding-top: 19px;
+  padding-right: 51px;
+  padding-bottom: 19px;
+  padding-left: 51px;
+  margin-bottom: 38px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-style: Medium;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 4%;
+  font-variant: small-caps;
+  color: #000000;
+}
+
+.register-email-number-container, 
+.register-password-container{
+  display: flex;
+  gap: 71px;
+}
+
+.have-account-text{
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  font-variant: small-caps;
+  margin-bottom: 73px;
+}

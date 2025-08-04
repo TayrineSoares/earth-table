@@ -116,3 +116,7 @@ nav {
   letter-spacing: 0.6px;
   text-decoration: none;
 }
+
+.nav-link.account-link {
+  cursor: pointer;
+}

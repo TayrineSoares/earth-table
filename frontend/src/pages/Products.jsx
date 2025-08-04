@@ -120,6 +120,16 @@ const Products = ({ addToCart }) => {
       {filteredProducts.map((product) => {
         return (
           <div className='products' key={product.id}>
+            {product.tags && product.tags.length > 0 && (
+              <div className="product-tags">
+                {getTagNames(product.tags).map((tagName) => (
+                  <div key={tagName} className="tag-icon">
+                    {tagIcons[tagName.toLowerCase()] || null}
+                    <span style={{ marginLeft: '4px' }}>{tagName}</span>
+                  </div>
+                ))}
+              </div>
+            )}  
             <img 
               className='product-image' 
               src={product.image_url} 
@@ -132,17 +142,6 @@ const Products = ({ addToCart }) => {
             <div className='product-description-container'>
               <p className='product-description'>{product.description}</p>
             </div>
-
-            {product.tags && product.tags.length > 0 && (
-              <div className="product-tags">
-                {getTagNames(product.tags).map((tagName) => (
-                  <div key={tagName} className="tag-icon">
-                    {tagIcons[tagName.toLowerCase()] || null}
-                    <span style={{ marginLeft: '4px' }}>{tagName}</span>
-                  </div>
-                ))}
-              </div>
-            )}  
             
             <div className='product-add-button-container'>
               <button 

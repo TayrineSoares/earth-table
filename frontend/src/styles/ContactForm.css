@@ -16,7 +16,7 @@
 }
 
 .your-name-input{
-  width: 1200px;
+  width: 1098px;
   opacity: 1;
   gap: 10px;
   margin-top: 15px;
@@ -33,10 +33,11 @@
   line-height: 100%;
   letter-spacing: 4%;
   font-variant: small-caps;
+  
 }
 
 .your-message-input{
-  width: 1200px;
+  width: 1098px;
   opacity: 1;
   gap: 10px;
   margin-top: 15px;
@@ -54,6 +55,7 @@
   letter-spacing: 4%;
   font-variant: small-caps;
   margin-bottom: 30px;
+  resize: none;
 }
 
 .contact-submit-button{

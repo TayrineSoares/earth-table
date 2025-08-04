@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
+import "../styles/Profile.css";
+import loginImage from "../assets/images/accountImage.png"
 
 const Profile = () => {
-
-  const { auth_user_id } = useParams(); //get the ID from the URL
-  const [ user, setUser ] = useState(null); 
-  const [ error, setError ] = useState("");
+  const { auth_user_id } = useParams();
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,82 +15,55 @@ const Profile = () => {
   const editableFields = [
     { label: "First Name", name: "first_name", type: "text" },
     { label: "Last Name", name: "last_name", type: "text" },
-    { label: "Phone Number", name: "phone_number", type: "tel" }, 
-    { label: "Address Line 1", name: "address_line1", type: "text" },
-    { label: "Address Line 2", name: "address_line2", type: "text" },
-    { label: "City", name: "city", type: "text" },
-    { label: "Province", name: "province", type: "text" },
-    { label: "Postal Code", name: "postal_code", type: "text" },
-    { label: "Country", name: "country", type: "text" },
-    
+    { label: "Phone Number", name: "phone_number", type: "tel" },
   ];
 
   const validateForm = () => {
-    const formErrors = []; 
-
+    const formErrors = [];
     const nameRegex = /^[a-zA-ZÀ-ÿ' -]{2,}$/;
 
     if (!user.first_name || !nameRegex.test(user.first_name.trim())) {
       formErrors.push("First name is required and must contain only letters.");
     }
-
     if (!user.last_name || !nameRegex.test(user.last_name.trim())) {
       formErrors.push("Last name is required and must contain only letters.");
     }
 
     const phoneRegex = /^\d{10}$/;
-
     if (user.phone_number && !phoneRegex.test(user.phone_number.trim())) {
       formErrors.push("Phone number must be 10 digits (no dashes or spaces).");
     }
-
-    const postalCodeRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
-
-    if (user.postal_code && !postalCodeRegex.test(user.postal_code.trim())) {
-      formErrors.push("Postal code must be a valid Canadian format (e.g., M4B1B3 or M4B 1B3).");
-    }
-
-     return formErrors;
+    return formErrors;
   };
 
-
-
-
-  useEffect (() => { 
+  useEffect(() => {
     const loadUser = async () => {
       try {
         const data = await fetchUserByAuthId(auth_user_id);
-        setUser(prev => ({
-          ...data, 
-          country: data.country || "Canada"
-        }))
+        setUser(data);
       } catch (err) {
-        setError(`Error: ${err.message}`)
+        setError(`Error: ${err.message}`);
       }
     };
-
-    loadUser(); 
+    loadUser();
   }, [auth_user_id]);
-  
-
 
   const handleChange = (e) => {
-    setUser({...user, [e.target.name]: e.target.value});
+    setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-
-  const handleUpdate = async (e) =>{
-    e.preventDefault(); 
+  const handleUpdate = async (e) => {
+    e.preventDefault();
     setMessage("");
     setError("");
     setLoading(true);
 
     const validationErrors = validateForm();
-      if (validationErrors.length > 0) {
-        setError(validationErrors.join("\n"));
-        setLoading(false);
-        return;
-      }
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join("\n"));
+      setLoading(false);
+      return;
+    }
 
     try {
       const updates = {
@@ -103,82 +77,111 @@ const Profile = () => {
         country: user.country,
         phone_number: user.phone_number
       };
-
       const updated = await patchUserProfile(auth_user_id, updates);
-          
       setMessage("Profile updated successfully!");
-      setUser(updated); //Update UI
-     
+      setUser(updated);
+      setIsEditing(false);
     } catch (err) {
       setError(`Server error: ${err.message}`);
     } finally {
-    setLoading(false); // Ensures the button re-enables
+      setLoading(false);
     }
   };
-    
+
   if (!user) return <p>Loading...</p>;
 
-  
-   return (
-    <div>
-      <h1>Profile page! </h1>
-      <br></br>
+  return (
+    <div className='profile-form-container'>
+      <div className="contact-header-image-container">
+        <img
+          className="contact-header-image"
+          src={loginImage}
+        />
+      </div>
+    <div className="profile-form">
+      <div className='page-wrapper'>
+
+      <h1 className="contact-text">Profile Page</h1>
+      <br />
 
       {message && <p style={{ color: "green" }}>{message}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ whiteSpace: "pre-line", color: "red" }}>{error}</p>}
 
       {!isEditing ? (
-        <div>
-          <p><strong>Email:</strong> {user.email}</p>
+        <>
+          <div className="your-name-container">
+            <p className="your-name-header">Email</p>
+            <p className='your-detail'>{user.email}</p>
+          </div>
+
           {editableFields.map(({ label, name }) => (
-            <p key={name}>
-              <strong>{label}:</strong> {user[name] || "(not set)"}
-            </p>
+            <div key={name} className="your-name-container">
+              <p className="your-name-header">{label}</p>
+              <p className='your-detail'>{user[name] || "(not set)"}</p>
+            </div>
           ))}
-          <button 
+
+          <button
+            className="contact-submit-button"
             onClick={() => {
-              setIsEditing(true); 
+              setIsEditing(true);
               setMessage("");
               setError("");
             }}
-          >
+            >
             Edit Profile
           </button>
-        </div>
+        </>
       ) : (
         <form onSubmit={handleUpdate}>
-          <div>
-            <label>Email:</label>
-            <input name="email" value={user.email} disabled /><br />
+          <div className="your-name-container">
+            <p className="your-name-header">Email</p>
+            <input
+              name="email"
+              value={user.email}
+              disabled
+              className="your-name-input"
+              />
           </div>
 
           {editableFields.map(({ label, name, type }) => (
-            <div key={name}>
-              <label>{label}:</label>
+            <div key={name} className="your-name-container">
+              <p className="your-name-header">{label}</p>
               <input
                 type={type}
                 name={name}
                 value={user[name] || ""}
                 onChange={handleChange}
-              />
-              <br />
+                className="your-name-input"
+                />
             </div>
           ))}
 
-          <button type="submit" disabled={loading}>Update Profile</button> 
-          <br></br>
-          <br></br>
-          <button type="button" onClick={() => {
-            setIsEditing(false); 
-            setMessage("");
-            setError("");
+          <br />
+          <button
+            className="contact-submit-button"
+            type="submit"
+            disabled={loading}
+            >
+            {loading ? "Updating..." : "Update Profile"}
+          </button>
+          <br /><br />
+          <button
+            className="contact-submit-button"
+            type="button"
+            onClick={() => {
+              setIsEditing(false);
+              setMessage("");
+              setError("");
             }}
-          >
-            Go back
+            >
+            Go Back
           </button>
         </form>
       )}
     </div>
+      </div>
+      </div>
   );
 };
 

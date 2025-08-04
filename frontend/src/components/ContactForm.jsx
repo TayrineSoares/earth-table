@@ -70,8 +70,8 @@ const ContactForm = () => {
         <br />
         <div className='your-message-container'>
           <p className='your-name-header'>Message</p>
-          <textarea
-          className='your-message-input'
+          <input
+            className='your-message-input'
             name="message"
             placeholder="TYPE YOUR MESSAGE HERE"
             value={form.message}

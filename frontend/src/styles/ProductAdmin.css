@@ -61,7 +61,7 @@
   max-width: 70vw;
 }
 
-.product-image {
+.admin-product-image {
   width: 150px;
   height: 150px;
   object-fit: cover;

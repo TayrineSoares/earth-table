@@ -165,3 +165,28 @@
   width: 300px; 
   margin: auto;
 }
+
+.product-tags{
+  position: absolute;
+  
+}
+
+.tag-icon{
+  display: flex;
+  align-items: center;
+  background-color: #FEE8D4;
+  border-radius: 15px;
+  padding-top: 8px;
+  padding-right: 11px;
+  padding-bottom: 8px;
+  padding-left: 11px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-style: Medium;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 4%;
+  font-variant: small-caps;
+  border: none;
+  margin: 5px;
+}

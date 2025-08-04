@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import loginImage from "../assets/images/accountImage.png"
+import "../styles/Register.css"
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -11,6 +12,9 @@ const Register = ({setUser}) => {
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   const navigate = useNavigate();
 
@@ -29,7 +33,13 @@ const Register = ({setUser}) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          first_name: firstName, 
+          last_name: lastName, 
+          phone_number: phoneNumber 
+        }),
       });
 
       const data = await res.json();
@@ -79,86 +89,109 @@ const Register = ({setUser}) => {
         </div>
       </div>
 
-      <div className="register form">
+      <div className="register-form">
         <form onSubmit={handleRegisterSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            />
-          
-          <br></br>
-
-          <div className='password section'>
-            <input
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            />
-
-            <button 
-            type="button" 
-            onMouseDown={() => setShowPassword(true)}
-            onMouseUp={() => setShowPassword(false)}
-            onMouseLeave={() => setShowPassword(false)}
-            tabIndex={-1} // skip this element when tabbing with the keyboard
-            aria-label="Show password while holding"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              marginLeft: '0.1rem', 
-              color: 'black',
-            }}
-            >
-            {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-            </button>
-
+          <div className='register-form-name-container'>
+            <div className='register-first-name-container'>
+              <p className='register-text'>First Name</p>
+              <input
+                className='register-input'
+                type="text"
+                placeholder="FIRST NAME"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className='register-last'>
+              <p className='register-text'>Last Name</p>
+              <input
+                className='register-input'
+                type="text"
+                placeholder="LAST NAME"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-          <div className="confirm-password section">
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+          <div className='register-email-number-container'>
+            <div className='register-number-container'>
+              <p className='register-text'>Phone Number</p>
+                <input
+                  className='register-input'
+                  type="tel"
+                  placeholder="XXX XXX XXXX"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
+            </div>
+            <div className='register-email-container'>
+              <p className='register-text'>Email</p>
+              <input
+                className='register-input'
+                type="email"
+                placeholder="EMAIL"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                />
+            </div>
+          </div>
+
+          <div className='register-password-container'>
+            <div className='register-password'>
+              <p className='register-text'>Password</p>
+              <input
+              className='register-input'
+              type={showPassword ? 'text' : 'password'}
+              placeholder="PASSWORD"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               />
-          </div>
-                    
-          <br></br>
+            </div>
+
+            <div className="register-confirm-password">
+              <p className='register-text'>Confirm Password</p>
+              <input
+                className='register-input'
+                type="password"
+                placeholder="CONFIRM PASSWORD"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                />
+            </div>
+
+          </div>    
 
           {confirmPassword && (
             <p>
             {password === confirmPassword ? '' : ' Passwords do not match'}
-          </p>
+            </p>
         )}
 
-          <button type="submit" disabled={password !== confirmPassword}> Register </button>
+          <button
+            className="login-submit-button"
+            type="submit" 
+            disabled={password !== confirmPassword}
+          > Sign Up </button>
         </form>
 
+          <p className='have-account-text'>ALREADY HAVE AN ACCOUNT?{' '}
+            <Link 
+            className="footer-account-register"
+            to='/login'>SIGN IN</Link> 
+          </p>
         
-        <br></br>
-        
-        <Link to='/'>Back to Home Page</Link> 
-
-
       </div>
 
       {/* Display success or error message */}
       {message && <p>{message}</p>}
 
-      {alreadyRegistered && (
-        
-      <div className='register section'>
-        <p>Already Registered? </p>
-        <Link to='/login'>Login here</Link> 
-      </div>
-      )}
       
       </div>
     </div>

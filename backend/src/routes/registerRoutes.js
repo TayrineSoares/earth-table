@@ -5,7 +5,7 @@ const supabase = require('../../supabase/db');
 // POST /register
 // registers a new user with Supabase Auth
 router.post('/', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, first_name, last_name, phone_number } = req.body;
 
   try {
     // Call Supabase Auth to create a new user
@@ -24,16 +24,9 @@ router.post('/', async (req, res) => {
       .insert({
         auth_user_id: data.user.id, 
         email: data.user.email,
-        first_name: "",
-        last_name: "",
-        phone_number: "",
-        address_line1: "",
-        address_line2: "",
-        city: "", 
-        province: "",
-        postal_code: "",
-        country: "",
-        
+        first_name,
+        last_name,
+        phone_number,
         is_admin: false,
       })
       .select();

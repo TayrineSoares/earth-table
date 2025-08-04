@@ -63,12 +63,7 @@ const Navbar = ({ user, onLogout }) => {
                     <>
                       <li>
                         <NavLink to="/login" className="dropdown-link" onClick={closeMenu}>
-                          LOGIN
-                        </NavLink>
-                      </li>
-                      <li>
-                        <NavLink to="/register" className="dropdown-link" onClick={closeMenu}>
-                          REGISTER
+                          LOGIN/REGISTER
                         </NavLink>
                       </li>
                     </>

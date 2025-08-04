@@ -97,6 +97,13 @@
   margin-bottom: 20px;
 }
 
+.login-submit-button:active {
+  transform: scale(0.98);
+  background: #EDA413;
+  box-shadow: none;
+  transform: none;
+}
+
 .forgot-password{
   margin-top: 0;
   width: 133px;

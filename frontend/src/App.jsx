@@ -6,23 +6,40 @@ import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
 import { supabase } from './supabaseClient';
 
-
 const App = () => {
   const [cart, setCart] = useState([]);
   const [showCartPopup, setShowCartPopup] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-
+  // Load cart from localStorage & set user on app start & auth changes
   useEffect(() => {
-    // Check if a session exists (only during this sessionStorage lifespan)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Load logged-in user's cart or empty
+        const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
+        setCart(savedCart ? JSON.parse(savedCart) : []);
+      } else {
+        // Load guest cart or empty
+        const guestCart = localStorage.getItem('cart_guest');
+        setCart(guestCart ? JSON.parse(guestCart) : []);
+      }
     });
 
-    // Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
+        setCart(savedCart ? JSON.parse(savedCart) : []);
+      } else {
+        const guestCart = localStorage.getItem('cart_guest');
+        setCart(guestCart ? JSON.parse(guestCart) : []);
+      }
     });
 
     return () => {
@@ -30,10 +47,18 @@ const App = () => {
     };
   }, []);
 
+  // Save cart to localStorage on cart or user change
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`cart_${user.id}`, JSON.stringify(cart));
+    } else {
+      localStorage.setItem('cart_guest', JSON.stringify(cart));
+    }
+  }, [cart, user]);
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut(); // Supabase logout
+      const { error } = await supabase.auth.signOut();
 
       if (error) {
         console.error('Logout failed:', error.message);
@@ -47,7 +72,6 @@ const App = () => {
   };
 
   const addToCart = (product) => {
-
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
 
@@ -64,45 +88,39 @@ const App = () => {
   };
 
   const removeAll = (product) => {
-    setCart((prevCart) => {
-      return prevCart.filter(item => item.id !== product.id);
-    });
+    setCart((prevCart) => prevCart.filter(item => item.id !== product.id));
   };
 
   const removeOneFromCart = (product) => {
-
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
-
       const updatedCart = [...prevCart];
 
-    if (updatedCart[existingItemIndex].quantity > 1) {
-      updatedCart[existingItemIndex].quantity -= 1;
+      if (updatedCart[existingItemIndex].quantity > 1) {
+        updatedCart[existingItemIndex].quantity -= 1;
+        return updatedCart;
+      } else {
+        updatedCart.splice(existingItemIndex, 1);
+        return updatedCart;
+      }
+    });
+  };
+
+  const addOneFromCart = (product) => {
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
+      const updatedCart = [...prevCart];
+
+      if (existingItemIndex !== -1) {
+        updatedCart[existingItemIndex].quantity += 1;
+      }
       return updatedCart;
-    } else {
-      updatedCart.splice(existingItemIndex, 1);
-      return updatedCart;
-    }
-  });
-};
-
-const addOneFromCart = (product) => {
-
-  setCart((prevCart) => {
-    const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
-
-    const updatedCart = [...prevCart];
-
-  if (updatedCart[existingItemIndex].quantity >= 1) {
-    updatedCart[existingItemIndex].quantity += 1;
-    return updatedCart;
-  }
-});
-};
+    });
+  };
 
   return (
     <div>
-      <Navbar user={user} onLogout={handleLogout}/>
+      <Navbar user={user} onLogout={handleLogout} />
       <AppRoutes
         user={user}
         setUser={setUser}
@@ -116,7 +134,6 @@ const addOneFromCart = (product) => {
       />
       <Footer />
     </div>
-   
   );
 };
 

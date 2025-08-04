@@ -5,7 +5,6 @@ import {
   Contact,
   Products,
   Cart,
-  Checkout,
   Confirmation,
   Admin,
   Login,
@@ -13,6 +12,7 @@ import {
   Profile,
   ResetPassword,
   UpdatePassword,
+  ProductDetail,
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
@@ -42,13 +42,13 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
                                       />} 
                                     />
           <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/checkout" element={<Checkout />} />
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register setUser={setUser} />} />
           <Route path="/profile/:auth_user_id" element={<Profile />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
         </Routes>
       </div>
 

@@ -149,7 +149,7 @@ const ProductAdmin = () => {
               key={product.id}
               className="product-card"
             >
-              <img src={product.image_url} alt={product.slug} className="product-image" />
+              <img src={product.image_url} alt={product.slug} className="admin-product-image" />
               <div className="product-details">
                 <p><strong>Slug:</strong> {product.slug}</p>
                 <p><strong>Description:</strong> {product.description}</p>
