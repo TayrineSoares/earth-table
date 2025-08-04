@@ -39,7 +39,7 @@ app.get('/cart', (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-  const { cartItems } = req.body;
+  const { cartItems, email, userId } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -58,6 +58,11 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: 'http://localhost:5173/confirmation',
       cancel_url: 'http://localhost:5173/cart',
+      metadata: {
+        email: email || '',
+        userId: userId || '',
+        cart: JSON.stringify(cartItems),
+      }
     });
 
     res.json({ url: session.url });
