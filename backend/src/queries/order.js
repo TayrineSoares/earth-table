@@ -18,7 +18,7 @@ async function getOrderById(orderId) {
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
   return data;
-};
+}
 
 async function getOrderByUserId(userId) {
   const { data, error } = await supabase
@@ -29,9 +29,11 @@ async function getOrderByUserId(userId) {
     
   if (error) throw new Error(`Error fetching order by userId: ${error.message}`);
   return data;
-};
+}
 
 async function createOrderWithProducts({ 
+  user_id = null,
+  buyer_email,
   buyer_last_name,
   buyer_phone_number,
   buyer_address,
@@ -39,10 +41,16 @@ async function createOrderWithProducts({
   status = 'pending', // default status if not provided
   products = []
 }) {
+
+  if (products.length === 0) {
+    throw new Error("No products provided for the order.");
+  }
   // insert order into orders table
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert([{
+      user_id,
+      buyer_email,
       buyer_last_name,
       buyer_phone_number,
       buyer_address,

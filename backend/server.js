@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const { createOrderWithProducts } = require('./src/queries/order');
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -22,7 +23,7 @@ const PORT = 8080;
 
 //MAKE SURE THIS COMES BEFORE EXPRESS.JSON
 // This route is called by Stripe (not the frontend) after a customer successfully pays
-app.post('/webhook', express.raw({ type: 'application/json' }), (request, response) => {
+app.post('/webhook', express.raw({ type: 'application/json' }), async (request, response) => {
   const sig = request.headers['stripe-signature'];
   let event;
 
@@ -48,6 +49,31 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (request, respon
       console.log("Payment succeeded");
       console.log("User email:", email);
       console.log("Cart:", cart);
+
+       try {
+        await createOrderWithProducts({
+          user_id: userId || null,
+          buyer_email: email,
+          buyer_last_name: null,
+          buyer_phone_number: null,
+          buyer_address: null,
+          buyer_stripe_payment_info: JSON.stringify({
+            session_id: session.id,
+            payment_intent: session.payment_intent,
+            amount_total: session.amount_total,
+            currency: session.currency,
+            payment_status: session.payment_status,
+            customer_name: session.customer_details?.name || '',
+            customer_address: session.customer_details?.address || {}
+          }),
+          status: 'pending',
+          products: cart
+        });
+
+        console.log("Order saved to database");
+      } catch (err) {
+        console.error("Failed to save order:", err.message);
+      }
     } else {
       console.log(`Skipped event: ${event.type}`);
     }
