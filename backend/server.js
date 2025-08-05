@@ -128,7 +128,8 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: 'http://localhost:5173/confirmation',
       cancel_url: 'http://localhost:5173/cart',
-      customer_email: email,
+      ...(userId && email ? { customer_email: email } : {}), // add email if logged in, if not leave blank
+
       metadata: {
         email: email || '',
         userId: userId || '',

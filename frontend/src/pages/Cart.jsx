@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png"
 import { loadStripe } from '@stripe/stripe-js';
+import { supabase } from '../supabaseClient';
 import "../styles/Cart.css"
+
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -42,12 +44,23 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const handleCheckout = async () => {
     const stripe = await stripePromise;
 
+    //get supabase session 
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error("Error getting Supabase session:", error.message);
+    }
+
+    const userId = session?.user?.id || null;
+    const email = session?.user?.email || null;
+
+
     const response = await fetch('http://localhost:8080/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ cartItems: cart }),
+      body: JSON.stringify({ cartItems: cart, email, userId }),
     });
 
     const data = await response.json();
