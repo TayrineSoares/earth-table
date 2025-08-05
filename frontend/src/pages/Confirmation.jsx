@@ -42,6 +42,15 @@ const Confirmation = () => {
       <p>Status: {order.status}</p>
       <p>Total: ${(order.total_cents / 100).toFixed(2)}</p>
 
+      <h2>Items:</h2>
+      <ul>
+        {order.products?.map((product, index) => (
+          <li key={index}>
+            {product.quantity}x {product.slug} – ${(product.unit_price_cents / 100).toFixed(2)}
+          </li>
+        ))}
+      </ul>
+
       
 
       <p>A confirmation email has been sent to you.</p>
