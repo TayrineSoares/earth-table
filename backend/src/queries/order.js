@@ -18,7 +18,7 @@ async function getOrderById(orderId) {
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
   return data;
-};
+}
 
 async function getOrderByUserId(userId) {
   const { data, error } = await supabase
@@ -29,10 +29,95 @@ async function getOrderByUserId(userId) {
     
   if (error) throw new Error(`Error fetching order by userId: ${error.message}`);
   return data;
+}
+
+async function createOrderWithProducts({ 
+  user_id = null,
+  buyer_email,
+  buyer_name,
+  buyer_phone_number,
+  buyer_address,
+  buyer_stripe_payment_info,
+  status = 'pending', // default status if not provided
+  stripe_session_id,
+  total_cents,
+  products = [],
+  
+}) {
+
+  if (products.length === 0) {
+    throw new Error("No products provided for the order.");
+  }
+  // insert order into orders table
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert([{
+      user_id,
+      buyer_email,
+      buyer_name,
+      buyer_phone_number,
+      buyer_address,
+      buyer_stripe_payment_info,
+      status, 
+      stripe_session_id, 
+      total_cents
+    }])
+    .select()
+    .single();
+
+  if (orderError) throw new Error(`Error creating order: ${orderError.message}`);
+  
+  // create array of records to insert into orders_products table
+  const orderProducts = products.map(product => ({
+    order_id: order.id,
+    product_id: product.id,
+    quantity: product.quantity,
+    unit_price_cents: product.price_cents
+  }));
+
+  // insert all the products entries into the orders_products table
+  const { error: orderProductsError } = await supabase
+    .from('order_products')
+    .insert(orderProducts);
+
+  if (orderProductsError) throw new Error(`Error inserting order products: ${orderProductsError.message}`);
+
+  return order;
+}
+
+const getOrderByStripeSessionId = async (sessionId) => {
+  // 1. Fetch the order matching the session_id from buyer_stripe_payment_info
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('stripe_session_id', sessionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Error fetching order: ${error.message}`);
+  }
+
+  if (!order) return null;
+
+
+  // Format the result to send to frontend
+  return {
+    id: order.id,
+    status: order.status,
+    total_cents: order.buyer_stripe_payment_info?.amount_total || null,
+    buyer_email: order.buyer_email || null,
+    buyer_name: order.buyer_name || null,
+    created_at: order.created_at,
+    total_cents: order.total_cents,
+    
+  };
 };
+
 
 module.exports = {
   getAllOrders,
   getOrderById,
-  getOrderByUserId
+  getOrderByUserId,
+  createOrderWithProducts, 
+  getOrderByStripeSessionId
 };

@@ -4,12 +4,30 @@ const router = express.Router();
 const {
   getAllOrders,
   getOrderById,
-  getOrderByUserId
+  getOrderByUserId, 
+  getOrderByStripeSessionId,
 } = require('../queries/order')
 
 const { getProductsForOrder } = require('../queries/order_product')
 
 // MORE SPECIFIC ROUTES GO FIRST
+
+// GET ORDER BY STRIPE SESSION ID (FOR CONFIRMATION PAGE RIGHT AFTER PAYMENT)
+router.get('/session/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    const order = await getOrderByStripeSessionId(sessionId);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json(order);
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // GET PRODUCTS FOR AN ORDER
 router.get('/:id/products', async (req, res) => {
