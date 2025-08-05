@@ -132,7 +132,11 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: {
         email: email || '',
         userId: userId || '',
-        cart: JSON.stringify(cartItems),
+        cart: JSON.stringify(cartItems.map(item => ({
+          id: item.id,
+          quantity: item.quantity,
+          price_cents: item.price_cents
+        }))),
       }
     });
 
