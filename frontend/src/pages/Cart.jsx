@@ -91,7 +91,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
             <div className='checkout-total'>
               <p className='total'>Total</p>
-              <p className='total'>{(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
+              <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
 
             <button 
