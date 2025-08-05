@@ -39,7 +39,10 @@ async function createOrderWithProducts({
   buyer_address,
   buyer_stripe_payment_info,
   status = 'pending', // default status if not provided
-  products = []
+  stripe_session_id,
+  total_cents,
+  products = [],
+  
 }) {
 
   if (products.length === 0) {
@@ -55,7 +58,9 @@ async function createOrderWithProducts({
       buyer_phone_number,
       buyer_address,
       buyer_stripe_payment_info,
-      status
+      status, 
+      stripe_session_id, 
+      total_cents
     }])
     .select()
     .single();
@@ -80,10 +85,39 @@ async function createOrderWithProducts({
   return order;
 }
 
+const getOrderByStripeSessionId = async (sessionId) => {
+  // 1. Fetch the order matching the session_id from buyer_stripe_payment_info
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('stripe_session_id', sessionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Error fetching order: ${error.message}`);
+  }
+
+  if (!order) return null;
+
+
+  // Format the result to send to frontend
+  return {
+    id: order.id,
+    status: order.status,
+    total_cents: order.buyer_stripe_payment_info?.amount_total || null,
+    buyer_email: order.buyer_email || null,
+    buyer_name: order.buyer_name || null,
+    created_at: order.created_at,
+    total_cents: order.total_cents,
+    
+  };
+};
+
 
 module.exports = {
   getAllOrders,
   getOrderById,
   getOrderByUserId,
-  createOrderWithProducts
+  createOrderWithProducts, 
+  getOrderByStripeSessionId
 };

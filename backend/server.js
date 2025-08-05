@@ -68,6 +68,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             customer_address: session.customer_details?.address || {}
           }),
           status: session.payment_status,
+          stripe_session_id: session.id,
+          total_cents: session.amount_total,
           products: cart
         });
 
@@ -126,7 +128,7 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: item.quantity,
       })),
       mode: 'payment',
-      success_url: 'http://localhost:5173/confirmation',
+      success_url: 'http://localhost:5173/confirmation?session_id={CHECKOUT_SESSION_ID}', // Stripe will replace {CHECKOUT_SESSION_ID} with the actual ID (e.g., cs_test_123abc...)
       cancel_url: 'http://localhost:5173/cart',
       ...(userId && email ? { customer_email: email } : {}), // add email if logged in, if not leave blank
 
