@@ -42,6 +42,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         session.customer_details?.email ||
         metadata?.email ||
         'unknown';
+      const buyerName = session.customer_details?.name;
 
       const userId = metadata?.userId || null;
       const cart = JSON.parse(metadata?.cart || '[]');
@@ -54,7 +55,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         await createOrderWithProducts({
           user_id: userId || null,
           buyer_email: email,
-          buyer_last_name: null,
+          buyer_name: buyerName,
           buyer_phone_number: null,
           buyer_address: null,
           buyer_stripe_payment_info: JSON.stringify({

@@ -34,7 +34,7 @@ async function getOrderByUserId(userId) {
 async function createOrderWithProducts({ 
   user_id = null,
   buyer_email,
-  buyer_last_name,
+  buyer_name,
   buyer_phone_number,
   buyer_address,
   buyer_stripe_payment_info,
@@ -51,7 +51,7 @@ async function createOrderWithProducts({
     .insert([{
       user_id,
       buyer_email,
-      buyer_last_name,
+      buyer_name,
       buyer_phone_number,
       buyer_address,
       buyer_stripe_payment_info,
