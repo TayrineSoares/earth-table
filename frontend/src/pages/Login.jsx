@@ -27,13 +27,8 @@ const Login = ({setUser}) => {
     if (error) {
       setMessage(`Login failed: ${error.message}`);
     } else {
-      setMessage(`You are logged in as ${data.user.email}`);
-
       setUser(data.user);
-
-      setTimeout(() => {
-        navigate(`/products/category`);
-      }, 1500);
+      navigate(`/`)
     }
   };
 

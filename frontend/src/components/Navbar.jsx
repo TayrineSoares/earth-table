@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import "../styles/NavBar.css";
 import earthLogo from "../assets/images/earthLogo.png";
 import earthLogoText from "../assets/images/earthLogoText.png";
@@ -7,6 +7,7 @@ import cartImage from "../assets/images/cartImage.png";
 
 const Navbar = ({ user, onLogout }) => {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef(null);
 
   const links = [
     { to: "/about", label: "ABOUT" },
@@ -16,6 +17,27 @@ const Navbar = ({ user, onLogout }) => {
 
   const toggleMenu = () => setShowAccountMenu((prev) => !prev);
   const closeMenu = () => setShowAccountMenu(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target)
+      ) {
+        closeMenu();
+      }
+    };
+
+    if (showAccountMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showAccountMenu]);
 
   return (
     <nav>
@@ -45,7 +67,7 @@ const Navbar = ({ user, onLogout }) => {
               </li>
             ))}
 
-            <li className="account-menu-container">
+            <li className="account-menu-container" ref={accountMenuRef}>
               <div
                 className="nav-link account-link"
                 onClick={toggleMenu}

@@ -12,40 +12,48 @@ const App = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // Load cart from localStorage & set user on app start & auth changes
   useEffect(() => {
+    // 1. Load guest cart immediately on mount (for not logged in users)
+    const guestCart = localStorage.getItem('cart_guest');
+    setCart(guestCart ? JSON.parse(guestCart) : []);
+    setShowCartPopup(guestCart ? JSON.parse(guestCart).length > 0 : false);
+  
+    // 2. Then get user session asynchronously and load user cart if logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
-
+  
       if (currentUser) {
-        // Load logged-in user's cart or empty
         const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
-        setCart(savedCart ? JSON.parse(savedCart) : []);
-      } else {
-        // Load guest cart or empty
-        const guestCart = localStorage.getItem('cart_guest');
-        setCart(guestCart ? JSON.parse(guestCart) : []);
+        const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+        setCart(parsedCart);
+        setShowCartPopup(parsedCart.length > 0);
       }
     });
-
+  
+    // 3. Listen to auth state changes (login/logout)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
-
+  
       if (currentUser) {
         const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
-        setCart(savedCart ? JSON.parse(savedCart) : []);
+        const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+        setCart(parsedCart);
+        setShowCartPopup(parsedCart.length > 0);
       } else {
+        // logged out, restore guest cart
         const guestCart = localStorage.getItem('cart_guest');
-        setCart(guestCart ? JSON.parse(guestCart) : []);
+        const parsedGuestCart = guestCart ? JSON.parse(guestCart) : [];
+        setCart(parsedGuestCart);
+        setShowCartPopup(parsedGuestCart.length > 0);
       }
     });
-
+  
     return () => {
       listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, []);  
 
   // Save cart to localStorage on cart or user change
   useEffect(() => {
