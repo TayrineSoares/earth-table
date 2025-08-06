@@ -43,13 +43,15 @@ router.get('/:id/products', async (req, res) => {
 
 // GET ORDERS BY USER ID 
 router.get('/user/:id', async (req, res) => {
+  const authUserId = req.params.id;
+
   try {
-    const userId = req.params.id;
-    const userOrders = await getOrderByUserId(userId);
+    
+    const userOrders = await getOrderByUserId(authUserId);
     res.json(userOrders);
 
   } catch (error) {
-    console.log(error);
+    console.error("Failed to fetch orders by authUserId:", error.message);
     res.status(500).json({error: error.message});
   }
 });
