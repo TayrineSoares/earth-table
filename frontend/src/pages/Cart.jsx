@@ -111,57 +111,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>{(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
 
-            <div className="delivery-method-container">
-              <h3>Select Delivery Method:</h3>
-
-              <label>
-                <input
-                  type="radio"
-                  name="deliveryMethod"
-                  value="pickup"
-                  checked={deliveryMethod === "pickup"}
-                  onChange={() => setDeliveryMethod("pickup")}
-                />
-                Pickup
-              </label>
-
-              {deliveryMethod === "pickup" && (
-                <div className="pickup-payment-options">
-                  <label>
-                    <input
-                      type="radio"
-                      name="pickupPayment"
-                      value="stripe"
-                      checked={pickupPaymentOption === "stripe"}
-                      onChange={() => setPickupPaymentOption("stripe")}
-                    />
-                    Pay with Card (Online)
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="pickupPayment"
-                      value="pay_at_pickup"
-                      checked={pickupPaymentOption === "pay_at_pickup"}
-                      onChange={() => setPickupPaymentOption("pay_at_pickup")}
-                    />
-                    Pay at Pickup
-                  </label>
-                </div>
-              )}
-
-              <label>
-                <input
-                  type="radio"
-                  name="deliveryMethod"
-                  value="delivery"
-                  checked={deliveryMethod === "delivery"}
-                  onChange={() => setDeliveryMethod("delivery")}
-                />
-                Delivery (Fees apply)
-              </label>
-            </div>
-
+            
             <button 
               onClick={handleCheckout}
               className="checkout-button"

@@ -29,7 +29,8 @@ const OrderAdmin = () => {
       <table className="order-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>Order ID</th>
+            <th>User ID</th>
             <th>Status</th>
             <th>Total ($)</th>
             <th>Email</th>
@@ -40,6 +41,8 @@ const OrderAdmin = () => {
           {orders.map((order) => (
             <tr key={order.id}>
               <td>{order.id}</td>
+              <td>{order.user_id}</td>
+              
               <td>{order.status}</td>
               <td>{(order.total_cents / 100).toFixed(2)}</td>
               <td>{order.buyer_email}</td>
