@@ -9,7 +9,7 @@ import "../styles/Cart.css"
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
-
+ 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
       .then(res => {
@@ -98,7 +98,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             </div>
 
             <div className='checkout-summary-tax'>
-              <p className='tax'>TAX</p>
+              <p className='tax'>HST</p>
               <p className='tax'>13%</p>
             </div>
 

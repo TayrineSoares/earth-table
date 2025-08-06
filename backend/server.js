@@ -95,7 +95,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             <p><strong>Status:</strong> ${detailedOrder.status}</p>
             <h3>Items:</h3>
             <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)}</p>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+
             <p>Earth Table Team 🧡 </p>
           `
         });
@@ -111,7 +112,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             <p><strong>Status:</strong> ${detailedOrder.status}</p>
             <h3>Items:</h3>
             <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)}</p>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+
           `
         });
 
@@ -160,12 +162,12 @@ app.post('/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: cartItems.map(item => ({
         price_data: {
-          currency: 'usd',
+          currency: 'cad',
           product_data: {
-            name: item.slug,
+            name: `${item.slug} (includes tax)` ,
             images: [item.image_url],
           },
-          unit_amount: item.price_cents,
+          unit_amount: Math.round(item.price_cents * 1.13), // include 13% tax
         },
         quantity: item.quantity,
       })),

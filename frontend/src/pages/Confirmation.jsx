@@ -56,7 +56,7 @@ const Confirmation = () => {
         <p>No items found in this order.</p>
       )}
       
-      <p>Total: ${(order.total_cents / 100).toFixed(2)}</p>
+      <p>Total (incl. tax): ${(order.total_cents / 100).toFixed(2)}</p>
       
 
       <p>A confirmation email has been sent to {order.buyer_email || 'your email address'}.</p>
