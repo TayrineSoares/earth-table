@@ -131,6 +131,7 @@ const App = () => {
         removeAll={removeAll}
         showCartPopup={showCartPopup}
         setShowCartPopup={setShowCartPopup}
+        
       />
       <Footer />
     </div>

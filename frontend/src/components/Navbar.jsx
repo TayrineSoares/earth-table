@@ -81,7 +81,7 @@ const Navbar = ({ user, onLogout }) => {
                       </li>
                       <li>
                         <NavLink
-                          to="/orders"
+                          to={`/orders/${user.id}`}
                           className="dropdown-link"
                           onClick={closeMenu}
                         >
