@@ -9,6 +9,9 @@ import "../styles/Cart.css"
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
+
+  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
+  const [pickupPaymentOption, setPickupPaymentOption] = useState("stripe");
  
   useEffect(() => {
     fetch('http://localhost:8080/cart')
@@ -42,8 +45,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
   const handleCheckout = async () => {
-    const stripe = await stripePromise;
-
     //get supabase session 
     const { data: { session }, error } = await supabase.auth.getSession();
 
@@ -54,6 +55,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const userId = session?.user?.id || null;
     const email = session?.user?.email || null;
 
+    const stripe = await stripePromise;  
 
     const response = await fetch('http://localhost:8080/create-checkout-session', {
       method: 'POST',
@@ -84,7 +86,9 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       <div className='page-wrapper'>
         <div className='checkout-page-container'>
           
+          
           <div className='checkout-order-summary'>
+
             <p className='checkout-summary-text'>Order Summary</p>
             
             <div className='checkout-summary-items'>
@@ -105,6 +109,57 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             <div className='checkout-total'>
               <p className='total'>Total</p>
               <p className='total'>{(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
+            </div>
+
+            <div className="delivery-method-container">
+              <h3>Select Delivery Method:</h3>
+
+              <label>
+                <input
+                  type="radio"
+                  name="deliveryMethod"
+                  value="pickup"
+                  checked={deliveryMethod === "pickup"}
+                  onChange={() => setDeliveryMethod("pickup")}
+                />
+                Pickup
+              </label>
+
+              {deliveryMethod === "pickup" && (
+                <div className="pickup-payment-options">
+                  <label>
+                    <input
+                      type="radio"
+                      name="pickupPayment"
+                      value="stripe"
+                      checked={pickupPaymentOption === "stripe"}
+                      onChange={() => setPickupPaymentOption("stripe")}
+                    />
+                    Pay with Card (Online)
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="pickupPayment"
+                      value="pay_at_pickup"
+                      checked={pickupPaymentOption === "pay_at_pickup"}
+                      onChange={() => setPickupPaymentOption("pay_at_pickup")}
+                    />
+                    Pay at Pickup
+                  </label>
+                </div>
+              )}
+
+              <label>
+                <input
+                  type="radio"
+                  name="deliveryMethod"
+                  value="delivery"
+                  checked={deliveryMethod === "delivery"}
+                  onChange={() => setDeliveryMethod("delivery")}
+                />
+                Delivery (Fees apply)
+              </label>
             </div>
 
             <button 
