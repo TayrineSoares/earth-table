@@ -12,6 +12,17 @@ const { getProductsForOrder } = require('../queries/order_product')
 
 // MORE SPECIFIC ROUTES GO FIRST
 
+// GET ALL ORDERS 
+router.get('/', async (req, res) => {
+  try {
+    const allOrders = await getAllOrders(); 
+    res.json(allOrders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({error: error.message});
+  }
+}); 
+
 // GET ORDER BY STRIPE SESSION ID (FOR CONFIRMATION PAGE RIGHT AFTER PAYMENT)
 router.get('/session/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
@@ -43,13 +54,15 @@ router.get('/:id/products', async (req, res) => {
 
 // GET ORDERS BY USER ID 
 router.get('/user/:id', async (req, res) => {
+  const authUserId = req.params.id;
+
   try {
-    const userId = req.params.id;
-    const userOrders = await getOrderByUserId(userId);
+    
+    const userOrders = await getOrderByUserId(authUserId);
     res.json(userOrders);
 
   } catch (error) {
-    console.log(error);
+    console.error("Failed to fetch orders by authUserId:", error.message);
     res.status(500).json({error: error.message});
   }
 });
@@ -61,18 +74,6 @@ router.get('/:id', async (req, res) => {
     const order = await getOrderById(orderId); 
     res.json(order);
 
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({error: error.message});
-  }
-}); 
-
-
-// GET ALL ORDERS 
-router.get('/', async (req, res) => {
-  try {
-    const allOrders = await getAllOrders(); 
-    res.json(allOrders);
   } catch (error) {
     console.log(error);
     res.status(500).json({error: error.message});

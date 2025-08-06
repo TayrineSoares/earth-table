@@ -16,7 +16,45 @@ const fetchOrderBySessionId = async (sessionId) => {
   }
 };
 
+const fetchOrdersByAuthId = async (authUserId) => {
+  try {
+    const res = await fetch(`http://localhost:8080/orders/user/${authUserId}`); 
+
+    if(!res.ok) {
+      throw new Error(`Failed to fetch orders: ${res.status}`);
+    }
+  
+  const data = await res.json(); 
+  return data;
+
+  } catch (err) {
+    console.error('Error in fetchOrdersByAuthId:', err);
+    return [];
+
+  }
+};
+
+const fetchAllOrders = async () => {
+  try {
+    const response = await fetch('http://localhost:8080/orders');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch orders: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching all orders:", error.message);
+    return [];
+  }
+}
+
+
+
+
 export { 
-  fetchOrderBySessionId
+  fetchOrderBySessionId,
+  fetchOrdersByAuthId, 
+  fetchAllOrders
  
 }; 

@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { createOrderWithProducts } = require('./src/queries/order');
+const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
+const { sendEmail } = require('./src/utils/email')
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -51,6 +52,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       console.log("User email:", email);
       console.log("Cart:", cart);
 
+      console.log("Stripe webhook received and parsed successfully");
+
        try {
         await createOrderWithProducts({
           user_id: userId || null,
@@ -74,6 +77,47 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         });
 
         console.log("Order saved to database");
+        const detailedOrder = await getOrderByStripeSessionId(session.id);
+
+        const productListHTML = detailedOrder.products.map(p => {
+          return `<li>${p.quantity}x ${p.slug} - $${(p.unit_price_cents / 100).toFixed(2)}</li>`;
+        }).join('');
+
+        await sendEmail({
+          // to: email, UPDATE THIS LINE AFTER REGISTERING DOMAIN
+          to: 'earthtabledatabase@gmail.com',
+          subject: "Order Confirmation - Earth Table",
+          html: `
+            <h2>Thank you for your order!</h2>
+            <p>We've received your order and it's being processed.</p>
+            <h3>Order Summary:</h3>
+            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
+            <p><strong>Status:</strong> ${detailedOrder.status}</p>
+            <h3>Items:</h3>
+            <ul>${productListHTML}</ul>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+
+            <p>Earth Table Team 🧡 </p>
+          `
+        });
+
+        // Send notification email to business
+        await sendEmail({
+          to: 'earthtabledatabase@gmail.com', // UPDATE THIS LINE AFTER REGISTERING DOMAIN to selena's email 
+          subject: `🛒 New Order from ${email}`,
+          html: `
+            <h2>New Order Received</h2>
+            <p><strong>Email:</strong> ${detailedOrder.buyer_email}</p>
+            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
+            <p><strong>Status:</strong> ${detailedOrder.status}</p>
+            <h3>Items:</h3>
+            <ul>${productListHTML}</ul>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+
+          `
+        });
+
+
       } catch (err) {
         console.error("Failed to save order:", err.message);
       }
@@ -118,12 +162,12 @@ app.post('/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: cartItems.map(item => ({
         price_data: {
-          currency: 'usd',
+          currency: 'cad',
           product_data: {
-            name: item.slug,
+            name: `${item.slug} (includes tax)` ,
             images: [item.image_url],
           },
-          unit_amount: item.price_cents,
+          unit_amount: Math.round(item.price_cents * 1.13), // include 13% tax
         },
         quantity: item.quantity,
       })),

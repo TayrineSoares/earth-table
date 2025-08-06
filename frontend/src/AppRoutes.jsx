@@ -13,11 +13,13 @@ import {
   ResetPassword,
   UpdatePassword,
   ProductDetail,
+  OrderHistory,
+  
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
 
-const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll }) => {
+const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll, user }) => {
   const location = useLocation();
 
   return (
@@ -49,6 +51,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/orders/:userId?" element={<OrderHistory user={user}/>} />
         </Routes>
       </div>
 

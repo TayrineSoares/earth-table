@@ -10,6 +10,9 @@ import "../styles/Cart.css"
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
 
+  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
+  const [pickupPaymentOption, setPickupPaymentOption] = useState("stripe");
+ 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
       .then(res => {
@@ -42,8 +45,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
   const handleCheckout = async () => {
-    const stripe = await stripePromise;
-
     //get supabase session 
     const { data: { session }, error } = await supabase.auth.getSession();
 
@@ -54,6 +55,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const userId = session?.user?.id || null;
     const email = session?.user?.email || null;
 
+    const stripe = await stripePromise;  
 
     const response = await fetch('http://localhost:8080/create-checkout-session', {
       method: 'POST',
@@ -84,7 +86,9 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       <div className='page-wrapper'>
         <div className='checkout-page-container'>
           
+          
           <div className='checkout-order-summary'>
+
             <p className='checkout-summary-text'>Order Summary</p>
             
             <div className='checkout-summary-items'>
@@ -98,7 +102,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             </div>
 
             <div className='checkout-summary-tax'>
-              <p className='tax'>TAX</p>
+              <p className='tax'>HST</p>
               <p className='tax'>13%</p>
             </div>
 
@@ -107,6 +111,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
 
+            
             <button 
               onClick={handleCheckout}
               className="checkout-button"
