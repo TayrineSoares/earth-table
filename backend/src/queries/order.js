@@ -23,10 +23,19 @@ async function getOrderById(orderId) {
 async function getOrderByUserId(userId) {
   const { data, error } = await supabase
     .from('orders')
-    .select('*')
+    .select(`
+      *,
+      order_products (
+        quantity,
+        unit_price_cents,
+        product:products (
+          slug
+        )
+      )
+    `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
-    
+
   if (error) throw new Error(`Error fetching order by userId: ${error.message}`);
   return data;
 }
