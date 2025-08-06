@@ -24,37 +24,35 @@ const OrderAdmin = () => {
   if (loading) return <p>Loading orders...</p>;
 
   return (
-    <div className="order-admin">
+    <div className="order-admin-page">
       <h1>Order Admin</h1>
-      <table className="order-table">
+
+      <table className="order-admin-table">
         <thead>
           <tr>
             <th>Order ID</th>
-            <th>User ID</th>
             <th>Status</th>
-            <th>Total ($)</th>
-            <th>Email</th>
-            <th>Date</th>
+            <th>Created</th>
+            <th>Total</th>
+            <th>User Name</th>
+            <th>User Email</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {orders.map(order => (
             <tr key={order.id}>
               <td>{order.id}</td>
-              <td>{order.user_id}</td>
-              
               <td>{order.status}</td>
-              <td>{(order.total_cents / 100).toFixed(2)}</td>
-              <td>{order.buyer_email}</td>
-              <td>{new Date(order.created_at).toLocaleString()}</td>
+              <td>{new Date(order.created_at).toLocaleDateString()}</td>
+              <td>${(order.total_cents / 100).toFixed(2)}</td>
+              <td>{order.users?.last_name || "Guest"}</td>
+              <td>{order.users?.email || "N/A"}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
-
-  
 };
 
 export default OrderAdmin;
