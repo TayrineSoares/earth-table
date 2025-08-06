@@ -12,6 +12,17 @@ const { getProductsForOrder } = require('../queries/order_product')
 
 // MORE SPECIFIC ROUTES GO FIRST
 
+// GET ALL ORDERS 
+router.get('/', async (req, res) => {
+  try {
+    const allOrders = await getAllOrders(); 
+    res.json(allOrders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({error: error.message});
+  }
+}); 
+
 // GET ORDER BY STRIPE SESSION ID (FOR CONFIRMATION PAGE RIGHT AFTER PAYMENT)
 router.get('/session/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
@@ -63,18 +74,6 @@ router.get('/:id', async (req, res) => {
     const order = await getOrderById(orderId); 
     res.json(order);
 
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({error: error.message});
-  }
-}); 
-
-
-// GET ALL ORDERS 
-router.get('/', async (req, res) => {
-  try {
-    const allOrders = await getAllOrders(); 
-    res.json(allOrders);
   } catch (error) {
     console.log(error);
     res.status(500).json({error: error.message});
