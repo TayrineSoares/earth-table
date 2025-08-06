@@ -1,0 +1,42 @@
+.order-history-container {
+  padding: 2rem;
+}
+
+.order-history-title {
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-weight: 400;
+  color: #000;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+.order-card {
+  background-color: #FFFBF3;
+  border: 2px solid #EDA413;
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 70vw;
+}
+
+.order-card p {
+  font-family: var(--body-font);
+  font-size: 16px;
+  margin: 0.25rem 0;
+  color: #333;
+}
+
+.order-products {
+  margin-top: 1rem;
+  padding-left: 1.5rem;
+}
+
+.order-products li {
+  font-family: var(--body-font);
+  font-size: 15px;
+  margin-bottom: 0.4rem;
+  list-style-type: disc;
+  color: #444;
+}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchOrdersByAuthId } from "../helpers/orderHelpers";
+import '../styles/OrderHistory.css'
 
 
 const OrderHistory = ({user}) => {
@@ -24,10 +25,10 @@ const OrderHistory = ({user}) => {
   if (!orders.length) return <p>No orders found.</p>;
   
   return (
-    <div>
-      <h2>Your order history:</h2>
+    <div className="order-history-container">
+      <h2 className="order-history-title">Your order history:</h2>
       {orders.map((order) => (
-        <div key={order.id}>
+        <div key={order.id} className="order-card">
           <p><strong>Order ID:</strong> {order.id}</p>
           <p><strong>Status:</strong> {order.status}</p>
           <p><strong>Date:</strong> {new Date(order.created_at).toLocaleString()}</p>
@@ -36,10 +37,10 @@ const OrderHistory = ({user}) => {
           {order.order_products?.length > 0 && (
             <>
               <p><strong>Items:</strong></p>
-              <ul>
+              <ul className="order-products">
                 {order.order_products.map((item, idx) => (
                   <li key={idx}>
-                    {item.quantity}x {item.product?.slug || "Unnamed product"} - ${(item.unit_price_cents / 100).toFixed(2)}
+                    {item.quantity}x {item.product?.slug || "Unnamed product"} - ${(item.unit_price_cents / 100).toFixed(2)} 
                   </li>
                 ))}
               </ul>
