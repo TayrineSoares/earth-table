@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const { createOrderWithProducts } = require('./src/queries/order');
+const { sendEmail } = require('./src/utils/email')
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -51,6 +52,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       console.log("User email:", email);
       console.log("Cart:", cart);
 
+      console.log("Stripe webhook received and parsed successfully");
+
        try {
         await createOrderWithProducts({
           user_id: userId || null,
@@ -74,6 +77,32 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         });
 
         console.log("Order saved to database");
+
+        await sendEmail({
+          // to: email, UPDATE THIS LINE AFTER REGISTERING DOMAIN
+          to: 'earthtabledatabase@gmail.com',
+          subject: "Order Confirmation - Earth Table",
+          html: `
+            <h2>Thank you for your order!</h2>
+            <p>We've received your order and it's being processed.</p>
+            <p>If you have any questions, feel free to reply to this email.</p>
+            <p>🧡 Earth Table Team</p>
+          `
+        });
+
+        // Send notification email to business
+        await sendEmail({
+          to: 'earthtabledatabase@gmail.com', // UPDATE THIS LINE AFTER REGISTERING DOMAIN to selena's email 
+          subject: `🛒 New Order from ${email}`,
+          html: `
+            <h2>New Order Received</h2>
+            <p>Email: ${email}</p>
+            <p>Session ID: ${session.id}</p>
+            <p>Total: $${(session.amount_total / 100).toFixed(2)}</p>
+          `
+        });
+
+
       } catch (err) {
         console.error("Failed to save order:", err.message);
       }

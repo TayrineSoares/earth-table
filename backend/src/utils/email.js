@@ -13,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail({ to, subject, html }) {
   try {
     const response = await resend.emails.send({
-      from: 'Earth Table <earthtabledatabase@gmail.com>', // Replace with theverified sender domain
+      from: 'Earth Table <onboarding@resend.dev>', // UPDATE THIS LINE AFTER REGISTERING DOMAIN - Replace with the verified sender domain
       to,
       subject,
       html
