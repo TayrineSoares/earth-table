@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { createOrderWithProducts } = require('./src/queries/order');
+const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
 const { sendEmail } = require('./src/utils/email')
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
@@ -77,6 +77,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         });
 
         console.log("Order saved to database");
+        const detailedOrder = await getOrderByStripeSessionId(session.id);
+
+        const productListHTML = detailedOrder.products.map(p => {
+          return `<li>${p.quantity}x ${p.slug} - $${(p.unit_price_cents / 100).toFixed(2)}</li>`;
+        }).join('');
 
         await sendEmail({
           // to: email, UPDATE THIS LINE AFTER REGISTERING DOMAIN
@@ -85,8 +90,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           html: `
             <h2>Thank you for your order!</h2>
             <p>We've received your order and it's being processed.</p>
-            <p>If you have any questions, feel free to reply to this email.</p>
-            <p>🧡 Earth Table Team</p>
+            <h3>Order Summary:</h3>
+            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
+            <p><strong>Status:</strong> ${detailedOrder.status}</p>
+            <h3>Items:</h3>
+            <ul>${productListHTML}</ul>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)}</p>
+            <p>Earth Table Team 🧡 </p>
           `
         });
 
@@ -96,9 +106,12 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           subject: `🛒 New Order from ${email}`,
           html: `
             <h2>New Order Received</h2>
-            <p>Email: ${email}</p>
-            <p>Session ID: ${session.id}</p>
-            <p>Total: $${(session.amount_total / 100).toFixed(2)}</p>
+            <p><strong>Email:</strong> ${detailedOrder.buyer_email}</p>
+            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
+            <p><strong>Status:</strong> ${detailedOrder.status}</p>
+            <h3>Items:</h3>
+            <ul>${productListHTML}</ul>
+            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)}</p>
           `
         });
 
