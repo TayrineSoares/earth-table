@@ -86,7 +86,7 @@ async function createOrderWithProducts({
 }
 
 const getOrderByStripeSessionId = async (sessionId) => {
-  // 1. Fetch the order matching the session_id from buyer_stripe_payment_info
+  // fetch the order matching the session_id from buyer_stripe_payment_info
   const { data: order, error } = await supabase
     .from('orders')
     .select('*')
@@ -99,16 +99,36 @@ const getOrderByStripeSessionId = async (sessionId) => {
 
   if (!order) return null;
 
+  const { data: orderProducts, error: orderProductsError } = await supabase
+  .from('order_products')
+  .select (`
+    quantity,
+    unit_price_cents,
+    product:products (
+      slug
+      )
+
+    `)
+    .eq('order_id', order.id);
+
+    if (orderProductsError) {
+      throw new Error(`Error fetching order products: ${orderProductsError.message}`);
+    }
+
 
   // Format the result to send to frontend
   return {
     id: order.id,
     status: order.status,
-    total_cents: order.buyer_stripe_payment_info?.amount_total || null,
     buyer_email: order.buyer_email || null,
     buyer_name: order.buyer_name || null,
     created_at: order.created_at,
     total_cents: order.total_cents,
+    products: orderProducts.map(op => ({
+      slug: op.product?.slug || 'Unnamed Product',
+      quantity: op.quantity,
+      unit_price_cents: op.unit_price_cents
+    }))
     
   };
 };
