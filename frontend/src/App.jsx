@@ -126,6 +126,15 @@ const App = () => {
     });
   };
 
+  const clearCart = () => {
+    setCart([]);
+    if (user) {
+      localStorage.setItem(`cart_${user.id}`, JSON.stringify([]));
+    } else {
+      localStorage.setItem('cart_guest', JSON.stringify([]));
+    }
+  };
+
   return (
     <div>
       <Navbar user={user} onLogout={handleLogout} />
@@ -139,7 +148,7 @@ const App = () => {
         removeAll={removeAll}
         showCartPopup={showCartPopup}
         setShowCartPopup={setShowCartPopup}
-        
+        clearCart={clearCart}  
       />
       <Footer />
     </div>

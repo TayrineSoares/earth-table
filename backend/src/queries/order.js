@@ -114,11 +114,11 @@ const getOrderByStripeSessionId = async (sessionId) => {
     quantity,
     unit_price_cents,
     product:products (
-      slug
-      )
-
-    `)
-    .eq('order_id', order.id);
+      slug,
+      image_url
+    )
+  `)
+  .eq('order_id', order.id);
 
     if (orderProductsError) {
       throw new Error(`Error fetching order products: ${orderProductsError.message}`);
@@ -135,6 +135,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
     total_cents: order.total_cents,
     products: orderProducts.map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
+      image_url: op.product?.image_url || '', // 👈 Add this line
       quantity: op.quantity,
       unit_price_cents: op.unit_price_cents
     }))

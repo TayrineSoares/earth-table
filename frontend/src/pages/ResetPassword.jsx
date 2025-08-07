@@ -1,4 +1,6 @@
 import { useState } from "react";
+import loginImage from "../assets/images/accountImage.png"
+import "../styles/ResetPassword.css"
 
 const ResetPassword = () => {
   const [ email, setEmail ] = useState("");
@@ -31,21 +33,35 @@ const ResetPassword = () => {
 
   return (
     <div className="reset-password page">
-      <h1>Reset your password</h1>
+      <div className="contact-header-image-container">
+        <img
+          className="contact-header-image"
+          src={loginImage}
+        />
+      </div>
+
+      <div className="page-wrapper">
+        <div className="reset-password-header">
+          <p className="password-text">Reset Your Password</p>
+        </div>
+ 
+      <h1 className='your-name-header'>Email</h1>
+
       <form onSubmit={handleSubmit}>
-        <input 
+        <input
+        className="login-detail-input-field" 
         type="email"
         placeholder="Enter your email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
-          
+        
         />
         <br></br>
         <br></br>
-        <button type="submit">Send reset Link </button>
+        <button className='contact-submit-button' type="submit">Send reset Link </button>
       </form>
-
+      </div>
     </div>
   )
 };

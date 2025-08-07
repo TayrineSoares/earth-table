@@ -19,7 +19,7 @@ import {
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
 
-const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll, user }) => {
+const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll, user, clearCart }) => {
   const location = useLocation();
 
   return (
@@ -44,7 +44,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
                                       />} 
                                     />
           <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/confirmation" element={<Confirmation />} />
+          <Route path="/confirmation" element={<Confirmation clearCart={clearCart} />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register setUser={setUser} />} />
           <Route path="/profile/:auth_user_id" element={<Profile />} />

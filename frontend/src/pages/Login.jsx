@@ -28,7 +28,7 @@ const Login = ({setUser}) => {
       setMessage(`Login failed: ${error.message}`);
     } else {
       setUser(data.user);
-      navigate(`/`)
+      navigate(`/products/category`)
     }
   };
 

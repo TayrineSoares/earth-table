@@ -38,25 +38,3 @@
   font-style: italic;
   color: #333;
 }
-
-.back-home-link {
-  display: inline-block;
-  margin-top: 1.5rem;
-  padding: 0.6rem 1.2rem;
-  background-color: #EDA413;
-  color: black;
-  font-family: var(--body-font);
-  font-weight: 500;
-  font-size: 15px;
-  text-decoration: none;
-  border-radius: 12px;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.back-home-link:hover {
-  background-color: #cf8e12;
-}
-
-.back-home-link:active {
-  transform: scale(0.97);
-}
