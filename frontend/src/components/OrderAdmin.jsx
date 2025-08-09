@@ -9,6 +9,8 @@ const OrderAdmin = () => {
   const [orderDetails, setOrderDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -45,11 +47,29 @@ const OrderAdmin = () => {
     }
   };
 
+  const filteredOrders = orders.filter(order => {
+    const term = searchTerm.toLowerCase();
+    return (
+      order.id?.toString().includes(term) ||
+      order.buyer_email?.toLowerCase().includes(term) ||
+      order.status?.toLowerCase().includes(term)
+    );
+  });
+
   if (loading) return <p>Loading orders...</p>;
 
   return (
     <div className="order-admin-page">
       <h1>Order Admin</h1>
+      <br/>
+
+      <input
+        className="user-search-input"   // reuse your existing style
+        type="text"
+        placeholder="Search by order id, email, or status"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
 
       <table className="order-admin-table">
         <thead>
@@ -64,7 +84,7 @@ const OrderAdmin = () => {
         </thead>
 
         <tbody>
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const isOpen = expandedOrderId === order.id;
             const items = isOpen && orderDetails ? (orderDetails.order_products || []) : [];
 
