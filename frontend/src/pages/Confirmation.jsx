@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { fetchOrderBySessionId } from '../helpers/orderHelpers';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
@@ -11,6 +11,7 @@ const Confirmation = ({ clearCart }) => {
   const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getOrder = async () => {
@@ -84,7 +85,12 @@ const Confirmation = ({ clearCart }) => {
               <p className="number-of-items"><strong>{order.buyer_email || 'your email address'}</strong></p>
             </div>
 
-              <button to="/" className="checkout-button">Back to Home</button>
+              <button 
+                onClick={() => navigate('/')} 
+                className="checkout-button"
+              >
+                Back to Home
+              </button>
           </div>
 
           <div className="checkout-items">
