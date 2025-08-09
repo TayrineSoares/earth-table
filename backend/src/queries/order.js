@@ -10,14 +10,41 @@ async function getAllOrders() {
 }
 
 async function getOrderById(orderId) {
-  const { data, error } = await supabase
+  const { data: order, error } = await supabase
     .from('orders')
-    .select('*')
+    .select(`
+      id,
+      status,
+      total_cents,
+      created_at,
+      buyer_email,
+      user_id,
+      order_products (
+        product_id,
+        quantity,
+        unit_price_cents,
+        product:products (        
+          slug,
+          image_url
+        )
+      )
+    `)
     .eq('id', orderId)
     .single();
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
-  return data;
+
+  let user = null;
+  if (order?.user_id) {
+    const { data:userData, error:userError } = await supabase
+    .from('users')
+    .select('auth_user_id, email, first_name, last_name, phone_number')
+    .eq('auth_user_id', order.user_id)
+    .single();
+
+    if (!userError) user = userData;
+  }
+  return {...order, user};
 }
 
 async function getOrderByUserId(userId) {
@@ -135,7 +162,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
     total_cents: order.total_cents,
     products: orderProducts.map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
-      image_url: op.product?.image_url || '', // 👈 Add this line
+      image_url: op.product?.image_url || '',
       quantity: op.quantity,
       unit_price_cents: op.unit_price_cents
     }))

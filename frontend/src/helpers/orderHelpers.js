@@ -50,11 +50,29 @@ const fetchAllOrders = async () => {
 }
 
 
+const fetchOrderById = async (orderId) => {
+  
+  try {
+    const response = await fetch(`http://localhost:8080/orders/${orderId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch order ${orderId}: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error fetching order ${orderId}:`, error);
+    throw error;
+  }
+}
+
+
 
 
 export { 
   fetchOrderBySessionId,
   fetchOrdersByAuthId, 
-  fetchAllOrders
+  fetchAllOrders, 
+  fetchOrderById
  
 }; 
