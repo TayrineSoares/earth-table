@@ -61,6 +61,7 @@ const OrderHistory = ({user}) => {
                       {item.quantity}x {item.product?.slug || "Unnamed product"} - ${(item.unit_price_cents / 100).toFixed(2)} 
                     </li>
                   ))}
+                  
                 </ul>
               </>
             )}

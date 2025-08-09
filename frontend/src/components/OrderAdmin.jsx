@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { fetchAllOrders } from '../helpers/orderHelpers';
 
 const OrderAdmin = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detailedOrder, setDetailedOrder] = useState(null);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -21,6 +22,10 @@ const OrderAdmin = () => {
     loadOrders();
   }, []);
 
+  const toggleDetailedOrder = (orderId) => {
+    setDetailedOrder(prev => (prev === orderId ? null : orderId));
+  };
+
   if (loading) return <p>Loading orders...</p>;
 
   return (
@@ -32,23 +37,54 @@ const OrderAdmin = () => {
           <tr>
             <th>Order ID</th>
             <th>Status</th>
-            <th>Created</th>
+            <th>Placed at</th>
             <th>Total</th>
-            <th>User Name</th>
-            <th>User Email</th>
+            <th>Buyer Email</th>
+            <th>Actions</th>
           </tr>
         </thead>
+
         <tbody>
-          {orders.map(order => (
-            <tr key={order.id}>
-              <td>{order.id}</td>
-              <td>{order.status}</td>
-              <td>{new Date(order.created_at).toLocaleDateString()}</td>
-              <td>${(order.total_cents / 100).toFixed(2)}</td>
-              <td>{order.users?.last_name || "Guest"}</td>
-              <td>{order.users?.email || "N/A"}</td>
-            </tr>
-          ))}
+          {orders.map(order => {
+            const isOpen = detailedOrder === order.id;
+            const items = order.order_products || []; // will be empty tables are not joined yet
+
+            return (
+              <Fragment key={order.id}>
+                <tr>
+                  <td>{order.id}</td>
+                  <td>{order.status}</td>
+                  <td>{new Date(order.created_at).toLocaleString('en-CA', { timeZone: 'America/Toronto' })}</td>
+                  <td>${(order.total_cents / 100).toFixed(2)}</td>
+                  <td>{order.buyer_email || "N/A"}</td>
+                  <td>
+                    <button onClick={() => toggleDetailedOrder(order.id)}>
+                      {isOpen ? 'Hide' : 'View items'}
+                    </button>
+                  </td>
+                </tr>
+
+                {isOpen && (
+                  <tr className="order-admin-details-row">
+                    <td colSpan={6}>
+                      {items.length ? (
+                        <ul className="order-admin-items">
+                          {items.map((it) => (
+                            <li key={it.id}>
+                              {it.quantity}× {it.product?.slug || 'Unnamed product'} — $
+                              {(it.unit_price_cents / 100).toFixed(2)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <em>backend not wired up yet</em>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
