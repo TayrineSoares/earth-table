@@ -10,7 +10,7 @@ async function getAllOrders() {
 }
 
 async function getOrderById(orderId) {
-  const { data, error } = await supabase
+  const { data: order, error } = await supabase
     .from('orders')
     .select(`
       id,
@@ -18,6 +18,7 @@ async function getOrderById(orderId) {
       total_cents,
       created_at,
       buyer_email,
+      user_id,
       order_products (
         product_id,
         quantity,
@@ -32,7 +33,18 @@ async function getOrderById(orderId) {
     .single();
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
-  return data;
+
+  let user = null;
+  if (order?.user_id) {
+    const { data:userData, error:userError } = await supabase
+    .from('users')
+    .select('auth_user_id, email, first_name, last_name, phone_number')
+    .eq('auth_user_id', order.user_id)
+    .single();
+
+    if (!userError) user = userData;
+  }
+  return {...order, user};
 }
 
 async function getOrderByUserId(userId) {

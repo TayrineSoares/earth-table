@@ -1,5 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import { fetchAllOrders, fetchOrderById } from '../helpers/orderHelpers';
+import '../styles/OrderAdmin.css';
 
 const OrderAdmin = () => {
   const [orders, setOrders] = useState([]);
@@ -76,8 +77,8 @@ const OrderAdmin = () => {
                   <td>${(order.total_cents / 100).toFixed(2)}</td>
                   <td>{order.buyer_email || "N/A"}</td>
                   <td>
-                    <button onClick={() => toggleDetailedOrder(order.id)}>
-                      {isOpen ? 'Hide' : 'View items'}
+                    <button className="view-items-button" onClick={() => toggleDetailedOrder(order.id)}>
+                      {isOpen ? 'Hide' : 'View Details'}
                     </button>
                   </td>
                 </tr>
@@ -85,20 +86,37 @@ const OrderAdmin = () => {
                 {isOpen && (
                   <tr className="order-admin-details-row">
                     <td colSpan={6}>
-                      {detailsLoading ? (
-                        <em>Loading items…</em>
-                      ) : items.length ? (
-                        <ul className="order-admin-items">
-                          {items.map((it) => (
-                            <li key={it.id}>
-                              {it.quantity}× {it.product?.slug || 'Unnamed product'} — $
-                              {(it.unit_price_cents / 100).toFixed(2)}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <em>No items found for this order.</em>
-                      )}
+                      <div className="order-details-card">
+                        {/* Buyer info */}
+                        {orderDetails?.user ? (
+                          <div className="order-admin-buyer">
+                            <strong>User:</strong>{' '}
+                            {orderDetails.user?.first_name || ''}{' '}
+                            {orderDetails.user?.last_name || ''}
+                            · {orderDetails.user?.email || 'No email'} · {orderDetails.user?.phone_number || 'No phone'}
+                          </div>
+                        ) : (
+                          <div className="order-admin-buyer">
+                            <strong>User not registered. </strong> {orderDetails?.buyer_email || 'guest / unknown'}
+                          </div>
+                        )}
+
+                        {/* Items */}
+                        {detailsLoading ? (
+                          <em>Loading items…</em>
+                        ) : items.length ? (
+                          <ul className="order-items-list">
+                            {items.map((it) => (
+                              <li key={it.id}>
+                                {it.quantity}× {it.product?.slug || 'Unnamed product'} — $
+                                {(it.unit_price_cents / 100).toFixed(2)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <em>No items found for this order.</em>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}
