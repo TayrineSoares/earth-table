@@ -135,7 +135,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
     total_cents: order.total_cents,
     products: orderProducts.map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
-      image_url: op.product?.image_url || '', // 👈 Add this line
+      image_url: op.product?.image_url || '',
       quantity: op.quantity,
       unit_price_cents: op.unit_price_cents
     }))

@@ -1,5 +1,5 @@
 import { useEffect, useState, Fragment } from 'react';
-import { fetchAllOrders } from '../helpers/orderHelpers';
+import { fetchAllOrders, fetchOrderById } from '../helpers/orderHelpers';
 
 const OrderAdmin = () => {
   const [orders, setOrders] = useState([]);
