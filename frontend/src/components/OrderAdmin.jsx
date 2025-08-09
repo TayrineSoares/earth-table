@@ -4,7 +4,9 @@ import { fetchAllOrders, fetchOrderById } from '../helpers/orderHelpers';
 const OrderAdmin = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [detailedOrder, setDetailedOrder] = useState(null);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -22,8 +24,24 @@ const OrderAdmin = () => {
     loadOrders();
   }, []);
 
-  const toggleDetailedOrder = (orderId) => {
-    setDetailedOrder(prev => (prev === orderId ? null : orderId));
+  const toggleDetailedOrder = async (orderId) => {
+    if (expandedOrderId === orderId) {
+
+      setExpandedOrderId(null);
+      setOrderDetails(null);
+    } else {
+      setExpandedOrderId(orderId);
+      setDetailsLoading(true);
+      try {
+        const fullOrder = await fetchOrderById(orderId); 
+        setOrderDetails(fullOrder);
+      } catch (error) {
+        console.error('Failed to load order details:', error);
+        setOrderDetails(null);
+      } finally {
+        setDetailsLoading(false);
+      }
+    }
   };
 
   if (loading) return <p>Loading orders...</p>;
@@ -45,9 +63,9 @@ const OrderAdmin = () => {
         </thead>
 
         <tbody>
-          {orders.map(order => {
-            const isOpen = detailedOrder === order.id;
-            const items = order.order_products || []; // will be empty tables are not joined yet
+          {orders.map((order) => {
+            const isOpen = expandedOrderId === order.id;
+            const items = isOpen && orderDetails ? (orderDetails.order_products || []) : [];
 
             return (
               <Fragment key={order.id}>
@@ -67,7 +85,9 @@ const OrderAdmin = () => {
                 {isOpen && (
                   <tr className="order-admin-details-row">
                     <td colSpan={6}>
-                      {items.length ? (
+                      {detailsLoading ? (
+                        <em>Loading items…</em>
+                      ) : items.length ? (
                         <ul className="order-admin-items">
                           {items.map((it) => (
                             <li key={it.id}>
@@ -77,7 +97,7 @@ const OrderAdmin = () => {
                           ))}
                         </ul>
                       ) : (
-                        <em>backend not wired up yet</em>
+                        <em>No items found for this order.</em>
                       )}
                     </td>
                   </tr>
