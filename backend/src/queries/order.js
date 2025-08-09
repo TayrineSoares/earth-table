@@ -19,12 +19,13 @@ async function getOrderById(orderId) {
       created_at,
       buyer_email,
       order_products (
-        id,
-        order_id,
         product_id,
         quantity,
         unit_price_cents,
-        created_at
+        product:products (        
+          slug,
+          image_url
+        )
       )
     `)
     .eq('id', orderId)
