@@ -12,7 +12,21 @@ async function getAllOrders() {
 async function getOrderById(orderId) {
   const { data, error } = await supabase
     .from('orders')
-    .select('*')
+    .select(`
+      id,
+      status,
+      total_cents,
+      created_at,
+      buyer_email,
+      order_products (
+        id,
+        order_id,
+        product_id,
+        quantity,
+        unit_price_cents,
+        created_at
+      )
+    `)
     .eq('id', orderId)
     .single();
 
