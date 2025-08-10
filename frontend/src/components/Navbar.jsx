@@ -1,13 +1,19 @@
 import { Link, NavLink } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
+import { fetchUserByAuthId } from "../helpers/adminHelpers";
 import "../styles/NavBar.css";
+
 import earthLogo from "../assets/images/earthLogo.png";
 import earthLogoText from "../assets/images/earthLogoText.png";
 import cartImage from "../assets/images/cartImage.png";
 
+
 const Navbar = ({ user, onLogout }) => {
+  
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
+
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const links = [
     { to: "/about", label: "ABOUT" },
@@ -19,12 +25,14 @@ const Navbar = ({ user, onLogout }) => {
   const closeMenu = () => setShowAccountMenu(false);
 
   useEffect(() => {
+    
     const handleClickOutside = (event) => {
       if (
         accountMenuRef.current &&
         !accountMenuRef.current.contains(event.target)
       ) {
         closeMenu();
+        
       }
     };
 
@@ -32,12 +40,29 @@ const Navbar = ({ user, onLogout }) => {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
+      
     }
-
+    
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+     
     };
   }, [showAccountMenu]);
+
+  useEffect (() => {
+    if (!user) return; // not logged in
+
+    const checkAdmin = async () => {
+      try {
+        const userInfo = await fetchUserByAuthId(user.id);
+        setIsAdmin(userInfo.is_admin || false);
+        
+      } catch (err) {
+        console.error("Erro checking admin status", err);
+      }
+    }; 
+    checkAdmin(); 
+  }, [user]);
 
   return (
     <nav>
@@ -110,6 +135,16 @@ const Navbar = ({ user, onLogout }) => {
                           ORDER HISTORY
                         </NavLink>
                       </li>
+                      {isAdmin && (
+                        <li>
+                          <NavLink 
+                            to="/admin" 
+                            className="dropdown-link" 
+                            onClick={closeMenu}>
+                              ADMIN BOARD
+                          </NavLink>
+                        </li>
+                      )}
                       <li>
                         <div
                           className="dropdown-link"
