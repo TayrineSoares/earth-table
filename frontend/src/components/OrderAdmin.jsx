@@ -47,6 +47,15 @@ const OrderAdmin = () => {
     }
   };
 
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, ""); 
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone; 
+  };
+
   const filteredOrders = orders.filter(order => {
     const term = searchTerm.toLowerCase();
     return (
@@ -113,7 +122,10 @@ const OrderAdmin = () => {
                             <strong>User:</strong>{' '}
                             {orderDetails.user?.first_name || ''}{' '}
                             {orderDetails.user?.last_name || ''}
-                            · {orderDetails.user?.email || 'No email'} · {orderDetails.user?.phone_number || 'No phone'}
+                            <br></br>
+                            <strong>Email: </strong>{orderDetails.user?.email || 'No email'} 
+                            <br></br>
+                            <strong>Phone Number:</strong> {formatPhoneNumber(orderDetails?.user.phone_number) || 'No phone'}
                           </div>
                         ) : (
                           <div className="order-admin-buyer">
