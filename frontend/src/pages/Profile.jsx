@@ -4,6 +4,7 @@ import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
 import "../styles/Profile.css";
 import loginImage from "../assets/images/accountImage.png"
 
+
 const Profile = () => {
   const { auth_user_id } = useParams();
   const [user, setUser] = useState(null);
@@ -11,6 +12,17 @@ const Profile = () => {
   const [message, setMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, ""); // remove non-numbers
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone; // fallback if not 10 digits
+  };
+
+
 
   const editableFields = [
     { label: "First Name", name: "first_name", type: "text" },
@@ -117,7 +129,11 @@ const Profile = () => {
           {editableFields.map(({ label, name }) => (
             <div key={name} className="your-name-container">
               <p className="your-name-header">{label}</p>
-              <p className='your-detail'>{user[name] || "(not set)"}</p>
+              <p className="your-detail">
+                {name === "phone_number"
+                  ? formatPhoneNumber(user[name])
+                  : (user[name] || "(not set)")}
+              </p>
             </div>
           ))}
 
