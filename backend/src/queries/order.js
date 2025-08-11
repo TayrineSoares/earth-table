@@ -3,7 +3,9 @@ const supabase = require('../../supabase/db')
 async function getAllOrders() {
   const { data, error } = await supabase
     .from('orders')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
 
   if (error) throw new Error(`Error fetching orders: ${error.message}`);
   return data;

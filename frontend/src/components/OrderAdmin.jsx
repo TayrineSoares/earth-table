@@ -73,7 +73,7 @@ const OrderAdmin = () => {
       <br/>
 
       <input
-        className="user-search-input"   // reuse your existing style
+        className="user-search-input"
         type="text"
         placeholder="Search by order id, email, or status"
         value={searchTerm}
