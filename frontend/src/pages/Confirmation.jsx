@@ -66,13 +66,13 @@ const Confirmation = ({ clearCart }) => {
             <p className="checkout-summary-text">Thank You!</p>
 
             <div className="checkout-summary-items">
-              <p className="number-of-items">Order ID</p>
-              <p className="number-of-items">{order.id}</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>Order Id</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>{order.id}</p>
             </div>
 
             <div className="checkout-summary-tax">
-              <p className="number-of-items">Status</p>
-              <p className="number-of-items">{order.status}</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>Status</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>{order.status}</p>
             </div>
 
             <div className="checkout-total">
@@ -81,8 +81,9 @@ const Confirmation = ({ clearCart }) => {
             </div>
 
             <div style={{ marginTop: "30px", textAlign: "center" }}>
-              <p className="number-of-items">A confirmation email has been sent to</p>
-              <p className="number-of-items"><strong>{order.buyer_email || 'your email address'}</strong></p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>A confirmation email has been sent to</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}><strong>{order.buyer_email || 'your email address'}</strong></p>
+              
             </div>
 
               <button 
