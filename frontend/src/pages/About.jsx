@@ -21,39 +21,35 @@ const About = () => {
           
           <div className='about-me-text'>
             <h2 className='about-title'>Who we are</h2>
+            <br/> 
             
             <div className="about-description-row">
               <div className="about-description-container">
-              <p className='about-description '>
-                At Earth Table, our vision is simple: to nourish people with food that is as wholesome as it is delicious. We specialize in holistic meal prep and personal chef services focused on your well-being and peace of mind. </p>
-              <br />
+                <p className="about-description">
+                  At Earth Table, we believe in nourishing people with wholesome, delicious food. 
+                  Our holistic meal prep and personal chef services are designed for your well-being and peace of mind.
+                </p>
 
-              <p className='about-description'> 
-                We are committed to using only the highest-quality ingredients:
-    
-              </p>
-              <ul className="about-description" style={{ listStyleType: "none", paddingLeft: 0 }}>
-                    <li> Seed oil free ✔</li>
-                    <li> Organic ✔</li>
-                    <li>Grass-fed, pasture-raised meat and dairy ✔</li>
-                    <li>Gluten-free ✔</li>
-                  </ul>
+                <p className="about-description">
+                  We use only the finest ingredients:
+                </p>
+                <ul className="about-description" style={{ listStyleType: "none", paddingLeft: 0 }}>
+                  <li>Seed oil free ✔</li>
+                  <li>Organic ✔</li>
+                  <li>Grass-fed, pasture-raised meat & dairy ✔</li>
+                  <li>Gluten-free ✔</li>
+                </ul>
 
-              <p className='about-description '>
-                Every meal we create is crafted to support your health, respect the planet, and celebrate the pure flavors of real food. We believe that eating well is not just a trend—it's a lifestyle rooted in care, quality, and conscious choices.
-              </p>
+                <br/> 
 
-              <p className='about-description '>
-                At the heart of Earth Table is Chef Selena Campoli, the creative force behind our vibrant, holistic cuisine. 
-                <br />
-                With a passion for crafting meals that nurture both body and soul, she blends culinary artistry with a deep commitment to wellness.
-              </p>
+                <p className="about-description">
+                  At the heart of Earth Table is Chef Selena Campoli, blending culinary artistry with a passion for wellness.
+                </p>
 
-              <p className='about-description '>
-
-                Drawing on years of experience in high-end kitchens and personal chef services, Selena's food is all about clean ingredients, bold flavors, and luxurious simplicity. Whether she's designing a personalized meal plan or preparing an elegant dinner, she believes that eating well should feel joyful and effortless.
-              </p>
-
+                <p className="about-description">
+                  With years of high-end kitchen and personal chef experience, Selena crafts clean, flavorful dishes 
+                  that make eating well feel joyful and effortless.
+                </p>
                 <div className='signature-container'>
                   <img
                   src={signature1}
