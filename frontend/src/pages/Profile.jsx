@@ -128,7 +128,7 @@ const Profile = () => {
     <div className="profile-form">
       <div className='page-wrapper'>
 
-      <h1 className="contact-text">Profile Page</h1>
+      <h1 className="profile-text">{user.first_name}'s Profile</h1>
       <br />
 
       {message && <p style={{ color: "green" }}>{message}</p>}
