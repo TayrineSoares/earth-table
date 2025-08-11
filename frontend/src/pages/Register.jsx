@@ -20,24 +20,24 @@ const Register = ({setUser}) => {
   const navigate = useNavigate();
 
   // show (123) 456-7890 in the input
-const formatPhoneForInput = (value) => {
-  const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
-  if (cleaned.length < 4) return cleaned;
-  if (cleaned.length < 7) return `(${cleaned.slice(0,3)}) ${cleaned.slice(3)}`;
-  return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
-};
+  const formatPhoneForInput = (value) => {
+    const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
+    if (cleaned.length < 4) return cleaned;
+    if (cleaned.length < 7) return `(${cleaned.slice(0,3)}) ${cleaned.slice(3)}`;
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+  };
 
-// write only digits to state
-const handlePhoneTyping = (e) => {
-  const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
-  setPhoneNumber(digitsOnly);
-  // live feedback 
-  if (digitsOnly && digitsOnly.length !== 10) {
-    setPhoneError("Phone number must be 10 digits.");
-  } else {
-    setPhoneError("");
-  }
-};
+  // write only digits to state
+  const handlePhoneTyping = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhoneNumber(digitsOnly);
+    // live feedback 
+    if (digitsOnly && digitsOnly.length !== 10) {
+      setPhoneError("Phone number must be 10 digits.");
+    } else {
+      setPhoneError("");
+    }
+  };
   
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();

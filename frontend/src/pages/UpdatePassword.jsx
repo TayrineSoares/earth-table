@@ -19,6 +19,7 @@ const UpdatePassword = () => {
         console.log('Recovery session loaded:', session);
       }
     });
+    return () => sub.subscription.unsubscribe(); 
   }, []);
 
 
@@ -29,6 +30,7 @@ const UpdatePassword = () => {
 
     if (newPassword !== confirmPassword) {
       setMessage("Passwords do not match");
+      setLoading(false); 
       return;
     }
 
