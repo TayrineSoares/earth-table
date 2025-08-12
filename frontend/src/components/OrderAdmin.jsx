@@ -82,11 +82,13 @@ const OrderAdmin = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const term = searchTerm.toLowerCase();
+    const term = (searchTerm || "").toLowerCase();
     return (
       order.id?.toString().includes(term) ||
       order.buyer_email?.toLowerCase().includes(term) ||
-      order.status?.toLowerCase().includes(term)
+      order.status?.toLowerCase().includes(term) ||
+      (order.pickup_date &&
+        formattedPickupDate(order.pickup_date).toLowerCase().includes(term))    
 
     );
   });
@@ -101,7 +103,7 @@ const OrderAdmin = () => {
       <input
         className="user-search-input"
         type="text"
-        placeholder="Search by order id, email, or status"
+        placeholder="Search by id, email, status or pickup date"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
