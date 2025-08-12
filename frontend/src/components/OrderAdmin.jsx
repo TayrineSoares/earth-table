@@ -11,6 +11,34 @@ const OrderAdmin = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
 
+  const formattedPickupDate = (pickupDate) => {
+    if (!pickupDate) return "";
+
+    const [year, month, day] = pickupDate.split("-");
+    const localDate = new Date(year, month - 1, day); 
+    return localDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formattedOrderDate = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }) + " at " + date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric"
+    });
+  };
+
+
+
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -86,6 +114,7 @@ const OrderAdmin = () => {
             <th>Order ID</th>
             <th>Status</th>
             <th>Placed at</th>
+            <th>Pickup</th>
             <th>Total</th>
             <th>Buyer Email</th>
             <th>Actions</th>
@@ -102,7 +131,8 @@ const OrderAdmin = () => {
                 <tr>
                   <td>{order.id}</td>
                   <td>{order.status}</td>
-                  <td>{new Date(order.created_at).toLocaleString('en-CA', { timeZone: 'America/Toronto' })}</td>
+                  <td>{formattedOrderDate(order.created_at)}</td>
+                  <td>{formattedPickupDate(order.pickup_date)}</td>
                   <td>${(order.total_cents / 100).toFixed(2)}</td>
                   <td>{order.buyer_email || "N/A"}</td>
                   <td>

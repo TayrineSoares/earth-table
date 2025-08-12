@@ -10,10 +10,10 @@ const OrderHistory = ({user}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
  
-  const formattedPickupDate = (orderDate) => {
-    if (!orderDate) return "";
+  const formattedPickupDate = (pickupDate) => {
+    if (!pickupDate) return "";
 
-    const [year, month, day] = orderDate.split("-");
+    const [year, month, day] = pickupDate.split("-");
     const localDate = new Date(year, month - 1, day); 
     return localDate.toLocaleDateString("en-US", {
       weekday: "long",
@@ -41,7 +41,6 @@ const OrderHistory = ({user}) => {
 
     const loadOrders = async () => {
       const data = await fetchOrdersByAuthId(user.id); 
-      //console.log("Fetched orders:", data);
       setOrders(data);
       setLoading(false);
 
@@ -72,6 +71,7 @@ const OrderHistory = ({user}) => {
       <div className="page-wrapper">
 
         <h2 className="password-text">Your Order History</h2>
+        <br/>
         {orders.map((order) => (
           <div key={order.id} className="order-card">
             <p><strong>Order ID:</strong> {order.id}</p>
