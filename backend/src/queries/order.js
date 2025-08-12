@@ -21,7 +21,7 @@ async function getAllOrders() {
     .order('id', { ascending: false });
 
   if (error) throw new Error(`Error fetching orders: ${error.message}`);
-  return data;
+  return data || [];
 }
 
 async function getOrderById(orderId) {
@@ -34,6 +34,8 @@ async function getOrderById(orderId) {
       created_at,
       buyer_email,
       user_id,
+      pickup_date,
+      pickup_time_slot,
       order_products (
         product_id,
         quantity,
@@ -59,7 +61,7 @@ async function getOrderById(orderId) {
 
     if (!userError) user = userData;
   }
-  return {...order, user};
+  return {...order, user };
 }
 
 async function getOrderByUserId(userId) {
@@ -79,7 +81,8 @@ async function getOrderByUserId(userId) {
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Error fetching order by userId: ${error.message}`);
-  return data;
+
+  return data || [];
 }
 
 async function createOrderWithProducts({ 
@@ -139,7 +142,6 @@ async function createOrderWithProducts({
 
   return order;
 }
-
 
 
 const getOrderByStripeSessionId = async (sessionId) => {

@@ -55,7 +55,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       //console.log("User email:", email);
       //console.log("Cart:", cart);
 
-      console.log("Stripe webhook received and parsed successfully");
+      //console.log("Stripe webhook received and parsed successfully");
 
        try {
         await createOrderWithProducts({
