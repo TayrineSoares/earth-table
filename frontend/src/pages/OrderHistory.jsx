@@ -9,6 +9,32 @@ import checkoutImage from "../assets/images/checkoutImage.png"
 const OrderHistory = ({user}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+ 
+  const formattedPickupDate = (orderDate) => {
+    if (!orderDate) return "";
+
+    const [year, month, day] = orderDate.split("-");
+    const localDate = new Date(year, month - 1, day); 
+    return localDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formattedOrderDate = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }) + " at " + date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric"
+    });
+  };
 
   useEffect(() => {
     if (!user?.id) return; 
@@ -23,6 +49,7 @@ const OrderHistory = ({user}) => {
 
     loadOrders(); 
   }, [user]); 
+
 
   if (loading) {
     return (
@@ -49,8 +76,11 @@ const OrderHistory = ({user}) => {
           <div key={order.id} className="order-card">
             <p><strong>Order ID:</strong> {order.id}</p>
             <p><strong>Status:</strong> {order.status}</p>
-            <p><strong>Date:</strong> {new Date(order.created_at).toLocaleString()}</p>
+            <p><strong>Date:</strong> {formattedOrderDate(order.created_at)}</p>
+            <p>Pickup on:</p> 
+            <p> {formattedPickupDate(order.pickup_date)}, at {order.pickup_time_slot} </p>
             <p><strong>Total:</strong> ${(order.total_cents / 100).toFixed(2)}</p>
+                      
 
             {order.order_products?.length > 0 && (
               <>
