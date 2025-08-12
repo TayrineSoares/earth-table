@@ -1,3 +1,4 @@
+import '../styles/PickupSelector.css'
 
 const PickupSelector = ({ 
   pickupDate, 
@@ -67,47 +68,46 @@ const PickupSelector = ({
 
 
   return (
-    <div>
-      <h3>Choose a pickup time slot </h3>
-      {/* Date Picker */}
-      <label>
-        Pickup Date:
-        <input
-          type="date"
-          value={pickupDate}
-          min={getMinDate()}
-          onChange={handleDateChange}
-        />       
-      </label>
+    <section className="pickup-section">
 
-      {/* Time Slot Selector */}
-      <label style={{ marginLeft: "1rem" }}>
-        Pickup Time:
-        <select
-          value={pickupTime}
-          onChange={handleTimeChange}
-          disabled={!pickupDate} //only allow if date is chosen
-        >
-          <option value=""> Select a time slot</option>
-          <option value="9:00-12:00">9:00 - 12:00</option>
-          <option value="13:00-16:00">13:00 - 16:00</option>
+      <div className="pickup-grid">
+        {/* Date */}
+        <div className="pickup-field">
+          <label className="pickup-label" htmlFor="pickup-date">Pickup Date</label>
+          <input
+            id="pickup-date"
+            className="pickup-input"
+            type="date"
+            value={pickupDate}
+            min={getMinDate()}
+            onChange={handleDateChange}
+          />
+          <p className="pickup-hint">Earliest available date is in 72 hours. (No Tuesdays)</p>
+        </div>
 
-        </select>
-
-      </label>
-
-      {/* Debug Output */}
-      <div style={{ marginTop: "1rem" }}>
-        <strong>Pickup Summary</strong>{" "}
-        <br/>
-        {pickupDate ? formatDisplayDate(pickupDate) : "No date"}{" "}
-        <br/>
-        Time slot: {pickupTime || "No time slot selected"}
-        <br/>
-        Address: 123 Fake Street 
+        {/* Time */}
+        <div className="pickup-field">
+          <label className="pickup-label" htmlFor="pickup-time">Pickup Time</label>
+          <select
+            id="pickup-time"
+            className="pickup-select"
+            value={pickupTime}
+            onChange={handleTimeChange}
+            disabled={!pickupDate}
+          >
+            <option value="">Select a time slot</option>
+            <option value="9:00-12:00">9:00 - 12:00</option>
+            <option value="13:00-16:00">13:00 - 16:00</option>
+          </select>
+        </div>
       </div>
-      
-    </div>
+
+      <div className="pickup-notes">
+        <p>Please review your order details and pickup time before continuing.</p>
+        <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+      </div>
+     
+    </section>
   )
 };
 

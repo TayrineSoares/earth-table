@@ -107,6 +107,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
             <p><strong>Pickup Date:</strong> ${detailedOrder.pickup_date_formatted}</p>
             <p><strong>Pickup Time Slot:</strong> ${detailedOrder.pickup_time_slot}</p>
+            <p>Address: 123 Fake street</p>
 
             <p>Earth Table Team 🧡 </p>
           `
