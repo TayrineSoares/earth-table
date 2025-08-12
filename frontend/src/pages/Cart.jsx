@@ -10,8 +10,9 @@ import "../styles/Cart.css"
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
 
-  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
   const [pickupPaymentOption, setPickupPaymentOption] = useState("stripe");
  
   useEffect(() => {
@@ -113,10 +114,16 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
             
-            <PickupSelector/>
+            <PickupSelector 
+              pickupDate={pickupDate}
+              pickupTime={pickupTime}
+              onDateChange={setPickupDate}
+              onTimeChange={setPickupTime}
+            />
 
             
             <button 
+              disabled={!pickupDate || !pickupTime}
               onClick={handleCheckout}
               className="checkout-button"
             >
