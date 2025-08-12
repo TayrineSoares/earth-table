@@ -4,6 +4,7 @@ import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png"
 import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from '../supabaseClient';
+import PickupSelector from '../components/PickupSelector';
 import "../styles/Cart.css"
 
 
@@ -91,6 +92,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
             <p className='checkout-summary-text'>Order Summary</p>
             
+            
             <div className='checkout-summary-items'>
               <p className='number-of-items'>{cart.length} ITEMS</p>
             </div>
@@ -110,6 +112,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>Total</p>
               <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
+            <PickupSelector/>
 
             
             <button 
