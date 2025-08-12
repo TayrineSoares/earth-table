@@ -51,9 +51,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const userId = metadata?.userId || null;
       const cart = JSON.parse(metadata?.cart || '[]');
 
-      console.log("Payment succeeded");
-      console.log("User email:", email);
-      console.log("Cart:", cart);
+      //console.log("Payment succeeded");
+      //console.log("User email:", email);
+      //console.log("Cart:", cart);
 
       console.log("Stripe webhook received and parsed successfully");
 
@@ -82,13 +82,16 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           
         });
 
-        console.log("Order saved to database");
+        //console.log("Order saved to database");
         const detailedOrder = await getOrderByStripeSessionId(session.id);
+        
 
         const productListHTML = detailedOrder.products.map(p => {
           return `<li>${p.quantity}x ${p.slug} - $${(p.unit_price_cents / 100).toFixed(2)}</li>`;
         }).join('');
 
+        
+        
         await sendEmail({
           // to: email, UPDATE THIS LINE AFTER REGISTERING DOMAIN
           to: 'earthtabledatabase@gmail.com',
@@ -102,6 +105,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             <h3>Items:</h3>
             <ul>${productListHTML}</ul>
             <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+            <p><strong>Pickup Date:</strong> ${detailedOrder.pickup_date_formatted}</p>
+            <p><strong>Pickup Time Slot:</strong> ${detailedOrder.pickup_time_slot}</p>
 
             <p>Earth Table Team 🧡 </p>
           `
@@ -119,6 +124,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             <h3>Items:</h3>
             <ul>${productListHTML}</ul>
             <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
+            <p><strong>Pickup Date:</strong> ${detailedOrder.pickup_date_formatted}</p>
+            <p><strong>Pickup Time Slot:</strong> ${detailedOrder.pickup_time_slot}</p>
 
           `
         });

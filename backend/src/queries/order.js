@@ -1,5 +1,18 @@
 const supabase = require('../../supabase/db')
 
+// HELPER format date to use inside other functions to display later on front end
+const formatDisplayDate = (ymd) => {
+  if (!ymd) return null;
+  const [y, m, d] = ymd.split("-");
+  const dt = new Date(y, m - 1, d); // local time
+  return dt.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 async function getAllOrders() {
   const { data, error } = await supabase
     .from('orders')
@@ -127,6 +140,8 @@ async function createOrderWithProducts({
   return order;
 }
 
+
+
 const getOrderByStripeSessionId = async (sessionId) => {
   // fetch the order matching the session_id from buyer_stripe_payment_info
   const { data: order, error } = await supabase
@@ -166,6 +181,9 @@ const getOrderByStripeSessionId = async (sessionId) => {
     buyer_name: order.buyer_name || null,
     created_at: order.created_at,
     total_cents: order.total_cents,
+    pickup_date: order.pickup_date || null,
+    pickup_date_formatted: formatDisplayDate(order.pickup_date),
+    pickup_time_slot: order.pickup_time_slot || null,
     products: orderProducts.map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
       image_url: op.product?.image_url || '',
