@@ -112,6 +112,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>Total</p>
               <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
+            
             <PickupSelector/>
 
             

@@ -12,25 +12,53 @@ const PickupSelector = () => {
 
   }
 
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value; 
+    if (!selectedDate) return;
 
+    // Parse into local time
+    const [year, month, day] = selectedDate.split("-");
+    const localDate = new Date(year, month - 1, day);
+
+    const dayOfWeek = localDate.getDay();
+
+    if (dayOfWeek === 2) {   // 2 = tuesday
+      alert("Sorry, pickups are not available on Tuesdays. Please choose another day.");
+      return;
+    }
+    setPickupDate(selectedDate);
+  }
+
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",   // Tuesday
+      month: "long",     // August
+      day: "numeric",    // 15
+      year: "numeric"    // 2025
+    });
+  };
 
 
   return (
     <div>
-      <h1>Pickup Selector component </h1>
+      <h3>Choose a pickup time slot </h3>
       {/* Date Picker */}
-      <lable>
+      <label>
         Pickup Date:
         <input
           type="date"
           value={pickupDate}
           min={getMinDate()}
-          onChange={(e) => setPickupDate(e.target.value)}
+          onChange={handleDateChange}
         />       
-      </lable>
+      </label>
 
       {/* Time Slot Selector */}
-      <lable style={{ marginLeft: "1rem" }}>
+      <label style={{ marginLeft: "1rem" }}>
         Pickup Time:
         <select
           value={pickupTime}
@@ -43,12 +71,17 @@ const PickupSelector = () => {
 
         </select>
 
-      </lable>
+      </label>
 
       {/* Debug Output */}
       <div style={{ marginTop: "1rem" }}>
-        <strong>Selected:</strong> {pickupDate || "No date"}{" "}
-        {pickupTime || "No time"}
+        <strong>Pickup Summary</strong>{" "}
+        <br/>
+        {pickupDate ? formatDisplayDate(pickupDate) : "No date"}{" "}
+        <br/>
+        Time slot: {pickupTime || "No time slot selected"}
+        <br/>
+        Address: 123 Fake Street 
       </div>
       
     </div>
