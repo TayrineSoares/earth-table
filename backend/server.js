@@ -13,6 +13,7 @@ const logoutRouter = require('./src/routes/logoutRoutes');
 const contactRouter = require('./src/routes/contactRoutes');
 const tagsRouter = require('./src/routes/tagsRoutes');
 const cartRouter = require('./src/routes/cartRoutes');
+const testEmail = require('./src/routes/testEmail');
 
 require('dotenv').config();
 
@@ -233,6 +234,8 @@ app.use('/contact', contactRouter);
 app.use('/tags', tagsRouter);
 
 app.use('/cart', cartRouter);
+
+app.use('/dev', testEmail);
 
 
 
