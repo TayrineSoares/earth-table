@@ -80,6 +80,8 @@ async function createOrderWithProducts({
   stripe_session_id,
   total_cents,
   products = [],
+  pickup_date,
+  pickup_time_slot
   
 }) {
 
@@ -98,7 +100,9 @@ async function createOrderWithProducts({
       buyer_stripe_payment_info,
       status, 
       stripe_session_id, 
-      total_cents
+      total_cents, 
+      pickup_date,
+      pickup_time_slot,
     }])
     .select()
     .single();

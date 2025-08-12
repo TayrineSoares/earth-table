@@ -13,8 +13,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
 
-  const [pickupPaymentOption, setPickupPaymentOption] = useState("stripe");
- 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
       .then(res => {
@@ -58,13 +56,19 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const email = session?.user?.email || null;
 
     const stripe = await stripePromise;  
-
+    
     const response = await fetch('http://localhost:8080/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ cartItems: cart, email, userId }),
+      body: JSON.stringify({ 
+        cartItems: cart, 
+        email, 
+        userId,
+        pickup_date: pickupDate,
+        pickup_time_slot: pickupTime,
+       }),
     });
 
     const data = await response.json();

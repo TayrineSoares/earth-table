@@ -38,6 +38,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       //console.log("Full checkout session:", JSON.stringify(session, null, 2));
 
       const metadata = session.metadata;
+      const pickupDate = metadata?.pickup_date || null;
+      const pickupSlot = metadata?.pickup_time_slot || null;
+
       const email = 
         session.customer_email || 
         session.customer_details?.email ||
@@ -73,7 +76,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           status: session.payment_status,
           stripe_session_id: session.id,
           total_cents: session.amount_total,
-          products: cart
+          products: cart, 
+          pickup_date: pickupDate,
+          pickup_time_slot: pickupSlot,
+          
         });
 
         console.log("Order saved to database");
@@ -155,7 +161,8 @@ app.get('/cart', (req, res) => {
 
 
 app.post('/create-checkout-session', async (req, res) => {
-  const { cartItems, email, userId } = req.body;
+  const { cartItems, email, userId, pickup_date, pickup_time_slot } = req.body;
+  
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -179,6 +186,8 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: {
         email: email || '',
         userId: userId || '',
+        pickup_date: pickup_date || '',
+        pickup_time_slot: pickup_time_slot || '',
         cart: JSON.stringify(cartItems.map(item => ({
           id: item.id,
           quantity: item.quantity,
