@@ -17,7 +17,6 @@ const OrderAdmin = () => {
     const [year, month, day] = pickupDate.split("-");
     const localDate = new Date(year, month - 1, day); 
     return localDate.toLocaleDateString("en-US", {
-      weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
@@ -36,8 +35,6 @@ const OrderAdmin = () => {
       minute: "numeric"
     });
   };
-
-
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -90,6 +87,7 @@ const OrderAdmin = () => {
       order.id?.toString().includes(term) ||
       order.buyer_email?.toLowerCase().includes(term) ||
       order.status?.toLowerCase().includes(term)
+
     );
   });
 
@@ -132,7 +130,7 @@ const OrderAdmin = () => {
                   <td>{order.id}</td>
                   <td>{order.status}</td>
                   <td>{formattedOrderDate(order.created_at)}</td>
-                  <td>{formattedPickupDate(order.pickup_date)}</td>
+                  <td>{formattedPickupDate(order.pickup_date)}, {order.pickup_time_slot}</td>
                   <td>${(order.total_cents / 100).toFixed(2)}</td>
                   <td>{order.buyer_email || "N/A"}</td>
                   <td>

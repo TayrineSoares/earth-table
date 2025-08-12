@@ -53,18 +53,18 @@ const Confirmation = ({ clearCart }) => {
 
   const total = (order.total_cents) / 100;
 
-  const formattedPickupDate = order.pickup_date
-  ? (() => {
-      const [year, month, day] = order.pickup_date.split("-");
-      const localDate = new Date(year, month - 1, day); 
-      return localDate.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
-    })()
-  : "";
+  const formattedPickupDate = (pickupDate) => {
+    if (!pickupDate) return "";
+
+    const [year, month, day] = pickupDate.split("-");
+    const localDate = new Date(year, month - 1, day); 
+    return localDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="checkout-page">
@@ -95,7 +95,7 @@ const Confirmation = ({ clearCart }) => {
 
             <div style={{ marginTop: "30px", textAlign: "center" }}>
               <p className="number-of-items"style={{ fontSize: "16px" }} >Your order will be ready for pickup on:</p>
-              <p className="number-of-items" >{formattedPickupDate}, between {order.pickup_time_slot}</p>
+              <p className="number-of-items" >{formattedPickupDate(order.pickup_date)}, between {order.pickup_time_slot}</p>
               <p className="number-of-items" style={{ fontSize: "16px" }}>A confirmation email has been sent to</p>
               <p className="number-of-items" style={{ fontSize: "16px" }}><strong>{order.buyer_email || 'your email address'}</strong></p>
               
