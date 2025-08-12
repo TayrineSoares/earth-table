@@ -1,20 +1,36 @@
-import { useState } from "react";
 
-const PickupSelector = () => {
-  const [pickupDate, setPickupDate] = useState("");
-  const [pickupTime, setPickupTime] = useState("");
+const PickupSelector = ({ 
+  pickupDate, 
+  pickupTime, 
+  onDateChange, 
+  onTimeChange }) => {
 
-  // calculate minimum available date (today + 3 days)
+  
+  // helper: Date -> "YYYY-MM-DD" in LOCAL time
+  const formatAsInputDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  
   const getMinDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() + 3);
-    return date.toISOString().split("T")[0]; // format: YYYY-MM-DD  
-
-  }
+    const today = new Date();
+    const min = new Date(today);
+    min.setDate(min.getDate() + 3);
+    return formatAsInputDate(min);
+  };
 
   const handleDateChange = (e) => {
     const selectedDate = e.target.value; 
     if (!selectedDate) return;
+
+    // Enforce 72h even if value was typed manually
+    if (selectedDate < getMinDate()) {
+      alert(`Earliest pickup is ${getMinDate()}. Please choose a later date.`);
+      return;
+    }
 
     // Parse into local time
     const [year, month, day] = selectedDate.split("-");
@@ -26,8 +42,15 @@ const PickupSelector = () => {
       alert("Sorry, pickups are not available on Tuesdays. Please choose another day.");
       return;
     }
-    setPickupDate(selectedDate);
+    onDateChange(selectedDate);
+    onTimeChange("");
+    
   }
+
+  const handleTimeChange = (e) => {
+    onTimeChange(e.target.value)
+  };
+
 
   // Format date for display
   const formatDisplayDate = (dateString) => {
@@ -62,7 +85,7 @@ const PickupSelector = () => {
         Pickup Time:
         <select
           value={pickupTime}
-          onChange={(e) => setPickupTime(e.target.value)}
+          onChange={handleTimeChange}
           disabled={!pickupDate} //only allow if date is chosen
         >
           <option value=""> Select a time slot</option>
