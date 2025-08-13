@@ -85,11 +85,13 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
           </div>
         </>
       ) : (
-        <div className="minimized-bar">
+        <div
+          onClick={() => setIsMinimized(false)}
+          className="minimized-bar"
+        >
           <span>Your Cart ({cart.length})</span>
           <button
             className="expand-button"
-            onClick={() => setIsMinimized(false)}
             aria-label="Expand cart"
           >
             +

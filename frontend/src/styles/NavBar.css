@@ -93,6 +93,10 @@
     border-radius: 2px;
   }
 
+  .nav-link{
+    cursor: pointer;
+  }
+
 }
 
 
@@ -193,6 +197,10 @@
     font-weight: 400;
     text-decoration: none;
     font-variant: small-caps;
+  }
+
+  .nav-link{
+    cursor: pointer;
   }
 
 }
@@ -301,4 +309,7 @@ nav {
   display: none;
 }
 
+.nav-link{
+  cursor: pointer;
+}
 }
