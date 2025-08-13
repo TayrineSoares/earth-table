@@ -3,9 +3,11 @@ import React from 'react'
 import '../styles/CartPopup.css'
 import { useState } from 'react';
 import { Minus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
   const [isMinimized, setIsMinimized] = useState(true);
+  const navigate = useNavigate();
 
   if (cart.length === 0 && !isMinimized) {
     return null;
@@ -72,6 +74,14 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
               <p className='cart-total-text'>TOTAL COST:</p>
               <p className='cart-total'>${(totalPrice / 100).toFixed(2)}
               </p>
+              <div className='go-to-chekout-button-container'>
+              <button 
+                className='go-to-chekout-button'
+                onClick={() => navigate('/cart')}
+              >
+                GO TO CHECKOUT
+              </button>
+              </div>
           </div>
         </>
       ) : (

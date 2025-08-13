@@ -1,20 +1,7 @@
-/* Small phones */
-@media (max-width: 480px) {
-  /* Styles for small mobile screens */
-}
-
-
-
-
-
-
-
-
-
 .cart-popup {
   position: fixed;
   bottom: 0px;
-  right: 20px; /* Instead of left: 946px, so it stays on the right */
+  right: 20px;
   width: 446px;
   max-height: 300px;
   background: white;
@@ -67,7 +54,6 @@
   background-color: var(--primary-solid);
   display: flex;
   flex-direction: row;
-  justify-content: center;
   align-items: center;
   background: #FFFBF3;
   gap: 9px;
@@ -75,15 +61,30 @@
   height: 30px;
 }
 
-.cart-total-text {
+.go-to-chekout-button-container{
+  display: flex;
+  margin-left: 100px;
+}
+.go-to-chekout-button {
   font-family: var(--body-font);
   font-weight: 400;
   font-style: Regular;
   font-size: 15px;
   line-height: 100%;
+  font-variant: small-caps;
+  background-color: #EDA413;
+  border-radius: 10px;
+  padding: 0.2rem;
+}
+
+.cart-total-text {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 100%;
   letter-spacing: 0%;
   font-variant: small-caps;
-  color: #757575;
+  margin-left: 35px;
 }
 
 .cart-total{
