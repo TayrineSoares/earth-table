@@ -205,7 +205,7 @@ const Register = ({setUser}) => {
             </p>
         )}
 
-            <div className='have-account-text'>
+            <div className='general-text'>
               <input
                 type="checkbox"
                 id="privacy-agree"

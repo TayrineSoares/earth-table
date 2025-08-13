@@ -102,7 +102,7 @@ const PickupSelector = ({
         </div>
       </div>
 
-      <div className="pickup-notes">
+      <div className='general-text'>
         <p>Please review your order details and pickup time before continuing.</p>
         <p>Once payment is processed, orders cannot be modified or cancelled.</p>
       </div>

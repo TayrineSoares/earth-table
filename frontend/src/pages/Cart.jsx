@@ -127,7 +127,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               onTimeChange={setPickupTime}
             />
 
-            <div className="privacy-checkbox">
+            <div className="general-text">
               <input
                 type="checkbox"
                 id="privacy-agree"
@@ -135,7 +135,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 onChange={(e) => setAgreedToPrivacy(e.target.checked)}
               />
               <label htmlFor="privacy-agree">
-                I have read and agree to the <Link to="/privacy">Privacy Policy</Link>.
+                I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
               </label>
             </div>
             
