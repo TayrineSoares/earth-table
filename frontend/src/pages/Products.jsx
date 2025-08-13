@@ -137,9 +137,10 @@ const Products = ({ addToCart }) => {
             />
             <div className='product-header-info-container'>
               <p className='product-header-name'>{product.slug}</p>
-              <p className='product-header-price'>${(product.price_cents / 100).toFixed(2)}</p>
+    
             </div>
             <div className='product-description-container'>
+              <p className='product-header-price'>${(product.price_cents / 100).toFixed(2)}</p>
               <p className='product-description'>{product.description}</p>
             </div>
             
