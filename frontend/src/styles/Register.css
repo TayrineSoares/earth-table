@@ -1,48 +1,45 @@
-.register-form{
+/* Base styles (1440px and up) */
+.register-page {
   display: flex;
   flex-direction: column;
-
 }
-.register-form-name-container{
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.register-form-name-container,
+.register-email-number-container,
+.register-password-container {
   display: flex;
   gap: 71px;
 }
 
-.first-name-container{
+.first-name-container {
   width: 550px;
 }
 
-.register-text{
+.register-text {
   font-family: var(--heading-font);
   font-weight: 400;
   font-size: 30px;
   line-height: 100%;
-  letter-spacing: 0%;
   font-variant: small-caps;
   color: #BE7200;
-  height: 33px;
   margin-bottom: 0;
 }
 
-.register-last{
-  margin: auto;
-}
 
-.register-input{
+.register-input {
   margin-top: 15px;
   width: 455px;
-  opacity: 1;
-  gap: 10px;
   border-radius: 15px;
   border-width: 1px;
-  padding-top: 19px;
-  padding-right: 51px;
-  padding-bottom: 19px;
-  padding-left: 51px;
+  padding: 19px 51px;
   margin-bottom: 38px;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
   font-size: 15px;
   line-height: 100%;
   letter-spacing: 4%;
@@ -50,18 +47,66 @@
   color: #000000;
 }
 
-.register-email-number-container, 
-.register-password-container{
-  display: flex;
-  gap: 71px;
-}
-
-.have-account-text{
+.have-account-text {
   font-family: var(--body-font);
   font-weight: 400;
   font-size: 15px;
-  line-height: 100%;
-  letter-spacing: 0%;
   font-variant: small-caps;
-  margin-bottom: 73px;
+  margin-bottom: 50px;
+  text-align: left;
+}
+
+@media (max-width: 1366px) {
+  .register-input {
+    width: 400px;
+    padding: 18px 40px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .register-form-name-container,
+  .register-email-number-container,
+  .register-password-container {
+    gap: 30px;
+  }
+
+  .register-input {
+    width: 100%;
+    padding: 15px 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .register-form-name-container,
+  .register-email-number-container,
+  .register-password-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .register-text {
+    font-size: 20px;
+  }
+
+  .register-input {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .have-account-text {
+    font-size: 14px;
+    margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-text {
+    font-size: 18px;
+  }
+
+  .register-input {
+    font-size: 13px;
+    padding: 10px 15px;
+  }
 }

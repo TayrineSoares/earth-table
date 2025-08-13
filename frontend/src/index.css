@@ -20,3 +20,12 @@ html, body {
   box-sizing: border-box;
   width: 100%;
 }
+
+.general-text{
+    font-family: var(--body-font);
+    font-weight: 400;
+    font-size: 15px;
+    font-variant: small-caps;
+    text-align: left;
+    margin-bottom: 10px;
+}

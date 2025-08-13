@@ -6,12 +6,14 @@ import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import "../styles/Cart.css"
+import { Link} from "react-router-dom";
 
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
@@ -125,9 +127,20 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               onTimeChange={setPickupTime}
             />
 
+            <div className="general-text">
+              <input
+                type="checkbox"
+                id="privacy-agree"
+                checked={agreedToPrivacy}
+                onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+              />
+              <label htmlFor="privacy-agree">
+                I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
+              </label>
+            </div>
             
             <button 
-              disabled={!pickupDate || !pickupTime}
+              disabled={!pickupDate || !pickupTime || !agreedToPrivacy}
               onClick={handleCheckout}
               className="checkout-button"
             >

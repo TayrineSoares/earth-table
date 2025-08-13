@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import loginImage from "../assets/images/accountImage.png"
 import "../styles/Register.css"
+import { use } from 'react';
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -16,6 +17,7 @@ const Register = ({setUser}) => {
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState("");
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   
   const navigate = useNavigate();
 
@@ -203,10 +205,22 @@ const Register = ({setUser}) => {
             </p>
         )}
 
+            <div className='general-text'>
+              <input
+                type="checkbox"
+                id="privacy-agree"
+                checked={agreedToPrivacy}
+                onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+              />
+              <label htmlFor="privacy-agree">
+                I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
+              </label>
+            </div>
+
           <button
             className="login-submit-button"
             type="submit" 
-            disabled={password !== confirmPassword}
+            disabled={password !== confirmPassword || !agreedToPrivacy}
           > Sign Up </button>
         </form>
 
