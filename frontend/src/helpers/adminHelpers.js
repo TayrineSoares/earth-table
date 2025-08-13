@@ -177,7 +177,7 @@ const updateProduct = async (updatedProduct) => {
 // Archive a product 
 const toggleProductActive = async (id, makeActive) => {
   try {
-    const res = await fetch(`/products/${id}/archive`, {
+    const res = await fetch(`http://localhost:8080/products/${id}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !!makeActive })
