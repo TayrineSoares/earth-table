@@ -14,10 +14,10 @@ import {
   UpdatePassword,
   ProductDetail,
   OrderHistory,
-  
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
+import PrivacyPolicy from './components/PrivacyPolicy.jsx';
 
 const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll, user, clearCart }) => {
   const location = useLocation();
@@ -52,7 +52,9 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/orders/:userId?" element={<OrderHistory user={user}/>} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
         </Routes>
+    
       </div>
 
       {showCartPopup && location.pathname !== '/cart' && (
