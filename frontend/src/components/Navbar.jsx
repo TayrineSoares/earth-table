@@ -7,11 +7,12 @@ import earthLogo from "../assets/images/earthLogo.png";
 import earthLogoText from "../assets/images/earthLogoText.png";
 import cartImage from "../assets/images/cartImage.png";
 
-const Navbar = ({ user, onLogout }) => {
+const Navbar = ({ user, onLogout, cart }) => {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasItem, setHasItem] = useState([]);
 
   const links = [
     { to: "/about", label: "ABOUT" },
@@ -28,6 +29,7 @@ const Navbar = ({ user, onLogout }) => {
         closeMenu();
       }
     };
+
     if (showAccountMenu) document.addEventListener("mousedown", handleClickOutside);
     else document.removeEventListener("mousedown", handleClickOutside);
 
@@ -51,7 +53,7 @@ const Navbar = ({ user, onLogout }) => {
   return (
     <nav>
 
-      <div className="hamburger-menu" onClick={() => setIsMobileMenuOpen(prev => !prev)}>
+      <div ref={accountMenuRef} className="hamburger-menu" onClick={() => setIsMobileMenuOpen(prev => !prev)}>
         <div className="bar"></div>
         <div className="bar"></div>
         <div className="bar"></div>
@@ -135,10 +137,10 @@ const Navbar = ({ user, onLogout }) => {
           </ul>
         </div>
 
-        {/* Cart */}
         <div className="cart-header">
           <Link to="/cart">
             <img src={cartImage} className="cart-image" alt="Cart" />
+            {cart.length > 0 && <span className="cart-dot"></span>}
           </Link>
         </div>
     </nav>

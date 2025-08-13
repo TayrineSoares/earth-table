@@ -137,7 +137,11 @@ const App = () => {
 
   return (
     <div>
-      <Navbar user={user} onLogout={handleLogout} />
+      <Navbar 
+        user={user} 
+        onLogout={handleLogout}
+        cart={cart}
+      />
       <AppRoutes
         user={user}
         setUser={setUser}
