@@ -41,8 +41,8 @@ const Confirmation = ({ clearCart }) => {
           <div className="checkout-page-container">
             <div>
               <p className="checkout-summary-text">Oops!</p>
-              <p>We couldn't find your order. Please contact support.</p>
-              <Link to="/" className="checkout-button">Back to Home</Link>
+              <p className="number-of-items">We couldn't find your order. Please contact support.</p>
+              <button to="/" className="checkout-button">Back to Home</button>
             </div>
           </div>
         </div>
