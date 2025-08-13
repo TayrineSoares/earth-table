@@ -9,7 +9,6 @@ import ProductAdmin from '../components/ProductAdmin';
 import UserAdmin from '../components/UserAdmin'; 
 
 
-
 const Admin = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState(null);

@@ -1,0 +1,52 @@
+.pickup-label {
+  font-family: var(--body-font);
+  font-variant: small-caps;
+  font-size: 16px;
+  color: #757575;
+  display: block;
+  margin-bottom: 8px;
+}
+.pickup-grid {
+  margin-top: px;
+  padding-top: 15px;
+  
+}
+.pickup-input,
+.pickup-select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--body-font);
+  font-size: 15px;
+  border: 1.5px solid #D8C7B0;
+  border-radius: 10px;
+  background: #fff;
+  outline: none;
+}
+
+.pickup-input:focus,
+.pickup-select:focus {
+  border-color: #EDA413;
+  box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+}
+
+.pickup-select:disabled {
+  background: #F4F1EA;
+  color: #9a9a9a;
+  cursor: not-allowed;
+  border-color: #E6DCCF;
+}
+
+.pickup-hint {
+  font-size: 14px;
+  color: #757575;
+  margin-top: 6px;
+}
+
+.pickup-notes {
+  border-top: 2px solid #D9C7B0;
+  margin-top: 16px;
+  padding-top: 12px;
+  font-size: 14px;
+  font-family: var(--body-font);
+}

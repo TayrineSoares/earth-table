@@ -4,6 +4,7 @@ import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
 import "../styles/Profile.css";
 import loginImage from "../assets/images/accountImage.png"
 
+
 const Profile = () => {
   const { auth_user_id } = useParams();
   const [user, setUser] = useState(null);
@@ -11,6 +12,31 @@ const Profile = () => {
   const [message, setMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [draft, setDraft] = useState(null);
+
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+  };
+
+  // Shows (123) 456-7890 while typing, but never returns symbols to state
+  const formatPhoneForInput = (value) => {
+    const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
+    if (cleaned.length < 4) return cleaned;
+    if (cleaned.length < 7) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  };
+
+  // Special onChange just for the phone field
+  const handlePhoneTyping = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setDraft((prev) => ({ ...prev, phone_number: digitsOnly }));
+  };
+
 
   const editableFields = [
     { label: "First Name", name: "first_name", type: "text" },
@@ -18,19 +44,19 @@ const Profile = () => {
     { label: "Phone Number", name: "phone_number", type: "tel" },
   ];
 
-  const validateForm = () => {
+  const validateForm = (data) => {
     const formErrors = [];
     const nameRegex = /^[a-zA-ZÀ-ÿ' -]{2,}$/;
 
-    if (!user.first_name || !nameRegex.test(user.first_name.trim())) {
+    if (!data.first_name || !nameRegex.test(data.first_name.trim())) {
       formErrors.push("First name is required and must contain only letters.");
     }
-    if (!user.last_name || !nameRegex.test(user.last_name.trim())) {
+    if (!data.last_name || !nameRegex.test(data.last_name.trim())) {
       formErrors.push("Last name is required and must contain only letters.");
     }
 
     const phoneRegex = /^\d{10}$/;
-    if (user.phone_number && !phoneRegex.test(user.phone_number.trim())) {
+    if (data.phone_number && !phoneRegex.test(data.phone_number.trim())) {
       formErrors.push("Phone number must be 10 digits (no dashes or spaces).");
     }
     return formErrors;
@@ -49,7 +75,7 @@ const Profile = () => {
   }, [auth_user_id]);
 
   const handleChange = (e) => {
-    setUser({ ...user, [e.target.name]: e.target.value });
+    setDraft({ ...draft, [e.target.name]: e.target.value });
   };
 
   const handleUpdate = async (e) => {
@@ -58,7 +84,7 @@ const Profile = () => {
     setError("");
     setLoading(true);
 
-    const validationErrors = validateForm();
+    const validationErrors = validateForm(draft);
     if (validationErrors.length > 0) {
       setError(validationErrors.join("\n"));
       setLoading(false);
@@ -67,20 +93,21 @@ const Profile = () => {
 
     try {
       const updates = {
-        first_name: user.first_name,
-        last_name: user.last_name,
-        address_line1: user.address_line1,
-        address_line2: user.address_line2,
-        city: user.city,
-        province: user.province,
-        postal_code: user.postal_code,
-        country: user.country,
-        phone_number: user.phone_number
+        first_name: draft.first_name,
+        last_name: draft.last_name,
+        address_line1: draft.address_line1,
+        address_line2: draft.address_line2,
+        city: draft.city,
+        province: draft.province,
+        postal_code: draft.postal_code,
+        country: draft.country,
+        phone_number: draft.phone_number
       };
       const updated = await patchUserProfile(auth_user_id, updates);
       setMessage("Profile updated successfully!");
       setUser(updated);
       setIsEditing(false);
+      setDraft(null);
     } catch (err) {
       setError(`Server error: ${err.message}`);
     } finally {
@@ -101,7 +128,7 @@ const Profile = () => {
     <div className="profile-form">
       <div className='page-wrapper'>
 
-      <h1 className="contact-text">Profile Page</h1>
+      <h1 className="profile-text">{user.first_name}'s Profile</h1>
       <br />
 
       {message && <p style={{ color: "green" }}>{message}</p>}
@@ -117,7 +144,11 @@ const Profile = () => {
           {editableFields.map(({ label, name }) => (
             <div key={name} className="your-name-container">
               <p className="your-name-header">{label}</p>
-              <p className='your-detail'>{user[name] || "(not set)"}</p>
+              <p className="your-detail">
+                {name === "phone_number"
+                  ? formatPhoneNumber(user[name])
+                  : (user[name] || "(not set)")}
+              </p>
             </div>
           ))}
 
@@ -125,6 +156,7 @@ const Profile = () => {
             className="contact-submit-button"
             onClick={() => {
               setIsEditing(true);
+              setDraft({...user});  
               setMessage("");
               setError("");
             }}
@@ -147,13 +179,26 @@ const Profile = () => {
           {editableFields.map(({ label, name, type }) => (
             <div key={name} className="your-name-container">
               <p className="your-name-header">{label}</p>
+              {name === "phone_number" ? (
+                <input
+                  type="tel"
+                  name="phone_number"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={formatPhoneForInput(draft?.phone_number)}
+                  onChange={handlePhoneTyping}
+                  className="your-name-input"
+                  placeholder="(XXX) XXX-XXXX"
+                />
+              ) : (
               <input
                 type={type}
                 name={name}
-                value={user[name] || ""}
+                value={draft?.[name] || ""}
                 onChange={handleChange}
                 className="your-name-input"
                 />
+              )}
             </div>
           ))}
 
@@ -171,6 +216,7 @@ const Profile = () => {
             type="button"
             onClick={() => {
               setIsEditing(false);
+              setDraft(null);
               setMessage("");
               setError("");
             }}

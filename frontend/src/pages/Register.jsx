@@ -9,18 +9,43 @@ const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
   const [ password, setPassword ] = useState("");
   const [message, setMessage] = useState("");
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState("");
   
   const navigate = useNavigate();
 
+  // show (123) 456-7890 in the input
+  const formatPhoneForInput = (value) => {
+    const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
+    if (cleaned.length < 4) return cleaned;
+    if (cleaned.length < 7) return `(${cleaned.slice(0,3)}) ${cleaned.slice(3)}`;
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+  };
+
+  // write only digits to state
+  const handlePhoneTyping = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhoneNumber(digitsOnly);
+    // live feedback 
+    if (digitsOnly && digitsOnly.length !== 10) {
+      setPhoneError("Phone number must be 10 digits.");
+    } else {
+      setPhoneError("");
+    }
+  };
   
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+
+    if (phoneNumber && phoneNumber.replace(/\D/g, "").length !== 10) {
+      setMessage("Please enter a 10-digit phone number.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setMessage("Passwords do not match");
@@ -58,7 +83,7 @@ const Register = ({setUser}) => {
 
         // Supabase already created session ; Navbar will update automatically
         setTimeout(() => {
-          navigate(`/profile/${data.user.id}`);
+          navigate('/');
         }, 1500);
       }
 
@@ -123,10 +148,14 @@ const Register = ({setUser}) => {
                 <input
                   className='register-input'
                   type="tel"
-                  placeholder="XXX XXX XXXX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  />
+                  placeholder="(XXX) XXX-XXXX"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={formatPhoneForInput(phoneNumber)}
+                  onChange={handlePhoneTyping}
+                  required
+                />
+                {phoneError}
             </div>
             <div className='register-email-container'>
               <p className='register-text'>Email</p>

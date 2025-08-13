@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
 const { sendEmail } = require('./src/utils/email')
+const { renderCustomerOrderEmail, renderOwnerOrderEmail } = require('./src/utils/emailTemplates');
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -13,6 +14,7 @@ const logoutRouter = require('./src/routes/logoutRoutes');
 const contactRouter = require('./src/routes/contactRoutes');
 const tagsRouter = require('./src/routes/tagsRoutes');
 const cartRouter = require('./src/routes/cartRoutes');
+const testEmail = require('./src/routes/testEmail');
 
 require('dotenv').config();
 
@@ -30,43 +32,36 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
 
   try {
     event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
-  } catch (err) {
-    console.error(`❌ Webhook signature error: ${err.message}`);
-    return response.status(400).send(`Webhook Error: ${err.message}`);
-  }
 
-  switch (event.type) {
-    case 'checkout.session.completed': {
+    //Log only the relevant event
+    if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
 
-      if (session.payment_status !== 'paid') {
-        console.warn("⚠️ Payment not completed, skipping order creation.");
-        return response.status(200).send();
-      }
+      //console.log("Full checkout session:", JSON.stringify(session, null, 2));
 
-      const metadata = session.metadata || {};
-      const email =
-        session.customer_email ||
+      const metadata = session.metadata;
+      const pickupDate = metadata?.pickup_date || null;
+      const pickupSlot = metadata?.pickup_time_slot || null;
+
+      const email = 
+        session.customer_email || 
         session.customer_details?.email ||
-        metadata.email ||
+        metadata?.email ||
         'unknown';
-      const buyerName = session.customer_details?.name || null;
-      const userId = metadata.userId || null;
+      const buyerName = session.customer_details?.name;
 
-      let cart = [];
-      try {
-        cart = JSON.parse(metadata.cart || '[]');
-      } catch (err) {
-        console.error("❌ Failed to parse cart metadata:", err);
-      }
+      const userId = metadata?.userId || null;
+      const cart = JSON.parse(metadata?.cart || '[]');
 
-      console.log("✅ Payment succeeded");
-      console.log("📧 User email:", email);
-      console.log("🛒 Cart:", cart);
+      //console.log("Payment succeeded");
+      //console.log("User email:", email);
+      //console.log("Cart:", cart);
 
-      try {
+      //console.log("Stripe webhook received and parsed successfully");
+
+       try {
         await createOrderWithProducts({
-          user_id: userId,
+          user_id: userId || null,
           buyer_email: email,
           buyer_name: buyerName,
           buyer_phone_number: null,
@@ -83,71 +78,55 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           status: session.payment_status,
           stripe_session_id: session.id,
           total_cents: session.amount_total,
-          products: cart
+          products: cart, 
+          pickup_date: pickupDate,
+          pickup_time_slot: pickupSlot,
+          
         });
-
-        console.log("💾 Order saved to database");
 
         const detailedOrder = await getOrderByStripeSessionId(session.id);
-        const productListHTML = detailedOrder.products.map(p => (
-          `<li>${p.quantity}x ${p.slug} - $${(p.unit_price_cents / 100).toFixed(2)}</li>`
-        )).join('');
 
+        //Send email to customer
+        const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
+           
         await sendEmail({
-          to: email,
-          subject: "Order Confirmation - Earth Table",
-          html: `
-            <h2>Thank you for your order!</h2>
-            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
-            <p><strong>Status:</strong> ${detailedOrder.status}</p>
-            <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} (includes 13% HST)</p>
-            <p>Earth Table Team 🧡</p>
-          `
+          to: email, // later: to: email
+          subject,
+          html,
+          text,
+  
+        });
+        
+        // Send email to business notifying new order
+        const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        const ownerMsg = renderOwnerOrderEmail(detailedOrder);
+        
+        await sendEmail({
+          to: ownerTo, 
+          subject: ownerMsg.subject,
+          html: ownerMsg.html,
+          text: ownerMsg.text,
         });
 
-        await sendEmail({
-          to: 'earthtabledatabase@gmail.com',
-          subject: `🛒 New Order from ${email}`,
-          html: `
-            <h2>New Order Received</h2>
-            <p><strong>Email:</strong> ${detailedOrder.buyer_email}</p>
-            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
-            <p><strong>Status:</strong> ${detailedOrder.status}</p>
-            <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} (includes 13% HST)</p>
-          `
-        });
 
       } catch (err) {
-        console.error("❌ Failed to save order or send email:", err);
+        console.error("Failed to save order:", err.message);
       }
-
-      break;
+    } else {
+      console.log(`Skipped event: ${event.type}`);
     }
 
-    case 'checkout.session.expired': {
-      const session = event.data.object;
-      console.warn(`⌛ Checkout session expired: ${session.id}`);
-      // Optional: save this to logs or notify the user via email
-      break;
-    }
-
-    case 'payment_intent.payment_failed': {
-      const intent = event.data.object;
-      const email = intent?.receipt_email || 'unknown';
-      const reason = intent?.last_payment_error?.message || 'No error message provided';
-
-      console.error(`❌ Payment failed for ${email}: ${reason}`);
-      break;
-    }
-
-    default:
-      console.log(`ℹ️ Unhandled event type: ${event.type}`);
+    response.status(200).send();
+  } catch (err) {
+    console.error(`Webhook Error: ${err.message}`);
+    response.status(400).send(`Webhook Error: ${err.message}`);
   }
-
-  response.status(200).send();
 });
+
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080'],
@@ -172,7 +151,8 @@ app.get('/cart', (req, res) => {
 
 
 app.post('/create-checkout-session', async (req, res) => {
-  const { cartItems, email, userId } = req.body;
+  const { cartItems, email, userId, pickup_date, pickup_time_slot } = req.body;
+  
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -196,6 +176,8 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: {
         email: email || '',
         userId: userId || '',
+        pickup_date: pickup_date || '',
+        pickup_time_slot: pickup_time_slot || '',
         cart: JSON.stringify(cartItems.map(item => ({
           id: item.id,
           quantity: item.quantity,
@@ -233,6 +215,8 @@ app.use('/contact', contactRouter);
 app.use('/tags', tagsRouter);
 
 app.use('/cart', cartRouter);
+
+app.use('/dev', testEmail);
 
 
 

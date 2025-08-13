@@ -52,7 +52,7 @@ const Home = () => {
                     <p className="category-description">{category.description}</p>
                   </div>
                   <div className="shop-button-container">
-                    <Link to={`/products/${category.id}`}>
+                    <Link to={`/products/category/${category.id}`}>
                       <button className="shop-button">Shop Now</button>
                     </Link>
                   </div>

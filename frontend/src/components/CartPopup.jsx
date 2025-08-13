@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Minus } from 'lucide-react';
 
 function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   if (cart.length === 0 && !isMinimized) {
     return null;

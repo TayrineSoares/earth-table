@@ -4,23 +4,39 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Send email via Resend
- * @param {Object} params - The email data
- * @param {string} params.to - Recipient email address
- * @param {string} params.subject - Email subject
- * @param {string} params.html - HTML content of the email
+ * @param {Object} params
+ * @param {string|string[]} params.to - Recipient(s)
+ * @param {string} params.subject
+ * @param {string} [params.html] - HTML body
+ * @param {string} [params.text] - Plain-text fallback (recommended)
+ * @param {string} [params.replyTo] - Reply-To address
+ * @param {string|string[]} [params.cc]
+ * @param {string|string[]} [params.bcc]
+ * @param {string} [params.from] - Override default sender if needed
  */
 
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from }) {
   try {
     const response = await resend.emails.send({
-      from: 'Earth Table <onboarding@resend.dev>', // UPDATE THIS LINE AFTER REGISTERING DOMAIN - Replace with the verified sender domain
+      from: from || process.env.RESEND_FROM || 'Earth Table <orders@mail.earthtableco.ca>',
       to,
       subject,
-      html
+      html,
+      text,
+      reply_to: replyTo,
+      cc,
+      bcc,
     });
-    console.log("Email sent:", response);
+    console.log('Email sent:', response?.data?.id || response);
+    return response;
   } catch (error) {
-    console.error("Failed to send email:", error.message);
+    // Resend often nests useful info here:
+    const detail =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      JSON.stringify(error);
+    console.error('Failed to send email:', detail);
+    throw error;
   }
 }
 

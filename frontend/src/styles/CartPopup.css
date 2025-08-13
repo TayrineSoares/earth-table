@@ -1,6 +1,19 @@
+/* Small phones */
+@media (max-width: 480px) {
+  /* Styles for small mobile screens */
+}
+
+
+
+
+
+
+
+
+
 .cart-popup {
   position: fixed;
-  bottom: 33px;
+  bottom: 0px;
   right: 20px; /* Instead of left: 946px, so it stays on the right */
   width: 446px;
   max-height: 300px;

@@ -28,7 +28,7 @@ const Login = ({setUser}) => {
       setMessage(`Login failed: ${error.message}`);
     } else {
       setUser(data.user);
-      navigate(`/products/category`)
+      navigate(`/`)
     }
   };
 
@@ -112,11 +112,11 @@ const Login = ({setUser}) => {
 
             <Link 
             className='forgot-password-text'
-            to="/reset-password">Forgot password?</Link>
+            to="/reset-password">FORGOT PASSWORD?</Link>
             
-            <p className='dont-have-account'>Don't Have An Account?{' '}
+            <p className='dont-have-account'>DON'T HAVE AN ACCOUNT? {' '}
               <Link className="footer-account-register" to="/register">
-              Sign up
+              SIGN UP
               </Link>
             </p>
         <br />

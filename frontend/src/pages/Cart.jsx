@@ -4,15 +4,15 @@ import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png"
 import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from '../supabaseClient';
+import PickupSelector from '../components/PickupSelector';
 import "../styles/Cart.css"
 
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
 
-  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
-  const [pickupPaymentOption, setPickupPaymentOption] = useState("stripe");
- 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
       .then(res => {
@@ -56,13 +56,19 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const email = session?.user?.email || null;
 
     const stripe = await stripePromise;  
-
+    
     const response = await fetch('http://localhost:8080/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ cartItems: cart, email, userId }),
+      body: JSON.stringify({ 
+        cartItems: cart, 
+        email, 
+        userId,
+        pickup_date: pickupDate,
+        pickup_time_slot: pickupTime,
+       }),
     });
 
     const data = await response.json();
@@ -91,6 +97,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
             <p className='checkout-summary-text'>Order Summary</p>
             
+            
             <div className='checkout-summary-items'>
               <p className='number-of-items'>{cart.length} ITEMS</p>
             </div>
@@ -110,9 +117,17 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>Total</p>
               <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
             </div>
+            
+            <PickupSelector 
+              pickupDate={pickupDate}
+              pickupTime={pickupTime}
+              onDateChange={setPickupDate}
+              onTimeChange={setPickupTime}
+            />
 
             
             <button 
+              disabled={!pickupDate || !pickupTime}
               onClick={handleCheckout}
               className="checkout-button"
             >

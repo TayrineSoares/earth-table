@@ -18,6 +18,15 @@ const UserAdmin = () => {
     loadUsers();
   }, []); 
 
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, ""); 
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone; 
+  };
+
 
   const handleAdminToggle = async (user) => {
     try {
@@ -35,11 +44,12 @@ const UserAdmin = () => {
 
   const filteredUsers = users.filter(user => {
     const term = searchTerm.toLowerCase();
+    const termDigits = searchTerm.replace(/\D/g, "");
     return (
       user.email?.toLowerCase().includes(term) ||
       user.first_name?.toLowerCase().includes(term) ||
       user.last_name?.toLowerCase().includes(term) ||
-      user.phone_number?.toLowerCase().includes(term)
+      user.phone_number?.toLowerCase().includes(termDigits)
     );
   });
 
@@ -86,7 +96,7 @@ const UserAdmin = () => {
                 <td>{user.city}</td>
                 <td>{user.province}</td>
                 <td>{user.country}</td>
-                <td>{user.phone_number}</td>
+                <td>{formatPhoneNumber(user.phone_number)}</td>
                 <td>{user.is_admin ? 'Yes' : 'No'}</td>
                 <td>
                   <input

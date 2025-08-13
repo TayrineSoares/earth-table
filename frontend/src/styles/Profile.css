@@ -1,43 +1,32 @@
-.profile-header-image-container{
+.profile-header-image-container {
   position: relative;
   overflow: hidden;
   height: 234px;
 }
 
-.profile-header-image{
+.profile-header-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.profile-text{
+.profile-text {
   font-family: var(--heading-font);
   font-weight: 400;
   font-size: 62px;
   line-height: 100%;
   letter-spacing: 0%;
-  width: 195px;
+  width: 100%;
   height: 68px;
   margin-bottom: 0;
 }
 
-.profile-have-question{
-  font-family: var(--heading-font);
-  font-weight: 400;
-  font-size: 38px;
-  line-height: 100%;
-  letter-spacing: 0%;
-  width: 601px;
-  height: 42px; 
-  margin-top: 17px;
-}
-
-.profile-your-name-container{
+.profile-your-name-container {
   width: 1200px;
-  height: 105px;
+  margin-bottom: 20px;
 }
 
-.profile-your-name-header{
+.profile-your-name-header {
   font-family: var(--heading-font);
   font-weight: 400;
   font-size: 30px;
@@ -49,62 +38,47 @@
   margin-bottom: 0;
 }
 
-.profile-your-name-input{
+.profile-your-name-input {
   width: 1098px;
   opacity: 1;
-  gap: 10px;
   margin-top: 15px;
   border-radius: 15px;
   border-width: 1px;
-  padding-top: 19px;
-  padding-right: 51px;
-  padding-bottom: 19px;
-  padding-left: 51px;
+  padding: 19px 51px;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
   font-size: 15px;
   line-height: 100%;
   letter-spacing: 4%;
   font-variant: small-caps;
 }
 
-.profile-your-message-input{
+.profile-your-message-input {
   width: 1098px;
   opacity: 1;
-  gap: 10px;
   margin-top: 15px;
+  margin-bottom: 30px;
   border-radius: 15px;
   border-width: 1px;
-  padding-top: 19px;
-  padding-right: 51px;
-  padding-bottom: 91px;
-  padding-left: 51px;
+  padding: 19px 51px 91px 51px;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
   font-size: 15px;
   line-height: 100%;
   letter-spacing: 4%;
   font-variant: small-caps;
-  margin-bottom: 30px;
   resize: none;
 }
 
-.profile-submit-button{
+.profile-submit-button {
   width: 311px;
   height: 58px;
   margin-bottom: 73px;
-  top: 1077px;
-  left: 120px;
-  opacity: 1;
   border-radius: 15px;
-  border-width: 1px;
-  border-color: #EDA413;
+  border: 1px solid #EDA413;
   background-color: #FFFBF3;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
   font-size: 15px;
   line-height: 100%;
   letter-spacing: 4%;
@@ -112,7 +86,6 @@
   font-variant: small-caps;
   cursor: pointer;
   box-shadow: none;
-  border-style: solid;
   outline: none;
 }
 
@@ -120,17 +93,109 @@
   transform: scale(0.98);
   background: #EDA413;
   box-shadow: none;
-  transform: none;
 }
 
-.your-detail{
+.your-detail {
   margin: 0;
   width: 588px;
-  left: 122px;
   padding-bottom: 20px;
   font-family: var(--body-font);
   font-weight: 400;
   font-size: 20px;
   line-height: 100%;
   letter-spacing: 0%;
+}
+
+
+@media (max-width: 1366px) {
+  .profile-text {
+    font-size: 50px;
+  }
+
+  .profile-your-name-header {
+    font-size: 26px;
+  }
+
+  .your-detail {
+    font-size: 18px;
+  }
+
+  .profile-your-name-input,
+  .profile-your-message-input {
+    width: 900px;
+  }
+
+  .profile-submit-button {
+    width: 280px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .profile-your-name-container {
+    width: 100%;
+  }
+
+  .profile-your-name-input,
+  .profile-your-message-input {
+    width: 100%;
+  }
+
+  .your-detail {
+    width: 100%;
+  }
+
+  .profile-submit-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-text {
+    font-size: 36px;
+  }
+
+  .profile-your-name-header {
+    font-size: 22px;
+  }
+
+  .your-detail {
+    font-size: 16px;
+  }
+
+  .profile-your-name-input,
+  .profile-your-message-input {
+    padding: 15px 20px;
+    font-size: 14px;
+  }
+
+  .profile-submit-button {
+    height: 50px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-text {
+    font-size: 28px;
+  }
+
+  .profile-your-name-header {
+    font-size: 18px;
+  }
+
+  .your-detail {
+    font-size: 14px;
+    width: 100%;
+  }
+
+  .profile-your-name-input,
+  .profile-your-message-input {
+    padding: 12px 15px;
+    font-size: 13px;
+  }
+
+  .profile-submit-button {
+    font-size: 13px;
+    height: 45px;
+  }
 }

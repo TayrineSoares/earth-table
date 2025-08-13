@@ -4,19 +4,66 @@ const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const CONTACT_TO = (process.env.CONTACT_TO || 'earthtabledatabase@gmail.com')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Verified sender on domain
+const CONTACT_FROM = process.env.CONTACT_FROM || 'Earth Table Contact <hello@mail.earthtableco.ca>';
+
+// Sanitizer so user input doesn't break email HTML
+function escapeHtml(s = '') {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+
+  
 router.post('/', async (req, res) => {
-  const { name, email, message } = req.body;
+  const { name = '', email = '', message = '' } = req.body || {};
+
+  const n = name.trim();
+  const e = email.trim();
+  const m = message.trim();
+
+  if (!n || !e || !m) {
+    return res.status(400).json({ error: 'Name, email, and message are required.' });
+  }
+
+  // email check
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+    return res.status(400).json({ error: 'Please provide a valid email address.' });
+  }
+  if (!CONTACT_TO.length) {
+    return res.status(500).json({ error: 'Contact destination not configured.' });
+  }
+
+  const safeName = escapeHtml(n);
+  const safeEmail = escapeHtml(e);
+  const safeMsgHtml = escapeHtml(m).replace(/\n/g, '<br>');
+
+  const subject = `New message from ${safeName}`;
+  const html = `
+    <p><strong>From:</strong> ${safeName} &lt;${safeEmail}&gt;</p>
+    <p><strong>Message:</strong></p>
+    <p>${safeMsgHtml}</p>
+  `;
+  const text = `From: ${n} <${e}>\n\nMessage:\n${m}`;
+
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Earth Table Contact <onboarding@resend.dev>', // onboarding@resend.dev is allowed for unverified domains during testing UPDATE THIS AFTER 
-      to: ['earthtabledatabase@gmail.com'], // UPDATE THIS TO SELENA'S EMAIL LATER
-      subject: `New message from ${name}`,
-      html: `
-        <p><strong>From:</strong> ${name} (${email})</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-      `,
+      from: CONTACT_FROM, 
+      to: CONTACT_TO,
+      subject,
+      html,
+      text, 
+      reply_to: e,
     });
 
     if (error) {

@@ -1,3 +1,8 @@
+.contact-form{
+  max-width: 1200px;
+  width: 100%;
+}
+
 .your-name-container{
   width: 1200px;
   height: 105px;
@@ -22,18 +27,14 @@
   margin-top: 15px;
   border-radius: 15px;
   border-width: 1px;
-  padding-top: 19px;
-  padding-right: 51px;
-  padding-bottom: 19px;
-  padding-left: 51px;
+  padding: 19px 51px;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 100%;
   letter-spacing: 4%;
   font-variant: small-caps;
-  
+  box-sizing: border-box;
 }
 
 .your-message-input{
@@ -43,27 +44,22 @@
   margin-top: 15px;
   border-radius: 15px;
   border-width: 1px;
-  padding-top: 19px;
-  padding-right: 51px;
-  padding-bottom: 91px;
-  padding-left: 51px;
+  padding: 19px 51px 91px 51px;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 100%;
   letter-spacing: 4%;
   font-variant: small-caps;
   margin-bottom: 30px;
   resize: none;
+  box-sizing: border-box;
 }
 
 .contact-submit-button{
   width: 311px;
   height: 58px;
   margin-bottom: 73px;
-  top: 1077px;
-  left: 120px;
   opacity: 1;
   border-radius: 15px;
   border-width: 1px;
@@ -71,7 +67,6 @@
   background-color: #FFFBF3;
   font-family: var(--body-font);
   font-weight: 500;
-  font-style: Medium;
   font-size: 15px;
   line-height: 100%;
   letter-spacing: 4%;
@@ -88,4 +83,31 @@
   background: #EDA413;
   box-shadow: none;
   transform: none;
+}
+
+@media (max-width: 1366px) {
+  .your-name-container { width: 100%; height: auto; }
+  .your-name-input,
+  .your-message-input { width: 100%; padding: 16px 32px; }
+  .contact-submit-button { width: 360px; }
+}
+
+@media (max-width: 1024px) {
+  .your-name-header { font-size: 26px; }
+  .your-name-input,
+  .your-message-input { padding: 14px 24px; }
+  .contact-submit-button { width: 100%; }
+}
+
+@media (max-width: 768px) {
+  .your-name-header { font-size: 22px; }
+  .your-name-input,
+  .your-message-input { font-size: 15px; }
+}
+
+@media (max-width: 480px) {
+  .your-name-header { font-size: 20px; }
+  .your-name-input,
+  .your-message-input { font-size: 14px; padding: 12px 16px; }
+  .contact-submit-button { height: 52px; font-size: 14px; }
 }

@@ -1,23 +1,67 @@
 const supabase = require('../../supabase/db')
 
+// HELPER format date to use inside other functions to display later on front end
+const formatDisplayDate = (ymd) => {
+  if (!ymd) return null;
+  const [y, m, d] = ymd.split("-");
+  const dt = new Date(y, m - 1, d); // local time
+  return dt.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 async function getAllOrders() {
   const { data, error } = await supabase
     .from('orders')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
 
   if (error) throw new Error(`Error fetching orders: ${error.message}`);
-  return data;
+  return data || [];
 }
 
 async function getOrderById(orderId) {
-  const { data, error } = await supabase
+  const { data: order, error } = await supabase
     .from('orders')
-    .select('*')
+    .select(`
+      id,
+      status,
+      total_cents,
+      created_at,
+      buyer_email,
+      user_id,
+      pickup_date,
+      pickup_time_slot,
+      order_products (
+        product_id,
+        quantity,
+        unit_price_cents,
+        product:products (        
+          slug,
+          image_url
+        )
+      )
+    `)
     .eq('id', orderId)
     .single();
 
   if (error) throw new Error(`Error fetching order by id: ${error.message}`);
-  return data;
+
+  let user = null;
+  if (order?.user_id) {
+    const { data:userData, error:userError } = await supabase
+    .from('users')
+    .select('auth_user_id, email, first_name, last_name, phone_number')
+    .eq('auth_user_id', order.user_id)
+    .single();
+
+    if (!userError) user = userData;
+  }
+  return {...order, user };
 }
 
 async function getOrderByUserId(userId) {
@@ -37,7 +81,8 @@ async function getOrderByUserId(userId) {
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Error fetching order by userId: ${error.message}`);
-  return data;
+
+  return data || [];
 }
 
 async function createOrderWithProducts({ 
@@ -51,6 +96,8 @@ async function createOrderWithProducts({
   stripe_session_id,
   total_cents,
   products = [],
+  pickup_date,
+  pickup_time_slot
   
 }) {
 
@@ -69,7 +116,9 @@ async function createOrderWithProducts({
       buyer_stripe_payment_info,
       status, 
       stripe_session_id, 
-      total_cents
+      total_cents, 
+      pickup_date,
+      pickup_time_slot,
     }])
     .select()
     .single();
@@ -93,6 +142,7 @@ async function createOrderWithProducts({
 
   return order;
 }
+
 
 const getOrderByStripeSessionId = async (sessionId) => {
   // fetch the order matching the session_id from buyer_stripe_payment_info
@@ -133,9 +183,12 @@ const getOrderByStripeSessionId = async (sessionId) => {
     buyer_name: order.buyer_name || null,
     created_at: order.created_at,
     total_cents: order.total_cents,
+    pickup_date: order.pickup_date || null,
+    pickup_date_formatted: formatDisplayDate(order.pickup_date),
+    pickup_time_slot: order.pickup_time_slot || null,
     products: orderProducts.map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
-      image_url: op.product?.image_url || '', // 👈 Add this line
+      image_url: op.product?.image_url || '',
       quantity: op.quantity,
       unit_price_cents: op.unit_price_cents
     }))

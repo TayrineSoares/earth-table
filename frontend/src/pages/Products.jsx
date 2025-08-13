@@ -144,11 +144,22 @@ const Products = ({ addToCart }) => {
             </div>
             
             <div className='product-add-button-container'>
-              <button 
-              className='product-add-button'
-              onClick={() => addToCart(product)}>
+              {product.is_available ? (
+                <button 
+                  className='product-add-button'
+                  onClick={() => addToCart(product)}
+                >
                   <p className='product-add-button-text'>ADD TO CART</p>
+              </button>
+              ) : (
+                <button 
+                  className='product-add-button'
+                  disabled
+                  style={{ cursor: 'not-allowed' }}
+                >
+                  <p className='product-add-button-text'>SOLD OUT!</p>
                 </button>
+              )}
             </div>
             
           </div>

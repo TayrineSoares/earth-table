@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { fetchOrderBySessionId } from '../helpers/orderHelpers';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
@@ -11,6 +11,7 @@ const Confirmation = ({ clearCart }) => {
   const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getOrder = async () => {
@@ -52,6 +53,19 @@ const Confirmation = ({ clearCart }) => {
 
   const total = (order.total_cents) / 100;
 
+  const formattedPickupDate = (pickupDate) => {
+    if (!pickupDate) return "";
+
+    const [year, month, day] = pickupDate.split("-");
+    const localDate = new Date(year, month - 1, day); 
+    return localDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="checkout-page">
       <div className="checkout-page-header-image">
@@ -65,13 +79,13 @@ const Confirmation = ({ clearCart }) => {
             <p className="checkout-summary-text">Thank You!</p>
 
             <div className="checkout-summary-items">
-              <p className="number-of-items">Order ID</p>
-              <p className="number-of-items">{order.id}</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>Order Id</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>{order.id}</p>
             </div>
 
             <div className="checkout-summary-tax">
-              <p className="number-of-items">Status</p>
-              <p className="number-of-items">{order.status}</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>Status</p>
+              <p className="number-of-items" style={{ fontSize: "18px" }}>{order.status}</p>
             </div>
 
             <div className="checkout-total">
@@ -80,11 +94,20 @@ const Confirmation = ({ clearCart }) => {
             </div>
 
             <div style={{ marginTop: "30px", textAlign: "center" }}>
-              <p className="number-of-items">A confirmation email has been sent to</p>
-              <p className="number-of-items"><strong>{order.buyer_email || 'your email address'}</strong></p>
+              <p className="number-of-items"style={{ fontSize: "16px" }} >Your order will be ready for pickup on:</p>
+              <p className="number-of-items" >{formattedPickupDate(order.pickup_date)}, between {order.pickup_time_slot}</p>
+              <p className="number-of-items" style={{ fontSize: "16px" }}>A confirmation email has been sent to</p>
+              <p className="number-of-items" style={{ fontSize: "16px" }}><strong>{order.buyer_email || 'your email address'}</strong></p>
+              
+              
             </div>
 
-              <button to="/" className="checkout-button">Back to Home</button>
+              <button 
+                onClick={() => navigate('/')} 
+                className="checkout-button"
+              >
+                Back to Home
+              </button>
           </div>
 
           <div className="checkout-items">
