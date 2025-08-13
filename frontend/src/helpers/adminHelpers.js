@@ -192,18 +192,6 @@ const toggleProductActive = async (id, makeActive) => {
 
 }
 
-//Delete a product
-const deleteProduct = async (productId) => {
-  const res = await fetch(`http://localhost:8080/products/${productId}`, {
-    method: 'DELETE',
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) throw new Error(data.error || "Failed to delete product");
-
-  return data;
-};
 
 //Upload a produc image 
 const uploadProductImage = async (file) => {
@@ -274,7 +262,6 @@ export {
   fetchAllProducts,
   addProduct,
   updateProduct,
-  deleteProduct,
   uploadProductImage,
   fetchAllTags,
   fetchProductTags,

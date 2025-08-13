@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { fetchAllProducts, fetchAllCategories, addProduct, deleteProduct, updateProduct, toggleProductActive } from '../helpers/adminHelpers';
+import { fetchAllProducts, fetchAllCategories, addProduct, updateProduct, toggleProductActive } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
 import '../styles/ProductAdmin.css'
 
@@ -50,18 +50,6 @@ const ProductAdmin = () => {
     }  
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-
-    try {
-      await deleteProduct(productId);
-
-      // Remove deleted product from local state
-      setProducts(prev => prev.filter(p => p.id !== productId));
-    } catch (err) {
-      console.error("Failed to delete product:", err.message);
-    }
-  };
 
   const handleToggleArchive = async (product) => {
     try {

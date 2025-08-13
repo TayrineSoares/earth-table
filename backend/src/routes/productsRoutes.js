@@ -61,18 +61,6 @@ router.patch('/:id/archive', async (req, res) => {
 });
 
 
-// DELETE /products/:id
-router.delete('/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    await deleteProductById(id);
-    res.json({ message: `Product ${id} deleted successfully` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // PATCH /products/:id — Update product
 router.patch('/:id', async (req, res) => {
   const id = req.params.id;
