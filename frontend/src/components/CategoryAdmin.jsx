@@ -141,7 +141,7 @@ const CategoryAdmin = () => {
 
             <div className="category-details">
               <h2>{category.name}</h2>
-              <p><strong>Image Url:</strong> {category.image_url}</p>
+             
               <p><strong>Description:</strong> {category.description}</p>
               <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
 

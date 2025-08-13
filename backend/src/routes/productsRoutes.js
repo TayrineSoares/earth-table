@@ -13,6 +13,7 @@ const {
   uploadProductImage,
   updateProductTags, 
   getProductTags,
+  setProductActive,
 } = require('../queries/product')
 
 
@@ -40,6 +41,25 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// PATCH /products/:id/archive
+router.patch('/:id/archive', async (req, res) => {
+  const id = Number(req.params.id);
+  const { active } = req.body; // send active=false to archive; true to unarchive
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid product id' });
+
+  try {
+    const product = await setProductActive(id, !!active);
+    return res.json({
+      message: product.is_active ? 'Product unarchived' : 'Product archived',
+      product,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    return res.status(status).json({ error: err.message || 'Archive toggle failed' });
+  }
+});
+
 
 // DELETE /products/:id
 router.delete('/:id', async (req, res) => {
