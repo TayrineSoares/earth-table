@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
 const { sendEmail } = require('./src/utils/email')
+const { renderCustomerOrderEmail, renderOwnerOrderEmail } = require('./src/utils/emailTemplates');
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -83,53 +84,32 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           
         });
 
-        //console.log("Order saved to database");
         const detailedOrder = await getOrderByStripeSessionId(session.id);
-        
 
-        const productListHTML = detailedOrder.products.map(p => {
-          return `<li>${p.quantity}x ${p.slug} - $${(p.unit_price_cents / 100).toFixed(2)}</li>`;
-        }).join('');
-
-        
-        
+        //Send email to customer
+        const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
+           
         await sendEmail({
-          // to: email, UPDATE THIS LINE AFTER REGISTERING DOMAIN
-          to: 'earthtabledatabase@gmail.com',
-          subject: "Order Confirmation - Earth Table",
-          html: `
-            <h2>Thank you for your order!</h2>
-            <p>We've received your order and it's being processed.</p>
-            <h3>Order Summary:</h3>
-            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
-            <p><strong>Status:</strong> ${detailedOrder.status}</p>
-            <h3>Items:</h3>
-            <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
-            <p><strong>Pickup Date:</strong> ${detailedOrder.pickup_date_formatted}</p>
-            <p><strong>Pickup Time Slot:</strong> ${detailedOrder.pickup_time_slot}</p>
-            <p>Address: 123 Fake street</p>
-
-            <p>Earth Table Team 🧡 </p>
-          `
+          to: email, // later: to: email
+          subject,
+          html,
+          text,
+  
         });
+        
+        // Send email to business notifying new order
+        const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
 
-        // Send notification email to business
+        const ownerMsg = renderOwnerOrderEmail(detailedOrder);
+        
         await sendEmail({
-          to: 'earthtabledatabase@gmail.com', // UPDATE THIS LINE AFTER REGISTERING DOMAIN to selena's email 
-          subject: `🛒 New Order from ${email}`,
-          html: `
-            <h2>New Order Received</h2>
-            <p><strong>Email:</strong> ${detailedOrder.buyer_email}</p>
-            <p><strong>Order ID:</strong> ${detailedOrder.id}</p>
-            <p><strong>Status:</strong> ${detailedOrder.status}</p>
-            <h3>Items:</h3>
-            <ul>${productListHTML}</ul>
-            <p><strong>Total:</strong> $${(detailedOrder.total_cents / 100).toFixed(2)} <em>(includes 13% HST)</em></p>
-            <p><strong>Pickup Date:</strong> ${detailedOrder.pickup_date_formatted}</p>
-            <p><strong>Pickup Time Slot:</strong> ${detailedOrder.pickup_time_slot}</p>
-
-          `
+          to: ownerTo, 
+          subject: ownerMsg.subject,
+          html: ownerMsg.html,
+          text: ownerMsg.text,
         });
 
 
@@ -146,6 +126,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
     response.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
+
+
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080'],
