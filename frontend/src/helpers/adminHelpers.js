@@ -174,6 +174,24 @@ const updateProduct = async (updatedProduct) => {
   return data;
 };
 
+// Archive a product 
+const toggleProductActive = async (id, makeActive) => {
+  try {
+    const res = await fetch(`/products/${id}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !!makeActive })
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Archive toggle failed');
+    return json.product; // { id, slug, is_active }
+  } catch (err) {
+    throw new Error(err.message || 'Network error while archiving product');
+  }
+
+}
+
 //Delete a product
 const deleteProduct = async (productId) => {
   const res = await fetch(`http://localhost:8080/products/${productId}`, {
@@ -260,7 +278,8 @@ export {
   uploadProductImage,
   fetchAllTags,
   fetchProductTags,
-  updateProductTags
+  updateProductTags, 
+  toggleProductActive,
 
 
 }; 
