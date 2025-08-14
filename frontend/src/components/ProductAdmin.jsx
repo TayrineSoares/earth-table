@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { fetchAllProducts, fetchAllCategories, addProduct, deleteProduct, updateProduct } from '../helpers/adminHelpers';
+import { fetchAllProducts, fetchAllCategories, addProduct, updateProduct, toggleProductActive } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
 import '../styles/ProductAdmin.css'
 
@@ -50,16 +50,16 @@ const ProductAdmin = () => {
     }  
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
 
+  const handleToggleArchive = async (product) => {
     try {
-      await deleteProduct(productId);
-
-      // Remove deleted product from local state
-      setProducts(prev => prev.filter(p => p.id !== productId));
+      const updated = await toggleProductActive(product.id, !product.is_active);
+      setProducts(prev =>
+        prev.map(prod => (prod.id === updated.id ? { ...prod, ...updated } : prod))
+      );
     } catch (err) {
-      console.error("Failed to delete product:", err.message);
+      console.error(err);
+      alert(err.message);
     }
   };
 
@@ -157,12 +157,17 @@ const ProductAdmin = () => {
                 <p><strong>Category:</strong> {getCategoryName(product.category_id)}</p>
 
                 <div className='manage-buttons'> 
+                  {!product.is_active && (
+                    <span className="archived-badge">
+                      Archived
+                    </span>
+                  )}
+
                   <button 
                     style={{ marginRight: '0.5rem' }} 
                     onClick={() => {
-                      setEditProduct(product);     // set the selected product
-                      setShowForm(true);           // show the form
-                      // Wait for the form to render, then scroll
+                      setEditProduct(product);
+                      setShowForm(true);
                       setTimeout(() => {
                         formRef.current?.scrollIntoView({ behavior: 'smooth' });
                       }, 100);
@@ -170,7 +175,10 @@ const ProductAdmin = () => {
                   >
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteProduct(product.id)}> Delete </button>
+
+                  <button onClick={() => handleToggleArchive(product)}>
+                    {product.is_active ? 'Archive' : 'Unarchive'}
+                  </button>
                 </div>
               </div>
             </div>

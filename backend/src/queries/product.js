@@ -143,6 +143,26 @@ async function getProductTags(productId) {
   if (error) throw new Error(`Error fetching product tags: ${error.message}`);
   return data.map(row => row.tag_id);
 }
+
+async function setProductActive(id, isActive) {
+  const { data, error } = await supabase
+    .from('products')
+    .update({ is_active: !!isActive })
+    .eq('id', id)
+    .select('id,slug,is_active')
+    .single();
+
+  if (error) {
+    // Supabase returns 406/single error when no row matches
+    if (/0 rows/.test(error.message || '') || /Row not found/i.test(error.message || '')) {
+      const e = new Error('Product not found');
+      e.status = 404;
+      throw e;
+    }
+    throw new Error(`Error updating product status: ${error.message}`);
+  }
+  return data;
+}
   
 
 
@@ -156,4 +176,5 @@ module.exports = {
   uploadProductImage,
   updateProductTags,
   getProductTags,
+  setProductActive,
 };

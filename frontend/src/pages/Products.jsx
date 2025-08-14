@@ -17,9 +17,12 @@ const Products = ({ addToCart }) => {
   
   
   const [isLoading, setIsLoading] = useState(true);
+
+  // show only active products
+  const visibleProducts = allProducts.filter(p => p.is_active);
   
   const filteredProducts = categoryId
-  ? allProducts.filter(product => product.category_id === Number(categoryId)) :  allProducts;
+  ? visibleProducts.filter(product => product.category_id === Number(categoryId)) :  visibleProducts;
 
   const selectedCategory = categoryId
   ? allCategories.find(cat => cat.id === Number(categoryId))
@@ -32,6 +35,8 @@ const Products = ({ addToCart }) => {
     'dairy free': <MilkOff size={16} />,
     paleo: <BeanOff size={16} />
   };
+
+  
 
   useEffect(() => {
     fetch('http://localhost:8080/products')
