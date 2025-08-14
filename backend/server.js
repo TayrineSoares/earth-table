@@ -15,6 +15,7 @@ const contactRouter = require('./src/routes/contactRoutes');
 const tagsRouter = require('./src/routes/tagsRoutes');
 const cartRouter = require('./src/routes/cartRoutes');
 const testEmail = require('./src/routes/testEmail');
+const { getUserByAuthId } = require('./src/queries/user');
 
 require('dotenv').config();
 
@@ -42,6 +43,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const metadata = session.metadata;
       const pickupDate = metadata?.pickup_date || null;
       const pickupSlot = metadata?.pickup_time_slot || null;
+      const specialNote = metadata?.special_note || null;
+      const delivery = metadata?.delivery || false;
+      let buyerPhoneNumber = null;
 
       const email = 
         session.customer_email || 
@@ -52,6 +56,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
 
       const userId = metadata?.userId || null;
       const cart = JSON.parse(metadata?.cart || '[]');
+
+      if (userId) {
+        const user = await getUserByAuthId(userId);
+        if (user) {
+          buyerPhoneNumber = user.phone_number;
+        }
+      }
 
       //console.log("Payment succeeded");
       //console.log("User email:", email);
@@ -64,8 +75,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           user_id: userId || null,
           buyer_email: email,
           buyer_name: buyerName,
-          buyer_phone_number: null,
-          buyer_address: null,
+          buyer_phone_number: buyerPhoneNumber,
           buyer_stripe_payment_info: JSON.stringify({
             session_id: session.id,
             payment_intent: session.payment_intent,
@@ -81,7 +91,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           products: cart, 
           pickup_date: pickupDate,
           pickup_time_slot: pickupSlot,
-          
+          delivery: delivery,
+          special_note: specialNote,
         });
 
         const detailedOrder = await getOrderByStripeSessionId(session.id);
@@ -151,7 +162,7 @@ app.get('/cart', (req, res) => {
 
 
 app.post('/create-checkout-session', async (req, res) => {
-  const { cartItems, email, userId, pickup_date, pickup_time_slot } = req.body;
+  const { cartItems, email, userId, pickup_date, pickup_time_slot, special_note, delivery } = req.body;
   
 
   try {
@@ -172,12 +183,15 @@ app.post('/create-checkout-session', async (req, res) => {
       success_url: 'http://localhost:5173/confirmation?session_id={CHECKOUT_SESSION_ID}', // Stripe will replace {CHECKOUT_SESSION_ID} with the actual ID (e.g., cs_test_123abc...)
       cancel_url: 'http://localhost:5173/cart',
       ...(userId && email ? { customer_email: email } : {}), // add email if logged in, if not leave blank
+      phone_number_collection: { enabled: true },
 
       metadata: {
         email: email || '',
         userId: userId || '',
         pickup_date: pickup_date || '',
         pickup_time_slot: pickup_time_slot || '',
+        delivery: delivery || false,
+        special_note: special_note ||'',
         cart: JSON.stringify(cartItems.map(item => ({
           id: item.id,
           quantity: item.quantity,

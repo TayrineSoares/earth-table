@@ -14,6 +14,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [specialNote, setSpecialNote] = useState("");
+  const [uberDelivery, setUberDelivery] = useState(false);
+  const [showDeliveryWarning, setShowDeliveryWarning] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8080/cart')
@@ -30,6 +34,14 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         console.error(err);
         setIsLoading(false);
       });
+  }, []);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkSession();
   }, []);
 
   const totalPrice = cart.reduce((sum, item) => {
@@ -70,6 +82,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         userId,
         pickup_date: pickupDate,
         pickup_time_slot: pickupTime,
+        delivery: uberDelivery,
+        special_note: specialNote
        }),
     });
 
@@ -84,6 +98,24 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
   return (
     <div className='checkout-page'>
+
+      {showDeliveryWarning && (
+            <div className="delivery-warning-overlay">
+              <div className="delivery-warning-box">
+              <h2 className='warning-text'>
+                <span className='warning-symbol'>⚠</span> Delivery Instructions <span className='warning-symbol'>⚠</span>
+              </h2>
+                <p className='warning-text-details'>
+                Please include your full delivery address in the special instructions. Payment for delivery can be made via e-transfer, and the delivery fee may vary depending on Uber rates. We’ll give you a quick call to confirm the details before sending your order.
+                </p>
+                <button 
+                  className='warning-button'
+                  onClick={() => setShowDeliveryWarning(false)}
+                >OK</button>
+              </div>
+            </div>
+          )}
+
       <div className='checkout-page-header-image'>
         <img 
           src={checkoutImage}
@@ -126,6 +158,38 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               onDateChange={setPickupDate}
               onTimeChange={setPickupTime}
             />
+
+            <div className="general-text">
+              <input
+                type="checkbox"
+                id="uber-delivery"
+                checked={uberDelivery}
+                disabled={!isLoggedIn}
+                onChange={(e) => {
+                  if (!isLoggedIn) return;
+                  setUberDelivery(e.target.checked);
+                  if (e.target.checked) {
+                    setShowDeliveryWarning(true);
+                  }
+                }}
+              />
+              <label htmlFor="uber-delivery">
+                We offer delivery by <Link className="footer-account-register" to="/privacy">Uber Carrier</Link>.
+                {!isLoggedIn && <span className="login-warning"> (Please log in to use delivery)</span>}
+              </label>
+            </div>
+
+            <div className="special-note-container" >
+              <label htmlFor="special-note" className='general-text'>Special Instructions (optional)</label>
+              <textarea
+                className='special-note-input'
+                id="special-note"
+                value={specialNote}
+                onChange={(e) => setSpecialNote(e.target.value)}
+                placeholder="Allergies, cooking instructions, uber carrier..."
+                rows="3"
+              />
+            </div>
 
             <div className="general-text">
               <input
@@ -181,10 +245,13 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                     <button className="checkout-popup-remove-button"onClick={() => removeAll(item)}>REMOVE</button>
                   </div>
                 </div>
+                
               
               </div>
+              
             ))}
           </div>
+
 
         </div>
       </div>

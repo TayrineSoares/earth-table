@@ -23,6 +23,18 @@ const OrderAdmin = () => {
     });
   };
 
+  const isDelivery = (delivery) => {
+    if (!delivery) return 'No.';
+
+    return "Yes.";
+  }
+
+  const specialNote = (note) => {
+    if (!note) return 'N/A';
+
+    return "Yes.";
+  }
+
   const formattedOrderDate = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -117,6 +129,8 @@ const OrderAdmin = () => {
             <th>Pickup</th>
             <th>Total</th>
             <th>Buyer Email</th>
+            <th>Delivery</th>
+            <th>Special Note</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -135,6 +149,8 @@ const OrderAdmin = () => {
                   <td>{formattedPickupDate(order.pickup_date)}, {order.pickup_time_slot}</td>
                   <td>${(order.total_cents / 100).toFixed(2)}</td>
                   <td>{order.buyer_email || "N/A"}</td>
+                  <td>{isDelivery(order.delivery)}</td>
+                  <td>{specialNote(order.special_note)}</td>
                   <td>
                     <button className="view-items-button" onClick={() => toggleDetailedOrder(order.id)}>
                       {isOpen ? 'Hide' : 'View Details'}
@@ -156,6 +172,8 @@ const OrderAdmin = () => {
                             <strong>Email: </strong>{orderDetails.user?.email || 'No email'} 
                             <br></br>
                             <strong>Phone Number:</strong> {formatPhoneNumber(orderDetails?.user.phone_number) || 'No phone'}
+                            <br></br>
+                            <strong>Special Note:</strong>{' '}{order.special_note || ''}{' '}
                           </div>
                         ) : (
                           <div className="order-admin-buyer">
