@@ -14,6 +14,7 @@ import {
   UpdatePassword,
   ProductDetail,
   OrderHistory,
+  AuthCallback,
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
@@ -53,6 +54,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/orders/:userId?" element={<OrderHistory user={user}/>} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
     
       </div>

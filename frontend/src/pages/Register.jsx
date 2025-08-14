@@ -1,10 +1,7 @@
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
-import { Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../supabaseClient';
 import loginImage from "../assets/images/accountImage.png"
 import "../styles/Register.css"
-import { use } from 'react';
 
 const Register = ({setUser}) => {
   const [ email, setEmail ] = useState("");
@@ -53,6 +50,10 @@ const Register = ({setUser}) => {
       setMessage("Passwords do not match");
       return;
     }
+    if (!agreedToPrivacy) {
+      setMessage("Please agree to the Privacy Policy.");
+      return;
+    }
 
     try {
       const res = await fetch('http://localhost:8080/register', {
@@ -69,26 +70,36 @@ const Register = ({setUser}) => {
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
 
-      if (data.error) {
-        setMessage(`Registration failed: ${data.error}`);
-        if (data.error.includes("already registered")) {
-          setAlreadyRegistered(true);
-        } else {
-          setAlreadyRegistered(false);
-        }
-      } else {
+      if (!res.ok) {
+        const errMsg = data?.error || `HTTP ${res.status}`;
+        setMessage(`Registration failed: ${errMsg}`);
+        setAlreadyRegistered(/already/i.test(errMsg));
+        return;
+      }
+
+      // Expect 202 + needs_confirmation: true
+      if (data?.needs_confirmation) {
+        // stash non-sensitive profile bits for after confirmation
+        localStorage.setItem('pendingProfile', JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber
+        }));
+        setMessage("Check your email to confirm your account, then you’ll be signed in.");
+        setAlreadyRegistered(false);
+        return;
+      }
+
+      // (If confirmations are OFF, backend may return user/session)
+      if (data?.user) {
         setMessage(`You have been registered as ${data.user.email}`);
         setAlreadyRegistered(false);
         setUser(data.user);
-
-        // Supabase already created session ; Navbar will update automatically
-        setTimeout(() => {
-          navigate('/');
-        }, 1500);
+        setTimeout(() => navigate('/'), 1500);
       }
-
     } catch (err) {
       setMessage("Registration error: " + err.message);
     }

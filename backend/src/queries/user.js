@@ -1,5 +1,6 @@
 const supabase = require('../../supabase/db')
 
+
 async function getAllUsers() {
   const { data, error } = await supabase
     .from('users')
@@ -18,7 +19,7 @@ async function getUserByAuthId(authUserId) {
     .from('users')
     .select('*')
     .eq('auth_user_id', authUserId)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(`Error fetching user by Auth Id: ${error.message}`);
   return data;

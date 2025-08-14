@@ -12,3 +12,4 @@ export { default as ResetPassword } from './ResetPassword';
 export { default as UpdatePassword } from './UpdatePassword';
 export { default as ProductDetail } from './ProductDetail';
 export { default as OrderHistory } from './OrderHistory';
+export { default as AuthCallback } from './AuthCallback';
