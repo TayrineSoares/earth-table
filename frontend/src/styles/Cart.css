@@ -12,9 +12,9 @@
 
 .checkout-page-container {
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
 }
+
 
 .checkout-summary-text {
   font-family: var(--heading-font);
@@ -61,8 +61,9 @@
 }
 
 .checkout-items {
-  margin-top: 148px;
+  margin-top: 70px;
   margin-bottom: 349px;
+  margin-left: 100px;
 }
 
 .checkout-items-container {
@@ -85,7 +86,6 @@
   font-size: 38px;
   line-height: 100%;
   letter-spacing: 0%;
-  height: 42px;
   margin-bottom: 10px;
 }
 

@@ -13,6 +13,7 @@ const Products = ({ addToCart }) => {
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [allTags, setAllTags] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(6);
   
   
   const [isLoading, setIsLoading] = useState(true);
@@ -122,7 +123,7 @@ const Products = ({ addToCart }) => {
       </div>
 
       <div className='products-container'>
-      {filteredProducts.map((product) => {
+      {filteredProducts.slice(0, visibleCount).map((product) => {
         return (
           <div className='products' key={product.id}>
             {product.tags && product.tags.length > 0 && (
@@ -141,11 +142,11 @@ const Products = ({ addToCart }) => {
               alt={product.slug}
             />
             <div className='product-header-info-container'>
-              <p className='product-header-name'>{product.slug}</p>
-    
+              <p className='product-header-price'>${(product.price_cents / 100).toFixed(2)}</p>    
+              <p className='product-header-name'>{product.slug}</p>  
             </div>
+
             <div className='product-description-container'>
-              <p className='product-header-price'>${(product.price_cents / 100).toFixed(2)}</p>
               <p className='product-description'>{product.description}</p>
             </div>
             
@@ -167,11 +168,24 @@ const Products = ({ addToCart }) => {
                 </button>
               )}
             </div>
-            
           </div>
+          
         );
       })}
       </div>
+
+      {visibleCount < filteredProducts.length && (
+        <div className='load-more-container'>
+          <button 
+            className="load-more-button" 
+            onClick={() => {
+              setVisibleCount(prev => prev + 6);
+            }}
+          >
+            Load More
+          </button>
+        </div>
+      )}
     </div>
   )
 };

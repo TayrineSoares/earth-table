@@ -63,7 +63,7 @@
 
 .go-to-chekout-button-container{
   display: flex;
-  margin-left: 100px;
+  margin-left: 37px;
 }
 .go-to-chekout-button {
   font-family: var(--body-font);
@@ -84,13 +84,13 @@
   line-height: 100%;
   letter-spacing: 0%;
   font-variant: small-caps;
-  margin-left: 35px;
+  margin-left: 70px;
 }
 
 .cart-total{
   font-family: var(--body-font);
   font-weight: 400;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 100%;
   letter-spacing: 0%;
   font-variant: small-caps;
@@ -146,7 +146,6 @@
 
 .cart-popup-item-name{
   font-family: var(--body-font);
-  height: 19px;
   font-weight: 400;
   font-size: 15px;
   line-height: 100%;

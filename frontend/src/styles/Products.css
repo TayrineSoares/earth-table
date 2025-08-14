@@ -73,9 +73,11 @@
 
 .product-header-info-container {
   display: flex;
-  align-items: center;
-  height: 70px;
-
+  flex-direction: column;
+  align-items: flex-start;
+  height: auto;
+  gap: 4px;
+  height: 91px;
 }
 
 .product-header-name {
@@ -83,9 +85,7 @@
   font-weight: 400;
   font-size: 30px;
   font-variant: small-caps;
-  height: 70%;
-  margin-top: 0;
-
+  margin: 0;
 }
 
 .product-header-price {
@@ -94,9 +94,7 @@
   font-size: 20px;
   white-space: nowrap;
   color: #BE7200;
-  margin-bottom: 0;
-  margin-top: 0;
-
+  margin: 0;
 }
 
 .product-description-container {
@@ -162,6 +160,27 @@
   font-size: 15px;
   font-variant: small-caps;
   margin: 5px;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+}
+
+.load-more-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #BE7200;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.load-more-button:hover {
+  background-color: #e65c00;
 }
 
 

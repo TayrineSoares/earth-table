@@ -71,17 +71,17 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
               </div>
           )}
             <div className="cart-popup-footer">
+              <div className='go-to-chekout-button-container'>
+                <button 
+                  className='go-to-chekout-button'
+                  onClick={() => navigate('/cart')}
+                >
+                  GO TO CHECKOUT
+                </button>
+              </div>
               <p className='cart-total-text'>TOTAL COST:</p>
               <p className='cart-total'>${(totalPrice / 100).toFixed(2)}
-              </p>
-              <div className='go-to-chekout-button-container'>
-              <button 
-                className='go-to-chekout-button'
-                onClick={() => navigate('/cart')}
-              >
-                GO TO CHECKOUT
-              </button>
-              </div>
+              </p> 
           </div>
         </>
       ) : (
