@@ -8,7 +8,7 @@ import checkoutImage from "../assets/images/checkoutImage.png"
 
 const OrderHistory = ({user}) => {
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
  
   const formattedPickupDate = (pickupDate) => {
     if (!pickupDate) return "";
@@ -42,7 +42,7 @@ const OrderHistory = ({user}) => {
     const loadOrders = async () => {
       const data = await fetchOrdersByAuthId(user.id); 
       setOrders(data);
-      setLoading(false);
+      setIsLoading(false);
 
     }; 
 
@@ -50,9 +50,17 @@ const OrderHistory = ({user}) => {
   }, [user]); 
 
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="loading-container">
+      <div 
+        className="loading-container" 
+        style={{
+          minHeight: "80vh", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center"
+        }}
+      >
         <Lottie animationData={loadingAnimation} loop={true} />
       </div>
     );

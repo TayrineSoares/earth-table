@@ -85,7 +85,15 @@ const Products = ({ addToCart }) => {
 
   if (isLoading) {
     return (
-      <div className="loading-container">
+      <div 
+        className="loading-container" 
+        style={{
+          minHeight: "80vh", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center"
+        }}
+      >
         <Lottie animationData={loadingAnimation} loop={true} />
       </div>
     );

@@ -74,7 +74,11 @@ const Navbar = ({ user, onLogout, cart }) => {
           <ul className="nav-links">
             {links.map((link) => (
               <li key={link.to}>
-                <NavLink to={link.to} className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                <NavLink 
+                  to={link.to} 
+                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   {link.label}
                 </NavLink>
               </li>
