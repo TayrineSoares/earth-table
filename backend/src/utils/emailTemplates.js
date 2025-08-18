@@ -21,13 +21,50 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
   // Items (safe defaults)
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
 
+
   // Build the items list for HTML
   const itemsHtml = items.map((p) => {
     const name = p.slug ?? p.name ?? 'Item';
     const qty = p.quantity ?? 1;
-    const price = formatMoney(p.unit_price_cents ?? 0);
-    return `<li>${qty}x ${name} — ${price}</li>`;
+    const each = formatMoney(p.unit_price_cents ?? 0);
+    return `<li style="margin:2px 0;">${qty} x ${name} — ${each}</li>`;
   }).join('');
+
+
+  // Subject
+  const subject = `Order Confirmation #${id} — Earth Table`;
+
+  // Simple, readable HTML
+const html = `
+  <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
+    <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">Thank you for your order!</h1>
+    <p style="margin:0 0 16px;">We've received your order and it's being processed.</p>
+
+    <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
+      <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
+      <p style="margin:0;"><strong>Status:</strong> ${status}</p>
+    </div>
+
+    <h2 style="font-size:16px; margin:0 0 8px; color:#333;">Items</h2>
+    <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
+
+    <p style="margin:12px 0 6px;"><strong>Total:</strong> ${total} <span style="color:#666; font-size:12px;">(includes 13% HST)</span></p>
+
+    <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
+    <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
+
+    <p style="margin:16px 0;">Earth Table Team 🧡</p>
+
+    <hr style="border:none; border-top:1px solid #eee; margin:12px 0;" />
+
+    <p style="margin:8px 0 0; font-size:12px; color:#666;">
+      Questions about your order? Email us at
+      <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
+    </p>
+    <p style="margin:4px 0 0; font-size:12px; color:#666;">Please do not reply to this email.</p>
+  </div>
+  `
+;
 
   // Build the items list for plain text
   const itemsText = items.map((p) => {
@@ -37,45 +74,22 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
     return `- ${qty}x ${name} @ ${price}`;
   }).join('\n');
 
-  // Subject
-  const subject = `Order Confirmation #${id} — Earth Table`;
-
-  // Simple, readable HTML
-  const html = `
-    <h2>Thank you for your order!</h2>
-    <p>We've received your order and it's being processed.</p>
-
-    <h3>Order Summary</h3>
-    <p><strong>Order ID:</strong> ${id}</p>
-    <p><strong>Status:</strong> ${status}</p>
-
-    <h3>Items</h3>
-    <ul>${itemsHtml || '<li>(no items)</li>'}</ul>
-
-    <p><strong>Total:</strong> ${total} <em>(includes 13% HST)</em></p>
-    <p><strong>Pickup Date:</strong> ${pickupDate}</p>
-    <p><strong>Pickup Time:</strong> ${pickupTime}</p>
-
-    <p>Earth Table Team 🧡</p>
-    <p>** Please do not respond to this email. If you have any questions or concerns about your order, email us at hello@earthtableco.ca ** </p>
-
-    
-  `;
-
   // Plain-text fallback (helps deliverability)
-  const text = `Thank you for your order!
+  const text = ` Earth Table — Order #${id} confirmed
+  
+  Thank you for your order!
 
-Order ID: ${id}
-Status: ${status}
+  Order ID: ${id}
+  Status: ${status}
 
-Items:
-${itemsText || '(no items)'}
+  Items:
+  ${itemsText || '(no items)'}
 
-Total: ${total} (includes 13% HST)
-Pickup Date: ${pickupDate}
-Pickup Time: ${pickupTime}
+  Total: ${total} (includes 13% HST)
+  Pickup Date: ${pickupDate}
+  Pickup Time: ${pickupTime}
 
-Earth Table Team`;
+  Earth Table Team`;
 
   // Return everything the sender needs
   return {
@@ -107,6 +121,32 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
     return `<li>${qty}x ${name} — ${price}</li>`;
   }).join('');
 
+  
+  const subject = `🛒 New order #${id} — Earth Table`;
+
+  const html = `
+    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
+      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">New order received</h1>
+
+      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
+        <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
+        <p style="margin:0 0 6px;"><strong>Status:</strong> ${status}</p>
+        <p style="margin:0;"><strong>Total:</strong> ${total}</p>
+      </div>
+
+      <p style="margin:0 0 6px;"><strong>Pickup Date:</strong> ${pickupDate}</p>
+      <p style="margin:0 0 12px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
+
+      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Customer</h2>
+      <p style="margin:0 0 4px;"><strong>Buyer Name:</strong> ${buyerName}</p>
+      <p style="margin:0 0 4px;"><strong>Email:</strong> ${buyerEmail}</p>
+
+      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Items</h2>
+      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
+    </div>
+    `
+  ;
+
   const itemsText = items.map((p) => {
     const name = p.slug ?? p.name ?? 'Item';
     const qty = p.quantity ?? 1;
@@ -114,28 +154,18 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
     return `- ${qty}x ${name} @ ${price}`;
   }).join('\n');
 
-  const subject = `🛒 New order #${id} — Earth Table`;
-  const html = `
-    <h2>New order received</h2>
-    <p><strong>Customer:</strong> ${buyerName} &lt;${buyerEmail}&gt;</p>
-    <p><strong>Status:</strong> ${status}</p>
-    <p><strong>Total:</strong> ${total}</p>
-    <p><strong>Pickup:</strong> ${pickupDate} ${pickupTime}</p>
-
-    <h3>Items</h3>
-    <ul>${itemsHtml || '<li>(no items)</li>'}</ul>
-  `;
   const text = `New order received
 
-Customer: ${buyerName} <${buyerEmail}>
-Email: ${buyerPhone}
-Status: ${status}
-Total: ${total}
-Pickup: ${pickupDate} ${pickupTime}
+  Customer: ${buyerName} <${buyerEmail}>
+  Phone: ${buyerPhone}
+  Status: ${status}
+  Total: ${total}
+  Pickup: ${pickupDate} ${pickupTime}
 
-Items:
-${itemsText || '(no items)'}
-`;
+  Items:
+  ${itemsText || '(no items)'}
+  `
+;
 
   return {
     subject,
