@@ -54,7 +54,7 @@ const html = `
 
     <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
     <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
-    <p style="margin:0 0 16px;"><strong>Address</strong> 123 FAKE STREET </p>
+    <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 123 FAKE STREET </p>
 
     <p style="margin:16px 0;">Earth Table Team 🧡</p>
 
@@ -64,7 +64,7 @@ const html = `
       Questions about your order? Email us at
       <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
     </p>
-    <p style="margin:4px 0 0; font-size:12px; color:#666;">Please do not reply to this email.</p>
+    <p style="margin:4px 0 0; font-size:12px; color:#666;">*** Please do not reply to this email. *** </p>
   </div>
   `
 ;
