@@ -186,7 +186,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 id="special-note"
                 value={specialNote}
                 onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder="Allergies, cooking instructions, uber carrier..."
+                placeholder="Allergies, special instructions..."
                 rows="3"
               />
             </div>

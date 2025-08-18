@@ -45,8 +45,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const pickupSlot = metadata?.pickup_time_slot || null;
       const specialNote = metadata?.special_note || null;
       const delivery = metadata?.delivery || false;
-      const buyerPhoneNumber = session.customer_details?.phone || null;
-
+      let buyerPhoneNumber = session.customer_details?.phone || null;
 
 
       const email = 
@@ -62,7 +61,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       if (userId) {
         const user = await getUserByAuthId(userId);
         if (user) {
-          buyerPhoneNumber = user.phone_number;
+          buyerPhoneNumber = user.phone_number|| buyerPhoneNumber;
         }
       }
 
@@ -108,6 +107,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           subject,
           html,
           text,
+          replyTo: 'hello@earthtableco.ca'
   
         });
         

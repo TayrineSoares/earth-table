@@ -57,7 +57,7 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
     <p><strong>Pickup Time:</strong> ${pickupTime}</p>
 
     <p>Earth Table Team 🧡</p>
-    <p>** Please do not respond to this email. If you have any questions or concerns about your order, email us at order@earthtableco.ca ** </p>
+    <p>** Please do not respond to this email. If you have any questions or concerns about your order, email us at hello@earthtableco.ca ** </p>
 
     
   `;

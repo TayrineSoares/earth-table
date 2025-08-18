@@ -18,16 +18,17 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from }) {
   try {
     const response = await resend.emails.send({
-      from: from || process.env.RESEND_FROM || 'Earth Table <orders@mail.earthtableco.ca>',
+      from: 
+        from || process.env.RESEND_FROM || 'Earth Table <orders@earthtableco.ca>',
       to,
       subject,
       html,
       text,
-      reply_to: replyTo,
+      reply_to: replyTo || process.env.CONTACT_FROM || 'Earth Table <hello@earthtableco.ca>',
       cc,
       bcc,
     });
-    console.log('Email sent:', response?.data?.id || response);
+    //console.log('Email sent:', response?.data?.id || response);
     return response;
   } catch (error) {
     // Resend often nests useful info here:
