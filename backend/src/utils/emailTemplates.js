@@ -17,6 +17,8 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
   const total = formatMoney(detailedOrder.total_cents ?? 0);
   const pickupDate = detailedOrder.pickup_date_formatted ?? '—';
   const pickupTime = detailedOrder.pickup_time_slot ?? '—';
+  
+
 
   // Items (safe defaults)
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
@@ -52,6 +54,7 @@ const html = `
 
     <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
     <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
+    <p style="margin:0 0 16px;"><strong>Address</strong> 123 FAKE STREET </p>
 
     <p style="margin:16px 0;">Earth Table Team 🧡</p>
 
@@ -112,6 +115,7 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
   const buyerEmail = detailedOrder.buyer_email ?? '—';
   const buyerName = detailedOrder.buyer_name ?? '—';
   const buyerPhone = detailedOrder.buyer_phone_number ?? '—';
+  const specialInstructions = detailedOrder.special_note ?? '—';
 
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
   const itemsHtml = items.map((p) => {
@@ -136,6 +140,7 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
 
       <p style="margin:0 0 6px;"><strong>Pickup Date:</strong> ${pickupDate}</p>
       <p style="margin:0 0 12px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
+      <p style="margin:0 0 12px;"><strong>Special Instructions:</strong> ${specialInstructions}</p>
 
       <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Customer</h2>
       <p style="margin:0 0 4px;"><strong>Buyer Name:</strong> ${buyerName}</p>
