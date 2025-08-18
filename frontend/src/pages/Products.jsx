@@ -14,8 +14,9 @@ const Products = ({ addToCart }) => {
   const [allCategories, setAllCategories] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [visibleCount, setVisibleCount] = useState(6);
-  
-  
+
+  const [searchTerm, setSearchTerm] = useState("");
+    
   const [isLoading, setIsLoading] = useState(true);
 
   // show only active products
@@ -23,6 +24,27 @@ const Products = ({ addToCart }) => {
   
   const filteredProducts = categoryId
   ? visibleProducts.filter(product => product.category_id === Number(categoryId)) :  visibleProducts;
+
+  // define norm (case/accents-insensitive compare)
+  const norm = (s) =>
+    (s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  // case-insensitive search on product.slug (name)
+  const searchFilteredProducts = filteredProducts.filter(p =>
+    norm(p.slug).includes(norm(searchTerm))
+  );
+
+  // final list shown (paginate)
+  const productsToShow = searchFilteredProducts.slice(0, visibleCount);
+
+  // reset pagination when category or search changes
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [categoryId, searchTerm]); 
+
 
   const selectedCategory = categoryId
   ? allCategories.find(cat => cat.id === Number(categoryId))
@@ -122,8 +144,29 @@ const Products = ({ addToCart }) => {
         </p>
       </div>
 
+      {/* Search input */}
+      <div className="products-search">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search products by name…"
+          aria-label="Search products by name"
+          className="products-search-input"
+        />
+        {searchTerm && (
+          <button
+            className="products-search-clear"
+            onClick={() => setSearchTerm("")}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       <div className='products-container'>
-      {filteredProducts.slice(0, visibleCount).map((product) => {
+      {productsToShow.map((product) => {
         return (
           <div className='products' key={product.id}>
             {product.tags && product.tags.length > 0 && (
@@ -174,7 +217,7 @@ const Products = ({ addToCart }) => {
       })}
       </div>
 
-      {visibleCount < filteredProducts.length && (
+      {visibleCount < searchFilteredProducts.length && (
         <div className='load-more-container'>
           <button 
             className="load-more-button" 
