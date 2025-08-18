@@ -1,18 +1,17 @@
 .nav-link,
 .dropdown-link {
   cursor: pointer;
-  text-decoration: none; /* remove default underline */
-  display: inline-block; /* ensures hover underline renders */
+  text-decoration: none;
+  display: inline-block;
 }
 
-/* Hover and active underline */
 .nav-link:hover,
 .nav-link.active,
 .dropdown-link:hover {
-  text-decoration-line: underline; /* explicitly set underline */
-  text-decoration-color: #EDA413; /* orange underline */
+  text-decoration-line: underline;
+  text-decoration-color: #EDA413;
   text-decoration-thickness: 2px;
-  text-underline-offset: 3px; /* optional spacing for nicer look */
+  text-underline-offset: 3px;
 }
 
 @media (max-width: 950px) {
