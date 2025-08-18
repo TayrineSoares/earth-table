@@ -57,6 +57,9 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
     <p><strong>Pickup Time:</strong> ${pickupTime}</p>
 
     <p>Earth Table Team 🧡</p>
+    <p>** Please do not respond to this email. If you have any questions or concerns about your order, email us at order@earthtableco.ca ** </p>
+
+    
   `;
 
   // Plain-text fallback (helps deliverability)
@@ -94,6 +97,7 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
   const pickupTime = detailedOrder.pickup_time_slot ?? '—';
   const buyerEmail = detailedOrder.buyer_email ?? '—';
   const buyerName = detailedOrder.buyer_name ?? '—';
+  const buyerPhone = detailedOrder.buyer_phone_number ?? '—';
 
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
   const itemsHtml = items.map((p) => {
@@ -124,6 +128,7 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
   const text = `New order received
 
 Customer: ${buyerName} <${buyerEmail}>
+Email: ${buyerPhone}
 Status: ${status}
 Total: ${total}
 Pickup: ${pickupDate} ${pickupTime}

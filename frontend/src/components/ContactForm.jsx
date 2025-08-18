@@ -85,7 +85,11 @@ const ContactForm = () => {
             type="submit"
           >Send Message</button>
       </form>
-      {status && <p>{status}</p>}
+      {status && (
+        <p className="contact-status" role="status" aria-live="polite">
+          {status}
+        </p>
+      )}
     </div>
   );
 };
