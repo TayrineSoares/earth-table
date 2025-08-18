@@ -1,5 +1,5 @@
 import { useEffect, useState, Fragment } from 'react';
-import { fetchAllOrders, fetchOrderById } from '../helpers/orderHelpers';
+import { fetchAllOrders, fetchOrderById, setOrderPickedUp } from '../helpers/orderHelpers';
 import '../styles/OrderAdmin.css';
 
 const OrderAdmin = () => {
@@ -34,6 +34,20 @@ const OrderAdmin = () => {
 
     return "Yes.";
   }
+
+  const handleTogglePickedUp = async (order) => {
+    const next = !order.picked_up;
+    
+    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: next } : o));
+    try {
+      await setOrderPickedUp(order.id, next);
+    } catch (e) {
+      console.error(e);
+      
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: !next } : o));
+      alert('Failed to update picked up status.');
+    }
+  };
 
   const formattedOrderDate = (isoString) => {
     if (!isoString) return "";
@@ -148,6 +162,7 @@ const OrderAdmin = () => {
             <th>Delivery</th>
             <th>Special Note</th>
             <th>Actions</th>
+            <th>Picked Up?</th>
           </tr>
         </thead>
 
@@ -170,6 +185,16 @@ const OrderAdmin = () => {
                   <td>
                     <button className="view-items-button" onClick={() => toggleDetailedOrder(order.id)}>
                       {isOpen ? 'Hide' : 'View Details'}
+                    </button>
+                  </td>
+                  <td> 
+                    <button
+                      className={`picked-btn ${order.picked_up ? 'is-picked' : ''}`}
+                      onClick={() => handleTogglePickedUp(order)}
+                      aria-pressed={order.picked_up}
+                      title={order.picked_up ? 'Mark as NOT picked up' : 'Mark as picked up'}
+                    >
+                      {order.picked_up ? 'Picked up ✓' : 'Mark as picked up'}
                     </button>
                   </td>
                 </tr>

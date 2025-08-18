@@ -94,3 +94,20 @@
 .order-admin-items li:last-child {
   border-bottom: none;
 }
+
+.picked-btn {
+  border: 1px solid #EDA413;
+  background: #FFFBF3;
+  color: #BE7200;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-family: var(--body-font, Arial);
+  font-size: 14px;
+  cursor: pointer;
+}
+.picked-btn:hover { filter: brightness(0.98); }
+.picked-btn.is-picked {
+  background: #F1FAF4;     
+  border-color: #2D7A46;
+  color: #2D7A46;
+}

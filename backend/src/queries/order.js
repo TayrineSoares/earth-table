@@ -205,11 +205,24 @@ const getOrderByStripeSessionId = async (sessionId) => {
   };
 };
 
+const setOrderPickedUp = async (orderId, pickedUp) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ picked_up: !!pickedUp })
+    .eq('id', orderId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Error updating picked_up: ${error.message}`);
+  return data;
+}
+
 
 module.exports = {
   getAllOrders,
   getOrderById,
   getOrderByUserId,
   createOrderWithProducts, 
-  getOrderByStripeSessionId
+  getOrderByStripeSessionId, 
+  setOrderPickedUp
 };

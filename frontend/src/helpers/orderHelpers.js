@@ -66,6 +66,22 @@ const fetchOrderById = async (orderId) => {
   }
 }
 
+const setOrderPickedUp = async (orderId, picked) => {
+
+  const res = await fetch(`http://localhost:8080/orders/${orderId}/picked-up`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ picked_up: !!picked }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update picked_up');
+  }
+  return res.json();
+
+}
+
 
 
 
@@ -73,6 +89,7 @@ export {
   fetchOrderBySessionId,
   fetchOrdersByAuthId, 
   fetchAllOrders, 
-  fetchOrderById
+  fetchOrderById,
+  setOrderPickedUp,
  
 }; 
