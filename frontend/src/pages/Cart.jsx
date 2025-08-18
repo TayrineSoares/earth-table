@@ -106,7 +106,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 <span className='warning-symbol'>⚠</span> Delivery Instructions <span className='warning-symbol'>⚠</span>
               </h2>
                 <p className='warning-text-details'>
-                Please include your full delivery address in the special instructions. Payment for delivery can be made via e-transfer, and the delivery fee may vary depending on Uber rates. We’ll give you a quick call to confirm the details before sending your order.
+                Pickup only by default. If you'd like delivery via Uber Courier, please email us at hello@earthtableco.ca for cost and details. Delivery fee may vary depending on Uber rates.
                 </p>
                 <button 
                   className='warning-button'
