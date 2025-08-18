@@ -33,6 +33,7 @@ async function getOrderById(orderId) {
       total_cents,
       created_at,
       buyer_email,
+      buyer_phone_number,
       user_id,
       pickup_date,
       pickup_time_slot,

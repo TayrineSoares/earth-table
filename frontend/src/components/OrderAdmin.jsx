@@ -93,6 +93,22 @@ const OrderAdmin = () => {
     return phone; 
   };
 
+  const formatStripePhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, ""); 
+
+    // Handle North America (+1)
+    if (cleaned.startsWith("1") && cleaned.length === 11) {
+      const area = cleaned.slice(1, 4);
+      const prefix = cleaned.slice(4, 7);
+      const line = cleaned.slice(7);
+      return `(${area}) ${prefix}-${line}`;
+    }
+
+    // For other countries, just return in +CC... format
+    return `+${cleaned}`;
+  };
+
   const filteredOrders = orders.filter(order => {
     const term = (searchTerm || "").toLowerCase();
     return (
@@ -177,7 +193,11 @@ const OrderAdmin = () => {
                           </div>
                         ) : (
                           <div className="order-admin-buyer">
-                            <strong>User not registered. </strong> {orderDetails?.buyer_email || 'guest / unknown'}
+                            <strong>User not registered. </strong> 
+                            <br/>
+                            {orderDetails?.buyer_email || 'guest / unknown'}
+                             <br/>
+                            {formatStripePhoneNumber(orderDetails?.buyer_phone_number) || ' / unknown'}
                           </div>
                         )}
 

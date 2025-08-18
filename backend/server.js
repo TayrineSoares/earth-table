@@ -45,7 +45,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const pickupSlot = metadata?.pickup_time_slot || null;
       const specialNote = metadata?.special_note || null;
       const delivery = metadata?.delivery || false;
-      let buyerPhoneNumber = null;
+      const buyerPhoneNumber = session.customer_details?.phone || null;
+
+
 
       const email = 
         session.customer_email || 
@@ -83,6 +85,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             currency: session.currency,
             payment_status: session.payment_status,
             customer_name: session.customer_details?.name || '',
+            customer_phone: session.customer_details?.phone || '',
             customer_address: session.customer_details?.address || {}
           }),
           status: session.payment_status,
