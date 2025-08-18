@@ -5,7 +5,7 @@ const fetchUserByAuthId = async (authUserId) => {
     throw new Error("authUserId is required");
   }
 
-  const res = await fetch(`http://localhost:8080/users/${authUserId}`);
+  const res = await fetch(`/api/users/${authUserId}`);
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch user");
@@ -15,7 +15,7 @@ const fetchUserByAuthId = async (authUserId) => {
 
 // Fetch all users
 const fetchAllUsers = async () => {
-  const res = await fetch('http://localhost:8080/users');
+  const res = await fetch('/api/users');
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch users");
@@ -27,7 +27,7 @@ const fetchAllUsers = async () => {
 const patchUserProfile = async(authUserId, updates) => {
   if (!authUserId) throw new Error ("authUserId is required"); 
 
-  const res = await fetch (`http://localhost:8080/users/${authUserId}`, {
+  const res = await fetch (`/api/users/${authUserId}`, {
         method: "PATCH", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),

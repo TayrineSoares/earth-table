@@ -61,7 +61,7 @@ const Products = ({ addToCart }) => {
   
 
   useEffect(() => {
-    fetch('http://localhost:8080/products')
+    fetch('/api/products')
       .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! :${res.status}`)
@@ -77,7 +77,7 @@ const Products = ({ addToCart }) => {
         console.error(err);
         setIsLoading(false);
       });
-    fetch('http://localhost:8080/categories')
+    fetch('/api/categories')
       .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! :${res.status}`)
@@ -87,7 +87,7 @@ const Products = ({ addToCart }) => {
       .then(data => {
         setAllCategories(data);
       });
-    fetch('http://localhost:8080/tags')
+    fetch('/api/tags')
       .then(res => res.json())
       .then(data => {
         console.log("Fetched tags:", data);  

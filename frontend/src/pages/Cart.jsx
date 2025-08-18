@@ -20,7 +20,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:8080/cart')
+    fetch('/api/cart')
       .then(res => {
         if(!res.ok) {
           throw new Error(`HTTP Error.${res.status}`);
@@ -79,7 +79,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
     const stripe = await stripePromise;  
     
-    const response = await fetch('http://localhost:8080/create-checkout-session', {
+    const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

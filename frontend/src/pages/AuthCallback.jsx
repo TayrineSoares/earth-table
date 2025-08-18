@@ -32,7 +32,7 @@ export default function AuthCallback() {
       if (!session) return navigate('/login');
 
       // Tell backend to create the profile after confirmation
-      const res = await fetch('http://localhost:8080/register/confirmation', {
+      const res = await fetch('/api/register/confirmation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

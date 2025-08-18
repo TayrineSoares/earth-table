@@ -2,7 +2,7 @@
 
 const fetchOrderBySessionId = async (sessionId) => {
   try {
-    const res = await fetch(`http://localhost:8080/orders/session/${sessionId}`);
+    const res = await fetch(`/api/orders/session/${sessionId}`);
     
     if (!res.ok) {
       throw new Error(`Failed to fetch order: ${res.status}`);
@@ -18,7 +18,7 @@ const fetchOrderBySessionId = async (sessionId) => {
 
 const fetchOrdersByAuthId = async (authUserId) => {
   try {
-    const res = await fetch(`http://localhost:8080/orders/user/${authUserId}`); 
+    const res = await fetch(`/api/orders/user/${authUserId}`); 
 
     if(!res.ok) {
       throw new Error(`Failed to fetch orders: ${res.status}`);
@@ -36,7 +36,7 @@ const fetchOrdersByAuthId = async (authUserId) => {
 
 const fetchAllOrders = async () => {
   try {
-    const response = await fetch('http://localhost:8080/orders');
+    const response = await fetch('/api/orders');
     if (!response.ok) {
       throw new Error(`Failed to fetch orders: ${response.statusText}`);
     }
@@ -53,7 +53,7 @@ const fetchAllOrders = async () => {
 const fetchOrderById = async (orderId) => {
   
   try {
-    const response = await fetch(`http://localhost:8080/orders/${orderId}`);
+    const response = await fetch(`/api/orders/${orderId}`);
     if (!response.ok) {
         throw new Error(`Failed to fetch order ${orderId}: ${response.status}`);
     }
@@ -68,7 +68,7 @@ const fetchOrderById = async (orderId) => {
 
 const setOrderPickedUp = async (orderId, picked) => {
 
-  const res = await fetch(`http://localhost:8080/orders/${orderId}/picked-up`, {
+  const res = await fetch(`/api/orders/${orderId}/picked-up`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ picked_up: !!picked }),

@@ -7,7 +7,7 @@ const fetchUserByAuthId = async (authUserId) => {
     throw new Error("authUserId is required");
   }
 
-  const res = await fetch(`http://localhost:8080/users/${authUserId}`);
+  const res = await fetch(`/api/users/${authUserId}`);
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch user");
@@ -17,7 +17,7 @@ const fetchUserByAuthId = async (authUserId) => {
 
 // Fetch all users
 const fetchAllUsers = async () => {
-  const res = await fetch('http://localhost:8080/users');
+  const res = await fetch('/api/users');
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch users");
@@ -27,7 +27,7 @@ const fetchAllUsers = async () => {
 
 // Update user's admin permission 
 const updateUserAdmin = async (authUserId, isAdmin) => {
-  const res = await fetch(`http://localhost:8080/users/${authUserId}`, {
+  const res = await fetch(`/api/users/${authUserId}`, {
     method: 'PATCH', 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_admin: isAdmin }),
@@ -47,7 +47,7 @@ const updateUserAdmin = async (authUserId, isAdmin) => {
 
 //Fetch ALL categories
 const fetchAllCategories = async () => {
-  const res = await fetch('http://localhost:8080/categories');
+  const res = await fetch('/api/categories');
   const data = await res.json(); 
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch user");
@@ -58,7 +58,7 @@ const fetchAllCategories = async () => {
 
 // Add New Category 
 const addCategory = async (categoryData) => {
-  const res = await fetch('http://localhost:8080/categories', {
+  const res = await fetch('/api/categories', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ const addCategory = async (categoryData) => {
 
 // Update an existing category 
 const updateCategory = async (categoryToUpdate) => {
-  const res = await fetch(`http://localhost:8080/categories/${categoryToUpdate.id}` , {
+  const res = await fetch(`/api/categories/${categoryToUpdate.id}` , {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ const updateCategory = async (categoryToUpdate) => {
 
 //Delete an existing category 
 const deleteCategory = async (id) => {
-  const res = await fetch(`http://localhost:8080/categories/${id}` , {
+  const res = await fetch(`/api/categories/${id}` , {
     method: 'DELETE',
   });
 
@@ -111,7 +111,7 @@ const uploadCategoryImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
 
-  const res = await fetch('http://localhost:8080/categories/upload', {
+  const res = await fetch('/api/categories/upload', {
     method: 'POST',
     body: formData,
   });
@@ -129,7 +129,7 @@ const uploadCategoryImage = async (file) => {
 
 //Fetch ALL products 
 const fetchAllProducts = async () => {
-  const res = await fetch('http://localhost:8080/products');
+  const res = await fetch('/api/products');
 
   if (!res.ok) {
     const data = await res.json();
@@ -144,7 +144,7 @@ const fetchAllProducts = async () => {
 
 //Add a new product
 const addProduct = async (productData) => {
-  const res = await fetch('http://localhost:8080/products', {
+  const res = await fetch('/api/products', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(productData),
@@ -159,7 +159,7 @@ const addProduct = async (productData) => {
 
 //Update an existing product
 const updateProduct = async (updatedProduct) => {
-  const res = await fetch(`http://localhost:8080/products/${updatedProduct.id}`, {
+  const res = await fetch(`/api/products/${updatedProduct.id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ const updateProduct = async (updatedProduct) => {
 // Archive a product 
 const toggleProductActive = async (id, makeActive) => {
   try {
-    const res = await fetch(`http://localhost:8080/products/${id}/archive`, {
+    const res = await fetch(`/api/products/${id}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !!makeActive })
@@ -198,7 +198,7 @@ const uploadProductImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
 
-  const res = await fetch('http://localhost:8080/products/upload', {
+  const res = await fetch('/api/products/upload', {
     method: 'POST',
     body: formData,
   });
@@ -214,7 +214,7 @@ const uploadProductImage = async (file) => {
 
 // fetch all tags 
 const fetchAllTags = async () => {
-  const res = await fetch('http://localhost:8080/tags');
+  const res = await fetch('/api/tags');
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch tags");
@@ -224,7 +224,7 @@ const fetchAllTags = async () => {
 
 // fetch tags for a specific product by id 
 const fetchProductTags = async (productId) => {
-  const res = await fetch(`http://localhost:8080/products/${productId}/tags`);
+  const res = await fetch(`/api/products/${productId}/tags`);
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch product tags");
@@ -234,7 +234,7 @@ const fetchProductTags = async (productId) => {
 
 // update tags of a selected product
 const updateProductTags = async (productId, tagIds) => {
-  const res = await fetch(`http://localhost:8080/products/${productId}/tags`, {
+  const res = await fetch(`/api/products/${productId}/tags`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

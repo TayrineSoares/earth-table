@@ -17,13 +17,13 @@ function ProductDetail() {
   };
 
   useEffect(() => {
-    fetch(`http://localhost:8080/products/${id}`)
+    fetch(`/api/products/${id}`)
       .then(res => res.json())
       .then(data => {
         setProduct(data);
         setLoading(false);
       })
-      fetch('http://localhost:8080/tags')
+      fetch('/api/tags')
       .then(res => res.json())
       .then(data => {
         console.log("Fetched tags:", data);  
