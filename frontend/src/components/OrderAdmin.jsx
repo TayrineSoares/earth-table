@@ -1,5 +1,5 @@
 import { useEffect, useState, Fragment } from 'react';
-import { fetchAllOrders, fetchOrderById } from '../helpers/orderHelpers';
+import { fetchAllOrders, fetchOrderById, setOrderPickedUp } from '../helpers/orderHelpers';
 import '../styles/OrderAdmin.css';
 
 const OrderAdmin = () => {
@@ -34,6 +34,20 @@ const OrderAdmin = () => {
 
     return "Yes.";
   }
+
+  const handleTogglePickedUp = async (order) => {
+    const next = !order.picked_up;
+    
+    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: next } : o));
+    try {
+      await setOrderPickedUp(order.id, next);
+    } catch (e) {
+      console.error(e);
+      
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: !next } : o));
+      alert('Failed to update picked up status.');
+    }
+  };
 
   const formattedOrderDate = (isoString) => {
     if (!isoString) return "";
@@ -93,6 +107,22 @@ const OrderAdmin = () => {
     return phone; 
   };
 
+  const formatStripePhoneNumber = (phone) => {
+    if (!phone) return "(not set)";
+    const cleaned = phone.replace(/\D/g, ""); 
+
+    // Handle North America (+1)
+    if (cleaned.startsWith("1") && cleaned.length === 11) {
+      const area = cleaned.slice(1, 4);
+      const prefix = cleaned.slice(4, 7);
+      const line = cleaned.slice(7);
+      return `(${area}) ${prefix}-${line}`;
+    }
+
+    // For other countries, just return in +CC... format
+    return `+${cleaned}`;
+  };
+
   const filteredOrders = orders.filter(order => {
     const term = (searchTerm || "").toLowerCase();
     return (
@@ -132,6 +162,7 @@ const OrderAdmin = () => {
             <th>Delivery</th>
             <th>Special Note</th>
             <th>Actions</th>
+            <th>Picked Up?</th>
           </tr>
         </thead>
 
@@ -156,6 +187,16 @@ const OrderAdmin = () => {
                       {isOpen ? 'Hide' : 'View Details'}
                     </button>
                   </td>
+                  <td> 
+                    <button
+                      className={`picked-btn ${order.picked_up ? 'is-picked' : ''}`}
+                      onClick={() => handleTogglePickedUp(order)}
+                      aria-pressed={order.picked_up}
+                      title={order.picked_up ? 'Mark as NOT picked up' : 'Mark as picked up'}
+                    >
+                      {order.picked_up ? 'Picked up ✓' : 'Mark as picked up'}
+                    </button>
+                  </td>
                 </tr>
 
                 {isOpen && (
@@ -177,7 +218,11 @@ const OrderAdmin = () => {
                           </div>
                         ) : (
                           <div className="order-admin-buyer">
-                            <strong>User not registered. </strong> {orderDetails?.buyer_email || 'guest / unknown'}
+                            <strong>User not registered. </strong> 
+                            <br/>
+                            {orderDetails?.buyer_email || 'guest / unknown'}
+                             <br/>
+                            {formatStripePhoneNumber(orderDetails?.buyer_phone_number) || ' / unknown'}
                           </div>
                         )}
 

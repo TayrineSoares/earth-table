@@ -85,6 +85,24 @@
   transform: none;
 }
 
+.contact-status {
+  width: 311px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 4%;
+  font-variant: small-caps;
+  text-align: center;
+
+  padding: 14px 20px;
+  border-radius: 15px;
+  border: 1px solid #EDA413; 
+  background-color: #FFFBF3;             
+  margin-left: auto;
+  margin-right: auto;
+}
+
 @media (max-width: 1366px) {
   .your-name-container { width: 100%; height: auto; }
   .your-name-input,

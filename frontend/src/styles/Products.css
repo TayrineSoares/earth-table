@@ -183,6 +183,42 @@
   background-color: #e65c00;
 }
 
+.products-search {
+  margin-bottom: 1rem;
+}
+
+.products-search-input {
+  padding: 0.5rem;
+  width: 300px;
+  font-size: 16px;
+  border: 1px solid #EDA413; 
+  border-radius: 8px;
+  background-color: #fff8f0;
+  outline: none;
+}
+
+.products-search-input:focus {
+  border-color: #c97f0a;
+  box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+}
+
+
+.products-search-clear {
+  margin-left: 8px;
+  background: #EDA413;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.products-search-clear:hover {
+  background: #c97f0a;
+}
+
 
 @media (max-width: 1366px) {
   .product-title-text {

@@ -6,6 +6,7 @@ const {
   getOrderById,
   getOrderByUserId, 
   getOrderByStripeSessionId,
+  setOrderPickedUp,
 } = require('../queries/order')
 
 const { getProductsForOrder } = require('../queries/order_product')
@@ -79,6 +80,19 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({error: error.message});
   }
 }); 
+
+// Mark picked up
+router.patch('/:id/picked-up', async (req, res) => {
+  const { id } = req.params;
+  const { picked_up } = req.body; // boolean
+  try {
+    const updated = await setOrderPickedUp(id, picked_up);
+    res.json(updated);
+  } catch (err) {
+    console.error('Failed to set picked_up:', err.message);
+    res.status(500).json({ error: 'Failed to update order picked_up' });
+  }
+});
 
 
 

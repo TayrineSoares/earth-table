@@ -114,7 +114,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 <span className='warning-symbol'>⚠</span> Delivery Instructions <span className='warning-symbol'>⚠</span>
               </h2>
                 <p className='warning-text-details'>
-                Please include your full delivery address in the special instructions. Payment for delivery can be made via e-transfer, and the delivery fee may vary depending on Uber rates. We’ll give you a quick call to confirm the details before sending your order.
+                Pickup only by default. If you'd like delivery via Uber Courier, please email us at hello@earthtableco.ca for cost and details. Delivery fee may vary depending on Uber rates.
                 </p>
                 <button 
                   className='warning-button'
@@ -194,7 +194,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 id="special-note"
                 value={specialNote}
                 onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder="Allergies, cooking instructions, uber carrier..."
+                placeholder="Allergies, special instructions..."
                 rows="3"
               />
             </div>
