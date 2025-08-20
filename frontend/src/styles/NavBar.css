@@ -14,6 +14,22 @@
   text-underline-offset: 3px;
 }
 
+.cart-image {
+  position: relative;
+  display: inline-block;
+}
+
+.cart-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: red;
+  border-radius: 50%;
+  border: 2px solid #FFFBF3;
+}
+
 @media (max-width: 950px) {
   nav{
     height: 76px;
@@ -51,7 +67,7 @@
   }
 
   .cart-image{
-    height: 50px;
+    height: 55px;
   }
 
   .nav-links-wrapper {

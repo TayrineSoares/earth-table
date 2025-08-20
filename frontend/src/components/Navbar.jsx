@@ -12,7 +12,6 @@ const Navbar = ({ user, onLogout, cart }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasItem, setHasItem] = useState([]);
 
   const links = [
     { to: "/about", label: "ABOUT" },
@@ -22,6 +21,12 @@ const Navbar = ({ user, onLogout, cart }) => {
 
   const toggleMenu = () => setShowAccountMenu((prev) => !prev);
   const closeMenu = () => setShowAccountMenu(false);
+
+  const handleNavClick = (callback) => {
+    closeMenu();
+    setIsMobileMenuOpen(false);
+    if (callback) callback();
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,100 +58,118 @@ const Navbar = ({ user, onLogout, cart }) => {
   return (
     <nav>
 
-      <div ref={accountMenuRef} className="hamburger-menu" onClick={() => setIsMobileMenuOpen(prev => !prev)}>
+      <div
+        ref={accountMenuRef}
+        className="hamburger-menu"
+        onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+      >
         <div className="bar"></div>
         <div className="bar"></div>
         <div className="bar"></div>
       </div>
-      
-        {/* Logo */}
-        <div className="logo-header">
-          <img src={earthLogo} className="earth-logo" alt="Earth Logo" />
-          <Link to="/">
-            <img src={earthLogoText} className="web-title" alt="Earth Table Co" />
-          </Link>
-          
-          {/* Hamburger menu button (small phones) */}
-        </div>
 
-        {/* Nav links */}
-        <div className={`nav-links-wrapper ${isMobileMenuOpen ? "open" : ""}`}>
-          <ul className="nav-links">
-            {links.map((link) => (
-              <li key={link.to}>
-                <NavLink 
-                  to={link.to} 
-                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.label}
-                </NavLink>
-              </li>
-            ))}
+      <div className="logo-header">
+        <img src={earthLogo} className="earth-logo" alt="Earth Logo" />
+        <Link to="/">
+          <img src={earthLogoText} className="web-title" alt="Earth Table Co" />
+        </Link>
+      </div>
 
-            <li className="account-menu-container" ref={accountMenuRef}>
-              <div
-                className="nav-link account-link"
-                onClick={toggleMenu}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter") toggleMenu(); }}
+      <div className={`nav-links-wrapper ${isMobileMenuOpen ? "open" : ""}`}>
+        <ul className="nav-links">
+          {links.map((link) => (
+            <li key={link.to}>
+              <NavLink
+                to={link.to}
+                className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                onClick={() => handleNavClick()}
               >
-                ACCOUNT
-              </div>
-              {showAccountMenu && (
-                <ul className="account-dropdown-menu">
-                  {!user && (
+                {link.label}
+              </NavLink>
+            </li>
+          ))}
+
+          <li className="account-menu-container" ref={accountMenuRef}>
+            <div
+              className="nav-link account-link"
+              onClick={toggleMenu}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") toggleMenu(); }}
+            >
+              ACCOUNT
+            </div>
+            {showAccountMenu && (
+              <ul className="account-dropdown-menu">
+                {!user && (
+                  <li>
+                    <NavLink
+                      to="/login"
+                      className="dropdown-link"
+                      onClick={() => handleNavClick()}
+                    >
+                      LOGIN/REGISTER
+                    </NavLink>
+                  </li>
+                )}
+                {user && (
+                  <>
                     <li>
-                      <NavLink to="/login" className="dropdown-link" onClick={closeMenu}>
-                        LOGIN/REGISTER
+                      <NavLink
+                        to={`/profile/${user.id}`}
+                        className="dropdown-link"
+                        onClick={() => handleNavClick()}
+                      >
+                        PROFILE
                       </NavLink>
                     </li>
-                  )}
-                  {user && (
-                    <>
+                    <li>
+                      <NavLink
+                        to={`/orders/${user.id}`}
+                        className="dropdown-link"
+                        onClick={() => handleNavClick()}
+                      >
+                        ORDER HISTORY
+                      </NavLink>
+                    </li>
+                    {isAdmin && (
                       <li>
-                        <NavLink to={`/profile/${user.id}`} className="dropdown-link" onClick={closeMenu}>
-                          PROFILE
-                        </NavLink>
-                      </li>
-                      <li>
-                        <NavLink to={`/orders/${user.id}`} className="dropdown-link" onClick={closeMenu}>
-                          ORDER HISTORY
-                        </NavLink>
-                      </li>
-                      {isAdmin && (
-                        <li>
-                          <NavLink to="/admin" className="dropdown-link" onClick={closeMenu}>
-                            ADMIN BOARD
-                          </NavLink>
-                        </li>
-                      )}
-                      <li>
-                        <div
+                        <NavLink
+                          to="/admin"
                           className="dropdown-link"
-                          onClick={(e) => { e.preventDefault(); closeMenu(); onLogout(); }}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => { if (e.key === "Enter") { closeMenu(); onLogout(); } }}
+                          onClick={() => handleNavClick()}
                         >
-                          LOGOUT
-                        </div>
+                          ADMIN BOARD
+                        </NavLink>
                       </li>
-                    </>
-                  )}
-                </ul>
-              )}
-            </li>
-          </ul>
-        </div>
+                    )}
+                    <li>
+                      <div
+                        className="dropdown-link"
+                        onClick={(e) => { e.preventDefault(); handleNavClick(onLogout); }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleNavClick(onLogout); }}
+                      >
+                        LOGOUT
+                      </div>
+                    </li>
+                  </>
+                )}
+              </ul>
+            )}
+          </li>
+        </ul>
+      </div>
 
-        <div className="cart-header">
-          <Link to="/cart">
+      <div className="cart-header">
+        <Link to="/cart" onClick={() => setIsMobileMenuOpen(false)}>
+          <div style={{ position: "relative", display: "inline-block" }}>
             <img src={cartImage} className="cart-image" alt="Cart" />
             {cart.length > 0 && <span className="cart-dot"></span>}
-          </Link>
-        </div>
+          </div>
+        </Link>
+      </div>
     </nav>
   );
 };

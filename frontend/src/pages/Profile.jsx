@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
 import "../styles/Profile.css";
 import loginImage from "../assets/images/accountImage.png"
+import loadingAnimation from '../assets/loading.json'
+import Lottie from 'lottie-react';
 
 
 const Profile = () => {
@@ -13,6 +15,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // <-- Lottie loading state
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
@@ -23,7 +26,6 @@ const Profile = () => {
     return phone;
   };
 
-  // Shows (123) 456-7890 while typing, but never returns symbols to state
   const formatPhoneForInput = (value) => {
     const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
     if (cleaned.length < 4) return cleaned;
@@ -31,12 +33,10 @@ const Profile = () => {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   };
 
-  // Special onChange just for the phone field
   const handlePhoneTyping = (e) => {
     const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
     setDraft((prev) => ({ ...prev, phone_number: digitsOnly }));
   };
-
 
   const editableFields = [
     { label: "First Name", name: "first_name", type: "text" },
@@ -69,6 +69,8 @@ const Profile = () => {
         setUser(data);
       } catch (err) {
         setError(`Error: ${err.message}`);
+      } finally {
+        setIsLoading(false); // <-- stop Lottie loading when done
       }
     };
     loadUser();
@@ -115,7 +117,21 @@ const Profile = () => {
     }
   };
 
-  if (!user) return <p>Loading...</p>;
+  if (isLoading) {
+    return (
+      <div 
+        className="loading-container" 
+        style={{
+          minHeight: "80vh", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center"
+        }}
+      >
+        <Lottie animationData={loadingAnimation} loop={true} />
+      </div>
+    );
+  }
 
   return (
     <div className='profile-form-container'>
@@ -125,109 +141,108 @@ const Profile = () => {
           src={loginImage}
         />
       </div>
-    <div className="profile-form">
-      <div className='page-wrapper'>
-
-      <h1 className="profile-text">{user.first_name}'s Profile</h1>
-      <br />
-
-      {message && <p style={{ color: "green" }}>{message}</p>}
-      {error && <p style={{ whiteSpace: "pre-line", color: "red" }}>{error}</p>}
-
-      {!isEditing ? (
-        <>
-          <div className="your-name-container">
-            <p className="your-name-header">Email</p>
-            <p className='your-detail'>{user.email}</p>
-          </div>
-
-          {editableFields.map(({ label, name }) => (
-            <div key={name} className="your-name-container">
-              <p className="your-name-header">{label}</p>
-              <p className="your-detail">
-                {name === "phone_number"
-                  ? formatPhoneNumber(user[name])
-                  : (user[name] || "(not set)")}
-              </p>
-            </div>
-          ))}
-
-          <button
-            className="contact-submit-button"
-            onClick={() => {
-              setIsEditing(true);
-              setDraft({...user});  
-              setMessage("");
-              setError("");
-            }}
-            >
-            Edit Profile
-          </button>
-        </>
-      ) : (
-        <form onSubmit={handleUpdate}>
-          <div className="your-name-container">
-            <p className="your-name-header">Email</p>
-            <input
-              name="email"
-              value={user.email}
-              disabled
-              className="your-name-input"
-              />
-          </div>
-
-          {editableFields.map(({ label, name, type }) => (
-            <div key={name} className="your-name-container">
-              <p className="your-name-header">{label}</p>
-              {name === "phone_number" ? (
-                <input
-                  type="tel"
-                  name="phone_number"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  value={formatPhoneForInput(draft?.phone_number)}
-                  onChange={handlePhoneTyping}
-                  className="your-name-input"
-                  placeholder="(XXX) XXX-XXXX"
-                />
-              ) : (
-              <input
-                type={type}
-                name={name}
-                value={draft?.[name] || ""}
-                onChange={handleChange}
-                className="your-name-input"
-                />
-              )}
-            </div>
-          ))}
-
+      <div className="profile-form">
+        <div className='page-wrapper'>
+          <h1 className="profile-text">{user.first_name}'s Profile</h1>
           <br />
-          <button
-            className="contact-submit-button"
-            type="submit"
-            disabled={loading}
-            >
-            {loading ? "Updating..." : "Update Profile"}
-          </button>
-          <br /><br />
-          <button
-            className="contact-submit-button"
-            type="button"
-            onClick={() => {
-              setIsEditing(false);
-              setDraft(null);
-              setMessage("");
-              setError("");
-            }}
-            >
-            Go Back
-          </button>
-        </form>
-      )}
+
+          {message && <p style={{ color: "green" }}>{message}</p>}
+          {error && <p style={{ whiteSpace: "pre-line", color: "red" }}>{error}</p>}
+
+          {!isEditing ? (
+            <>
+              <div className="your-name-container">
+                <p className="your-name-header">Email</p>
+                <p className='your-detail'>{user.email}</p>
+              </div>
+
+              {editableFields.map(({ label, name }) => (
+                <div key={name} className="your-name-container">
+                  <p className="your-name-header">{label}</p>
+                  <p className="your-detail">
+                    {name === "phone_number"
+                      ? formatPhoneNumber(user[name])
+                      : (user[name] || "(not set)")}
+                  </p>
+                </div>
+              ))}
+
+              <button
+                className="contact-submit-button"
+                onClick={() => {
+                  setIsEditing(true);
+                  setDraft({...user});  
+                  setMessage("");
+                  setError("");
+                }}
+              >
+                Edit Profile
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleUpdate}>
+              <div className="your-name-container">
+                <p className="your-name-header">Email</p>
+                <input
+                  name="email"
+                  value={user.email}
+                  disabled
+                  className="your-name-input"
+                />
+              </div>
+
+              {editableFields.map(({ label, name, type }) => (
+                <div key={name} className="your-name-container">
+                  <p className="your-name-header">{label}</p>
+                  {name === "phone_number" ? (
+                    <input
+                      type="tel"
+                      name="phone_number"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      value={formatPhoneForInput(draft?.phone_number)}
+                      onChange={handlePhoneTyping}
+                      className="your-name-input"
+                      placeholder="(XXX) XXX-XXXX"
+                    />
+                  ) : (
+                    <input
+                      type={type}
+                      name={name}
+                      value={draft?.[name] || ""}
+                      onChange={handleChange}
+                      className="your-name-input"
+                    />
+                  )}
+                </div>
+              ))}
+
+              <br />
+              <button
+                className="contact-submit-button"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Updating..." : "Update Profile"}
+              </button>
+              <br /><br />
+              <button
+                className="contact-submit-button"
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setDraft(null);
+                  setMessage("");
+                  setError("");
+                }}
+              >
+                Go Back
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
     </div>
-      </div>
-      </div>
   );
 };
 

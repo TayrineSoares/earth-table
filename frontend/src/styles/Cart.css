@@ -76,7 +76,6 @@
 
 .checkout-product-image {
   width: 208px;
-  height: 208px;
   object-fit: cover;
 }
 
@@ -86,6 +85,7 @@
   font-size: 38px;
   line-height: 100%;
   letter-spacing: 0%;
+  margin-top: 0;
   margin-bottom: 10px;
 }
 
@@ -262,13 +262,15 @@
   color: red;
 }
 
-@media (max-width: 1366px) {
-  .checkout-summary-text {
-    font-size: 50px;
+@media (max-width: 1224px) {
+
+  .checkout-items-container {
+    flex-direction: column;
+    width: 90%;
   }
 
-  .checkout-item-title {
-    font-size: 32px;
+  .checkout-summary-text {
+    font-size: 50px;
   }
 
   .checkout-item-price {
@@ -277,20 +279,13 @@
 }
 
 @media (max-width: 1024px) {
-  .checkout-page-container {
-    flex-direction: column;
-    gap: 50px;
-  }
 
   .checkout-items-container {
     flex-direction: column;
-    align-items: center;
   }
 
-
-  .checkout-summary-text {
-    width: auto;
-    font-size: 45px;
+  .checkout-product-image{
+    margin-bottom: 0;
   }
 
   .checkout-button {
@@ -309,10 +304,24 @@
   }
 }
 
-@media (max-width: 768px) {
-  .checkout-summary-text {
-    font-size: 36px;
+@media (max-width: 849px) {
+  
+  .checkout-page-container {
+    flex-direction: column;
   }
+
+  .checkout-items{
+    margin-left: 0;
+  }
+
+  .checkout-items-container {
+    flex-direction: row;
+    
+  }
+  
+} 
+
+@media (max-width: 768px) {
 
   .checkout-item-title {
     font-size: 26px;
@@ -334,9 +343,6 @@
 }
 
 @media (max-width: 480px) {
-  .checkout-summary-text {
-    font-size: 28px;
-  }
 
   .checkout-item-title {
     font-size: 22px;

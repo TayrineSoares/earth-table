@@ -16,6 +16,10 @@
   gap: 71px;
 }
 
+.register-password-container {
+  margin-bottom: 20px;
+}
+
 .first-name-container {
   width: 550px;
 }
@@ -61,52 +65,40 @@
     width: 400px;
     padding: 18px 40px;
   }
-}
 
-@media (max-width: 1024px) {
   .register-form-name-container,
   .register-email-number-container,
   .register-password-container {
-    gap: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
 
   .register-input {
-    width: 100%;
-    padding: 15px 30px;
+    width: 455px;
+    margin-bottom: 10px;
   }
+
 }
+
 
 @media (max-width: 768px) {
-  .register-form-name-container,
-  .register-email-number-container,
-  .register-password-container {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .register-text {
-    font-size: 20px;
-  }
 
   .register-input {
     width: 100%;
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 15px;
   }
 
-  .have-account-text {
-    font-size: 14px;
-    margin-bottom: 40px;
+  .account-sign-in, .account-register{
+    font-size: 33px;
   }
+
 }
 
 @media (max-width: 480px) {
-  .register-text {
-    font-size: 18px;
-  }
 
   .register-input {
-    font-size: 13px;
-    padding: 10px 15px;
+    width: 90%;
   }
+
 }
