@@ -1,7 +1,7 @@
 .cart-popup {
   position: fixed;
   bottom: 0px;
-  right: 20px;
+  right: 0px;
   width: 446px;
   max-height: 300px;
   background: white;
@@ -62,17 +62,19 @@
 
 .go-to-chekout-button-container{
   display: flex;
-  margin-left: 37px;
+  margin-left: 55px;
 }
 .go-to-chekout-button {
   font-family: var(--body-font);
   font-weight: 400;
-  font-size: 15px;
+  font-size: 13px;
   line-height: 100%;
   font-variant: small-caps;
   background-color: #EDA413;
   border-radius: 10px;
   padding: 0.2rem;
+  border: none;
+  padding: 0.3rem;
 }
 
 .cart-total-text {
