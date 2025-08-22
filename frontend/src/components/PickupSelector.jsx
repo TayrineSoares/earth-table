@@ -39,7 +39,7 @@ const PickupSelector = ({
 
     const dayOfWeek = localDate.getDay();
 
-    if (dayOfWeek === 2) {   // 2 = tuesday
+    if (dayOfWeek === 2) { 
       alert("Sorry, pickups are not available on Tuesdays. Please choose another day.");
       return;
     }

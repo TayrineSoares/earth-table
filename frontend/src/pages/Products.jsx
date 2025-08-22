@@ -19,7 +19,7 @@ const Products = ({ addToCart }) => {
     
   const [isLoading, setIsLoading] = useState(true);
 
-  // show only active products
+
   const visibleProducts = allProducts.filter(p => p.is_active);
   
   const filteredProducts = categoryId
@@ -100,7 +100,7 @@ const Products = ({ addToCart }) => {
   const getTagNames = (tagIds) => {
     return tagIds
       .map(id => allTags.find(tag => tag.id === id))
-      .filter(Boolean) // filter out undefined
+      .filter(Boolean)
       .map(tag => tag.name);
   };
 

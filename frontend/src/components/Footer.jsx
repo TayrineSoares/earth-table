@@ -17,8 +17,9 @@ const Footer = () => {
 
       
       <div className="footer-center">
-      <Link to="/privacy" className="footer-link">Privacy Policy</Link>
+      
         <p className="copyright">© 2025 EARTH TABLE CO</p>
+        <Link to="/privacy" className="footer-link">Privacy Policy and Terms & Conditions</Link>
       </div>
 
       

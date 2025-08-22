@@ -81,7 +81,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
 
     onSubmit(processedForm);
 
-    // Reset form state
+    // Reset form
     setFormData({
       id: '',
       slug: '',

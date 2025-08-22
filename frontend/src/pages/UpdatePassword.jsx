@@ -81,7 +81,7 @@ const UpdatePassword = () => {
               onMouseDown={() => setShowPassword(true)}
               onMouseUp={() => setShowPassword(false)}
               onMouseLeave={() => setShowPassword(false)}
-              tabIndex={-1} // skip this element when tabbing with the keyboard
+              tabIndex={-1} 
               aria-label="Show password while holding"
               style={{
                 background: 'none',

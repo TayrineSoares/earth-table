@@ -26,7 +26,6 @@ function ProductDetail() {
       fetch('http://localhost:8080/tags')
       .then(res => res.json())
       .then(data => {
-        console.log("Fetched tags:", data);  
         setAllTags(data)
       })
       .catch(err => console.error(err));
@@ -35,7 +34,7 @@ function ProductDetail() {
   const getTagNames = (tagIds) => {
     return tagIds
       .map(id => allTags.find(tag => tag.id === id))
-      .filter(Boolean) // filter out undefined
+      .filter(Boolean) 
       .map(tag => tag.name);
   };
 

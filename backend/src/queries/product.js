@@ -7,7 +7,7 @@ async function getAllProducts() {
 
   if (error) throw new Error(`Error fetching products: ${error.message}`);
 
-  // Fetch tags for each product
+
   const productsWithTags = await Promise.all(products.map(async (product) => {
     const tagsNames = await getProductTags(product.id);
     return { ...product, tags: tagsNames };
@@ -25,8 +25,8 @@ async function getProductById(id) {
 
   if (error) throw new Error(`Error fetching product by id: ${error.message}`);
   
-  const tagsNames = await getProductTags(id); // fetch tags names
-  return { ...product, tags:tagsNames }; // include them in the response
+  const tagsNames = await getProductTags(id);
+  return { ...product, tags:tagsNames };
 };
 
 async function getProductsByCategory(categoryId) {
@@ -71,8 +71,6 @@ async function deleteProductById(id) {
 async function updateProductById(id, updatedData) {
   const { tag_ids = [], ...productData } = updatedData;
 
-  console.log("Updating product:", { id, productData, tag_ids });
-
   const { data, error } = await supabase
     .from('products')
     .update(updatedData)
@@ -105,10 +103,9 @@ async function uploadProductImage(fileBuffer, fileName, mimeType) {
   return publicUrlData.publicUrl;
 }
 
-// link products to tags 
+
 async function updateProductTags(productId, tagIds) {
 
-  //delete existing tags if any
   const { error: deleteError } = await supabase
     .from('product_tags')
     .delete()
@@ -116,14 +113,12 @@ async function updateProductTags(productId, tagIds) {
   
   if (deleteError) throw new Error(`Error removing old tags: ${deleteError.message}`);
 
-  if (tagIds.length === 0) return; // skip insert if no tags selected
+  if (tagIds.length === 0) return;
 
-  // Insert new product-tag pairs
   const inserts = tagIds.map(tagId => ({
     product_id: productId,
     tag_id: tagId,
   }));
-
 
   const { error: insertError } = await supabase
     .from('product_tags')
@@ -133,7 +128,6 @@ async function updateProductTags(productId, tagIds) {
 
 }
 
-// Get all tag IDs associated with a specific product
 async function getProductTags(productId) {
   const { data, error } = await supabase
     .from('product_tags')
@@ -152,8 +146,7 @@ async function setProductActive(id, isActive) {
     .select('id,slug,is_active')
     .single();
 
-  if (error) {
-    // Supabase returns 406/single error when no row matches
+  if (error) { 
     if (/0 rows/.test(error.message || '') || /Row not found/i.test(error.message || '')) {
       const e = new Error('Product not found');
       e.status = 404;

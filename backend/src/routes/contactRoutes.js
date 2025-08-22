@@ -9,7 +9,6 @@ const CONTACT_TO = (process.env.CONTACT_TO || 'earthtabledatabase@gmail.com')
   .map(s => s.trim())
   .filter(Boolean);
 
-// Verified sender on domain
 const CONTACT_FROM = process.env.CONTACT_FROM || 'Earth Table Contact <hello@mail.earthtableco.ca>';
 
 // Sanitizer so user input doesn't break email HTML
@@ -21,7 +20,6 @@ function escapeHtml(s = '') {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
 
   
 router.post('/', async (req, res) => {

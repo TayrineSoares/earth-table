@@ -1,10 +1,9 @@
 const supabase = require('../../supabase/db')
 
-// HELPER format date to use inside other functions to display later on front end
 const formatDisplayDate = (ymd) => {
   if (!ymd) return null;
   const [y, m, d] = ymd.split("-");
-  const dt = new Date(y, m - 1, d); // local time
+  const dt = new Date(y, m - 1, d); 
   return dt.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -95,7 +94,7 @@ async function createOrderWithProducts({
   buyer_phone_number,
   buyer_address,
   buyer_stripe_payment_info,
-  status = 'pending', // default status if not provided
+  status = 'pending',
   stripe_session_id,
   total_cents,
   products = [],
@@ -152,7 +151,6 @@ async function createOrderWithProducts({
 
 
 const getOrderByStripeSessionId = async (sessionId) => {
-  // fetch the order matching the session_id from buyer_stripe_payment_info
   const { data: order, error } = await supabase
     .from('orders')
     .select('*')
@@ -181,8 +179,6 @@ const getOrderByStripeSessionId = async (sessionId) => {
       throw new Error(`Error fetching order products: ${orderProductsError.message}`);
     }
 
-
-  // Format the result to send to frontend
   return {
     id: order.id,
     status: order.status,

@@ -39,10 +39,7 @@ const ProductAdmin = () => {
     try {
       const createdProduct = await addProduct(newProductData);
 
-      // Add the new product to the state
       setProducts(prev => [...prev, createdProduct]);
-
-      // Hide the form 
       setShowForm(false);
       
     } catch (err) {

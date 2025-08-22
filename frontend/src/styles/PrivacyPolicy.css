@@ -1,0 +1,80 @@
+.page-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.privacy-policy-page {
+  width: 100%;
+  max-width: 860px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  padding: 20px;
+}
+
+.login-detail-header-text {
+  font-family: var(--heading-font, system-ui);
+  color: #000;
+  line-height: 1.15;
+  margin: 18px 0 10px;
+  font-weight: 600;
+}
+
+h1.login-detail-header-text { font-size: 28px; }
+h2.login-detail-header-text { font-size: 20px; }
+h3.login-detail-header-text { font-size: 18px; }
+
+.about-description {
+  font-family: var(--body-font, system-ui);
+  font-size: 15px;
+  line-height: 1.6;
+  color: #222;
+  margin: 10px 0;
+}
+
+ul.about-description {
+  padding-left: 20px;
+  margin: 8px 0 14px;
+}
+ul.about-description li {
+  margin: 8px 0;
+}
+
+.privacy-policy-page a {
+  color: var(--accent-color, #0a7a5a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.privacy-policy-page a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.about-description strong {
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .page-wrapper {
+    padding: 40px 24px;
+  }
+
+  .privacy-policy-page {
+    padding: 32px 36px;
+    border-radius: 20px;
+  }
+
+  h1.login-detail-header-text { font-size: 36px; margin-top: 4px; }
+  h2.login-detail-header-text { font-size: 24px; margin-top: 24px; }
+  h3.login-detail-header-text { font-size: 20px; margin-top: 18px; }
+
+  .about-description {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1140px) {
+  .privacy-policy-page {
+    max-width: 920px;
+  }
+}

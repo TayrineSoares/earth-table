@@ -83,8 +83,6 @@ const setOrderPickedUp = async (orderId, picked) => {
 }
 
 
-
-
 export { 
   fetchOrderBySessionId,
   fetchOrdersByAuthId, 

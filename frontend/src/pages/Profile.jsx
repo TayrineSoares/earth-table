@@ -15,7 +15,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // <-- Lottie loading state
+  const [isLoading, setIsLoading] = useState(true);
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
@@ -70,7 +70,7 @@ const Profile = () => {
       } catch (err) {
         setError(`Error: ${err.message}`);
       } finally {
-        setIsLoading(false); // <-- stop Lottie loading when done
+        setIsLoading(false);
       }
     };
     loadUser();

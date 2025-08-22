@@ -8,10 +8,9 @@ function formatMoney(cents) {
 
 /**
  * Make the subject, HTML and text for the customer's order confirmation.
- * Pass in your detailedOrder object from the DB.
+ * Pass in detailedOrder object from the DB.
  */
 function renderCustomerOrderEmail(detailedOrder = {}) {
-  // Basic fields with safe fallbacks
   const id = detailedOrder.id ?? 'N/A';
   const status = detailedOrder.status ?? 'processing';
   const total = formatMoney(detailedOrder.total_cents ?? 0);
@@ -24,7 +23,6 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
 
 
-  // Build the items list for HTML
   const itemsHtml = items.map((p) => {
     const name = p.slug ?? p.name ?? 'Item';
     const qty = p.quantity ?? 1;
@@ -32,44 +30,40 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
     return `<li style="margin:2px 0;">${qty} x ${name} — ${each}</li>`;
   }).join('');
 
-
-  // Subject
   const subject = `Order Confirmation #${id} — Earth Table`;
 
-  // Simple, readable HTML
-const html = `
-  <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
-    <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">Thank you for your order!</h1>
-    <p style="margin:0 0 16px;">We've received your order and it's being processed.</p>
+  const html = `
+    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
+      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">Thank you for your order!</h1>
+      <p style="margin:0 0 16px;">We've received your order and it's being processed.</p>
 
-    <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
-      <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
-      <p style="margin:0;"><strong>Status:</strong> ${status}</p>
+      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
+        <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
+        <p style="margin:0;"><strong>Status:</strong> ${status}</p>
+      </div>
+
+      <h2 style="font-size:16px; margin:0 0 8px; color:#333;">Items</h2>
+      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
+
+      <p style="margin:12px 0 6px;"><strong>Total:</strong> ${total} <span style="color:#666; font-size:12px;">(includes 13% HST)</span></p>
+
+      <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
+      <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
+      <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 123 FAKE STREET </p>
+
+      <p style="margin:16px 0;">Earth Table Team 🧡</p>
+
+      <hr style="border:none; border-top:1px solid #eee; margin:12px 0;" />
+
+      <p style="margin:8px 0 0; font-size:12px; color:#666;">
+        Questions about your order? Email us at
+        <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
+      </p>
+      <p style="margin:4px 0 0; font-size:12px; color:#666;">*** Please do not reply to this email. *** </p>
     </div>
+    `
+  ;
 
-    <h2 style="font-size:16px; margin:0 0 8px; color:#333;">Items</h2>
-    <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
-
-    <p style="margin:12px 0 6px;"><strong>Total:</strong> ${total} <span style="color:#666; font-size:12px;">(includes 13% HST)</span></p>
-
-    <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
-    <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
-    <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 123 FAKE STREET </p>
-
-    <p style="margin:16px 0;">Earth Table Team 🧡</p>
-
-    <hr style="border:none; border-top:1px solid #eee; margin:12px 0;" />
-
-    <p style="margin:8px 0 0; font-size:12px; color:#666;">
-      Questions about your order? Email us at
-      <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
-    </p>
-    <p style="margin:4px 0 0; font-size:12px; color:#666;">*** Please do not reply to this email. *** </p>
-  </div>
-  `
-;
-
-  // Build the items list for plain text
   const itemsText = items.map((p) => {
     const name = p.slug ?? p.name ?? 'Item';
     const qty = p.quantity ?? 1;
@@ -77,7 +71,6 @@ const html = `
     return `- ${qty}x ${name} @ ${price}`;
   }).join('\n');
 
-  // Plain-text fallback (helps deliverability)
   const text = ` Earth Table — Order #${id} confirmed
   
   Thank you for your order!
@@ -94,7 +87,6 @@ const html = `
 
   Earth Table Team`;
 
-  // Return everything the sender needs
   return {
     subject,
     html,

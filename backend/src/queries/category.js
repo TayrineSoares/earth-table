@@ -30,10 +30,10 @@ async function createCategory({ name, image_url, description, show_on_homepage }
         show_on_homepage,
       }
     ])
-    .select(); //  returns the inserted row
+    .select();
 
   if (error) throw new Error(`Error creating category: ${error.message}`);
-  return data[0]; // return the newly created category
+  return data[0];
 }
 
 

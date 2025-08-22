@@ -141,7 +141,6 @@ const fetchAllProducts = async () => {
 
 };
 
-
 //Add a new product
 const addProduct = async (productData) => {
   const res = await fetch('http://localhost:8080/products', {
@@ -192,7 +191,6 @@ const toggleProductActive = async (id, makeActive) => {
 
 }
 
-
 //Upload a produc image 
 const uploadProductImage = async (file) => {
   const formData = new FormData();
@@ -206,7 +204,7 @@ const uploadProductImage = async (file) => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error);
 
-  return data.url; // the public image URL
+  return data.url;
 };
 
 //------------------------------------------------------------------------------
@@ -229,7 +227,7 @@ const fetchProductTags = async (productId) => {
 
   if (!res.ok) throw new Error(data.error || "Failed to fetch product tags");
 
-  return data.tag_ids; // returns an array of tags IDs
+  return data.tag_ids; 
 };
 
 // update tags of a selected product

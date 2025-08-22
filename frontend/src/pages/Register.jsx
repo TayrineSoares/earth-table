@@ -30,7 +30,6 @@ const Register = ({setUser}) => {
   const handlePhoneTyping = (e) => {
     const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhoneNumber(digitsOnly);
-    // live feedback 
     if (digitsOnly && digitsOnly.length !== 10) {
       setPhoneError("Phone number must be 10 digits.");
     } else {

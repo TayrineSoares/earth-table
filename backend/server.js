@@ -25,8 +25,6 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const app = express();
 const PORT = 8080;
 
-//MAKE SURE THIS COMES BEFORE EXPRESS.JSON
-// This route is called by Stripe (not the frontend) after a customer successfully pays
 app.post('/webhook', express.raw({ type: 'application/json' }), async (request, response) => {
   const sig = request.headers['stripe-signature'];
   let event;
@@ -34,11 +32,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
   try {
     event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
 
-    //Log only the relevant event
+  
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-
-      //console.log("Full checkout session:", JSON.stringify(session, null, 2));
 
       const metadata = session.metadata;
       const pickupDate = metadata?.pickup_date || null;
@@ -64,12 +60,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           buyerPhoneNumber = user.phone_number|| buyerPhoneNumber;
         }
       }
-
-      //console.log("Payment succeeded");
-      //console.log("User email:", email);
-      //console.log("Cart:", cart);
-
-      //console.log("Stripe webhook received and parsed successfully");
 
        try {
         await createOrderWithProducts({
@@ -103,7 +93,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
         const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
            
         await sendEmail({
-          to: email, // later: to: email
+          to: email,
           subject,
           html,
           text,
@@ -162,8 +152,6 @@ app.get('/cart', (req, res) => {
 });
 
 
-
-
 app.post('/create-checkout-session', async (req, res) => {
   const { cartItems, email, userId, pickup_date, pickup_time_slot, special_note, delivery } = req.body;
   
@@ -178,14 +166,14 @@ app.post('/create-checkout-session', async (req, res) => {
             name: `${item.slug} (includes tax)` ,
             images: [item.image_url],
           },
-          unit_amount: Math.round(item.price_cents * 1.13), // include 13% tax
+          unit_amount: Math.round(item.price_cents * 1.13),
         },
         quantity: item.quantity,
       })),
       mode: 'payment',
-      success_url: 'http://localhost:5173/confirmation?session_id={CHECKOUT_SESSION_ID}', // Stripe will replace {CHECKOUT_SESSION_ID} with the actual ID (e.g., cs_test_123abc...)
+      success_url: 'http://localhost:5173/confirmation?session_id={CHECKOUT_SESSION_ID}',
       cancel_url: 'http://localhost:5173/cart',
-      ...(userId && email ? { customer_email: email } : {}), // add email if logged in, if not leave blank
+      ...(userId && email ? { customer_email: email } : {}),
       phone_number_collection: { enabled: true },
 
       metadata: {
@@ -209,7 +197,6 @@ app.post('/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
 
 
 //ROUTES

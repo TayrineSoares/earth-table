@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const upload = multer(); // using memory storage
+const upload = multer();
 
 const { getAllCategories, getHomepageCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage } = require('../queries/category');
 
@@ -51,8 +51,6 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   const categoryId = req.params.id;
   const updatedFields = req.body; 
-
-  //console.log("Updating category:", categoryId, updatedFields);
 
   try {
     const updatedCategory = await updateCategory(categoryId, updatedFields);

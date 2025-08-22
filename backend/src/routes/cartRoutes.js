@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../../supabase/db'); // make sure this exports your Supabase instance
+const { supabase } = require('../../supabase/db');
 
 // GET /cart/:userId → Get all cart items for user
 router.get('/:userId', async (req, res) => {
@@ -19,7 +19,6 @@ router.get('/:userId', async (req, res) => {
 router.post('/add', async (req, res) => {
   const { userId, productId, quantity } = req.body;
 
-  // Check if item exists
   const { data: existingItem, error: findErr } = await supabase
     .from('carts')
     .select('*')
@@ -30,7 +29,6 @@ router.post('/add', async (req, res) => {
   if (findErr && findErr.code !== 'PGRST116') return res.status(500).json({ error: findErr.message });
 
   if (existingItem) {
-    // Update quantity
     const { error: updateErr } = await supabase
       .from('carts')
       .update({ quantity: existingItem.quantity + quantity })
@@ -40,7 +38,6 @@ router.post('/add', async (req, res) => {
     return res.json({ message: 'Quantity updated' });
   }
 
-  // Insert new
   const { error: insertErr } = await supabase
     .from('carts')
     .insert([{ user_id: userId, product_id: productId, quantity }]);

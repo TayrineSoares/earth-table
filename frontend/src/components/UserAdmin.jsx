@@ -30,10 +30,8 @@ const UserAdmin = () => {
 
   const handleAdminToggle = async (user) => {
     try {
-      // Flip current admin status and update in backend
       const updatedUser = await updateUserAdmin(user.auth_user_id, !user.is_admin);
 
-      // Replace the updated user in the local state
       setUsers(prev =>
         prev.map(user => user.auth_user_id === updatedUser.auth_user_id ? updatedUser : user)
       );

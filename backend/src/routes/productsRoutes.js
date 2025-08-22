@@ -20,8 +20,8 @@ const {
 // GET /products        ALL PRODUCTS
 router.get('/', async (req, res) => {
   try {
-    const allProducts = await getAllProducts(); // call helper function
-    res.json(allProducts); //result in json format
+    const allProducts = await getAllProducts();
+    res.json(allProducts);
   } catch (error) {
     console.log(error);
     res.status(500).json({error: error.message})
@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
 // PATCH /products/:id/archive
 router.patch('/:id/archive', async (req, res) => {
   const id = Number(req.params.id);
-  const { active } = req.body; // send active=false to archive; true to unarchive
+  const { active } = req.body;
   if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid product id' });
 
   try {
@@ -82,9 +82,9 @@ router.patch('/:id', async (req, res) => {
 // GET /products/:id    SINGLE PRODUCT BY ID
 router.get('/:id', async (req, res) => {
   try {
-    const id = req.params.id; //get id from params and store it
-    const product = await getProductById(id); // call helper with the id
-    res.json(product); // result in json format 
+    const id = req.params.id; 
+    const product = await getProductById(id); 
+    res.json(product);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });

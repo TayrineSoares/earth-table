@@ -43,12 +43,10 @@ const CategoryAdmin = () => {
     try {
       const updatedCategory = await updateCategory(categoryToUpdate);
       
-      //replace updated category in state
       setCategories(prev => 
         prev.map(category => (category.id === updatedCategory.id ? updatedCategory : category))
       );
 
-      //reseet the form 
       setCategoryToEdit(null); 
       setShowForm(false); 
     } catch (err) {
@@ -149,11 +147,11 @@ const CategoryAdmin = () => {
               <div className='manage-buttons'> 
                 <button 
                   onClick={() => {
-                    setCategoryToEdit(category); // set the selected category
-                    setShowForm(true);            // show the form
+                    setCategoryToEdit(category);
+                    setShowForm(true);
                     setTimeout(() => {
                       formRef.current?.scrollIntoView({ behavior: 'smooth' });
-                    }, 0); // ensures it scrolls after form renders
+                    }, 0);
                   }}         
                 >
                   Edit
