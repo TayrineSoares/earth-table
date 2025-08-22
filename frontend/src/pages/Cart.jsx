@@ -114,7 +114,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 <span className='warning-symbol'>⚠</span> Delivery Instructions <span className='warning-symbol'>⚠</span>
               </h2>
                 <p className='warning-text-details'>
-                Pickup only by default. If you'd like delivery via Uber Courier, please email us at hello@earthtableco.ca for cost and details. Delivery fee may vary depending on Uber rates.
+                  If you'd like delivery via Uber Courier, please email us at hello@earthtableco.ca. 
+                  We'll reply to confirm availability and cost based on Uber rates. 
+                  Checking this box <strong>does not schedule delivery</strong>. 
+                  If delivery cannot be confirmed, your order will be prepared for <strong>pickup</strong> at the scheduled time.
                 </p>
                 <button 
                   className='warning-button'
@@ -182,8 +185,9 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 }}
               />
               <label htmlFor="uber-delivery">
-                We offer delivery by <Link className="footer-account-register" to="/privacy">Uber Carrier</Link>.
-                {!isLoggedIn && <span className="login-warning"> (Please log in to use delivery)</span>}
+                We offer delivery via <Link className="footer-account-register" to="/privacy">Uber Carrier</Link>. 
+                
+                {!isLoggedIn && <span className="login-warning"> (Please log in to request delivery)</span>}
               </label>
             </div>
 
