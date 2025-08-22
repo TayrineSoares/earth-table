@@ -7,67 +7,59 @@ const PickupSelector = ({
   onDateChange,
   onTimeChange,
 }) => {
-  // Date -> "YYYY-MM-DD" in LOCAL time
+  // Date -> "YYYY-MM-DD" (LOCAL)
   const formatAsInputDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
-  // Parse "YYYY-MM-DD" as a LOCAL date (no timezone shift)
+  // Parse "YYYY-MM-DD" as LOCAL (no timezone shift)
   const parseLocal = (yyyyMmDd) => {
     const [y, m, d] = yyyyMmDd.split('-').map(Number);
     return new Date(y, m - 1, d); // local midnight
   };
 
-  // Earliest allowed date: local midnight today + 3 days (72h)
+  // Build min date: today@00:00 + 3 days, then skip Tuesday if it lands there
   const minDateObj = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
     t.setDate(t.getDate() + 3);
+    // 0=Sun, 1=Mon, 2=Tue...
+    if (t.getDay() === 2) {
+      t.setDate(t.getDate() + 1); // push to Wednesday
+    }
     return t;
   }, []);
   const minDateStr = formatAsInputDate(minDateObj);
 
   const handleDateChange = (e) => {
-    const selectedDate = e.target.value;
-    if (!selectedDate) return;
+    const selectedStr = e.target.value;
+    if (!selectedStr) return;
 
-    // Parse into local time and compare Date objects
-    const localDate = parseLocal(selectedDate);
+    const selected = parseLocal(selectedStr);
 
-    // Enforce 72h minimum
-    if (localDate < minDateObj) {
-      alert(`Earliest pickup is ${minDateStr}. Please choose a later date.`);
+    // If earlier than min, snap to min (avoid alert pop-ups on mobile)
+    if (selected < minDateObj) {
+      onDateChange(minDateStr);
+      onTimeChange('');
       return;
     }
 
-    // Disallow Tuesdays (0=Sun, 1=Mon, 2=Tue, ...)
-    if (localDate.getDay() === 2) {
-      alert('Sorry, pickups are not available on Tuesdays. Please choose another day.');
+    // Disallow Tuesdays: if chosen Tuesday, clear and let user pick again
+    if (selected.getDay() === 2) {
+      onDateChange('');
+      onTimeChange('');
       return;
     }
 
-    onDateChange(selectedDate);
+    onDateChange(selectedStr);
     onTimeChange('');
   };
 
   const handleTimeChange = (e) => {
     onTimeChange(e.target.value);
-  };
-
-  // Optional: pretty display if you ever need it
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return '';
-    const [y, m, d] = dateString.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   return (
@@ -84,7 +76,10 @@ const PickupSelector = ({
             min={minDateStr}
             onChange={handleDateChange}
           />
-          <p className="pickup-hint">Earliest available date is in 72 hours. (No Tuesdays)</p>
+          <p className="pickup-hint">
+            Earliest available date is in 72 hours (no Tuesdays). If you pick an earlier date,
+            we’ll move it to the earliest allowed.
+          </p>
         </div>
 
         {/* Time */}
