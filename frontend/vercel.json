@@ -3,6 +3,10 @@
     {
       "source": "/api/(.*)",
       "destination": "https://earth-table-backend-v9hsi4xdb-earth-table.vercel.app/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
