@@ -100,7 +100,7 @@ const Navbar = ({ user, onLogout, cart }) => {
               ACCOUNT
             </div>
             {showAccountMenu && (
-              <ul className="account-dropdown-menu">
+              <ul className={`account-dropdown-menu ${user ? "logged-in" : ""}`}>
                 {!user && (
                   <li>
                     <NavLink
