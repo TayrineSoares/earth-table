@@ -25,6 +25,11 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const app = express();
 const PORT = 8080;
 
+
+// single source of truth for where the frontend lives
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (request, response) => {
   const sig = request.headers['stripe-signature'];
   let event;
@@ -171,8 +176,8 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: item.quantity,
       })),
       mode: 'payment',
-      success_url: 'http://localhost:5173/confirmation?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'http://localhost:5173/cart',
+      success_url: `${FRONTEND_URL}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/cart`,
       ...(userId && email ? { customer_email: email } : {}),
       phone_number_collection: { enabled: true },
 
