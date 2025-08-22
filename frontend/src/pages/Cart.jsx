@@ -187,7 +187,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <label htmlFor="uber-delivery">
                 We offer delivery via <Link className="footer-account-register" to="/privacy">Uber Carrier</Link>. 
                 
-                {!isLoggedIn && <span className="login-warning"> (Please log in to request delivery)</span>}
+                {!isLoggedIn && <span className="login-warning"> (Log in to request delivery info)</span>}
               </label>
             </div>
 

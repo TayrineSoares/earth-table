@@ -1,80 +1,49 @@
-.page-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 24px 16px;
+/* Scoped to the Terms/Privacy page only */
+.et-terms {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
-.privacy-policy-page {
-  width: 100%;
-  max-width: 860px;
+.et-terms__card {
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
 }
 
-.login-detail-header-text {
-  font-family: var(--heading-font, system-ui);
-  color: #000;
-  line-height: 1.15;
-  margin: 18px 0 10px;
+.et-terms__h1,
+.et-terms__h2,
+.et-terms__h3 {
+  margin: 12px 0 8px;
   font-weight: 600;
+  line-height: 1.25;
+  color: #111;
 }
 
-h1.login-detail-header-text { font-size: 28px; }
-h2.login-detail-header-text { font-size: 20px; }
-h3.login-detail-header-text { font-size: 18px; }
+.et-terms__h1 { font-size: 1.5rem; }
+.et-terms__h2 { font-size: 1.25rem; }
+.et-terms__h3 { font-size: 1.125rem; }
 
-.about-description {
-  font-family: var(--body-font, system-ui);
-  font-size: 15px;
+.et-terms__p {
+  margin: 8px 0;
   line-height: 1.6;
   color: #222;
-  margin: 10px 0;
+  font-size: 0.95rem;
 }
 
-ul.about-description {
-  padding-left: 20px;
-  margin: 8px 0 14px;
-}
-ul.about-description li {
-  margin: 8px 0;
+.et-terms__list {
+  margin: 8px 0 12px;
+  padding-left: 1.1rem;
 }
 
-.privacy-policy-page a {
-  color: var(--accent-color, #0a7a5a);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.privacy-policy-page a:hover {
-  text-decoration-thickness: 2px;
-}
+.et-terms__list li { margin: 6px 0; }
 
-.about-description strong {
-  font-weight: 600;
-}
+.et-terms__link { text-decoration: underline; }
 
 @media (min-width: 768px) {
-  .page-wrapper {
-    padding: 40px 24px;
-  }
-
-  .privacy-policy-page {
-    padding: 32px 36px;
-    border-radius: 20px;
-  }
-
-  h1.login-detail-header-text { font-size: 36px; margin-top: 4px; }
-  h2.login-detail-header-text { font-size: 24px; margin-top: 24px; }
-  h3.login-detail-header-text { font-size: 20px; margin-top: 18px; }
-
-  .about-description {
-    font-size: 16px;
-  }
-}
-
-@media (min-width: 1140px) {
-  .privacy-policy-page {
-    max-width: 920px;
-  }
+  .et-terms { padding: 24px; }
+  .et-terms__card { padding: 24px; }
+  .et-terms__h1 { font-size: 1.75rem; }
+  .et-terms__h2 { font-size: 1.375rem; }
 }
