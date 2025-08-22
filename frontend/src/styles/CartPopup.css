@@ -62,7 +62,7 @@
 
 .go-to-chekout-button-container{
   display: flex;
-  margin-left: 55px;
+  margin-left: 20px;
 }
 .go-to-chekout-button {
   font-family: var(--body-font);
@@ -84,7 +84,7 @@
   line-height: 100%;
   letter-spacing: 0%;
   font-variant: small-caps;
-  margin-left: 70px;
+  margin-left: 75px;
 }
 
 .cart-total{
@@ -106,7 +106,7 @@
   display: flex;
   width: 369px;
   height: 92px;
-  margin-left: 38px;
+  margin-left: 20px;
   margin-top: 14px;
   gap: 12px;
   border-bottom: 1px solid #ddd;
