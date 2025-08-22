@@ -223,8 +223,13 @@ app.use('/cart', cartRouter);
 app.use('/dev', testEmail);
 
 
+// Export the Express app for Vercel / serverless usage
+module.exports = app;
 
-
-app.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
-});
+// Only listen when running locally (node server.js or npm run start)
+if (require.main === module) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`API listening on http://localhost:${PORT}`);
+  });
+}
