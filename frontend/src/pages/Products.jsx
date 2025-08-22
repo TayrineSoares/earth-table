@@ -86,7 +86,7 @@ const Products = ({ addToCart }) => {
       .then(data => {
         setAllCategories(data);
       });
-    fetch(`/api/categories`)
+    fetch(`/api/tags`)
       .then(res => res.json())
       .then(data => {
         console.log("Fetched tags:", data);  
