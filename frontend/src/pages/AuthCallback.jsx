@@ -27,7 +27,7 @@ export default function AuthCallback() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return navigate('/login');
 
-      const res = await fetch('http://localhost:8080/register/confirmation', {
+      const res = await fetch('/api/register/confirmation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
