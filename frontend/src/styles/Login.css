@@ -195,6 +195,9 @@ input[type="submit"].login-submit-button:disabled {
 
 @media (max-width: 768px) {
 
+  .see-password{
+    display: none;
+  }
 
   .login-detail-input-field {
     padding: 20px;

@@ -3,6 +3,7 @@ import '../styles/CartPopup.css'
 import React, { useState, useEffect } from 'react';
 import { Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ShoppingCart } from "lucide-react"
 
 function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
   const [isMinimized, setIsMinimized] = useState(true);
@@ -105,7 +106,10 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
           className={isMobile ? "minimized-circle" : "minimized-bar"}
         >
           {isMobile ? (
-            <span className="minimized-count">{cart.length}</span>
+            <div className="minimized-count">
+            <ShoppingCart size={20} />
+            <span>{" "}{cart.length}</span>
+          </div>
           ) : (
             <>
               <span>Your Cart ({cart.length})</span>

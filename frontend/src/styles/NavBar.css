@@ -122,6 +122,18 @@
     background-color: black;
     border-radius: 2px;
   }
+
+  .account-dropdown-menu {
+    position: absolute;
+    top: 329px;
+    left: 150px;
+  }
+
+  .account-dropdown-menu.logged-in {
+    position: absolute;
+    top: 329px;
+    left: 150px;
+  }
 }
 
 @media (min-width: 951px) and (max-width: 1279px) {

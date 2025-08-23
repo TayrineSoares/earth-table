@@ -80,6 +80,7 @@ const Login = ({setUser}) => {
                 required
               />
               <button
+                className='see-password'
                 type="button"
                 onMouseDown={() => setShowPassword(true)}
                 onMouseUp={() => setShowPassword(false)}

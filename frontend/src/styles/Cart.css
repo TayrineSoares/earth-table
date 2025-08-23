@@ -344,6 +344,12 @@
 
 @media (max-width: 480px) {
 
+  .checkout-items-container {
+    display: flex;
+    gap: 10px;
+  }
+  
+
   .checkout-item-title {
     font-size: 22px;
   }
