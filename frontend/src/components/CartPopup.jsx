@@ -10,6 +10,10 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
   const navigate = useNavigate();
 
+  const getCartItemCount = (cart) => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+
   // Detect window resize for mobile circle
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 480);
@@ -108,11 +112,11 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
           {isMobile ? (
             <div className="minimized-count">
             <ShoppingCart size={20} />
-            <span>{" "}{cart.length}</span>
+            <span>{" "}{getCartItemCount(cart)}</span>
           </div>
           ) : (
             <>
-              <span>Your Cart ({cart.length})</span>
+              <span>Your Cart ({getCartItemCount(cart)})</span>
               <button className="expand-button" aria-label="Expand cart">
                 +
               </button>

@@ -79,6 +79,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
     const stripe = await stripePromise;  
     
+    
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: {
@@ -103,6 +104,11 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       console.error('Checkout failed');
     }
   };
+
+  const getCartItemCount = (cart) => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+  
 
   return (
     <div className='checkout-page'>
@@ -144,7 +150,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             
             
             <div className='checkout-summary-items'>
-              <p className='number-of-items'>{cart.length} ITEMS</p>
+              <p className='number-of-items'>{getCartItemCount(cart)} ITEMS</p>
             </div>
             
             <div className='checkout-summary-subtotal'>
@@ -171,24 +177,36 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             />
 
             <div className="general-text">
-              <input
-                type="checkbox"
-                id="uber-delivery"
-                checked={uberDelivery}
-                disabled={!isLoggedIn}
-                onChange={(e) => {
-                  if (!isLoggedIn) return;
-                  setUberDelivery(e.target.checked);
-                  if (e.target.checked) {
-                    setShowDeliveryWarning(true);
-                  }
-                }}
-              />
-              <label htmlFor="uber-delivery">
-                We offer delivery via <Link className="footer-account-register" to="/privacy">Uber Carrier</Link>. 
-                
-                {!isLoggedIn && <span className="login-warning"> (Log in to request delivery info)</span>}
-              </label>
+              {isLoggedIn ? (
+                <>
+                  <input
+                    type="checkbox"
+                    id="uber-delivery"
+                    checked={uberDelivery}
+                    onChange={(e) => {
+                      setUberDelivery(e.target.checked);
+                      if (e.target.checked) {
+                        setShowDeliveryWarning(true);
+                      }
+                    }}
+                  />
+                  <label htmlFor="uber-delivery">
+                    We offer delivery via{" "}
+                    <Link className="footer-account-register" to="/privacy">
+                      Uber Carrier
+                    </Link>
+                    .
+                  </label>
+                </>
+              ) : (
+                <label htmlFor="uber-delivery">
+                  We offer delivery via{" "}
+                  <Link className="footer-account-register" to="/privacy">
+                    Uber Carrier
+                  </Link>
+                  . <span className="login-warning"> (Log in to request delivery info)</span>
+                </label>
+              )}
             </div>
 
             <div className="special-note-container" >
