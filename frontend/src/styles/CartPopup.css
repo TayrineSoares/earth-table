@@ -2,7 +2,7 @@
   position: fixed;
   top: 50%;
   right: 0px;
-  width: 410px;
+  width: 375px;
   max-height: 300px;
   background: white;
   border-radius: 8px;
@@ -84,7 +84,7 @@
   line-height: 100%;
   letter-spacing: 0%;
   font-variant: small-caps;
-  margin-left: 75px;
+  margin-left: 45px;
 }
 
 .cart-total{
@@ -130,7 +130,7 @@
   display: flex;
   flex-direction: column;
   gap: 38px;
-  margin-left: auto;
+  margin-left: 20px;
 }
 
 .cart-popup-item-name{
@@ -240,9 +240,3 @@
   top: 50%;
 }
 
-@media (max-width: 419px) {
-
-  .cart-popup{
-    display: none;
-  }
-}
