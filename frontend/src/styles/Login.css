@@ -154,6 +154,45 @@
   text-align: center;
 }
 
+/* iOS Safari: force text color on buttons/inputs */
+.login-submit-button,
+.login-submit-button * {
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important; /* beats iOS overrides */
+  background-color: #FFFBF3;               /* your design */
+  border: 1px solid #EDA413;
+}
+
+/* Also cover input-based submits just in case */
+input[type="submit"].login-submit-button {
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
+/* Keep black text in all interactive states */
+.login-submit-button:focus,
+.login-submit-button:active,
+.login-submit-button:hover,
+input[type="submit"].login-submit-button:focus,
+input[type="submit"].login-submit-button:active,
+input[type="submit"].login-submit-button:hover {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  background-color: #EDA413; /* your active bg */
+}
+
+/* If the button can be disabled, iOS may gray it out with white text */
+.login-submit-button:disabled,
+input[type="submit"].login-submit-button:disabled {
+  opacity: 0.6;              /* your choice */
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
 @media (max-width: 768px) {
 
   .see-password{

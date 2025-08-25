@@ -37,6 +37,28 @@
   margin-top: 17px;
 }
 
+/* iOS Safari: keep submit text black (no visual changes) */
+.contact-submit-button,
+.contact-submit-button *,
+.contact-form button[type="submit"],
+.contact-form input[type="submit"] {
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+}
+
+.contact-submit-button:focus,
+.contact-submit-button:hover,
+.contact-submit-button:active,
+.contact-form button[type="submit"]:focus,
+.contact-form button[type="submit"]:hover,
+.contact-form button[type="submit"]:active,
+.contact-form input[type="submit"]:focus,
+.contact-form input[type="submit"]:hover,
+.contact-form input[type="submit"]:active {
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+}
+
 @media (max-width: 1366px) {
   .contact-text { font-size: 54px; width: auto; }
   .have-question { font-size: 34px; width: 80%; height: auto; }

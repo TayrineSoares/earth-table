@@ -60,6 +60,28 @@
   text-align: left;
 }
 
+/* iOS Safari: keep register submit text black */
+.register-submit-button,
+.register-submit-button *,
+.register-form button[type="submit"],
+.register-form input[type="submit"] {
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+}
+
+.register-submit-button:focus,
+.register-submit-button:hover,
+.register-submit-button:active,
+.register-form button[type="submit"]:focus,
+.register-form button[type="submit"]:hover,
+.register-form button[type="submit"]:active,
+.register-form input[type="submit"]:focus,
+.register-form input[type="submit"]:hover,
+.register-form input[type="submit"]:active {
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+}
+
 @media (max-width: 1366px) {
   .register-input {
     width: 400px;
