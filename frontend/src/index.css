@@ -2,6 +2,7 @@
 :root {
   --heading-font: 'Forum', serif;
   --body-font: 'Encode Sans', sans-serif;
+  color-scheme: light;
 }
 
   
@@ -28,4 +29,9 @@ html, body {
     font-variant: small-caps;
     text-align: left;
     margin-bottom: 10px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
