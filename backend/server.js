@@ -221,6 +221,8 @@ app.use('/logout', logoutRouter);
 
 app.use('/contact', contactRouter);
 
+app.use('/contact', contactRouter);
+
 app.use('/tags', tagsRouter);
 
 app.use('/cart', cartRouter);
