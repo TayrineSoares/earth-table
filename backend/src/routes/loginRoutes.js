@@ -45,6 +45,8 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ error: 'Valid email is required' });
   }
   const redirectTo = `${getRedirectBase(req)}/update-password`;
+  console.log(`[reset-password] env=${process.env.NODE_ENV || 'dev'} redirectTo = ${redirectTo}`);
+    
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
