@@ -11,7 +11,14 @@ const { createClient } = require('@supabase/supabase-js');
 const {
   SUPABASE_PROJECT_URL,
   SUPABASE_ANON_KEY,
+  FRONTEND_URL,
 } = process.env;
+
+// Helper: base URL for redirects (env > Origin > localhost)
+function getRedirectBase(req) {
+  const base = (FRONTEND_URL || req.headers.origin || 'http://localhost:5173').replace(/\/+$/, '');
+  return base;
+}
 
 
 // POST /register
@@ -23,7 +30,7 @@ router.post('/', async (req, res) => {
     email,
     password,
     options: {
-      emailRedirectTo: 'http://localhost:5173/auth/callback',
+      emailRedirectTo: `${getRedirectBase(req)}/auth/callback`,
       data: { first_name, last_name, phone_number }
     }
   });
@@ -104,15 +111,35 @@ router.post('/confirmation', async (req, res, next) => {
   }
 });
 
-// POST /auth/resend-confirmation  (backend)
+// POST /auth/resend-confirmation (backend)
 router.post('/auth/resend-confirmation', async (req, res) => {
-  const { email } = req.body;
-  const { error } = await supabase.auth.resend({ type: 'signup', email });
-  if (error) return res.status(400).json({ error: error.message });
-  res.json({ ok: true });
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+
+    // pick redirect base (env > Origin header > localhost)
+    const redirectBase = (process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173').replace(/\/+$/, '');
+    const redirectTo = `${redirectBase}/auth/callback`;
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) {
+      console.error('Resend confirmation error:', error.message);
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ ok: true, message: 'Confirmation email resent' });
+  } catch (err) {
+    console.error('POST /auth/resend-confirmation error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
 });
-
-
 
 
 
