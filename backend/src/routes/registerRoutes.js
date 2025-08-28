@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+router.use((req, res, next) => {
+  console.log('[register router]', req.method, req.originalUrl, 'body=', req.body);
+  next();
+});
+
 const supabase = require('../../supabase/db');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -14,7 +19,6 @@ const {
 router.post('/', async (req, res) => {
   const { email, password, first_name, last_name, phone_number } = req.body;
 
-  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -24,10 +28,36 @@ router.post('/', async (req, res) => {
     }
   });
 
+
+  // 1) If Supabase explicitly returns an error
   if (error) {
-    return res.status(400).json({ error: error.message });
+    if (
+      (error.status === 400 || error.status === 422 || error.status === 409) &&
+      /already|exists/i.test(error.message || '')
+    ) {
+      return res.status(409).json({
+        ok: false,
+        already_registered: true,
+        message: 'This email is already registered. Please log in.',
+        redirect_to: '/login'
+      });
+    }
+    return res.status(400).json({ ok: false, error: error.message });
   }
 
+  // 2) Duplicate email (confirmed OR unconfirmed) => identities is empty
+  //    Treat as "already registered" so the UI can show the Login prompt.
+  const identities = data?.user?.identities;
+  if (Array.isArray(identities) && identities.length === 0) {
+    return res.status(409).json({
+      ok: false,
+      already_registered: true,
+      message: 'This email is already registered. Please log in.',
+      redirect_to: '/login'
+    });
+  }
+
+  // 3) Normal happy path for a brand-new signup
   return res.status(202).json({
     ok: true,
     needs_confirmation: true,
@@ -72,6 +102,14 @@ router.post('/confirmation', async (req, res, next) => {
     console.error('confirmation error:', e);
     return res.status(500).json({ error: 'Server error' });
   }
+});
+
+// POST /auth/resend-confirmation  (backend)
+router.post('/auth/resend-confirmation', async (req, res) => {
+  const { email } = req.body;
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 
