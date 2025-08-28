@@ -49,7 +49,7 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
 
       <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
       <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
-      <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 123 FAKE STREET </p>
+      <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 77 Woodstream Blvd, Vaughan, ON  - L4L 7Y7 </p>
 
       <p style="margin:16px 0;">Earth Table Team 🧡</p>
 

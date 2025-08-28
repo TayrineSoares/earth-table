@@ -168,7 +168,7 @@ const Products = ({ addToCart }) => {
             onClick={() => setSearchTerm("")}
             aria-label="Clear search"
           >
-            ×
+            x
           </button>
         )}
       </div>
