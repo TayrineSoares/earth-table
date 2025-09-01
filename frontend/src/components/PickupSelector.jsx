@@ -109,8 +109,8 @@ const PickupSelector = ({
             disabled={!pickupDate}
           >
             <option value="">Select a time slot</option>
-            <option value="9:00-12:00">9:00 - 12:00</option>
-            <option value="13:00-16:00">13:00 - 16:00</option>
+            <option value="10:00-13:00">10:00 - 13:00</option>
+            <option value="14:00-16:30">14:00 - 16:30</option>
           </select>
         </div>
       </div>

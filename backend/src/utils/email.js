@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @param {string|string[]} params.to - Recipient(s)
  * @param {string} params.subject
  * @param {string} [params.html] - HTML body
- * @param {string} [params.text] - Plain-text fallback (recommended)
+ * @param {string} [params.text] - Plain-text fallback
  * @param {string} [params.replyTo] - Reply-To address
  * @param {string|string[]} [params.cc]
  * @param {string|string[]} [params.bcc]

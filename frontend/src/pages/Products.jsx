@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
 import { useParams, Link } from "react-router-dom";
-import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff } from 'lucide-react';
+import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
 
 
 const Products = ({ addToCart }) => {
@@ -54,7 +54,8 @@ const Products = ({ addToCart }) => {
     vegetarian: <LeafyGreen size={16} />,
     keto: <Ham size={16} />,
     'dairy free': <MilkOff size={16} />,
-    paleo: <BeanOff size={16} />
+    paleo: <BeanOff size={16} />,
+    'gluten free': <WheatOff size={16}/>
   };
 
   
@@ -167,7 +168,7 @@ const Products = ({ addToCart }) => {
             onClick={() => setSearchTerm("")}
             aria-label="Clear search"
           >
-            ×
+            x
           </button>
         )}
       </div>

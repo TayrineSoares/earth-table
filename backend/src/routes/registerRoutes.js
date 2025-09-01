@@ -1,12 +1,24 @@
 const express = require('express');
 const router = express.Router();
+router.use((req, res, next) => {
+  console.log('[register router]', req.method, req.originalUrl, 'body=', req.body);
+  next();
+});
+
 const supabase = require('../../supabase/db');
 const { createClient } = require('@supabase/supabase-js');
 
 const {
   SUPABASE_PROJECT_URL,
   SUPABASE_ANON_KEY,
+  FRONTEND_URL,
 } = process.env;
+
+// Helper: base URL for redirects (env > Origin > localhost)
+function getRedirectBase(req) {
+  const base = (FRONTEND_URL || req.headers.origin || 'http://localhost:5173').replace(/\/+$/, '');
+  return base;
+}
 
 
 // POST /register
@@ -14,20 +26,45 @@ const {
 router.post('/', async (req, res) => {
   const { email, password, first_name, last_name, phone_number } = req.body;
 
-  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: 'http://localhost:5173/auth/callback',
+      emailRedirectTo: `${getRedirectBase(req)}/auth/callback`,
       data: { first_name, last_name, phone_number }
     }
   });
 
+
+  // 1) If Supabase explicitly returns an error
   if (error) {
-    return res.status(400).json({ error: error.message });
+    if (
+      (error.status === 400 || error.status === 422 || error.status === 409) &&
+      /already|exists/i.test(error.message || '')
+    ) {
+      return res.status(409).json({
+        ok: false,
+        already_registered: true,
+        message: 'This email is already registered. Please log in.',
+        redirect_to: '/login'
+      });
+    }
+    return res.status(400).json({ ok: false, error: error.message });
   }
 
+  // 2) Duplicate email (confirmed OR unconfirmed) => identities is empty
+  //    Treat as "already registered" so the UI can show the Login prompt.
+  const identities = data?.user?.identities;
+  if (Array.isArray(identities) && identities.length === 0) {
+    return res.status(409).json({
+      ok: false,
+      already_registered: true,
+      message: 'This email is already registered. Please log in.',
+      redirect_to: '/login'
+    });
+  }
+
+  // 3) Normal happy path for a brand-new signup
   return res.status(202).json({
     ok: true,
     needs_confirmation: true,
@@ -74,7 +111,35 @@ router.post('/confirmation', async (req, res, next) => {
   }
 });
 
+// POST /auth/resend-confirmation (backend)
+router.post('/auth/resend-confirmation', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
 
+    // pick redirect base (env > Origin header > localhost)
+    const redirectBase = (process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173').replace(/\/+$/, '');
+    const redirectTo = `${redirectBase}/auth/callback`;
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) {
+      console.error('Resend confirmation error:', error.message);
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ ok: true, message: 'Confirmation email resent' });
+  } catch (err) {
+    console.error('POST /auth/resend-confirmation error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
 
 

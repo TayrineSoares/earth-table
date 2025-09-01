@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
       const specialNote = metadata.special_note || null;
       const delivery = metadata.delivery || false;
 
-      let buyerPhoneNumber = session.customer_details?.phone || null;
+      let buyerPhoneNumber = session.customer_details?.phone || null;``
       const email =
         session.customer_email ||
         session.customer_details?.email ||
@@ -122,13 +122,14 @@ module.exports = async (req, res) => {
         if (sendEmails) {
           // customer email
           const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
-          await sendEmail({
+          const c1 = await sendEmail({
             to: email,
             subject,
             html,
             text,
             replyTo: 'hello@earthtableco.ca',
           });
+          console.log('[ORDER EMAIL][customer]', c1?.data?.id || c1);
 
           // owner email
           const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
@@ -136,12 +137,13 @@ module.exports = async (req, res) => {
             .map((s) => s.trim())
             .filter(Boolean);
           const ownerMsg = renderOwnerOrderEmail(detailedOrder);
-          await sendEmail({
+          const c2 = await sendEmail({
             to: ownerTo,
             subject: ownerMsg.subject,
             html: ownerMsg.html,
             text: ownerMsg.text,
           });
+          console.log('[ORDER EMAIL][owner]', c2?.data?.id || c2);
         } else {
           console.log('✉️ SEND_EMAILS=false — skipping email sends.');
         }

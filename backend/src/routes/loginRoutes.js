@@ -2,7 +2,15 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../supabase/db');
 
+const { FRONTEND_URL } = process.env;
+
 // POST /login
+
+// Helper: pick redirect base (env > Origin header > localhost)
+function getRedirectBase(req) {
+  return (FRONTEND_URL || req.headers.origin || 'http://localhost:5173').replace(/\/+$/, '');
+}
+
 
 router.post('/', async (req, res) => {
   const { email, password } = req.body;
@@ -33,9 +41,14 @@ router.post('/', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   const { email } = req.body; 
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'http://localhost:5173/update-password'
-  });
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Valid email is required' });
+  }
+  const redirectTo = `${getRedirectBase(req)}/update-password`;
+  console.log(`[reset-password] env=${process.env.NODE_ENV || 'dev'} redirectTo = ${redirectTo}`);
+    
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
   if (error) {
     console.error('Reset email error:', error.message);

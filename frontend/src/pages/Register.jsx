@@ -1,4 +1,4 @@
-import { useState, use } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import loginImage from "../assets/images/accountImage.png"
 import "../styles/Register.css"
@@ -15,6 +15,7 @@ const Register = ({setUser}) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+
   
   const navigate = useNavigate();
 
@@ -74,8 +75,13 @@ const Register = ({setUser}) => {
 
       if (!res.ok) {
         const errMsg = data?.error || `HTTP ${res.status}`;
-        setMessage(`Registration failed: ${errMsg}`);
-        setAlreadyRegistered(/already/i.test(errMsg));
+        const isAlready = data?.already_registered || /already|exists/i.test(errMsg);
+        setAlreadyRegistered(!!isAlready);
+        setMessage(
+          isAlready
+            ? (data?.message || 'This email is already registered. Please log in.')
+            : `Registration failed: ${errMsg}`
+        );
         return;
       }
 
@@ -87,7 +93,9 @@ const Register = ({setUser}) => {
           last_name: lastName,
           phone_number: phoneNumber
         }));
-        setMessage("Check your email to confirm your account, then you’ll be signed in.");
+        setMessage("Check your email to confirm your account.\n\n" +
+          "Don't see it? You may already be registered — try logging in instead."
+        );
         setAlreadyRegistered(false);
         return;
       }
@@ -233,6 +241,11 @@ const Register = ({setUser}) => {
             disabled={password !== confirmPassword || !agreedToPrivacy}
           > Sign Up </button>
         </form>
+        {alreadyRegistered && (
+          <div role="alert" className="general-text" style={{ marginTop: 12 }}>
+            This email is already registered. <Link className="footer-account-register" to="/login">Log in</Link>.
+          </div>
+        )}
 
           <p className='have-account-text'>ALREADY HAVE AN ACCOUNT?{' '}
             <Link 
@@ -243,7 +256,11 @@ const Register = ({setUser}) => {
       </div>
 
       {/* Display success or error message */}
-      {message && <p>{message}</p>}
+      {message && (
+        <p style={{ whiteSpace: "pre-line" }}>
+          {message}
+        </p>
+      )}
 
       
       </div>

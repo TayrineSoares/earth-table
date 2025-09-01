@@ -24,8 +24,8 @@ const Footer = () => {
 
       
       <div className="footer-right">
-        <p className="footer-number">(555) 123-4567</p>
-        <p className="footer-address">123 Fake street, Toronto, ON</p>
+        <p className="footer-number">(647) 802-9248</p>
+        <p className="footer-address">77 Woodstream Blvd, Vaughan, ON</p>
         <div className="social-icons">
           <a 
             href="https://www.instagram.com/earthtable_co/"

@@ -40,7 +40,8 @@ const UpdatePassword = () => {
       setMessage(`❌ ${error.message}`);
     } else {
       setMessage('Password updated successfully!');
-      setTimeout(() => navigate('/login'), 2000);
+      await supabase.auth.signOut();
+      navigate('/login', { replace: true });
     }
 
     setLoading(false);
