@@ -235,7 +235,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             
             <button 
               disabled={!pickupDate || !pickupTime || !agreedToPrivacy}
-              // onClick={handleCheckout}
+              onClick={handleCheckout}
               className="checkout-button"
             >
               Proceed to Checkout
