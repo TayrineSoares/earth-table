@@ -15,6 +15,7 @@ const contactRouter = require('./src/routes/contactRoutes');
 const tagsRouter = require('./src/routes/tagsRoutes');
 const cartRouter = require('./src/routes/cartRoutes');
 const testEmail = require('./src/routes/testEmail');
+const deliveryQuote = require('./api/delivery/quote');
 const { getUserByAuthId } = require('./src/queries/user');
 
 require('dotenv').config();
@@ -228,6 +229,9 @@ app.use('/tags', tagsRouter);
 app.use('/cart', cartRouter);
 
 app.use('/dev', testEmail);
+
+app.post('/delivery/quote', deliveryQuote);
+app.post('/api/delivery/quote', deliveryQuote);
 
 
 // Export the Express app for Vercel / serverless usage

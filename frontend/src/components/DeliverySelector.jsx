@@ -33,24 +33,17 @@ export default function DeliverySelector({
         value={postalCode}
         onChange={(e) => onPostalCodeChange(e.target.value)}
       />
-      <p className="general-text" style={{ marginTop: 8 }}>
-        Delivery fee will be calculated after we confirm your distance.
-        <br />
-    
-      </p>
+  
 
       {feeCents > 0 && (
         <p className="general-text">
           Estimated delivery fee: <strong>${(feeCents / 100).toFixed(2)}</strong>
+          <br/>
+          Please enter you full delivery address in the Special Instructions box below. 
         </p>
       )}
 
-      <p className="general-text" style={{ marginTop: 8 }}>
-        If you're outside our delivery zone ({`>`}30km), we can deliver via Uber Courier. For more information please email us at{" "}
-        <a className="footer-account-register" href="mailto:hello@earthtableco.ca">
-          hello@earthtableco.ca
-        </a>.
-      </p>
+  
     </div>
   );
 }

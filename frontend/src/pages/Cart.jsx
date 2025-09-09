@@ -8,6 +8,8 @@ import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
 import "../styles/Cart.css"
 import { Link} from "react-router-dom";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
@@ -23,7 +25,11 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [fulfillment, setFulfillment] = useState("pickup"); // "pickup" | "delivery"
   const [postalCode, setPostalCode] = useState("");
   const [postalValid, setPostalValid] = useState(false);
-  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0); // step 1: keep 0
+  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0); 
+
+  // quote status + distance
+  const [quoteStatus, setQuoteStatus] = useState("idle"); // idle|loading|ok|out|error
+  const [distanceKm, setDistanceKm] = useState(null);
 
   useEffect(() => {
     fetch('/api/cart')
@@ -53,6 +59,67 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const subtotalCents = cart.reduce((sum, item) => {
     return sum + item.price_cents * item.quantity;
   }, 0);
+
+  useEffect(() => {
+    if (fulfillment !== "delivery" || !postalValid) {
+      setQuoteStatus("idle");
+      setDeliveryFeeCents(0);
+      setDistanceKm(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setQuoteStatus("loading");
+        const resp = await fetch(`${API_BASE}/api/delivery/quote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postalCode }),
+        });
+
+        const text = await resp.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error("Quote: non-JSON response", resp.status, text);
+          if (!cancelled) {
+            setQuoteStatus("error");
+            setDeliveryFeeCents(0);
+            setDistanceKm(null);
+          }
+          return;
+        }
+
+        if (cancelled) return;
+
+        if (resp.ok && data?.ok) {
+          setDeliveryFeeCents(data.fee_cents || 0);
+          setDistanceKm(data.km ?? null);
+          setQuoteStatus("ok");
+        } else if (data?.reason === "OUT_OF_ZONE") {
+          setDeliveryFeeCents(0);
+          setDistanceKm(data.km ?? null);
+          setQuoteStatus("out");
+        } else {
+          console.error("Quote: server said no", resp.status, data);
+          setDeliveryFeeCents(0);
+          setDistanceKm(null);
+          setQuoteStatus("error");
+        }
+      } catch (e) {
+        console.error("Quote fetch failed", e);
+        if (!cancelled) {
+          setQuoteStatus("error");
+          setDeliveryFeeCents(0);
+          setDistanceKm(null);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [fulfillment, postalCode, postalValid]);
 
   // CHANGED: add deliveryFeeCents into total
   const hstRate = 0.13;
@@ -182,12 +249,31 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
             {/* NEW: delivery fee row appears only if Delivery selected */}
             {fulfillment === "delivery" && (
-              <div className='checkout-summary-subtotal'>
-                <p className='subtotal'>Delivery fee</p>
-                <p className='subtotal'>
-                  {deliveryFeeCents > 0 ? `$${(deliveryFeeCents / 100).toFixed(2)}` : "$0.00"}
-                </p>
-              </div>
+              <>
+                <div className='checkout-summary-subtotal'>
+                  <p className='subtotal'>Delivery fee</p>
+                  <p className='subtotal'>
+                    {quoteStatus === "loading"
+                      ? "Calculating..."
+                      : deliveryFeeCents > 0
+                        ? `$${(deliveryFeeCents / 100).toFixed(2)}`
+                        : "$0.00"}
+                  </p>
+                </div>
+
+                
+                {quoteStatus === "out" && (
+                  <p className="general-text" style={{ color: "#b30000" }}>
+                    Delivery not available for this area. For Delivery via Uber Courier, email{" "}
+                    <a className="footer-account-register" href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
+                  </p>
+                )}
+                {quoteStatus === "error" && (
+                  <p className="general-text" style={{ color: "#b30000" }}>
+                    Couldn't calculate delivery distance. Check the postal code and try again.
+                  </p>
+                )}
+              </>
             )}
 
             {/* TAX */}
@@ -229,7 +315,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 onChange={(e) => setSpecialNote(e.target.value)}
                 placeholder={
                   fulfillment === "delivery"
-                    ? "Full delivery address, allergies, special instructions..."
+                    ? "Delivery address, allergies, special instructions..."
                     : "Allergies, special instructions..."
                 }
                 rows="3"
@@ -252,7 +338,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               disabled={
                 !agreedToPrivacy ||
                 (fulfillment === "pickup" && (!pickupDate || !pickupTime)) ||
-                (fulfillment === "delivery" && (!postalValid)) // step 1: require valid postal format
+                (fulfillment === "delivery" && (
+                  !postalValid ||
+                  quoteStatus !== "ok" ||        // must be within 30 km
+                  deliveryFeeCents <= 0 ||
+                  specialNote.trim().length < 8  // require full delivery address here
+                ))
               }
               onClick={handleCheckout}
               className="checkout-button"
