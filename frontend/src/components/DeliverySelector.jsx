@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 
 const pcRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/; // Canadian postal code
@@ -24,25 +23,25 @@ export default function DeliverySelector({
   }, [postalCode]);
 
   return (
-    <div className="delivery-selector">
-      <label htmlFor="postal" className="general-text">Postal code for delivery</label>
+    <div className="pickup-grid delivery-selector">
+      <label htmlFor="postal" className="pickup-label">Enter Postal code for delivery</label>
       <input
         id="postal"
-        className="special-note-input"
+        className="pickup-input"
         placeholder="e.g., M5V 3L9"
         value={postalCode}
         onChange={(e) => onPostalCodeChange(e.target.value)}
       />
-  
 
       {feeCents > 0 && (
         <p className="general-text">
-
-          Please enter you full delivery address in the Special Instructions box below. 
+          Enter your full delivery address in the Special Instructions box below.
         </p>
       )}
-
-  
+      <div className="general-text">
+        <p>Please review your order details before continuing.</p>
+        <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+      </div>
     </div>
   );
 }

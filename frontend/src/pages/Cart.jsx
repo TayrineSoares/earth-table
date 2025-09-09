@@ -315,6 +315,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 onValidate={({ valid }) => setPostalValid(valid)}
               />
             )}
+            <br/>
 
 
             <div className="special-note-container">
