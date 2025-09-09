@@ -146,46 +146,57 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
   const handleCheckout = async () => {
-    //get supabase session 
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // sanity log to confirm the click actually fires
+    console.log("[checkout] click", {
+      fulfillment,
+      postalCode,
+      specialNoteLen: specialNote?.length || 0,
+    });
 
-    if (error) {
-      console.error("Error getting Supabase session:", error.message);
-    }
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) console.error("Supabase session error:", error.message);
 
     const userId = session?.user?.id || null;
     const email = session?.user?.email || null;
 
-    const stripe = await stripePromise;  
-    
-    
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        cartItems: cart, 
-        email, 
-        userId,
-        pickup_date: pickupDate,
-        pickup_time_slot: pickupTime,
-        delivery: fulfillment === "delivery",
+    const stripe = await stripePromise;
 
-        // NEW: send delivery info placeholders (server should validate in Step 2+)
-        delivery_postal_code: postalCode || null,
-        delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
+    const payload = {
+      cartItems: cart,
+      email,
+      userId,
+      pickup_date: pickupDate,
+      pickup_time_slot: pickupTime,
+      delivery: fulfillment === "delivery",
+      delivery_postal_code: postalCode || null,
+      // server recomputes the fee, so this is ignored but harmless to send
+      delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
+      special_note: specialNote,
+    };
 
-        special_note: specialNote
-       }),
+    console.log("[checkout] POST", `${API_BASE}/api/create-checkout-session`, payload);
+
+    const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error("[checkout] server error", response.status, err);
+      alert(err.error || "Checkout failed. Please try again.");
+      return;
+    }
+
     const data = await response.json();
+    console.log("[checkout] redirecting to Stripe", data.url);
 
     if (data.url) {
       window.location.href = data.url;
     } else {
-      console.error('Checkout failed');
+      console.error("[checkout] missing session url", data);
+      alert("Checkout failed. Please try again.");
     }
   };
 
@@ -251,7 +262,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             {fulfillment === "delivery" && (
               <>
                 <div className='checkout-summary-subtotal'>
-                  <p className='subtotal'>Delivery fee</p>
+                  <p className='subtotal'>Delivery fee (pre-tax)</p>
                   <p className='subtotal'>
                     {quoteStatus === "loading"
                       ? "Calculating..."

@@ -22,50 +22,62 @@ module.exports = async (req, res) => {
 
   try {
     if (!GEOAPIFY_KEY || !Number.isFinite(PICKUP_LAT) || !Number.isFinite(PICKUP_LON)) {
+      console.error("[quote] fail SERVER_MISCONFIG", { hasKey: !!GEOAPIFY_KEY, PICKUP_LAT, PICKUP_LON });
       return res.status(500).json({ ok: false, reason: "SERVER_MISCONFIG" });
     }
 
     const { postalCode } = req.body || {};
+    console.log("[quote] postal:", postalCode);
+
     if (typeof postalCode !== "string" || !PC.test(postalCode)) {
+      console.warn("[quote] fail INVALID_POSTAL (format)", { postalCode });
       return res.status(400).json({ ok: false, reason: "INVALID_POSTAL" });
     }
 
     // Try both spaced and unspaced forms (Geoapify sometimes prefers spaced for CA postcodes)
     const raw = postalCode.toUpperCase().replace(/\s+/g, "");
     const spaced = raw.length === 6 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalCode;
-
     const queries = [`${spaced}, Canada`, `${raw}, Canada`];
 
     let feature = null;
     for (const q of queries) {
       const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(q)}&filter=countrycode:ca&limit=1&apiKey=${GEOAPIFY_KEY}`;
+      console.log("[quote] try:", q);
       const r = await fetch(url);
-      if (!r.ok) continue;
+      if (!r.ok) {
+        console.warn("[quote] geocode non-OK", { status: r.status, statusText: r.statusText });
+        continue;
+      }
       const data = await r.json().catch(() => null);
       const f = data?.features?.[0];
       if (f?.properties?.lat && f?.properties?.lon) {
         feature = f;
+        console.log("[quote] found coords:", { lat: f.properties.lat, lon: f.properties.lon });
         break;
       }
     }
 
     if (!feature) {
+      console.warn("[quote] fail INVALID_POSTAL (not found)", { raw, spaced });
       return res.status(400).json({ ok: false, reason: "INVALID_POSTAL" });
     }
 
     const lat = Number(feature.properties.lat);
     const lon = Number(feature.properties.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      console.warn("[quote] fail INVALID_POSTAL (bad lat/lon)", { lat, lon });
       return res.status(400).json({ ok: false, reason: "INVALID_POSTAL" });
     }
 
     const distanceKm = Math.round(km(PICKUP_LAT, PICKUP_LON, lat, lon) * 10) / 10;
 
     if (distanceKm > 30) {
+      console.log("[quote] out_of_zone:", { km: distanceKm });
       return res.json({ ok: false, reason: "OUT_OF_ZONE", km: distanceKm });
     }
 
     const fee_cents = distanceKm <= 10 ? 1500 : 3000;
+    console.log("[quote] ok:", { km: distanceKm, fee_cents });
     return res.json({ ok: true, km: distanceKm, fee_cents });
   } catch (e) {
     console.error("delivery/quote error", e);

@@ -17,6 +17,7 @@ const cartRouter = require('./src/routes/cartRoutes');
 const testEmail = require('./src/routes/testEmail');
 const deliveryQuote = require('./api/delivery/quote');
 const { getUserByAuthId } = require('./src/queries/user');
+const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
 require('dotenv').config();
 
@@ -158,43 +159,75 @@ app.get('/cart', (req, res) => {
 });
 
 
-app.post('/create-checkout-session', async (req, res) => {
-  const { cartItems, email, userId, pickup_date, pickup_time_slot, special_note, delivery } = req.body;
-  
+// define the handler as a function
+const createCheckoutSession = async (req, res) => {
+  const {
+    cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
+    delivery, delivery_postal_code,
+  } = req.body;
+
+  // quick logs for debugging
+  console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: cartItems.map(item => ({
+    const items = cartItems.map(item => ({
+      price_data: {
+        currency: 'cad',
+        product_data: { name: `${item.slug} (includes tax)`, images: [item.image_url] },
+        unit_amount: Math.round(item.price_cents * 1.13),
+      },
+      quantity: item.quantity,
+    }));
+
+    let deliveryFeeCentsServer = 0;
+    let deliveryKm = null;
+
+    if (delivery) {
+      const quote = await getServerDeliveryQuote(delivery_postal_code);
+      if (!quote.ok) {
+        return res.status(400).json({
+          error: quote.reason === 'OUT_OF_ZONE'
+            ? 'Delivery not available for this address.'
+            : 'Invalid delivery postal code.',
+        });
+      }
+      deliveryFeeCentsServer = quote.fee_cents;
+      deliveryKm = quote.km;
+
+      console.log('[delivery] postal:', delivery_postal_code, 'km:', deliveryKm, 'fee_cents:', deliveryFeeCentsServer);
+
+      items.push({
         price_data: {
           currency: 'cad',
-          product_data: {
-            name: `${item.slug} (includes tax)` ,
-            images: [item.image_url],
-          },
-          unit_amount: Math.round(item.price_cents * 1.13),
+          product_data: { name: 'Delivery fee (includes tax)' },
+          unit_amount: Math.round(deliveryFeeCentsServer * 1.13),
         },
-        quantity: item.quantity,
-      })),
+        quantity: 1,
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: items,
       mode: 'payment',
       success_url: `${FRONTEND_URL}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/cart`,
-      ...(userId && email ? { customer_email: email } : {}),
+      ...(email ? { customer_email: email } : {}),
       phone_number_collection: { enabled: true },
-
       metadata: {
         email: email || '',
         userId: userId || '',
         pickup_date: pickup_date || '',
         pickup_time_slot: pickup_time_slot || '',
-        delivery: delivery || false,
-        special_note: special_note ||'',
-        cart: JSON.stringify(cartItems.map(item => ({
-          id: item.id,
-          quantity: item.quantity,
-          price_cents: item.price_cents
+        delivery: !!delivery,
+        delivery_postal_code: delivery_postal_code || '',
+        delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
+        delivery_km: deliveryKm != null ? String(deliveryKm) : '',
+        special_note: special_note || '',
+        cart: JSON.stringify(cartItems.map(i => ({
+          id: i.id, quantity: i.quantity, price_cents: i.price_cents
         }))),
-      }
+      },
     });
 
     res.json({ url: session.url });
@@ -202,7 +235,11 @@ app.post('/create-checkout-session', async (req, res) => {
     console.error('Stripe session creation failed', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-});
+};
+
+// register BOTH paths
+app.post('/create-checkout-session', createCheckoutSession);
+app.post('/api/create-checkout-session', createCheckoutSession);
 
 
 //ROUTES

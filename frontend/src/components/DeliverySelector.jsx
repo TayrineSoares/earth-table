@@ -37,8 +37,7 @@ export default function DeliverySelector({
 
       {feeCents > 0 && (
         <p className="general-text">
-          Estimated delivery fee: <strong>${(feeCents / 100).toFixed(2)}</strong>
-          <br/>
+
           Please enter you full delivery address in the Special Instructions box below. 
         </p>
       )}
