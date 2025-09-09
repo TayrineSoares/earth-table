@@ -2,13 +2,14 @@ import Lottie from 'lottie-react';
 import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
 
 
 const Products = ({ addToCart }) => {
 
   const { categoryId } = useParams();
+  const navigate = useNavigate();
 
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
@@ -48,6 +49,8 @@ const Products = ({ addToCart }) => {
   const selectedCategory = categoryId
   ? allCategories.find(cat => cat.id === Number(categoryId))
   : null;
+
+  
 
   const tagIcons = {
     vegan: <Vegan size={16} />,
@@ -152,26 +155,56 @@ const Products = ({ addToCart }) => {
         </p>
       </div>
 
-      {/* Search input */}
-      <div className="products-search">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search products by name…"
-          aria-label="Search products by name"
-          className="products-search-input"
-        />
-        {searchTerm && (
-          <button
-            className="products-search-clear"
-            onClick={() => setSearchTerm("")}
-            aria-label="Clear search"
-          >
-            x
-          </button>
-        )}
-      </div>
+       {categoryId === "28" ? (
+        <div className="custom-meals-container">
+          <div className="custom-meals-hero">
+            <img
+              src="https://images.unsplash.com/photo-1653233797467-1a528819fd4f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"   
+              alt="Custom meals prepared fresh"
+              className="custom-meals-hero-photo"
+            />
+          </div>
+
+
+          <h2 className="cm-title">In Home Cooking & Customized Meal Plans</h2>
+          <p className="cm-text">
+            Discover the ease of a menu designed
+            entirely around your taste, lifestyle, and dietary needs. </p>
+            <p className="cm-text" >Whether you're looking for weekly prepared meals, special-occasion dinners,
+            or in-home cooking, we'll create a menu that feels personal,
+            nourishing, and stress-free — prepared in your own kitchen or
+            delivered fresh to your door. <br /><br />
+            For more information, email us at{" "}
+            <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a> or
+            send us a message through our <Link to="/contact">contact form</Link>.
+          </p>
+          {/* <Link to="/services/custom-meals">
+            <button className="cta-button">Learn More</button>
+          </Link> */}
+        </div>
+      ) : (
+        <>
+
+        {/* Search input */}
+        <div className="products-search">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search products by name…"
+            aria-label="Search products by name"
+            className="products-search-input"
+          />
+          {searchTerm && (
+            <button
+              className="products-search-clear"
+              onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
+            >
+              x
+            </button>
+          )}
+        </div>
 
       <div className='products-container'>
       {productsToShow.map((product) => {
@@ -236,8 +269,12 @@ const Products = ({ addToCart }) => {
             Load More
           </button>
         </div>
+        
+      )}
+      </>
       )}
     </div>
+  
   )
 };
 
