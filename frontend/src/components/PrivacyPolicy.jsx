@@ -17,8 +17,10 @@ const PrivacyPolicy = () => {
         <h2 className="et-terms__h2">Terms &amp; Conditions</h2>
         <ul className="et-terms__list">
           <li><strong>Pickup as default:</strong> All orders are <strong>pickup only</strong> until delivery has been explicitly confirmed by email.</li>
+          <li><strong>Delivery option:</strong> Customers may select delivery at checkout by entering a valid Canadian postal code and providing the full delivery address in the “Special Instructions” box.</li>
+          <li><strong>Delivery zones &amp; fees:</strong> Within 10 km: <strong>$15</strong>; 11–30 km: <strong>$30</strong>. Delivery is not available beyond 30 km. For longer distances, email <a className="et-terms__link" href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a> to inquire about arranging an Uber Courier. Applicable taxes may apply to delivery fees.</li>
+          <li><strong>Delivery confirmation:</strong> Delivery is considered confirmed only after Earth Table accepts your request (you’ll receive an email confirmation). Until then, your order remains pickup.</li>
           <li><strong>No modifications or cancellations:</strong> Orders cannot be changed or cancelled once placed. Please review carefully before checkout.</li>
-          <li><strong>Delivery requests:</strong> If you request delivery via Uber Courier, availability and cost must be confirmed by Earth Table through email before the order is considered scheduled for delivery.</li>
           <li><strong>Product availability:</strong> While we do our best to keep our menu accurate, all items are subject to availability. If a product is unavailable, we will notify you as soon as possible and suggest alternatives.</li>
           <li><strong>Allergies and notes:</strong> Customers are responsible for clearly indicating allergies or dietary restrictions in the “Special Instructions” field. Earth Table cannot guarantee against cross-contamination.</li>
           <li><strong>Agreement:</strong> By placing an order, you acknowledge and agree to these Terms &amp; Conditions.</li>
@@ -30,6 +32,7 @@ const PrivacyPolicy = () => {
         <h3 className="et-terms__h3">Information We Collect</h3>
         <ul className="et-terms__list">
           <li><strong>Personal details:</strong> Name, email address, and phone number when you sign up or place an order.</li>
+          <li><strong>Delivery details (when selected):</strong> Your <strong>postal code</strong> (to calculate distance and delivery fee) and the <strong>full delivery address</strong> you provide in the “Special Instructions” box so we can fulfill delivery.</li>
           <li><strong>Payment information:</strong> All payments are processed securely via Stripe. We do not store credit card information on our servers.</li>
           <li><strong>Cookies &amp; tracking:</strong> We use cookies and similar technologies to improve site functionality and track analytics.</li>
         </ul>
@@ -37,6 +40,7 @@ const PrivacyPolicy = () => {
         <h3 className="et-terms__h3">How We Use Your Information</h3>
         <ul className="et-terms__list">
           <li>To process orders and deliver products or services.</li>
+          <li>For delivery requests: to estimate distance/fee based on your postal code and to dispatch to the address you provide.</li>
           <li>To communicate with you regarding your account, purchases, or promotions (with your consent).</li>
           <li>To improve our website and user experience via analytics.</li>
         </ul>
@@ -45,6 +49,8 @@ const PrivacyPolicy = () => {
         <ul className="et-terms__list">
           <li>We do not sell your personal information.</li>
           <li>Stripe handles payment processing and may require some data to complete the transaction.</li>
+          <li><strong>Geocoding for delivery:</strong> When you enter a postal code for delivery, we may send the postal code to a third-party geocoding provider (e.g., Geoapify) to estimate distance and calculate the delivery fee.</li>
+          <li><strong>Delivery partners (when applicable):</strong> If delivery is confirmed, we may share your name, phone, and delivery address with a courier (e.g., Uber Courier) solely to fulfill your delivery.</li>
           <li>Third-party analytics providers may receive anonymized or aggregated data.</li>
         </ul>
 
