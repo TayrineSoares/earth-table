@@ -5,6 +5,7 @@ import checkoutImage from "../assets/images/checkoutImage.png"
 import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
+import DeliverySelector from '../components/DeliverySelector';
 import "../styles/Cart.css"
 import { Link} from "react-router-dom";
 
@@ -15,9 +16,14 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [pickupTime, setPickupTime] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [specialNote, setSpecialNote] = useState("");
-  const [uberDelivery, setUberDelivery] = useState(false);
-  const [showDeliveryWarning, setShowDeliveryWarning] = useState(false);
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // NEW: fulfillment mode + delivery info
+  const [fulfillment, setFulfillment] = useState("pickup"); // "pickup" | "delivery"
+  const [postalCode, setPostalCode] = useState("");
+  const [postalValid, setPostalValid] = useState(false);
+  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0); // step 1: keep 0
 
   useEffect(() => {
     fetch('/api/cart')
@@ -44,9 +50,15 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     checkSession();
   }, []);
 
-  const totalPrice = cart.reduce((sum, item) => {
+  const subtotalCents = cart.reduce((sum, item) => {
     return sum + item.price_cents * item.quantity;
-  }, 0)
+  }, 0);
+
+  // CHANGED: add deliveryFeeCents into total
+  const hstRate = 0.13;
+  const totalBeforeTaxCents = subtotalCents + (fulfillment === "delivery" ? deliveryFeeCents : 0);
+  const taxCents = Math.round(totalBeforeTaxCents * hstRate);
+  const grandTotalCents = totalBeforeTaxCents + taxCents;
 
   if (isLoading) {
     return (
@@ -91,7 +103,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         userId,
         pickup_date: pickupDate,
         pickup_time_slot: pickupTime,
-        delivery: uberDelivery,
+        delivery: fulfillment === "delivery",
+
+        // NEW: send delivery info placeholders (server should validate in Step 2+)
+        delivery_postal_code: postalCode || null,
+        delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
+
         special_note: specialNote
        }),
     });
@@ -113,26 +130,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   return (
     <div className='checkout-page'>
 
-      {showDeliveryWarning && (
-            <div className="delivery-warning-overlay">
-              <div className="delivery-warning-box">
-              <h2 className='warning-text'>
-                <span className='warning-symbol'>⚠</span> Delivery Instructions <span className='warning-symbol'>⚠</span>
-              </h2>
-                <p className='warning-text-details'>
-                  If you'd like delivery via Uber Courier, please email us at hello@earthtableco.ca. 
-                  We'll reply to confirm availability and cost based on Uber rates. 
-                  Checking this box <strong>does not schedule delivery</strong>. 
-                  If delivery cannot be confirmed, your order will be prepared for <strong>pickup</strong> at the scheduled time.
-                </p>
-                <button 
-                  className='warning-button'
-                  onClick={() => setShowDeliveryWarning(false)}
-                >OK</button>
-              </div>
-            </div>
-          )}
-
       <div className='checkout-page-header-image'>
         <img 
           src={checkoutImage}
@@ -153,70 +150,88 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='number-of-items'>{getCartItemCount(cart)} ITEMS</p>
             </div>
             
-            <div className='checkout-summary-subtotal'>
-              <p className='subtotal'>SUBTOTAL</p>
-              <p className='subtotal'>${(totalPrice / 100).toFixed(2)}
-              </p>
+            {/* NEW: fulfillment toggle */}
+            <div className="general-text" style={{ margin: "10px 0 16px" }}>
+              <label style={{ marginRight: 16 }}>
+                <input
+                  type="radio"
+                  name="fulfillment"
+                  value="pickup"
+                  checked={fulfillment === "pickup"}
+                  onChange={() => setFulfillment("pickup")}
+                />{" "}
+                Pickup
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="fulfillment"
+                  value="delivery"
+                  checked={fulfillment === "delivery"}
+                  onChange={() => setFulfillment("delivery")}
+                />{" "}
+                Delivery
+              </label>
             </div>
 
+            {/* SUBTOTAL */}
+            <div className='checkout-summary-subtotal'>
+              <p className='subtotal'>SUBTOTAL</p>
+              <p className='subtotal'>${(subtotalCents / 100).toFixed(2)}</p>
+            </div>
+
+            {/* NEW: delivery fee row appears only if Delivery selected */}
+            {fulfillment === "delivery" && (
+              <div className='checkout-summary-subtotal'>
+                <p className='subtotal'>Delivery fee</p>
+                <p className='subtotal'>
+                  {deliveryFeeCents > 0 ? `$${(deliveryFeeCents / 100).toFixed(2)}` : "$0.00"}
+                </p>
+              </div>
+            )}
+
+            {/* TAX */}
             <div className='checkout-summary-tax'>
               <p className='tax'>HST</p>
               <p className='tax'>13%</p>
             </div>
 
+            {/* TOTAL */}
             <div className='checkout-total'>
               <p className='total'>Total</p>
-              <p className='total'>${(totalPrice * 1.13 / 100 ).toFixed(2)}</p>
-            </div>
-            
-            <PickupSelector 
-              pickupDate={pickupDate}
-              pickupTime={pickupTime}
-              onDateChange={setPickupDate}
-              onTimeChange={setPickupTime}
-            />
-
-            <div className="general-text">
-              {isLoggedIn ? (
-                <>
-                  <input
-                    type="checkbox"
-                    id="uber-delivery"
-                    checked={uberDelivery}
-                    onChange={(e) => {
-                      setUberDelivery(e.target.checked);
-                      if (e.target.checked) {
-                        setShowDeliveryWarning(true);
-                      }
-                    }}
-                  />
-                  <label htmlFor="uber-delivery">
-                    We offer delivery via{" "}
-                    <Link className="footer-account-register" to="/privacy">
-                      Uber Carrier
-                    </Link>
-                    .
-                  </label>
-                </>
-              ) : (
-                <label htmlFor="uber-delivery">
-                  We offer delivery via{" "}
-                  <Link className="footer-account-register" to="/privacy">
-                    Uber Carrier
-                  </Link>
-                  . <span className="login-warning"> (Log in to request delivery info)</span>
-                </label>
-              )}
+              <p className='total'>${(grandTotalCents / 100).toFixed(2)}</p>
             </div>
 
-            <div className="special-note-container" >
-              <label htmlFor="special-note" className='general-text'>Special Instructions (optional)</label>
+            {/* PICKUP or DELIVERY SELECTOR */}
+            {fulfillment === "pickup" ? (
+              <PickupSelector 
+                pickupDate={pickupDate}
+                pickupTime={pickupTime}
+                onDateChange={setPickupDate}
+                onTimeChange={setPickupTime}
+              />
+            ) : (
+              <DeliverySelector
+                postalCode={postalCode}
+                onPostalCodeChange={setPostalCode}
+                feeCents={deliveryFeeCents}
+                onValidate={({ valid }) => setPostalValid(valid)}
+              />
+            )}
+
+
+            <div className="special-note-container">
+              <label htmlFor="special-note" className='general-text'>Special Instructions </label>
               <textarea
                 className='special-note-input'
                 id="special-note"
                 value={specialNote}
                 onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder="Allergies, special instructions..."
+                placeholder={
+                  fulfillment === "delivery"
+                    ? "Full delivery address, allergies, special instructions..."
+                    : "Allergies, special instructions..."
+                }
                 rows="3"
               />
             </div>
@@ -234,12 +249,17 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             </div>
             
             <button 
-              disabled={!pickupDate || !pickupTime || !agreedToPrivacy}
+              disabled={
+                !agreedToPrivacy ||
+                (fulfillment === "pickup" && (!pickupDate || !pickupTime)) ||
+                (fulfillment === "delivery" && (!postalValid)) // step 1: require valid postal format
+              }
               onClick={handleCheckout}
               className="checkout-button"
             >
               Proceed to Checkout
             </button>
+
           </div>
 
           <div className='checkout-items'>
