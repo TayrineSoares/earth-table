@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { fetchOrderBySessionId } from '../helpers/orderHelpers';
-import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
+import loadingAnimation from '../assets/loading.json';
 import checkoutImage from "../assets/images/checkoutImage.png";
 import "../styles/Cart.css";
 
-const Confirmation = ({ clearCart }) => {
+const formattedPickupDate = (pickupDate) => {
+  if (!pickupDate) return "";
+  const [y, m, d] = pickupDate.split("-");
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+};
+
+export default function Confirmation({ clearCart }) {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState(null);
@@ -14,23 +23,20 @@ const Confirmation = ({ clearCart }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const getOrder = async () => {
-      if (!sessionId) return;
-  
+    if (!sessionId) return;
+    (async () => {
       const data = await fetchOrderBySessionId(sessionId);
+  
       setOrder(data);
       setLoading(false);
-  
       clearCart?.();
-    };
-  
-    getOrder();
-  }, [sessionId]);
+    })();
+  }, [sessionId, clearCart]);
 
   if (loading) {
     return (
       <div className="loading-container">
-        <Lottie animationData={loadingAnimation} loop={true} />
+        <Lottie animationData={loadingAnimation} loop />
       </div>
     );
   }
@@ -43,7 +49,7 @@ const Confirmation = ({ clearCart }) => {
             <div>
               <p className="checkout-summary-text">Oops!</p>
               <p className="number-of-items">We couldn't find your order. Please contact support.</p>
-              <button to="/" className="checkout-button">Back to Home</button>
+              <button onClick={() => navigate('/')} className="checkout-button">Back to Home</button>
             </div>
           </div>
         </div>
@@ -51,20 +57,8 @@ const Confirmation = ({ clearCart }) => {
     );
   }
 
-  const total = (order.total_cents) / 100;
-
-  const formattedPickupDate = (pickupDate) => {
-    if (!pickupDate) return "";
-
-    const [year, month, day] = pickupDate.split("-");
-    const localDate = new Date(year, month - 1, day); 
-    return localDate.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  const total = (order.total_cents || 0) / 100;
+  const isDelivery = order.delivery === true;
 
   return (
     <div className="checkout-page">
@@ -94,46 +88,63 @@ const Confirmation = ({ clearCart }) => {
             </div>
 
             <div style={{ marginTop: "30px", textAlign: "center" }}>
-              <p className="number-of-items"style={{ fontSize: "16px" }} >Your order will be ready for pickup on:</p>
-              <p className="number-of-items" >{formattedPickupDate(order.pickup_date)}, between {order.pickup_time_slot}</p>
-              <p className="number-of-items" style={{ fontSize: "16px" }}>A confirmation email has been sent to</p>
-              <p className="number-of-items" style={{ fontSize: "16px" }}><strong>{order.buyer_email || 'your email address'}</strong></p>
-              
-              
+              {isDelivery ? (
+                <>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    Delivery confirmed ✅
+                  </p>
+                  <p className="number-of-items">
+                    We'll deliver to the address you provided in Special Instructions.
+                  </p>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    A confirmation email has been sent to
+                  </p>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    <strong>{order.buyer_email || 'your email address'}</strong>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    Your order will be ready for pickup on:
+                  </p>
+                  <p className="number-of-items">
+                    {formattedPickupDate(order.pickup_date)}, between {order.pickup_time_slot}
+                  </p>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    A confirmation email has been sent to
+                  </p>
+                  <p className="number-of-items" style={{ fontSize: "16px" }}>
+                    <strong>{order.buyer_email || 'your email address'}</strong>
+                  </p>
+                </>
+              )}
             </div>
 
-              <button 
-                onClick={() => navigate('/')} 
-                className="checkout-button"
-              >
-                Back to Home
-              </button>
+            <button onClick={() => navigate('/')} className="checkout-button">
+              Back to Home
+            </button>
           </div>
 
-          <div className="checkout-items">
-              {order.products.map((product) => (
-                <div className="checkout-items-container" key={product.id}>
-                  <img 
-                    src={product.image_url}
-                    className="checkout-product-image"
-                  />
-                  <div className="checkout-item-details">
-                    <p className="checkout-item-title">{product.slug}</p>
-                    <p className="checkout-item-price">
-                      {product.quantity}x ${(product.unit_price_cents / 100).toFixed(2)}
-                    </p>
-                    <p className="checkout-quantity" style={{ marginTop: '10px' }}>
-                      Total: ${(product.unit_price_cents * product.quantity / 100).toFixed(2)}
-                    </p>
-                  </div>
+          <div className='checkout-items'>
+            {(order.products || []).map((p, i) => (
+              <div className='checkout-items-container' key={i}>
+                <img src={p.image_url} className='checkout-product-image' />
+                <div className='checkout-item-details'>
+                  <p className='checkout-item-title'>{p.slug}</p>
+                  <p className='checkout-item-price'>
+                    {p.quantity}x ${(p.unit_price_cents / 100).toFixed(2)}
+                  </p>
+                  <p className='checkout-quantity' style={{ marginTop: '10px' }}>
+                    Total: ${(p.unit_price_cents * p.quantity / 100).toFixed(2)}
+                  </p>
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
 
         </div>
       </div>
     </div>
   );
-};
-
-export default Confirmation;
+}

@@ -88,6 +88,7 @@ async function getOrderByUserId(userId) {
 }
 
 async function createOrderWithProducts({ 
+  
   user_id = null,
   buyer_email,
   buyer_name,
@@ -108,6 +109,8 @@ async function createOrderWithProducts({
   if (products.length === 0) {
     throw new Error("No products provided for the order.");
   }
+   console.log('[createOrderWithProducts] delivery (incoming):', delivery, typeof delivery);
+
   // insert order into orders table
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -149,6 +152,8 @@ async function createOrderWithProducts({
   return order;
 }
 
+const toBool = (v) =>
+  v === true || v === 'true' || v === 1 || v === '1' || v === 't' || v === 'T';
 
 const getOrderByStripeSessionId = async (sessionId) => {
   const { data: order, error } = await supabase
@@ -157,27 +162,29 @@ const getOrderByStripeSessionId = async (sessionId) => {
     .eq('stripe_session_id', sessionId)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(`Error fetching order: ${error.message}`);
-  }
-
+  if (error) throw new Error(`Error fetching order: ${error.message}`);
   if (!order) return null;
 
-  const { data: orderProducts, error: orderProductsError } = await supabase
-  .from('order_products')
-  .select (`
-    quantity,
-    unit_price_cents,
-    product:products (
-      slug,
-      image_url
-    )
-  `)
-  .eq('order_id', order.id);
+  console.log('[getOrderBySession] RAW row.delivery:', order.delivery, 'type:', typeof order.delivery, 'sessionId:', sessionId);
 
-    if (orderProductsError) {
-      throw new Error(`Error fetching order products: ${orderProductsError.message}`);
-    }
+  const { data: orderProducts, error: orderProductsError } = await supabase
+    .from('order_products')
+    .select(`
+      quantity,
+      unit_price_cents,
+      product:products (
+        slug,
+        image_url
+      )
+    `)
+    .eq('order_id', order.id);
+
+  if (orderProductsError) {
+    throw new Error(`Error fetching order products: ${orderProductsError.message}`);
+  }
+
+  const deliveryBool = toBool(order.delivery);
+  console.log('[getOrderBySession] RETURN delivery:', deliveryBool);
 
   return {
     id: order.id,
@@ -189,15 +196,14 @@ const getOrderByStripeSessionId = async (sessionId) => {
     pickup_date: order.pickup_date || null,
     pickup_date_formatted: formatDisplayDate(order.pickup_date),
     pickup_time_slot: order.pickup_time_slot || null,
-    delivery: order.delievery || false,
+    delivery: deliveryBool,
     special_note: order.special_note || null,
-    products: orderProducts.map(op => ({
+    products: (orderProducts || []).map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
       image_url: op.product?.image_url || '',
       quantity: op.quantity,
       unit_price_cents: op.unit_price_cents
     }))
-    
   };
 };
 

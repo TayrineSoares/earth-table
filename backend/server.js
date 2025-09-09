@@ -44,10 +44,17 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const session = event.data.object;
 
       const metadata = session.metadata;
+      const deliveryPostal = metadata?.delivery_postal_code || '';
+      const deliveryKm = metadata?.delivery_km || '';
+      const deliveryFeeCentsServer = metadata?.delivery_fee_cents_server || '0';
+
+
       const pickupDate = metadata?.pickup_date || null;
       const pickupSlot = metadata?.pickup_time_slot || null;
       const specialNote = metadata?.special_note || null;
-      const delivery = metadata?.delivery || false;
+      const delivery = String(metadata?.delivery).toLowerCase() === 'true';
+      console.log('[webhook] metadata.delivery:', metadata?.delivery, '-> boolean:', delivery);
+
       let buyerPhoneNumber = session.customer_details?.phone || null;
 
 
@@ -74,6 +81,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           buyer_email: email,
           buyer_name: buyerName,
           buyer_phone_number: buyerPhoneNumber,
+          delivery,
           buyer_stripe_payment_info: JSON.stringify({
             session_id: session.id,
             payment_intent: session.payment_intent,
@@ -82,7 +90,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             payment_status: session.payment_status,
             customer_name: session.customer_details?.name || '',
             customer_phone: session.customer_details?.phone || '',
-            customer_address: session.customer_details?.address || {}
+            customer_address: session.customer_details?.address || {},
+            delivery_meta: {
+              postal_code: deliveryPostal,
+              km: deliveryKm,
+              fee_cents_server: Number(deliveryFeeCentsServer || 0),
+              delivery_flag: delivery,
+            }
           }),
           status: session.payment_status,
           stripe_session_id: session.id,
@@ -183,6 +197,9 @@ const createCheckoutSession = async (req, res) => {
     let deliveryKm = null;
 
     if (delivery) {
+      if (!special_note || special_note.trim().length < 8) {
+        return res.status(400).json({ error: "Please enter your full delivery address." });
+      }
       const quote = await getServerDeliveryQuote(delivery_postal_code);
       if (!quote.ok) {
         return res.status(400).json({
@@ -219,7 +236,7 @@ const createCheckoutSession = async (req, res) => {
         userId: userId || '',
         pickup_date: pickup_date || '',
         pickup_time_slot: pickup_time_slot || '',
-        delivery: !!delivery,
+        delivery: delivery ? 'true' : 'false',
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
@@ -248,6 +265,7 @@ app.use('/categories', categoriesRouter);
 app.use('/products', productsRouter);
 
 app.use('/orders', ordersRouter);
+app.use('/api/orders', ordersRouter); 
 
 app.use('/users', usersRouter);
 

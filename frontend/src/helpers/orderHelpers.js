@@ -1,8 +1,8 @@
-
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 const fetchOrderBySessionId = async (sessionId) => {
   try {
-    const res = await fetch(`/api/orders/session/${sessionId}`);
+    const res = await fetch(`${API_BASE}/api/orders/session/${sessionId}`);
     
     if (!res.ok) {
       throw new Error(`Failed to fetch order: ${res.status}`);

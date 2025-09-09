@@ -162,7 +162,7 @@ const OrderAdmin = () => {
             <th>Delivery</th>
             <th>Special Note</th>
             <th>Actions</th>
-            <th>Picked Up?</th>
+            <th>Picked Up / Delivered?</th>
           </tr>
         </thead>
 
@@ -194,7 +194,7 @@ const OrderAdmin = () => {
                       aria-pressed={order.picked_up}
                       title={order.picked_up ? 'Mark as NOT picked up' : 'Mark as picked up'}
                     >
-                      {order.picked_up ? 'Picked up ✓' : 'Mark as picked up'}
+                      {order.picked_up ? 'Delivered ✓' : 'Pending'}
                     </button>
                   </td>
                 </tr>

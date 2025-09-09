@@ -30,9 +30,15 @@ router.get('/session/:sessionId', async (req, res) => {
 
   try {
     const order = await getOrderByStripeSessionId(sessionId);
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    console.log('[orders/session]', {
+      sessionId,
+      id: order.id,
+      delivery: order.delivery,
+      type: typeof order.delivery,
+      status: order.status,
+    });
 
     res.json(order);
   } catch (error) {
