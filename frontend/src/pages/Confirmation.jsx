@@ -25,15 +25,30 @@ const Confirmation = ({ clearCart }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchedRef = useRef(null);
+
   useEffect(() => {
     if (!sessionId) return;
+
+    // if we already fetched for this sessionId, do nothing
+    if (fetchedRef.current === sessionId) return;
+    fetchedRef.current = sessionId;
+
+    let cancelled = false;
     (async () => {
-      const data = await fetchOrderBySessionId(sessionId);
-      setOrder(data);
-      setLoading(false);
-      clearCart?.();
+      try {
+        const data = await fetchOrderBySessionId(sessionId);
+        if (cancelled) return;
+        setOrder(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+      // run clearCart once after we successfully load
+      try { clearCart?.(); } catch {}
     })();
-  }, [sessionId, clearCart]);
+
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   if (loading) {
     return (

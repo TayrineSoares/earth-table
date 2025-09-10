@@ -58,7 +58,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
 
       let buyerPhoneNumber = session.customer_details?.phone || null;
 
-
       const email = 
         session.customer_email || 
         session.customer_details?.email ||

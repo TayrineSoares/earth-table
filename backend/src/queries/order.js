@@ -37,6 +37,7 @@ async function getOrderById(orderId) {
       pickup_date,
       pickup_time_slot,
       delivery,
+      delivery_date,
       special_note,
       order_products (
         product_id,
