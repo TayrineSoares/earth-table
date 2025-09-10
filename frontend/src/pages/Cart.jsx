@@ -33,7 +33,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [distanceKm, setDistanceKm] = useState(null);
 
   useEffect(() => {
-    fetch('/api/cart')
+    fetch(`${API_BASE}/cart`)
       .then(res => {
         if(!res.ok) {
           throw new Error(`HTTP Error.${res.status}`);
