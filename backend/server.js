@@ -156,7 +156,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
 
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080'],
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080', 'https://www.earthtableco.ca/',  'https://earth-table-frontend.vercel.app/'],
   credentials: true
 }));
 app.use(morgan('dev'));
