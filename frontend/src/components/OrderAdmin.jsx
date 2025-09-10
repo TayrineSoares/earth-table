@@ -223,6 +223,8 @@ const OrderAdmin = () => {
                             {orderDetails?.buyer_email || 'guest / unknown'}
                              <br/>
                             {formatStripePhoneNumber(orderDetails?.buyer_phone_number) || ' / unknown'}
+                            <br/>
+                            <strong>Special Note:</strong>{' '}{order.special_note || ''}{' '}
                           </div>
                         )}
 

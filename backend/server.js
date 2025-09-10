@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const supabase = require('./supabase/db')
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
 const { sendEmail } = require('./src/utils/email')
 const { renderCustomerOrderEmail, renderOwnerOrderEmail } = require('./src/utils/emailTemplates');
@@ -39,49 +40,68 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
   try {
     event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
 
-  
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
+      const md = session.metadata || {};
 
-      const metadata = session.metadata;
-      const deliveryDate = metadata?.delivery_date || null;
-      const deliveryPostal = metadata?.delivery_postal_code || '';
-      const deliveryKm = metadata?.delivery_km || '';
-      const deliveryFeeCentsServer = metadata?.delivery_fee_cents_server || '0';
+      // NEW: try to load the big payload from checkout_drafts
+      const draftId = md.draft_id || null;
+      let draft = null;
+      if (draftId) {
+        const { data: d, error: dErr } = await supabase
+          .from('checkout_drafts')
+          .select('*')
+          .eq('id', draftId)
+          .maybeSingle();
+        if (!dErr && d) draft = d;
+        console.log('[webhook] using draft_id:', draftId, 'found:', !!d);
+      }
 
+      // Derive values with sane fallbacks (prefer draft when present)
+      const delivery = draft?.delivery ?? (String(md.delivery).toLowerCase() === 'true');
+      const deliveryDate = draft?.delivery_date || md.delivery_date || null;
+      const deliveryPostal = md.delivery_postal_code || draft?.delivery_postal_code || '';
+      const deliveryKm = md.delivery_km || '';
+      const deliveryFeeCentsServer = md.delivery_fee_cents_server || '0';
 
-      const pickupDate = metadata?.pickup_date || null;
-      const pickupSlot = metadata?.pickup_time_slot || null;
-      const specialNote = metadata?.special_note || null;
-      const delivery = String(metadata?.delivery).toLowerCase() === 'true';
-      console.log('[webhook] metadata.delivery:', metadata?.delivery, '-> boolean:', delivery);
+      const pickupDate = md.pickup_date || null;
+      const pickupSlot = md.pickup_time_slot || null;
 
+      const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
+
+      // Cart: from draft if available; otherwise parse metadata.cart (older flow)
+      let cart = Array.isArray(draft?.cart) ? draft.cart : [];
+      if (!cart.length && md.cart) {
+        try { cart = JSON.parse(md.cart); } catch { cart = []; }
+      }
+
+      console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
+
+      // Buyer info
       let buyerPhoneNumber = session.customer_details?.phone || null;
-
-      const email = 
-        session.customer_email || 
+      const email =
+        session.customer_email ||
         session.customer_details?.email ||
-        metadata?.email ||
+        md.email ||
         'unknown';
-      const buyerName = session.customer_details?.name;
-
-      const userId = metadata?.userId || null;
-      const cart = JSON.parse(metadata?.cart || '[]');
+      const buyerName = session.customer_details?.name || '';
+      const userId = md.userId || null;
 
       if (userId) {
         const user = await getUserByAuthId(userId);
         if (user) {
-          buyerPhoneNumber = user.phone_number|| buyerPhoneNumber;
+          buyerPhoneNumber = user.phone_number || buyerPhoneNumber;
         }
       }
 
-       try {
+      try {
         await createOrderWithProducts({
           user_id: userId || null,
           buyer_email: email,
           buyer_name: buyerName,
           buyer_phone_number: buyerPhoneNumber,
-          delivery,
+
+          // store raw Stripe info (helpful for support/debugging)
           buyer_stripe_payment_info: JSON.stringify({
             session_id: session.id,
             payment_intent: session.payment_intent,
@@ -91,56 +111,61 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
             customer_name: session.customer_details?.name || '',
             customer_phone: session.customer_details?.phone || '',
             customer_address: session.customer_details?.address || {},
+            draft_id: draftId || null,
             delivery_meta: {
               postal_code: deliveryPostal,
               km: deliveryKm,
               fee_cents_server: Number(deliveryFeeCentsServer || 0),
               delivery_flag: delivery,
-            }
+            },
           }),
+
           status: session.payment_status,
           stripe_session_id: session.id,
           total_cents: session.amount_total,
-          products: cart, 
+
+          // order data
+          products: cart,
           pickup_date: pickupDate,
           pickup_time_slot: pickupSlot,
-          delivery: delivery,
-          delivery_date: deliveryDate, 
+          delivery,
+          delivery_date: deliveryDate,
           special_note: specialNote,
         });
 
+        // Fetch full order for emails
         const detailedOrder = await getOrderByStripeSessionId(session.id);
 
-        //Send email to customer
+        // Customer email
         const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
-           
         await sendEmail({
           to: email,
           subject,
           html,
           text,
-          replyTo: 'hello@earthtableco.ca'
-  
+          replyTo: 'hello@earthtableco.ca',
         });
-        
-        // Send email to business notifying new order
+
+        // Owner email(s)
         const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
           .split(',')
-          .map(s => s.trim())
+          .map((s) => s.trim())
           .filter(Boolean);
 
         const ownerMsg = renderOwnerOrderEmail(detailedOrder);
-        
         await sendEmail({
-          to: ownerTo, 
+          to: ownerTo,
           subject: ownerMsg.subject,
           html: ownerMsg.html,
           text: ownerMsg.text,
         });
 
-
+        // Best-effort cleanup: remove the draft now that it's used
+        if (draftId) {
+          await supabase.from('checkout_drafts').delete().eq('id', draftId);
+        }
       } catch (err) {
-        console.error("Failed to save order:", err.message);
+        console.error('Failed to save order or send emails:', err.message);
       }
     } else {
       console.log(`Skipped event: ${event.type}`);
@@ -152,6 +177,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
     response.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
+
 
 
 app.use(cors({
@@ -189,14 +215,13 @@ const createCheckoutSession = async (req, res) => {
     delivery, delivery_postal_code, delivery_date,
   } = req.body;
 
-  // quick logs for debugging
   console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
   console.log('[checkout] delivery_date:', delivery_date);
 
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-
   try {
+    // Build line items with tax included
     const items = cartItems.map(item => ({
       price_data: {
         currency: 'cad',
@@ -214,10 +239,10 @@ const createCheckoutSession = async (req, res) => {
       if (!delivery_date || !ISO_DATE.test(delivery_date)) {
         return res.status(400).json({ error: "delivery_date (YYYY-MM-DD) is required for delivery." });
       }
-
       if (!special_note || special_note.trim().length < 8) {
         return res.status(400).json({ error: "Please enter your full delivery address." });
       }
+
       const quote = await getServerDeliveryQuote(delivery_postal_code);
       if (!quote.ok) {
         return res.status(400).json({
@@ -226,11 +251,13 @@ const createCheckoutSession = async (req, res) => {
             : 'Invalid delivery postal code.',
         });
       }
+
       deliveryFeeCentsServer = quote.fee_cents;
       deliveryKm = quote.km;
 
       console.log('[delivery] postal:', delivery_postal_code, 'km:', deliveryKm, 'fee_cents:', deliveryFeeCentsServer);
 
+      // Push delivery fee line item (includes tax)
       items.push({
         price_data: {
           currency: 'cad',
@@ -241,6 +268,26 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
+    // --- NEW: stash large payload in DB, keep Stripe metadata small ---
+    const { data: draft, error: draftErr } = await supabase
+      .from('checkout_drafts')
+      .insert([{
+        user_id: userId || null,
+        email: email || null,
+        cart: cartItems,        // full cart (no metadata limit here)
+        special_note,            // long text ok
+        delivery: !!delivery,
+        delivery_date: delivery ? delivery_date : null,
+        delivery_postal_code: delivery_postal_code || null,
+      }])
+      .select('id')
+      .single();
+
+    if (draftErr) {
+      console.error('Failed to create checkout_draft', draftErr);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: items,
@@ -249,7 +296,9 @@ const createCheckoutSession = async (req, res) => {
       cancel_url: `${FRONTEND_URL}/cart`,
       ...(email ? { customer_email: email } : {}),
       phone_number_collection: { enabled: true },
+      // Keep this tiny — Stripe metadata values must be <= 500 chars
       metadata: {
+        draft_id: draft.id,   // <-- the only reference to the big payload
         email: email || '',
         userId: userId || '',
         pickup_date: pickup_date || '',
@@ -259,16 +308,19 @@ const createCheckoutSession = async (req, res) => {
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
-        special_note: special_note || '',
-        cart: JSON.stringify(cartItems.map(i => ({
-          id: i.id, quantity: i.quantity, price_cents: i.price_cents
-        }))),
+        //  Do NOT include cart or special_note here anymore
       },
     });
 
     res.json({ url: session.url });
   } catch (error) {
-    console.error('Stripe session creation failed', error);
+    console.error('Stripe session creation failed', {
+      type: error?.type,
+      code: error?.code,
+      param: error?.param,
+      message: error?.message,
+      raw: error?.raw?.message,
+    });
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
