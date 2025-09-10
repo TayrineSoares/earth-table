@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { fetchOrderBySessionId } from '../helpers/orderHelpers';
-import Lottie from 'lottie-react';
 import loadingAnimation from '../assets/loading.json';
+import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png";
 import "../styles/Cart.css";
 
 const formattedPickupDate = (pickupDate) => {
   if (!pickupDate) return "";
-  const [y, m, d] = pickupDate.split("-");
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  const [year, month, day] = pickupDate.split("-");
+  const localDate = new Date(year, month - 1, day);
+  return localDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
   });
 };
 
-export default function Confirmation({ clearCart }) {
+const Confirmation = ({ clearCart }) => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [order, setOrder] = useState(null);
@@ -26,7 +29,6 @@ export default function Confirmation({ clearCart }) {
     if (!sessionId) return;
     (async () => {
       const data = await fetchOrderBySessionId(sessionId);
-  
       setOrder(data);
       setLoading(false);
       clearCart?.();
@@ -36,7 +38,7 @@ export default function Confirmation({ clearCart }) {
   if (loading) {
     return (
       <div className="loading-container">
-        <Lottie animationData={loadingAnimation} loop />
+        <Lottie animationData={loadingAnimation} loop={true} />
       </div>
     );
   }
@@ -58,7 +60,10 @@ export default function Confirmation({ clearCart }) {
   }
 
   const total = (order.total_cents || 0) / 100;
-  const isDelivery = order.delivery === true;
+  const isDelivery = !!order.delivery;
+  const deliveryDateText =
+    order.delivery_date_formatted ||
+    (order.delivery_date ? formattedPickupDate(order.delivery_date) : "");
 
   return (
     <div className="checkout-page">
@@ -91,16 +96,17 @@ export default function Confirmation({ clearCart }) {
               {isDelivery ? (
                 <>
                   <p className="number-of-items" style={{ fontSize: "16px" }}>
-                    Delivery confirmed ✅
+                    Delivery scheduled for: {deliveryDateText || "—"}
                   </p>
-                  <p className="number-of-items">
-                    We'll deliver to the address you provided in Special Instructions.
+                  <p className="number-of-items">Between 11:00 AM and 6:00 PM</p>
+                  <p className="number-of-items" style={{ marginTop: 10 }}>
+                    Special Instructions and Delivery Address:
+                    <br /> <br/>
+                    {order.special_note || "—"}
                   </p>
-                  <p className="number-of-items" style={{ fontSize: "16px" }}>
-                    A confirmation email has been sent to
-                  </p>
-                  <p className="number-of-items" style={{ fontSize: "16px" }}>
-                    <strong>{order.buyer_email || 'your email address'}</strong>
+                  <br/>
+                  <p className="number-of-items" style={{ fontSize: "16px", marginTop: 16 }}>
+                    A confirmation email has been sent to {order.buyer_email || 'your email address'}
                   </p>
                 </>
               ) : (
@@ -112,10 +118,7 @@ export default function Confirmation({ clearCart }) {
                     {formattedPickupDate(order.pickup_date)}, between {order.pickup_time_slot}
                   </p>
                   <p className="number-of-items" style={{ fontSize: "16px" }}>
-                    A confirmation email has been sent to
-                  </p>
-                  <p className="number-of-items" style={{ fontSize: "16px" }}>
-                    <strong>{order.buyer_email || 'your email address'}</strong>
+                    A confirmation email has been sent to {order.buyer_email || 'your email address'}
                   </p>
                 </>
               )}
@@ -127,16 +130,19 @@ export default function Confirmation({ clearCart }) {
           </div>
 
           <div className='checkout-items'>
-            {(order.products || []).map((p, i) => (
-              <div className='checkout-items-container' key={i}>
-                <img src={p.image_url} className='checkout-product-image' />
+            {(order.products || []).map((product, idx) => (
+              <div className='checkout-items-container' key={idx}>
+                <img
+                  src={product.image_url}
+                  className='checkout-product-image'
+                />
                 <div className='checkout-item-details'>
-                  <p className='checkout-item-title'>{p.slug}</p>
+                  <p className='checkout-item-title'>{product.slug}</p>
                   <p className='checkout-item-price'>
-                    {p.quantity}x ${(p.unit_price_cents / 100).toFixed(2)}
+                    {product.quantity}x ${(product.unit_price_cents / 100).toFixed(2)}
                   </p>
                   <p className='checkout-quantity' style={{ marginTop: '10px' }}>
-                    Total: ${(p.unit_price_cents * p.quantity / 100).toFixed(2)}
+                    Total: ${(product.unit_price_cents * product.quantity / 100).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -147,4 +153,6 @@ export default function Confirmation({ clearCart }) {
       </div>
     </div>
   );
-}
+};
+
+export default Confirmation;

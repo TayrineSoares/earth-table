@@ -25,7 +25,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [fulfillment, setFulfillment] = useState("pickup"); // "pickup" | "delivery"
   const [postalCode, setPostalCode] = useState("");
   const [postalValid, setPostalValid] = useState(false);
-  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0); 
+  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0);
+  const [deliveryDate, setDeliveryDate] = useState("");
 
   // quote status + distance
   const [quoteStatus, setQuoteStatus] = useState("idle"); // idle|loading|ok|out|error
@@ -171,6 +172,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       delivery_postal_code: postalCode || null,
       // server recomputes the fee, so this is ignored but harmless to send
       delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
+      delivery_date: fulfillment === "delivery" ? deliveryDate : null,
       special_note: specialNote,
     };
 
@@ -218,12 +220,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       <div className='page-wrapper'>
         <div className='checkout-page-container'>
           
-          
           <div className='checkout-order-summary'>
 
             <p className='checkout-summary-text'>Order Summary</p>
-            
-            
+                  
             <div className='checkout-summary-items'>
               <p className='number-of-items'>{getCartItemCount(cart)} ITEMS</p>
             </div>
@@ -313,6 +313,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 onPostalCodeChange={setPostalCode}
                 feeCents={deliveryFeeCents}
                 onValidate={({ valid }) => setPostalValid(valid)}
+                deliveryDate={deliveryDate}
+                onDeliveryDateChange={setDeliveryDate}
               />
             )}
             <br/>
@@ -354,6 +356,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   !postalValid ||
                   quoteStatus !== "ok" ||        // must be within 30 km
                   deliveryFeeCents <= 0 ||
+                  !deliveryDate ||
                   specialNote.trim().length < 8  // require full delivery address here
                 ))
               }

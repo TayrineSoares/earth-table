@@ -44,6 +44,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
       const session = event.data.object;
 
       const metadata = session.metadata;
+      const deliveryDate = metadata?.delivery_date || null;
       const deliveryPostal = metadata?.delivery_postal_code || '';
       const deliveryKm = metadata?.delivery_km || '';
       const deliveryFeeCentsServer = metadata?.delivery_fee_cents_server || '0';
@@ -105,6 +106,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (request, 
           pickup_date: pickupDate,
           pickup_time_slot: pickupSlot,
           delivery: delivery,
+          delivery_date: deliveryDate, 
           special_note: specialNote,
         });
 
@@ -177,11 +179,15 @@ app.get('/cart', (req, res) => {
 const createCheckoutSession = async (req, res) => {
   const {
     cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
-    delivery, delivery_postal_code,
+    delivery, delivery_postal_code, delivery_date,
   } = req.body;
 
   // quick logs for debugging
   console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
+  console.log('[checkout] delivery_date:', delivery_date);
+
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 
   try {
     const items = cartItems.map(item => ({
@@ -197,6 +203,11 @@ const createCheckoutSession = async (req, res) => {
     let deliveryKm = null;
 
     if (delivery) {
+      // require a valid delivery_date when delivery is selected
+      if (!delivery_date || !ISO_DATE.test(delivery_date)) {
+        return res.status(400).json({ error: "delivery_date (YYYY-MM-DD) is required for delivery." });
+      }
+
       if (!special_note || special_note.trim().length < 8) {
         return res.status(400).json({ error: "Please enter your full delivery address." });
       }
@@ -237,6 +248,7 @@ const createCheckoutSession = async (req, res) => {
         pickup_date: pickup_date || '',
         pickup_time_slot: pickup_time_slot || '',
         delivery: delivery ? 'true' : 'false',
+        delivery_date: delivery ? delivery_date : '',
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',

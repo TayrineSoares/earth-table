@@ -20,6 +20,7 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
   const pickupTime = detailedOrder.pickup_time_slot ?? '—';
 
   const isDelivery = detailedOrder.delivery === true;
+  const deliveryDate = detailedOrder.delivery_date_formatted ?? '—';
   const specialInstructions = detailedOrder.special_note ?? '—';
 
   // Items (safe defaults)
@@ -53,6 +54,8 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
         isDelivery
           ? `
             <p style="margin:6px 0;"><strong>Delivery:</strong> Confirmed</p>
+            <p style="margin:6px 0;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
+            <p style="margin:6px 0;"><strong>Delivery Window:</strong> 11:00 AM – 6:00 PM</p>
             <p style="margin:6px 0;"><strong>Delivery Address (from Special Instructions):</strong></p>
             <blockquote style="margin:8px 0; padding-left:12px; border-left:3px solid #ddd;">
               ${nl2br(specialInstructions)}
@@ -100,12 +103,14 @@ Total: ${total} (includes 13% HST)
 ${
   isDelivery
     ? `Delivery: Confirmed
+Delivery Date: ${deliveryDate}
+Delivery Window: 11:00 AM – 6:00 PM
 Delivery address (from Special Instructions):
-${specialInstructions}`
+${detailedOrder.special_note ?? '—'}`
     : `Pickup Date: ${pickupDate}
 Pickup Time: ${pickupTime}
 Special Instructions:
-${specialInstructions}`
+${detailedOrder.special_note ?? '—'}`
 }
 
 Earth Table Team`;
@@ -132,6 +137,7 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
   const buyerPhone = detailedOrder.buyer_phone_number ?? '—';
   const specialInstructions = detailedOrder.special_note ?? '—';
   const isDelivery = detailedOrder.delivery === true;
+  const deliveryDate = detailedOrder.delivery_date_formatted ?? '—';
 
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
   const itemsHtml = items.map((p) => {
@@ -157,6 +163,8 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
         isDelivery
           ? `
             <p style="margin:0 0 6px;"><strong>Fulfillment:</strong> Delivery</p>
+            <p style="margin:0 0 6px;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
+            <p style="margin:0 0 12px;"><strong>Delivery Window:</strong> 11:00 AM – 6:00 PM</p>
             <p style="margin:0 0 12px;"><strong>Delivery address (from Special Instructions):</strong><br/>${nl2br(specialInstructions)}</p>
           `
           : `
@@ -193,6 +201,8 @@ Total: ${total}
 ${
   isDelivery
     ? `Fulfillment: Delivery
+Delivery Date: ${deliveryDate}
+Delivery Window: 11:00 AM – 6:00 PM
 Delivery address (Special Instructions):
 ${specialInstructions}`
     : `Pickup: ${pickupDate} ${pickupTime}

@@ -102,6 +102,7 @@ async function createOrderWithProducts({
   pickup_date,
   pickup_time_slot,
   delivery,
+  delivery_date, 
   special_note
   
 }) {
@@ -127,6 +128,7 @@ async function createOrderWithProducts({
       pickup_date,
       pickup_time_slot,
       delivery,
+      delivery_date,
       special_note,
     }])
     .select()
@@ -191,12 +193,15 @@ const getOrderByStripeSessionId = async (sessionId) => {
     status: order.status,
     buyer_email: order.buyer_email || null,
     buyer_name: order.buyer_name || null,
+    buyer_phone_number: order.buyer_phone_number || null,
     created_at: order.created_at,
     total_cents: order.total_cents,
     pickup_date: order.pickup_date || null,
     pickup_date_formatted: formatDisplayDate(order.pickup_date),
     pickup_time_slot: order.pickup_time_slot || null,
     delivery: deliveryBool,
+    delivery_date: order.delivery_date || null,
+    delivery_date_formatted: formatDisplayDate(order.delivery_date),
     special_note: order.special_note || null,
     products: (orderProducts || []).map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
