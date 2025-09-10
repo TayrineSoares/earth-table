@@ -1,10 +1,13 @@
+// server.js (updated)
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const supabase = require('./supabase/db')
+const supabase = require('./supabase/db');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
-const { sendEmail } = require('./src/utils/email')
+const { sendEmail } = require('./src/utils/email');
 const { renderCustomerOrderEmail, renderOwnerOrderEmail } = require('./src/utils/emailTemplates');
+
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
 const ordersRouter = require('./src/routes/ordersRoutes');
@@ -26,160 +29,190 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 const app = express();
-const PORT = 8080;
-
+const PORT = process.env.PORT || 8080;
 
 // single source of truth for where the frontend lives
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-
-app.post('/webhook', express.raw({ type: 'application/json' }), async (request, response) => {
+// --- Stripe Webhook Handler (shared) ---
+// IMPORTANT: This handler expects the request body to be raw (NOT JSON-parsed).
+const stripeWebhookHandler = async (request, response) => {
+  console.log('[webhook] Express handler active at path:', request.path);
   const sig = request.headers['stripe-signature'];
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+  } catch (err) {
+    console.error(`[webhook] signature verification failed: ${err.message}`);
+    return response.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const md = session.metadata || {};
+  try {
+    if (event.type !== 'checkout.session.completed') {
+      console.log('[webhook] skipped event:', event.type);
+      return response.status(200).send('ok');
+    }
 
-      // NEW: try to load the big payload from checkout_drafts
-      const draftId = md.draft_id || null;
-      let draft = null;
-      if (draftId) {
-        const { data: d, error: dErr } = await supabase
-          .from('checkout_drafts')
-          .select('*')
-          .eq('id', draftId)
-          .maybeSingle();
-        if (!dErr && d) draft = d;
-        console.log('[webhook] using draft_id:', draftId, 'found:', !!d);
-      }
+    console.log('[webhook] checkout.session.completed received');
+    const session = event.data.object;
+    const md = session.metadata || {};
 
-      // Derive values with sane fallbacks (prefer draft when present)
-      const delivery = draft?.delivery ?? (String(md.delivery).toLowerCase() === 'true');
-      const deliveryDate = draft?.delivery_date || md.delivery_date || null;
-      const deliveryPostal = md.delivery_postal_code || draft?.delivery_postal_code || '';
-      const deliveryKm = md.delivery_km || '';
-      const deliveryFeeCentsServer = md.delivery_fee_cents_server || '0';
+    // Idempotency guard: bail if we already created an order for this session
+    const existing = await getOrderByStripeSessionId(session.id);
+    if (existing) {
+      console.log('[webhook] order already exists for session:', session.id);
+      return response.status(200).send('ok');
+    }
 
-      const pickupDate = md.pickup_date || null;
-      const pickupSlot = md.pickup_time_slot || null;
+    // Try to load the big payload from checkout_drafts via metadata.draft_id
+    const draftId = md.draft_id || null;
+    let draft = null;
+    if (draftId) {
+      const { data: d, error: dErr } = await supabase
+        .from('checkout_drafts')
+        .select('*')
+        .eq('id', draftId)
+        .maybeSingle();
 
-      const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
+      if (!dErr && d) draft = d;
+      console.log('[webhook] using draft_id:', draftId, 'found:', !!d);
+    } else {
+      console.log('[webhook] no draft_id present in metadata');
+    }
 
-      // Cart: from draft if available; otherwise parse metadata.cart (older flow)
-      let cart = Array.isArray(draft?.cart) ? draft.cart : [];
-      if (!cart.length && md.cart) {
-        try { cart = JSON.parse(md.cart); } catch { cart = []; }
-      }
+    // Derive values with sane fallbacks (prefer draft when present)
+    const delivery = draft?.delivery ?? (String(md.delivery).toLowerCase() === 'true');
+    const deliveryDate = draft?.delivery_date || md.delivery_date || null;
+    const deliveryPostal = md.delivery_postal_code || draft?.delivery_postal_code || '';
+    const deliveryKm = md.delivery_km || '';
+    const deliveryFeeCentsServer = md.delivery_fee_cents_server || '0';
 
-      console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
+    const pickupDate = md.pickup_date || null;
+    const pickupSlot = md.pickup_time_slot || null;
 
-      // Buyer info
-      let buyerPhoneNumber = session.customer_details?.phone || null;
-      const email =
-        session.customer_email ||
-        session.customer_details?.email ||
-        md.email ||
-        'unknown';
-      const buyerName = session.customer_details?.name || '';
-      const userId = md.userId || null;
+    const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
 
-      if (userId) {
+    // Cart: from draft if available; otherwise parse metadata.cart (legacy fallback)
+    let cart = Array.isArray(draft?.cart) ? draft.cart : [];
+    if (!cart.length && md.cart) {
+      try { cart = JSON.parse(md.cart); } catch { cart = []; }
+    }
+
+    console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
+
+    // Buyer info
+    let buyerPhoneNumber = session.customer_details?.phone || null;
+    const email =
+      session.customer_email ||
+      session.customer_details?.email ||
+      md.email ||
+      'unknown';
+    const buyerName = session.customer_details?.name || '';
+    const userId = md.userId || null;
+
+    if (userId) {
+      try {
         const user = await getUserByAuthId(userId);
         if (user) {
           buyerPhoneNumber = user.phone_number || buyerPhoneNumber;
         }
+      } catch (e) {
+        console.warn('[webhook] getUserByAuthId failed (non-fatal):', e.message);
       }
+    }
 
-      try {
-        await createOrderWithProducts({
-          user_id: userId || null,
-          buyer_email: email,
-          buyer_name: buyerName,
-          buyer_phone_number: buyerPhoneNumber,
+    // Create order
+    try {
+      await createOrderWithProducts({
+        user_id: userId || null,
+        buyer_email: email,
+        buyer_name: buyerName,
+        buyer_phone_number: buyerPhoneNumber,
 
-          // store raw Stripe info (helpful for support/debugging)
-          buyer_stripe_payment_info: JSON.stringify({
-            session_id: session.id,
-            payment_intent: session.payment_intent,
-            amount_total: session.amount_total,
-            currency: session.currency,
-            payment_status: session.payment_status,
-            customer_name: session.customer_details?.name || '',
-            customer_phone: session.customer_details?.phone || '',
-            customer_address: session.customer_details?.address || {},
-            draft_id: draftId || null,
-            delivery_meta: {
-              postal_code: deliveryPostal,
-              km: deliveryKm,
-              fee_cents_server: Number(deliveryFeeCentsServer || 0),
-              delivery_flag: delivery,
-            },
-          }),
+        // store raw Stripe info (helpful for support/debugging)
+        buyer_stripe_payment_info: JSON.stringify({
+          session_id: session.id,
+          payment_intent: session.payment_intent,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          payment_status: session.payment_status,
+          customer_name: session.customer_details?.name || '',
+          customer_phone: session.customer_details?.phone || '',
+          customer_address: session.customer_details?.address || {},
+          draft_id: draftId || null,
+          delivery_meta: {
+            postal_code: deliveryPostal,
+            km: deliveryKm,
+            fee_cents_server: Number(deliveryFeeCentsServer || 0),
+            delivery_flag: delivery,
+          },
+        }),
 
-          status: session.payment_status,
-          stripe_session_id: session.id,
-          total_cents: session.amount_total,
+        status: session.payment_status,
+        stripe_session_id: session.id,
+        total_cents: session.amount_total,
 
-          // order data
-          products: cart,
-          pickup_date: pickupDate,
-          pickup_time_slot: pickupSlot,
-          delivery,
-          delivery_date: deliveryDate,
-          special_note: specialNote,
-        });
+        // order data
+        products: cart,
+        pickup_date: pickupDate,
+        pickup_time_slot: pickupSlot,
+        delivery,
+        delivery_date: deliveryDate,
+        special_note: specialNote,
+      });
 
-        // Fetch full order for emails
-        const detailedOrder = await getOrderByStripeSessionId(session.id);
+      // Fetch full order for emails
+      const detailedOrder = await getOrderByStripeSessionId(session.id);
 
-        // Customer email
-        const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
-        await sendEmail({
-          to: email,
-          subject,
-          html,
-          text,
-          replyTo: 'hello@earthtableco.ca',
-        });
+      // Customer email
+      const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
+      await sendEmail({
+        to: email,
+        subject,
+        html,
+        text,
+        replyTo: 'hello@earthtableco.ca',
+      });
 
-        // Owner email(s)
-        const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
+      // Owner email(s)
+      const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-        const ownerMsg = renderOwnerOrderEmail(detailedOrder);
+      const ownerMsg = renderOwnerOrderEmail(detailedOrder);
+      if (ownerTo.length) {
         await sendEmail({
           to: ownerTo,
           subject: ownerMsg.subject,
           html: ownerMsg.html,
           text: ownerMsg.text,
         });
-
-        // Best-effort cleanup: remove the draft now that it's used
-        if (draftId) {
-          await supabase.from('checkout_drafts').delete().eq('id', draftId);
-        }
-      } catch (err) {
-        console.error('Failed to save order or send emails:', err.message);
       }
-    } else {
-      console.log(`Skipped event: ${event.type}`);
+
+      // Best-effort cleanup: remove the draft now that it's used
+      if (draftId) {
+        await supabase.from('checkout_drafts').delete().eq('id', draftId);
+      }
+    } catch (err) {
+      console.error('[webhook] Failed to save order or send emails:', err.message);
+      // Still 200 so Stripe won't retry forever if it's a non-retriable error.
+      // If you prefer retries, you can 500 here—but make sure your code is idempotent.
     }
 
-    response.status(200).send();
+    return response.status(200).send('ok');
   } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
-    response.status(400).send(`Webhook Error: ${err.message}`);
+    console.error('[webhook] processing error:', err);
+    return response.status(500).send('Server error');
   }
-});
+};
 
+// --- Mount webhook routes BEFORE express.json() ---
+app.post('/webhook',     express.raw({ type: 'application/json' }), stripeWebhookHandler);
+app.post('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
-
+// CORS & middleware
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -190,7 +223,6 @@ app.use(cors({
   ],
   credentials: true
 }));
-
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -207,8 +239,7 @@ app.get('/cart', (req, res) => {
   });
 });
 
-
-// define the handler as a function
+// Create Checkout Session
 const createCheckoutSession = async (req, res) => {
   const {
     cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
@@ -221,7 +252,7 @@ const createCheckoutSession = async (req, res) => {
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
   try {
-    // Build line items with tax included
+    // Build line items with tax included (13%)
     const items = cartItems.map(item => ({
       price_data: {
         currency: 'cad',
@@ -268,14 +299,14 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    // --- NEW: stash large payload in DB, keep Stripe metadata small ---
+    // Stash large payload in DB, keep Stripe metadata small
     const { data: draft, error: draftErr } = await supabase
       .from('checkout_drafts')
       .insert([{
         user_id: userId || null,
         email: email || null,
-        cart: cartItems,        // full cart (no metadata limit here)
-        special_note,            // long text ok
+        cart: cartItems,          // full cart (no metadata limit here)
+        special_note,             // long text ok
         delivery: !!delivery,
         delivery_date: delivery ? delivery_date : null,
         delivery_postal_code: delivery_postal_code || null,
@@ -296,9 +327,9 @@ const createCheckoutSession = async (req, res) => {
       cancel_url: `${FRONTEND_URL}/cart`,
       ...(email ? { customer_email: email } : {}),
       phone_number_collection: { enabled: true },
-      // Keep this tiny — Stripe metadata values must be <= 500 chars
+      // Keep metadata tiny — Stripe limit applies
       metadata: {
-        draft_id: draft.id,   // <-- the only reference to the big payload
+        draft_id: draft.id,   // reference to big payload in DB
         email: email || '',
         userId: userId || '',
         pickup_date: pickup_date || '',
@@ -308,11 +339,11 @@ const createCheckoutSession = async (req, res) => {
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
-        //  Do NOT include cart or special_note here anymore
+        // Do NOT include cart or special_note here
       },
     });
 
-    res.json({ url: session.url });
+    return res.json({ url: session.url });
   } catch (error) {
     console.error('Stripe session creation failed', {
       type: error?.type,
@@ -321,52 +352,42 @@ const createCheckoutSession = async (req, res) => {
       message: error?.message,
       raw: error?.raw?.message,
     });
-    res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-// register BOTH paths
+// register BOTH paths for session creation
 app.post('/create-checkout-session', createCheckoutSession);
 app.post('/api/create-checkout-session', createCheckoutSession);
 
-
-//ROUTES
+// ROUTES
 app.use('/categories', categoriesRouter);
-
 app.use('/products', productsRouter);
-
 app.use('/orders', ordersRouter);
-app.use('/api/orders', ordersRouter); 
-
+app.use('/api/orders', ordersRouter);
 app.use('/users', usersRouter);
-
 app.use('/login', loginRouter);
-
 app.use('/register', registerRouter);
-
 app.use('/logout', logoutRouter);
-
 app.use('/contact', contactRouter);
-
-app.use('/contact', contactRouter);
-
 app.use('/tags', tagsRouter);
-
 app.use('/cart', cartRouter);
-
 app.use('/dev', testEmail);
 
 app.post('/delivery/quote', deliveryQuote);
 app.post('/api/delivery/quote', deliveryQuote);
-
 
 // Export the Express app for Vercel / serverless usage
 module.exports = app;
 
 // Only listen when running locally (node server.js or npm run start)
 if (require.main === module) {
-  const PORT = process.env.PORT || 8080;
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);
+    // lightweight env sanity logs (non-secret presence checks)
+    console.log('[env] FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('[env] SUPABASE_URL present?', !!process.env.SUPABASE_URL);
+    console.log('[env] SERVICE_ROLE_KEY present?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.log('[env] STRIPE_WEBHOOK_SECRET present?', !!process.env.STRIPE_WEBHOOK_SECRET);
   });
 }
