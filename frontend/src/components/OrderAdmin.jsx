@@ -11,39 +11,34 @@ const OrderAdmin = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const formattedPickupDate = (pickupDate) => {
-    if (!pickupDate) return "";
-
-    const [year, month, day] = pickupDate.split("-");
-    const localDate = new Date(year, month - 1, day); 
-    return localDate.toLocaleDateString("en-US", {
+  // Generic YYYY-MM-DD -> "Month D, YYYY"
+  const formatYmd = (ymd) => {
+    if (!ymd) return "";
+    const [y, m, d] = ymd.split("-").map(Number);
+    if (!y || !m || !d) return "";
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric",
     });
   };
 
-  const isDelivery = (delivery) => {
-    if (!delivery) return 'No.';
+  const isDeliveryText = (delivery) => (delivery ? "Yes." : "No.");
 
-    return "Yes.";
-  }
-
-  const specialNote = (note) => {
-    if (!note) return 'N/A';
-
-    return "Yes.";
-  }
+  const specialNoteText = (note) => (note ? "Yes." : "N/A");
 
   const handleTogglePickedUp = async (order) => {
     const next = !order.picked_up;
-    
+
+    // optimistic update
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: next } : o));
+
     try {
       await setOrderPickedUp(order.id, next);
     } catch (e) {
       console.error(e);
-      
+      // revert
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, picked_up: !next } : o));
       alert('Failed to update picked up status.');
     }
@@ -52,22 +47,18 @@ const OrderAdmin = () => {
   const formattedOrderDate = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric"
-    }) + " at " + date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric"
-    });
+    return (
+      date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) +
+      " at " +
+      date.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric" })
+    );
   };
 
   useEffect(() => {
     const loadOrders = async () => {
       try {
         const data = await fetchAllOrders();
-        setOrders(data); 
-
+        setOrders(data);
       } catch (err) {
         console.error("Failed to load orders:", err.message);
       } finally {
@@ -80,14 +71,13 @@ const OrderAdmin = () => {
 
   const toggleDetailedOrder = async (orderId) => {
     if (expandedOrderId === orderId) {
-
       setExpandedOrderId(null);
       setOrderDetails(null);
     } else {
       setExpandedOrderId(orderId);
       setDetailsLoading(true);
       try {
-        const fullOrder = await fetchOrderById(orderId); 
+        const fullOrder = await fetchOrderById(orderId);
         setOrderDetails(fullOrder);
       } catch (error) {
         console.error('Failed to load order details:', error);
@@ -100,16 +90,16 @@ const OrderAdmin = () => {
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
-    const cleaned = phone.replace(/\D/g, ""); 
+    const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length === 10) {
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
-    return phone; 
+    return phone;
   };
 
   const formatStripePhoneNumber = (phone) => {
     if (!phone) return "(not set)";
-    const cleaned = phone.replace(/\D/g, ""); 
+    const cleaned = phone.replace(/\D/g, "");
 
     // Handle North America (+1)
     if (cleaned.startsWith("1") && cleaned.length === 11) {
@@ -129,9 +119,8 @@ const OrderAdmin = () => {
       order.id?.toString().includes(term) ||
       order.buyer_email?.toLowerCase().includes(term) ||
       order.status?.toLowerCase().includes(term) ||
-      (order.pickup_date &&
-        formattedPickupDate(order.pickup_date).toLowerCase().includes(term))    
-
+      (order.pickup_date && formatYmd(order.pickup_date).toLowerCase().includes(term)) ||
+      (order.delivery_date && formatYmd(order.delivery_date).toLowerCase().includes(term))
     );
   });
 
@@ -140,12 +129,12 @@ const OrderAdmin = () => {
   return (
     <div className="order-admin-page">
       <h1>Order Admin</h1>
-      <br/>
+      <br />
 
       <input
         className="user-search-input"
         type="text"
-        placeholder="Search by id, email, status or pickup date"
+        placeholder="Search by id, email, status or date"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
@@ -156,10 +145,10 @@ const OrderAdmin = () => {
             <th>Order ID</th>
             <th>Status</th>
             <th>Placed at</th>
-            <th>Pickup</th>
+            <th>Due Date</th>
+            <th>Delivery</th> {/* moved here, right after Due Date */}
             <th>Total</th>
             <th>Buyer Email</th>
-            <th>Delivery</th>
             <th>Special Note</th>
             <th>Actions</th>
             <th>Picked Up / Delivered?</th>
@@ -169,7 +158,8 @@ const OrderAdmin = () => {
         <tbody>
           {filteredOrders.map((order) => {
             const isOpen = expandedOrderId === order.id;
-            const items = isOpen && orderDetails ? (orderDetails.order_products || []) : [];
+            const items =
+              isOpen && orderDetails ? (orderDetails.order_products || []) : [];
 
             return (
               <Fragment key={order.id}>
@@ -177,17 +167,30 @@ const OrderAdmin = () => {
                   <td>{order.id}</td>
                   <td>{order.status}</td>
                   <td>{formattedOrderDate(order.created_at)}</td>
-                  <td>{formattedPickupDate(order.pickup_date)}, {order.pickup_time_slot}</td>
+
+                  {/* Due Date cell: delivery date if delivery, otherwise pickup date (+ time in pickup block below) */}
+                  <td>
+                    {order.delivery
+                      ? (formatYmd(order.delivery_date) || "—")
+                      : (formatYmd(order.pickup_date) || "—")
+                    }
+                  </td>
+
+                  {/* Delivery indicator moved next to Due Date */}
+                  <td>{isDeliveryText(order.delivery)}</td>
+
                   <td>${(order.total_cents / 100).toFixed(2)}</td>
                   <td>{order.buyer_email || "N/A"}</td>
-                  <td>{isDelivery(order.delivery)}</td>
-                  <td>{specialNote(order.special_note)}</td>
+                  <td>{specialNoteText(order.special_note)}</td>
                   <td>
-                    <button className="view-items-button" onClick={() => toggleDetailedOrder(order.id)}>
+                    <button
+                      className="view-items-button"
+                      onClick={() => toggleDetailedOrder(order.id)}
+                    >
                       {isOpen ? 'Hide' : 'View Details'}
                     </button>
                   </td>
-                  <td> 
+                  <td>
                     <button
                       className={`picked-btn ${order.picked_up ? 'is-picked' : ''}`}
                       onClick={() => handleTogglePickedUp(order)}
@@ -209,22 +212,29 @@ const OrderAdmin = () => {
                             <strong>User:</strong>{' '}
                             {orderDetails.user?.first_name || ''}{' '}
                             {orderDetails.user?.last_name || ''}
-                            <br></br>
-                            <strong>Email: </strong>{orderDetails.user?.email || 'No email'} 
-                            <br></br>
-                            <strong>Phone Number:</strong> {formatPhoneNumber(orderDetails?.user.phone_number) || 'No phone'}
-                            <br></br>
-                            <strong>Special Note:</strong>{' '}{order.special_note || ''}{' '}
+                            <br />
+                            <strong>Email: </strong>{orderDetails.user?.email || 'No email'}
+                            <br />
+                            <strong>Phone Number:</strong>{' '}
+                            {formatPhoneNumber(orderDetails?.user.phone_number) || 'No phone'}
+                            <br />
+                            <strong>Special Note:</strong>{' '}
+                            <span style={{ whiteSpace: 'pre-wrap' }}>
+                              {order.special_note || ''}
+                            </span>
                           </div>
                         ) : (
                           <div className="order-admin-buyer">
-                            <strong>User not registered. </strong> 
-                            <br/>
+                            <strong>User not registered. </strong>
+                            <br />
                             {orderDetails?.buyer_email || 'guest / unknown'}
-                             <br/>
+                            <br />
                             {formatStripePhoneNumber(orderDetails?.buyer_phone_number) || ' / unknown'}
-                            <br/>
-                            <strong>Special Note:</strong>{' '}{order.special_note || ''}{' '}
+                            <br />
+                            <strong>Special Note:</strong>{' '}
+                            <span style={{ whiteSpace: 'pre-wrap' }}>
+                              {order.special_note || ''}
+                            </span>
                           </div>
                         )}
 
@@ -242,6 +252,13 @@ const OrderAdmin = () => {
                           </ul>
                         ) : (
                           <em>No items found for this order.</em>
+                        )}
+
+                        {/* For pickup orders, show the time window info in details (optional) */}
+                        {!order.delivery && order.pickup_time_slot && (
+                          <div style={{ marginTop: 8 }}>
+                            <strong>Pickup time:</strong> {order.pickup_time_slot}
+                          </div>
                         )}
                       </div>
                     </td>
