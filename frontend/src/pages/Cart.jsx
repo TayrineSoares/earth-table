@@ -7,10 +7,10 @@ import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
 import "../styles/Cart.css"
-import { Link} from "react-router-dom";
+import { Link } from "react-router-dom";
+
 const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:8080";
-
 
 const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +21,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // NEW: fulfillment mode + delivery info
+  // fulfillment mode + delivery info
   const [fulfillment, setFulfillment] = useState("pickup"); // "pickup" | "delivery"
   const [postalCode, setPostalCode] = useState("");
   const [postalValid, setPostalValid] = useState(false);
@@ -35,14 +35,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   useEffect(() => {
     fetch(`${API_BASE}/cart`)
       .then(res => {
-        if(!res.ok) {
-          throw new Error(`HTTP Error.${res.status}`);
-        }
-        return res.json()
+        if (!res.ok) throw new Error(`HTTP Error.${res.status}`);
+        return res.json();
       })
-      .then(data => {
-        setIsLoading(false);
-      })
+      .then(() => setIsLoading(false))
       .catch(err => {
         console.error(err);
         setIsLoading(false);
@@ -60,6 +56,26 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const subtotalCents = cart.reduce((sum, item) => {
     return sum + item.price_cents * item.quantity;
   }, 0);
+
+  // 🔁 Clear opposite fields when switching fulfillment
+  useEffect(() => {
+    if (fulfillment === "pickup") {
+      // clear delivery-only fields
+      setDeliveryDate("");
+      setPostalCode("");
+      setPostalValid(false);
+      setDeliveryFeeCents(0);
+      setQuoteStatus("idle");
+      setDistanceKm(null);
+    } else if (fulfillment === "delivery") {
+      // clear pickup-only fields
+      setPickupDate("");
+      setPickupTime("");
+    }
+  }, [fulfillment]);
+
+  // helper to switch modes (effect above handles clearing)
+  const switchFulfillment = (mode) => setFulfillment(mode);
 
   useEffect(() => {
     if (fulfillment !== "delivery" || !postalValid) {
@@ -122,7 +138,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     return () => { cancelled = true; };
   }, [fulfillment, postalCode, postalValid]);
 
-  // CHANGED: add deliveryFeeCents into total
+  // totals
   const hstRate = 0.13;
   const totalBeforeTaxCents = subtotalCents + (fulfillment === "delivery" ? deliveryFeeCents : 0);
   const taxCents = Math.round(totalBeforeTaxCents * hstRate);
@@ -130,12 +146,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
   if (isLoading) {
     return (
-      <div 
-        className="loading-container" 
+      <div
+        className="loading-container"
         style={{
-          minHeight: "80vh", 
-          display: "flex", 
-          alignItems: "center", 
+          minHeight: "80vh",
+          display: "flex",
+          alignItems: "center",
           justifyContent: "center"
         }}
       >
@@ -147,7 +163,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
   const handleCheckout = async () => {
-    // sanity log to confirm the click actually fires
     console.log("[checkout] click", {
       fulfillment,
       postalCode,
@@ -162,14 +177,15 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
     const stripe = await stripePromise;
 
+    // 🔒 Send nulls for inactive fields
     const payload = {
       cartItems: cart,
       email,
       userId,
-      pickup_date: pickupDate,
-      pickup_time_slot: pickupTime,
+      pickup_date: fulfillment === "pickup" ? pickupDate : null,
+      pickup_time_slot: fulfillment === "pickup" ? pickupTime : null,
       delivery: fulfillment === "delivery",
-      delivery_postal_code: postalCode || null,
+      delivery_postal_code: fulfillment === "delivery" ? (postalCode || null) : null,
       // server recomputes the fee, so this is ignored but harmless to send
       delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
       delivery_date: fulfillment === "delivery" ? deliveryDate : null,
@@ -205,30 +221,30 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const getCartItemCount = (cart) => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
-  
 
   return (
     <div className='checkout-page'>
 
       <div className='checkout-page-header-image'>
-        <img 
+        <img
           src={checkoutImage}
           className='checkout-image'
+          alt="Checkout header"
         />
       </div>
 
       <div className='page-wrapper'>
         <div className='checkout-page-container'>
-          
+
           <div className='checkout-order-summary'>
 
             <p className='checkout-summary-text'>Order Summary</p>
-                  
+
             <div className='checkout-summary-items'>
               <p className='number-of-items'>{getCartItemCount(cart)} ITEMS</p>
             </div>
-            
-            {/* NEW: fulfillment toggle */}
+
+            {/* Fulfillment toggle */}
             <div className="general-text" style={{ margin: "10px 0 16px" }}>
               <label style={{ marginRight: 16 }}>
                 <input
@@ -236,7 +252,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   name="fulfillment"
                   value="pickup"
                   checked={fulfillment === "pickup"}
-                  onChange={() => setFulfillment("pickup")}
+                  onChange={() => switchFulfillment("pickup")}
                 />{" "}
                 Pickup
               </label>
@@ -246,7 +262,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   name="fulfillment"
                   value="delivery"
                   checked={fulfillment === "delivery"}
-                  onChange={() => setFulfillment("delivery")}
+                  onChange={() => switchFulfillment("delivery")}
                 />{" "}
                 Delivery
               </label>
@@ -258,7 +274,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='subtotal'>${(subtotalCents / 100).toFixed(2)}</p>
             </div>
 
-            {/* NEW: delivery fee row appears only if Delivery selected */}
+            {/* Delivery fee row (delivery only) */}
             {fulfillment === "delivery" && (
               <>
                 <div className='checkout-summary-subtotal'>
@@ -272,7 +288,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   </p>
                 </div>
 
-                
                 {quoteStatus === "out" && (
                   <p className="general-text" style={{ color: "#b30000" }}>
                     Delivery not available for this area. For Delivery via Uber Courier, email{" "}
@@ -301,7 +316,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
             {/* PICKUP or DELIVERY SELECTOR */}
             {fulfillment === "pickup" ? (
-              <PickupSelector 
+              <PickupSelector
                 pickupDate={pickupDate}
                 pickupTime={pickupTime}
                 onDateChange={setPickupDate}
@@ -317,8 +332,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 onDeliveryDateChange={setDeliveryDate}
               />
             )}
-            <br/>
-
+            <br />
 
             <div className="special-note-container">
               <label htmlFor="special-note" className='general-text'>Special Instructions </label>
@@ -347,8 +361,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
               </label>
             </div>
-            
-            <button 
+
+            <button
               disabled={
                 !agreedToPrivacy ||
                 (fulfillment === "pickup" && (!pickupDate || !pickupTime)) ||
@@ -371,43 +385,42 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
           <div className='checkout-items'>
             {cart.map(item => (
               <div
-                className='checkout-items-container' 
+                className='checkout-items-container'
                 key={item.id}
               >
-                <img 
+                <img
                   src={item.image_url}
                   className='checkout-product-image'
+                  alt={item.slug}
                 />
-                
+
                 <div className='checkout-item-details'>
                   <p className='checkout-item-title'>{item.slug}</p>
                   <p className='checkout-item-price'>${(item.price_cents * item.quantity / 100).toFixed(2)}</p>
-                  
+
                   <div className="cart-popup-item-quantity-container">
                     <p className='checkout-quantity'>QTY:</p>
                     <div className='checkout-quantity-button-container'>
-                      <button 
+                      <button
                         onClick={() => removeOneFromCart(item)}
                         className='checkout-cart-popup-remove-button'
                       >-
                       </button>
                       <p className='checkout-item-quantity'>{item.quantity}</p>
-                      <button 
+                      <button
                         onClick={() => addOneFromCart(item)}
                         className='checkout-cart-popup-add-button'
-                      > + 
+                      > +
                       </button>
                     </div>
-                    <button className="checkout-popup-remove-button"onClick={() => removeAll(item)}>REMOVE</button>
+                    <button className="checkout-popup-remove-button" onClick={() => removeAll(item)}>REMOVE</button>
                   </div>
                 </div>
-                
-              
+
               </div>
-              
+
             ))}
           </div>
-
 
         </div>
       </div>

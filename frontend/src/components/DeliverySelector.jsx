@@ -25,12 +25,11 @@ export default function DeliverySelector({
     return new Date(y, m - 1, d); // local midnight
   };
 
-  // Build min date: today@00:00 + 3 days; if it lands on Tuesday, push to Wednesday
+  // Build min date: today@00:00 + 1 day (24h notice)
   const minDateObj = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
-    t.setDate(t.getDate() + 3);
-    if (t.getDay() === 2) t.setDate(t.getDate() + 1); // 2 = Tuesday
+    t.setDate(t.getDate() + 1);
     return t;
   }, []);
   const minDateStr = formatAsInputDate(minDateObj);
@@ -43,7 +42,7 @@ export default function DeliverySelector({
     return v;
   };
 
-  // Validate postal on change (same pattern as before)
+  // Validate postal on change
   useEffect(() => {
     const valid = pcRegex.test(postalCode || '');
     onValidate?.({ valid, normalizedPostal: valid ? normalizePostal(postalCode) : null });
@@ -57,7 +56,6 @@ export default function DeliverySelector({
     const selected = parseLocal(selectedStr);
     const hadPreviousSelection = Boolean(deliveryDate);
     const isTooEarly = selected < minDateObj;
-    const isTuesday = selected.getDay() === 2;
 
     // If earlier than min
     if (isTooEarly) {
@@ -68,18 +66,6 @@ export default function DeliverySelector({
       }
       alert(`Earliest delivery is ${minDateStr}. Please choose a later date.`);
       onDeliveryDateChange(minDateStr);
-      return;
-    }
-
-    // If Tuesday (no deliveries)
-    if (isTuesday) {
-      if (!hadPreviousSelection) {
-        // Avoid alert on first open; just clear
-        onDeliveryDateChange('');
-        return;
-      }
-      alert('Sorry, deliveries are not available on Tuesdays. Please choose another day.');
-      onDeliveryDateChange('');
       return;
     }
 
@@ -102,7 +88,7 @@ export default function DeliverySelector({
             onChange={handleDateChange}
           />
           <p className="pickup-hint">
-            Earliest available date is in 72 hours (no Tuesdays). Delivery window is 11:00 AM – 6:00 PM.
+            Deliveries require at least 24 hours' notice. Delivery window is 11:00 AM - 6:00 PM.
           </p>
         </div>
 
