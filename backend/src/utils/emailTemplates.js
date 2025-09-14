@@ -93,7 +93,7 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
             ${preTaxCents > 0 ? `<div style="font-size:12px; color:#666; margin:2px 0 10px;">
               Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}
             </div>` : ''}
-            <p style="margin:6px 0;"><strong>Delivery Postal (for quote):</strong> ${deliveryPostal}</p>
+            <p style="margin:6px 0;"><strong>Delivery Postal Code used for Quote:</strong> ${deliveryPostal}</p>
             <p style="margin:6px 0;"><strong>Delivery address and Special Instructions:</strong></p>
             <blockquote style="margin:8px 0; padding-left:12px; border-left:3px solid #ddd;">
               ${nl2br(specialInstructions)}
