@@ -197,6 +197,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
     buyer_phone_number: order.buyer_phone_number || null,
     created_at: order.created_at,
     total_cents: order.total_cents,
+    buyer_stripe_payment_info: order.buyer_stripe_payment_info || null,
     pickup_date: order.pickup_date || null,
     pickup_date_formatted: formatDisplayDate(order.pickup_date),
     pickup_time_slot: order.pickup_time_slot || null,

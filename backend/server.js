@@ -339,7 +339,7 @@ const createCheckoutSession = async (req, res) => {
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
-        // Do NOT include cart or special_note here
+        
       },
     });
 

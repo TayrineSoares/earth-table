@@ -1,12 +1,41 @@
 // Helper: turn cents into "$12.34 CAD"
 function formatMoney(cents) {
-  if (typeof cents !== 'number') return '$0.00 CAD';
+  if (!Number.isFinite(cents)) return '$0.00 CAD';
   const dollars = (cents / 100).toFixed(2);
   return `$${dollars} CAD`;
 }
 
 // tiny helper so multi-line notes render nicely in HTML
 const nl2br = (s = '') => String(s).replace(/\n/g, '<br/>');
+
+// TAX
+const HST_RATE = 0.13;
+
+// Safely read postal from buyer_stripe_payment_info JSON
+const getPostalFromBuyerInfo = (buyerStripeInfo) => {
+  try {
+    const parsed = typeof buyerStripeInfo === 'string'
+      ? JSON.parse(buyerStripeInfo)
+      : (buyerStripeInfo || {});
+    return parsed?.delivery_meta?.postal_code || '—';
+  } catch {
+    return '—';
+  }
+};
+
+// STRICT: read fee_cents_server (pre-tax) from Stripe meta and compute tax-included
+const getDeliveryFeeFromBuyerInfoStrict = (buyerStripeInfo) => {
+  try {
+    const parsed = typeof buyerStripeInfo === 'string'
+      ? JSON.parse(buyerStripeInfo)
+      : (buyerStripeInfo || {});
+    const preTax = Number(parsed?.delivery_meta?.fee_cents_server) || 0; // pre-tax from server quote
+    const withTax = preTax > 0 ? Math.round(preTax * (1 + HST_RATE)) : 0;
+    return { preTaxCents: preTax, withTaxCents: withTax };
+  } catch {
+    return { preTaxCents: 0, withTaxCents: 0 };
+  }
+};
 
 /**
  * Make the subject, HTML and text for the customer's order confirmation.
@@ -23,9 +52,13 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
   const deliveryDate = detailedOrder.delivery_date_formatted ?? '—';
   const specialInstructions = detailedOrder.special_note ?? '—';
 
+  const deliveryPostal = getPostalFromBuyerInfo(detailedOrder.buyer_stripe_payment_info);
+  const { preTaxCents, withTaxCents } = getDeliveryFeeFromBuyerInfoStrict(
+    detailedOrder.buyer_stripe_payment_info
+  );
+
   // Items (safe defaults)
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
-
   const itemsHtml = items.map((p) => {
     const name = p.slug ?? p.name ?? 'Item';
     const qty = p.quantity ?? 1;
@@ -56,7 +89,12 @@ function renderCustomerOrderEmail(detailedOrder = {}) {
             <p style="margin:6px 0;"><strong>Delivery:</strong> Confirmed</p>
             <p style="margin:6px 0;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
             <p style="margin:6px 0;"><strong>Delivery Window:</strong> 11:00 AM – 6:00 PM</p>
-            <p style="margin:6px 0;"><strong>Delivery Address (from Special Instructions):</strong></p>
+            ${withTaxCents > 0 ? `<p style="margin:6px 0;"><strong>Delivery Fee:</strong> ${formatMoney(withTaxCents)} <span style="color:#666; font-size:12px;">(incl 13% HST)</span></p>` : ''}
+            ${preTaxCents > 0 ? `<div style="font-size:12px; color:#666; margin:2px 0 10px;">
+              Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}
+            </div>` : ''}
+            <p style="margin:6px 0;"><strong>Delivery Postal (for quote):</strong> ${deliveryPostal}</p>
+            <p style="margin:6px 0;"><strong>Delivery address and Special Instructions:</strong></p>
             <blockquote style="margin:8px 0; padding-left:12px; border-left:3px solid #ddd;">
               ${nl2br(specialInstructions)}
             </blockquote>
@@ -105,7 +143,9 @@ ${
     ? `Delivery: Confirmed
 Delivery Date: ${deliveryDate}
 Delivery Window: 11:00 AM – 6:00 PM
-Delivery address (from Special Instructions):
+${withTaxCents > 0 ? `Delivery Fee (incl 13% HST): ${formatMoney(withTaxCents)}
+Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}\n` : ''}Delivery Postal (for quote): ${deliveryPostal}
+Delivery address and Special Instructions:
 ${detailedOrder.special_note ?? '—'}`
     : `Pickup Date: ${pickupDate}
 Pickup Time: ${pickupTime}
@@ -115,12 +155,9 @@ ${detailedOrder.special_note ?? '—'}`
 
 Earth Table Team`;
 
-  return {
-    subject,
-    html,
-    text,
-  };
+  return { subject, html, text };
 }
+
 // ----------------------------------------------------------------------
 
 /**
@@ -138,6 +175,11 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
   const specialInstructions = detailedOrder.special_note ?? '—';
   const isDelivery = detailedOrder.delivery === true;
   const deliveryDate = detailedOrder.delivery_date_formatted ?? '—';
+
+  const deliveryPostal = getPostalFromBuyerInfo(detailedOrder.buyer_stripe_payment_info);
+  const { preTaxCents, withTaxCents } = getDeliveryFeeFromBuyerInfoStrict(
+    detailedOrder.buyer_stripe_payment_info
+  );
 
   const items = Array.isArray(detailedOrder.products) ? detailedOrder.products : [];
   const itemsHtml = items.map((p) => {
@@ -164,8 +206,13 @@ function renderOwnerOrderEmail(detailedOrder = {}) {
           ? `
             <p style="margin:0 0 6px;"><strong>Fulfillment:</strong> Delivery</p>
             <p style="margin:0 0 6px;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
-            <p style="margin:0 0 12px;"><strong>Delivery Window:</strong> 11:00 AM – 6:00 PM</p>
-            <p style="margin:0 0 12px;"><strong>Delivery address (from Special Instructions):</strong><br/>${nl2br(specialInstructions)}</p>
+            <p style="margin:0 0 6px;"><strong>Delivery Window:</strong> 11:00 AM - 6:00 PM</p>
+            ${withTaxCents > 0 ? `<p style="margin:0 0 6px;"><strong>Delivery Fee:</strong> ${formatMoney(withTaxCents)} <span style="color:#666; font-size:12px;">(incl 13% HST)</span></p>` : ''}
+            ${withTaxCents > 0 ? `<div style="font-size:12px; color:#666; margin:2px 0 10px;">
+              Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}
+            </div>` : ''}
+            <p style="margin:0 0 12px;"><strong>Delivery Postal Code used for Quote:</strong> ${deliveryPostal}</p>
+            <p style="margin:0 0 12px;"><strong>Delivery address and Special Instructions:</strong><br/>${nl2br(specialInstructions)}</p>
           `
           : `
             <p style="margin:0 0 6px;"><strong>Pickup Date:</strong> ${pickupDate}</p>
@@ -203,7 +250,10 @@ ${
     ? `Fulfillment: Delivery
 Delivery Date: ${deliveryDate}
 Delivery Window: 11:00 AM – 6:00 PM
-Delivery address (Special Instructions):
+${withTaxCents > 0 ? `Delivery Fee (incl 13% HST): ${formatMoney(withTaxCents)}
+  - Pre-tax: ${formatMoney(preTaxCents)}
+  - HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}\n` : ''}Delivery Postal (for quote): ${deliveryPostal}
+Delivery address and Special Instructions:
 ${specialInstructions}`
     : `Pickup: ${pickupDate} ${pickupTime}
 Special Instructions:
@@ -214,11 +264,11 @@ Items:
 ${itemsText || '(no items)'}
 `;
 
-  return {
-    subject,
-    html,
-    text,
-  };
+  return { subject, html, text };
 }
 
-module.exports = { renderCustomerOrderEmail, formatMoney, renderOwnerOrderEmail };
+module.exports = {
+  renderCustomerOrderEmail,
+  formatMoney,
+  renderOwnerOrderEmail,
+};

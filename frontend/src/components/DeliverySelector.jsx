@@ -109,7 +109,7 @@ export default function DeliverySelector({
       </div>
 
       <div className="general-text">
-        <p>Please include your full delivery address in the Special Instructions box.</p>
+        <p>Please include your full delivery address (including postal code) in the Special Instructions box.</p>
         <p>Once payment is processed, orders cannot be modified or cancelled.</p>
       </div>
     </section>
