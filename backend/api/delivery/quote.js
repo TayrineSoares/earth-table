@@ -1,4 +1,3 @@
-// backend/api/delivery/quote.js
 // Geoapify geocoding → Haversine distance → fee bands
 const GEOAPIFY_KEY = process.env.GEOAPIFY_KEY;
 const PICKUP_LAT = parseFloat(process.env.PICKUP_LAT || "");
@@ -13,8 +12,6 @@ const ALLOW_ORIGINS = new Set([
   'http://127.0.0.1:5173'
 ]);
 
-// If you're on Node < 18, uncomment the next line and `npm i node-fetch`
-// const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 function km(lat1, lon1, lat2, lon2) {
   const R = 6371, toRad = d => d * Math.PI / 180;
@@ -56,7 +53,7 @@ module.exports = async (req, res) => {
 
     const { postalCode } = req.body || {};
     if (typeof postalCode !== "string" || !PC.test(postalCode)) {
-      console.log('[quote] invalid postal:', postalCode);
+    
       return res.status(400).json({ ok: false, reason: "INVALID_POSTAL" });
     }
 
@@ -68,7 +65,7 @@ module.exports = async (req, res) => {
     let feature = null;
     for (const q of queries) {
       const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(q)}&filter=countrycode:ca&limit=1&apiKey=${GEOAPIFY_KEY}`;
-      console.log('[quote] try:', q);
+
       const r = await fetch(url);
       if (!r.ok) continue;
       const data = await r.json().catch(() => null);
@@ -85,7 +82,7 @@ module.exports = async (req, res) => {
 
     const lat = Number(feature.properties.lat);
     const lon = Number(feature.properties.lon);
-    console.log('[quote] found coords:', { lat, lon });
+
 
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
       return res.status(400).json({ ok: false, reason: "INVALID_POSTAL" });
@@ -98,7 +95,7 @@ module.exports = async (req, res) => {
     }
 
     const fee_cents = distanceKm <= 10 ? 1500 : 3000;
-    console.log('[quote] ok:', { km: distanceKm, fee_cents });
+
     return res.json({ ok: true, km: distanceKm, fee_cents });
   } catch (e) {
     console.error("delivery/quote error", e);

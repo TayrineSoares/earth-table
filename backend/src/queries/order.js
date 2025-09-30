@@ -111,7 +111,7 @@ async function createOrderWithProducts({
   if (products.length === 0) {
     throw new Error("No products provided for the order.");
   }
-   console.log('[createOrderWithProducts] delivery (incoming):', delivery, typeof delivery);
+  //  console.log('[createOrderWithProducts] delivery (incoming):', delivery, typeof delivery);
 
   // insert order into orders table
   const { data: order, error: orderError } = await supabase
@@ -168,7 +168,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
   if (error) throw new Error(`Error fetching order: ${error.message}`);
   if (!order) return null;
 
-  console.log('[getOrderBySession] RAW row.delivery:', order.delivery, 'type:', typeof order.delivery, 'sessionId:', sessionId);
+  // console.log('[getOrderBySession] RAW row.delivery:', order.delivery, 'type:', typeof order.delivery, 'sessionId:', sessionId);
 
   const { data: orderProducts, error: orderProductsError } = await supabase
     .from('order_products')
@@ -187,7 +187,7 @@ const getOrderByStripeSessionId = async (sessionId) => {
   }
 
   const deliveryBool = toBool(order.delivery);
-  console.log('[getOrderBySession] RETURN delivery:', deliveryBool);
+  // console.log('[getOrderBySession] RETURN delivery:', deliveryBool);
 
   return {
     id: order.id,

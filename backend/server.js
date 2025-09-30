@@ -1,5 +1,3 @@
-// server.js (updated)
-
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -99,7 +97,7 @@ const stripeWebhookHandler = async (request, response) => {
       try { cart = JSON.parse(md.cart); } catch { cart = []; }
     }
 
-    console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
+    // console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
 
     // Buyer info
     let buyerPhoneNumber = session.customer_details?.phone || null;
@@ -130,7 +128,7 @@ const stripeWebhookHandler = async (request, response) => {
         buyer_name: buyerName,
         buyer_phone_number: buyerPhoneNumber,
 
-        // store raw Stripe info (helpful for support/debugging)
+        // store raw Stripe info
         buyer_stripe_payment_info: JSON.stringify({
           session_id: session.id,
           payment_intent: session.payment_intent,
@@ -198,7 +196,7 @@ const stripeWebhookHandler = async (request, response) => {
     } catch (err) {
       console.error('[webhook] Failed to save order or send emails:', err.message);
       // Still 200 so Stripe won't retry forever if it's a non-retriable error.
-      // If you prefer retries, you can 500 here—but make sure your code is idempotent.
+      
     }
 
     return response.status(200).send('ok');
@@ -246,8 +244,8 @@ const createCheckoutSession = async (req, res) => {
     delivery, delivery_postal_code, delivery_date,
   } = req.body;
 
-  console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
-  console.log('[checkout] delivery_date:', delivery_date);
+  // console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
+  // console.log('[checkout] delivery_date:', delivery_date);
 
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -286,7 +284,7 @@ const createCheckoutSession = async (req, res) => {
       deliveryFeeCentsServer = quote.fee_cents;
       deliveryKm = quote.km;
 
-      console.log('[delivery] postal:', delivery_postal_code, 'km:', deliveryKm, 'fee_cents:', deliveryFeeCentsServer);
+      // console.log('[delivery] postal:', delivery_postal_code, 'km:', deliveryKm, 'fee_cents:', deliveryFeeCentsServer);
 
       // Push delivery fee line item (includes tax)
       items.push({
@@ -384,10 +382,6 @@ module.exports = app;
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);
-    // lightweight env sanity logs (non-secret presence checks)
-    console.log('[env] FRONTEND_URL:', process.env.FRONTEND_URL);
-    console.log('[env] SUPABASE_URL present?', !!process.env.SUPABASE_URL);
-    console.log('[env] SERVICE_ROLE_KEY present?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-    console.log('[env] STRIPE_WEBHOOK_SECRET present?', !!process.env.STRIPE_WEBHOOK_SECRET);
+
   });
 }

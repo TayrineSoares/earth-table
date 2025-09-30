@@ -5,7 +5,7 @@ function formatMoney(cents) {
   return `$${dollars} CAD`;
 }
 
-// tiny helper so multi-line notes render nicely in HTML
+// helper so multi-line notes render nicely in HTML
 const nl2br = (s = "") => String(s).replace(/\n/g, "<br/>");
 
 // TAX

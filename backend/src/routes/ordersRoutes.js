@@ -12,6 +12,7 @@ const {
 const { getProductsForOrder } = require('../queries/order_product')
 
 // MORE SPECIFIC ROUTES GO FIRST
+// if in the future add a GET route at /:id/picked-up, make sure it's above the generic GET /:id to avoid matching issues
 
 // GET ALL ORDERS 
 router.get('/', async (req, res) => {
@@ -19,7 +20,7 @@ router.get('/', async (req, res) => {
     const allOrders = await getAllOrders(); 
     res.json(allOrders);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({error: error.message});
   }
 }); 
@@ -32,13 +33,13 @@ router.get('/session/:sessionId', async (req, res) => {
     const order = await getOrderByStripeSessionId(sessionId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    console.log('[orders/session]', {
-      sessionId,
-      id: order.id,
-      delivery: order.delivery,
-      type: typeof order.delivery,
-      status: order.status,
-    });
+    // console.log('[orders/session]', {
+    //   sessionId,
+    //   id: order.id,
+    //   delivery: order.delivery,
+    //   type: typeof order.delivery,
+    //   status: order.status,
+    // });
 
     res.json(order);
   } catch (error) {
@@ -54,7 +55,7 @@ router.get('/:id/products', async (req, res) => {
     const products = await getProductsForOrder(orderId);
     res.json(products);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -82,7 +83,7 @@ router.get('/:id', async (req, res) => {
     res.json(order);
 
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({error: error.message});
   }
 }); 
