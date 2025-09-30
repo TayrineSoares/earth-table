@@ -57,7 +57,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     return sum + item.price_cents * item.quantity;
   }, 0);
 
-  // 🔁 Clear opposite fields when switching fulfillment
+  // Clear opposite fields when switching fulfillment
   useEffect(() => {
     if (fulfillment === "pickup") {
       // clear delivery-only fields
@@ -177,7 +177,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
     const stripe = await stripePromise;
 
-    // 🔒 Send nulls for inactive fields
+    // Send nulls for inactive fields
     const payload = {
       cartItems: cart,
       email,
@@ -192,7 +192,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       special_note: specialNote,
     };
 
-    console.log("[checkout] POST", `${API_BASE}/api/create-checkout-session`, payload);
 
     const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
       method: "POST",
@@ -208,7 +207,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     }
 
     const data = await response.json();
-    console.log("[checkout] redirecting to Stripe", data.url);
 
     if (data.url) {
       window.location.href = data.url;

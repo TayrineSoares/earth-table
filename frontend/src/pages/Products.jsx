@@ -72,7 +72,6 @@ const Products = ({ addToCart }) => {
         return res.json()
       })
       .then(data => {
-        console.log("Fetched products:", data);
         setAllProducts(data);
         setIsLoading(false);
       })
@@ -93,7 +92,7 @@ const Products = ({ addToCart }) => {
     fetch(`/api/tags`)
       .then(res => res.json())
       .then(data => {
-        console.log("Fetched tags:", data);  
+
         setAllTags(data)
       })
         

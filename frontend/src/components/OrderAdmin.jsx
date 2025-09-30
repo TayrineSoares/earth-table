@@ -169,7 +169,6 @@ const OrderAdmin = () => {
             <th>Due Date</th>
             <th>Delivery</th>
             <th>Postal (quote)</th>
-            {/* Fee column removed */}
             <th>Total</th>
             <th>Buyer Email</th>
             <th>Special Note</th>
