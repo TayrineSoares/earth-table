@@ -22,6 +22,9 @@ const promoRouter = require('./src/routes/promoRoutes');
 const { getUserByAuthId } = require('./src/queries/user');
 const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
+const { getActivePromoByCode } = require('./src/queries/promo_code');
+const { ensureStripePromotionCode } = require('./src/stripePromo');
+
 require('dotenv').config();
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
@@ -242,7 +245,7 @@ app.get('/cart', (req, res) => {
 const createCheckoutSession = async (req, res) => {
   const {
     cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
-    delivery, delivery_postal_code, delivery_date,
+    delivery, delivery_postal_code, delivery_date, promoCode,
   } = req.body;
 
   // console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
@@ -251,15 +254,41 @@ const createCheckoutSession = async (req, res) => {
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
   try {
-    // Build line items with tax included (13%)
-    const items = cartItems.map(item => ({
-      price_data: {
-        currency: 'cad',
-        product_data: { name: `${item.slug} (includes tax)`, images: [item.image_url] },
-        unit_amount: Math.round(item.price_cents * 1.13),
-      },
-      quantity: item.quantity,
-    }));
+    // --- Promo validation FIRST → compute discountFactor ---
+    const normalize = s => (s || '').trim();
+    let discountFactor = 1; // default: no discount
+
+    if (promoCode && normalize(promoCode)) {
+      try {
+
+        const promo = await getActivePromoByCode(normalize(promoCode));
+        if (promo && promo.active) {
+          const pct = promo.discount_percentage;          // e.g., 10
+          discountFactor = (100 - pct) / 100;             // e.g., 0.9
+          req._etPromo = { code: promo.code, pct };       // metadata
+        }
+      } catch (e) {
+        console.warn('[checkout] promo validation skipped:', e.message);
+      }
+    }
+
+    // --- Build line items (DISCOUNT BEFORE TAX) ---
+    // price_cents = pre-tax price
+    // Apply discount to pre-tax, THEN apply 13% tax
+    const items = cartItems.map(item => {
+      const base = Number(item.price_cents) || 0;                     // pre-tax
+      const discountedPreTax = Math.floor(base * discountFactor);     // apply promo BEFORE tax
+      const unitWithTax = Math.round(discountedPreTax * 1.13);        // 13% tax after discount
+      return {
+        price_data: {
+          currency: 'cad',
+          product_data: { name: `${item.slug} (includes tax)`, images: [item.image_url] },
+          unit_amount: Math.max(0, unitWithTax),
+        },
+        quantity: item.quantity,
+      };
+    });
+
 
     let deliveryFeeCentsServer = 0;
     let deliveryKm = null;
