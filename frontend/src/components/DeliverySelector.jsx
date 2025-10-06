@@ -76,6 +76,26 @@ export default function DeliverySelector({
   return (
     <section className="pickup-section">
       <div className="pickup-grid">
+
+        {/* Postal Code */}
+        <div className="pickup-field">
+          <label className="pickup-label" htmlFor="delivery-postal">Postal Code (Delivery Quote) </label>
+          <input
+            id="delivery-postal"
+            className="pickup-input"
+            placeholder="e.g., M5V 3L9"
+            value={postalCode}
+            onChange={(e) => onPostalCodeChange(e.target.value)}
+          />
+          {feeCents > 0 && (
+            <p className="pickup-hint">Estimated delivery fee: ${(feeCents / 100).toFixed(2)}</p>
+          )}
+        </div>
+        <div className="general-text">
+        <p>Please include your full delivery address in the Special Instructions box below.</p>
+        
+      </div>
+
         {/* Delivery Date */}
         <div className="pickup-field">
           <label className="pickup-label" htmlFor="delivery-date">Delivery Date</label>
@@ -91,27 +111,14 @@ export default function DeliverySelector({
             Deliveries require at least 24 hours' notice. Delivery window is 11:00 AM - 6:00 PM.
           </p>
         </div>
-
-        {/* Postal Code */}
-        <div className="pickup-field">
-          <label className="pickup-label" htmlFor="delivery-postal">Postal Code</label>
-          <input
-            id="delivery-postal"
-            className="pickup-input"
-            placeholder="e.g., M5V 3L9"
-            value={postalCode}
-            onChange={(e) => onPostalCodeChange(e.target.value)}
-          />
-          {feeCents > 0 && (
-            <p className="pickup-hint">Estimated delivery fee: ${(feeCents / 100).toFixed(2)}</p>
-          )}
-        </div>
+        <div className="general-text">
+          <p>Please review your order details before continuing.</p>
+          <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+      </div>
+        
       </div>
 
-      <div className="general-text">
-        <p>Please include your full delivery address (including postal code) in the Special Instructions box.</p>
-        <p>Once payment is processed, orders cannot be modified or cancelled.</p>
-      </div>
+      
     </section>
   );
 }

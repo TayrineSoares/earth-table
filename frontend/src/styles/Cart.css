@@ -262,6 +262,70 @@
   color: red;
 }
 
+/* ===== Promo Code UI (Neutral Look) ===== */
+.promo-wrap {
+  margin: 6px 0 10px;
+}
+
+.promo-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 100%;
+  font-variant: small-caps;
+  color: #000;
+}
+
+.promo-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.promo-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #D8C7B0; /* same tone as your subtotal borders */
+  background: #FFFBF3;       /* matches your main background */
+  font-family: var(--body-font);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.promo-input:focus {
+  border-color: #EDA413;
+  box-shadow: 0 0 0 3px rgba(237,164,19,0.15);
+}
+
+.promo-apply-btn {
+  width: auto;
+  height: auto;
+  padding: 10px 14px;
+  margin: 0;
+}
+
+.promo-apply-btn.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.promo-msg {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: var(--body-font);
+  background: #F6F1E7;  /* soft neutral background */
+  border: 1px solid #D8C7B0;
+  color: #5B4C3D;       /* neutral text color */
+}
+
+
 @media (max-width: 1224px) {
 
   .checkout-items-container {
@@ -372,5 +436,14 @@
   .checkout-popup-remove-button {
     margin-left: 0;
     margin-top: 10px;
+  }
+
+  .promo-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .promo-apply-btn {
+    width: 100%;
   }
 }

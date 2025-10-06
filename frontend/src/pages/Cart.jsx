@@ -32,6 +32,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [quoteStatus, setQuoteStatus] = useState("idle"); // idle|loading|ok|out|error
   const [distanceKm, setDistanceKm] = useState(null);
 
+  // promo code UI + result from backend
+  const [promoInput, setPromoInput] = useState('');
+  const [promoResult, setPromoResult] = useState(null); // { valid, code, discountPercentage, amountOffCents, message }
+  const [promoLoading, setPromoLoading] = useState(false);
+
+
   useEffect(() => {
     fetch(`${API_BASE}/cart`)
       .then(res => {
@@ -139,8 +145,11 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   }, [fulfillment, postalCode, postalValid]);
 
   // totals
+  const promoDiscountCents = promoResult?.valid ? (promoResult.amountOffCents || 0) : 0;
+
+  const itemsSubtotalAfterPromoCents = Math.max(0, subtotalCents - promoDiscountCents);
+  const totalBeforeTaxCents = itemsSubtotalAfterPromoCents + (fulfillment === "delivery" ? deliveryFeeCents : 0);
   const hstRate = 0.13;
-  const totalBeforeTaxCents = subtotalCents + (fulfillment === "delivery" ? deliveryFeeCents : 0);
   const taxCents = Math.round(totalBeforeTaxCents * hstRate);
   const grandTotalCents = totalBeforeTaxCents + taxCents;
 
@@ -162,6 +171,31 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
   const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+  // APPLY PROMO CODE 
+  const handleApplyPromo = async () => {
+    const code = (promoInput || '').trim();
+    if (!code) {
+      setPromoResult({ valid: false, message: 'Enter a code.' });
+      return;
+    }
+    setPromoLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/promo/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotalCents }),
+      });
+      const data = await res.json();
+      setPromoResult(data);
+    } catch (e) {
+      console.error('[promo] validate failed', e);
+      setPromoResult({ valid: false, message: 'Could not validate code. Try again.' });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  // HANDLE CHECKOUT 
   const handleCheckout = async () => {
     console.log("[checkout] click", {
       fulfillment,
@@ -190,6 +224,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
       delivery_date: fulfillment === "delivery" ? deliveryDate : null,
       special_note: specialNote,
+      ...(promoResult?.valid ? { promoCode: promoInput.trim() } : {}),
     };
 
 
@@ -266,13 +301,53 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               </label>
             </div>
 
-           
+            {/* PROMO CODE */}
+            <div className="promo-wrap general-text">
+
+              <div className="promo-row">
+                <input
+                  id="promo"
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value)}
+                  placeholder="Have a promo code?"
+                  autoComplete="off"
+                  inputMode="text"
+                  className="promo-input"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading}
+                  className={`checkout-button promo-apply-btn ${promoLoading ? 'is-disabled' : ''}`}
+                >
+                  {promoLoading ? 'Applying…' : 'Apply'}
+                </button>
+              </div>
+
+              {promoResult && (
+                <div
+                  className={`promo-msg ${promoResult.valid ? 'promo-msg--ok' : 'promo-msg--err'}`}
+                  aria-live="polite"
+                >
+                  {promoResult.message}
+                </div>
+              )}
+            </div>
 
             {/* SUBTOTAL */}
             <div className='checkout-summary-subtotal'>
               <p className='subtotal'>SUBTOTAL</p>
               <p className='subtotal'>${(subtotalCents / 100).toFixed(2)}</p>
             </div>
+
+            {/* PROMO LINE (only if valid) */}
+            {promoResult?.valid && (
+              <div className='checkout-summary-subtotal'>
+                <p className='subtotal'>Promo ({promoResult.code})</p>
+                <p className='subtotal'>- ${(promoDiscountCents / 100).toFixed(2)}</p>
+              </div>
+            )}
 
             {/* Delivery fee row (delivery only) */}
             {fulfillment === "delivery" && (
