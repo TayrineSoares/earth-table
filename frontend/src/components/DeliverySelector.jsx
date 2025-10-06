@@ -25,14 +25,23 @@ export default function DeliverySelector({
     return new Date(y, m - 1, d); // local midnight
   };
 
-  // Build min date: today@00:00 + 1 day (24h notice)
-  const minDateObj = useMemo(() => {
+  // --- strict 24h cutoff (now + 24h) ---
+  const minDateTime = useMemo(() => {
     const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    t.setDate(t.getDate() + 1);
+    t.setMinutes(t.getMinutes() + 24 * 60);
     return t;
   }, []);
-  const minDateStr = formatAsInputDate(minDateObj);
+  const minDateStr = formatAsInputDate(minDateTime);
+
+  // Delivery window (start/end minutes from midnight)
+  const START_MIN = 11 * 60; // 11:00
+  const END_MIN   = 18 * 60; // 18:00
+  const cutoffMinutes = minDateTime.getHours() * 60 + minDateTime.getMinutes();
+
+  // If chosen date is the earliest allowed date, we only have a valid slot
+  // if the 24h cutoff is *before* the window end.
+  const isMinDate = deliveryDate && deliveryDate === minDateStr;
+  const hasAnyTimeLeftToday = cutoffMinutes < END_MIN;
 
   // Normalize postal like "M5V3L9" → "M5V 3L9"
   const normalizePostal = (value) => {
@@ -53,23 +62,16 @@ export default function DeliverySelector({
     const selectedStr = e.target.value;
     if (!selectedStr) return;
 
+    // If date is before the earliest allowed date, snap to earliest
     const selected = parseLocal(selectedStr);
-    const hadPreviousSelection = Boolean(deliveryDate);
-    const isTooEarly = selected < minDateObj;
-
-    // If earlier than min
-    if (isTooEarly) {
-      if (!hadPreviousSelection) {
-        // iOS-first-open quirk: snap silently
-        onDeliveryDateChange(minDateStr);
-        return;
-      }
-      alert(`Earliest delivery is ${minDateStr}. Please choose a later date.`);
+    const minDateOnly = parseLocal(minDateStr);
+    if (selected < minDateOnly) {
       onDeliveryDateChange(minDateStr);
+      alert(`Earliest delivery date is ${minDateStr}.`);
       return;
     }
 
-    // Valid date
+    // Otherwise accept the user's choice; helper below will inform if no time left
     onDeliveryDateChange(selectedStr);
   };
 
@@ -79,7 +81,7 @@ export default function DeliverySelector({
 
         {/* Postal Code */}
         <div className="pickup-field">
-          <label className="pickup-label" htmlFor="delivery-postal">Postal Code (Delivery Quote) </label>
+          <label className="pickup-label" htmlFor="delivery-postal">Postal Code (Delivery Quote)</label>
           <input
             id="delivery-postal"
             className="pickup-input"
@@ -91,10 +93,10 @@ export default function DeliverySelector({
             <p className="pickup-hint">Estimated delivery fee: ${(feeCents / 100).toFixed(2)}</p>
           )}
         </div>
+
         <div className="general-text">
-        <p>Please include your full delivery address in the Special Instructions box below.</p>
-        
-      </div>
+          <p>Please include your full delivery address in the Special Instructions box below.</p>
+        </div>
 
         {/* Delivery Date */}
         <div className="pickup-field">
@@ -108,17 +110,24 @@ export default function DeliverySelector({
             onChange={handleDateChange}
           />
           <p className="pickup-hint">
-            Deliveries require at least 24 hours' notice. Delivery window is 11:00 AM - 6:00 PM.
+            Deliveries require at least 24 hours' notice. Delivery window is 11:00 AM – 6:00 PM.
           </p>
+
+          {/* Neutral helper if picking earliest date but 24h pushes past window end */}
+          {isMinDate && !hasAnyTimeLeftToday && (
+            <div className="pickup-helper">
+              <span>No slots left for this date.</span>
+            </div>
+          )}
+
         </div>
+
         <div className="general-text">
           <p>Please review your order details before continuing.</p>
           <p>Once payment is processed, orders cannot be modified or cancelled.</p>
-      </div>
-        
-      </div>
+        </div>
 
-      
+      </div>
     </section>
   );
 }

@@ -21,43 +21,79 @@ const PickupSelector = ({
     return new Date(y, m - 1, d); // local midnight
   };
 
-  // Build min date: today @00:00 + 1 day (24h notice)
-  const minDateObj = useMemo(() => {
+  // --- strict 24h cutoff ---
+  const minDateTime = useMemo(() => {
     const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    t.setDate(t.getDate() + 1);
+    t.setMinutes(t.getMinutes() + 24 * 60); // now + 24h
     return t;
   }, []);
-  const minDateStr = formatAsInputDate(minDateObj);
+  const minDateStr = formatAsInputDate(minDateTime);
+
+  // time helpers
+  const timeToMinutes = (hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const slotStartMinutes = (slot) => timeToMinutes(slot.split('-')[0]); // "10:00-13:00" -> 10:00
+  const cutoffMinutes = minDateTime.getHours() * 60 + minDateTime.getMinutes();
+
+  // available slots
+  const SLOTS = ['10:00-13:00', '14:00-16:30'];
+
+  // Is chosen date the min date?
+  const sameAsMinDate = pickupDate && pickupDate === minDateStr;
+
+  // Allowed slot check
+  const isSlotAllowed = (slot) =>
+    !sameAsMinDate || slotStartMinutes(slot) >= cutoffMinutes;
+
+  // Allowed slots for current selection (used for the “no slots left” hint)
+  const allowedSlotsForSelected = useMemo(() => {
+    if (!pickupDate) return SLOTS;
+    if (pickupDate !== minDateStr) return SLOTS; // all allowed on later dates
+    // min date: only slots after cutoff
+    return SLOTS.filter(isSlotAllowed);
+  }, [pickupDate, minDateStr]); // isSlotAllowed depends on these
 
   const handleDateChange = (e) => {
     const selectedStr = e.target.value;
     if (!selectedStr) return;
 
+    // If date is before the min date, bump to min date
     const selected = parseLocal(selectedStr);
-    const hadPreviousSelection = Boolean(pickupDate);
-    const isTooEarly = selected < minDateObj;
-
-    if (isTooEarly) {
-      if (!hadPreviousSelection) {
-        onDateChange(minDateStr);
-        onTimeChange('');
-        return;
-      }
-      alert(`Earliest pickup is ${minDateStr}. Please choose a later date.`);
+    const minDateOnly = parseLocal(minDateStr);
+    if (selected < minDateOnly) {
       onDateChange(minDateStr);
       onTimeChange('');
+      alert(`Earliest pickup date is ${minDateStr}.`);
       return;
     }
 
     // Valid date
     onDateChange(selectedStr);
-    onTimeChange('');
+
+    // If currently selected time becomes invalid on this date, clear it; otherwise reset to force intentional choice
+    if (pickupTime && selectedStr === minDateStr && !isSlotAllowed(pickupTime)) {
+      onTimeChange('');
+    } else {
+      onTimeChange('');
+    }
   };
 
   const handleTimeChange = (e) => {
-    onTimeChange(e.target.value);
+    const next = e.target.value;
+    if (!next) return onTimeChange('');
+
+    if (!isSlotAllowed(next)) {
+      onTimeChange('');
+      alert('That time slot is not available with 24h notice. Please pick a later slot.');
+      return;
+    }
+    onTimeChange(next);
   };
+
+  const showNoSlotsToday =
+    pickupDate === minDateStr && allowedSlotsForSelected.length === 0;
 
   return (
     <section className="pickup-section">
@@ -74,7 +110,7 @@ const PickupSelector = ({
             onChange={handleDateChange}
           />
           <p className="pickup-hint">
-            Pickups require at least 24 hours' notice.
+            Pickups require at least 24 hours&apos; notice.
           </p>
         </div>
 
@@ -89,9 +125,24 @@ const PickupSelector = ({
             disabled={!pickupDate}
           >
             <option value="">Select a time slot</option>
-            <option value="10:00-13:00">10:00 - 13:00</option>
-            <option value="14:00-16:30">14:00 - 16:30</option>
+            {SLOTS.map((slot) => (
+              <option key={slot} value={slot} disabled={!isSlotAllowed(slot)}>
+                {slot} {!isSlotAllowed(slot) ? ' — unavailable (<24h)' : ''}
+              </option>
+            ))}
           </select>
+
+          {showNoSlotsToday && (
+            <div className="pickup-hint">
+              <span>No slots left for this date.</span>
+            </div>
+          )}
+
+          {sameAsMinDate && allowedSlotsForSelected.length > 0 && (
+            <p className="pickup-hint">
+              Only later slots are available with 24h notice today.
+            </p>
+          )}
         </div>
       </div>
 
