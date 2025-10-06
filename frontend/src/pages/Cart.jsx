@@ -266,6 +266,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               </label>
             </div>
 
+           
+
             {/* SUBTOTAL */}
             <div className='checkout-summary-subtotal'>
               <p className='subtotal'>SUBTOTAL</p>
@@ -285,6 +287,25 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                         : "$0.00"}
                   </p>
                 </div>
+                {/* // FREE DELIVERY WEEK — TEMPORARY HARD CODE */}
+                {/* Free Delivery Promo Message (under delivery fee) */}
+                  {quoteStatus === "ok" && (
+                    <div
+                      className="general-text"
+                      style={{
+                        marginTop: "6px",
+                        background: "#ECFDF5",
+                        border: "1px solid #A7F3D0",
+                        color: "#065F46",
+                        padding: "8px 10px",
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        fontSize: "0.9rem"
+                      }}
+                    >
+                      Enjoy free delivery until October 12!
+                    </div>
+                  )}
 
                 {quoteStatus === "out" && (
                   <p className="general-text" style={{ color: "#b30000" }}>
@@ -297,6 +318,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                     Couldn't calculate delivery distance. Check the postal code and try again.
                   </p>
                 )}
+                
               </>
             )}
 
@@ -311,6 +333,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               <p className='total'>Total</p>
               <p className='total'>${(grandTotalCents / 100).toFixed(2)}</p>
             </div>
+
 
             {/* PICKUP or DELIVERY SELECTOR */}
             {fulfillment === "pickup" ? (
@@ -367,7 +390,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 (fulfillment === "delivery" && (
                   !postalValid ||
                   quoteStatus !== "ok" ||        // must be within 30 km
-                  deliveryFeeCents <= 0 ||
+                  // FREE DELIVERY WEEK — TEMPORARY COMMENTED CONDITION
+                  // deliveryFeeCents <= 0 ||
                   !deliveryDate ||
                   specialNote.trim().length < 8  // require full delivery address here
                 ))
