@@ -36,6 +36,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [promoInput, setPromoInput] = useState('');
   const [promoResult, setPromoResult] = useState(null); // { valid, code, discountPercentage, amountOffCents, message }
   const [promoLoading, setPromoLoading] = useState(false);
+  const [lastValidatedCode, setLastValidatedCode] = useState('');
 
 
   useEffect(() => {
@@ -187,6 +188,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       });
       const data = await res.json();
       setPromoResult(data);
+      setLastValidatedCode(code);
     } catch (e) {
       console.error('[promo] validate failed', e);
       setPromoResult({ valid: false, message: 'Could not validate code. Try again.' });
@@ -309,7 +311,15 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   id="promo"
                   type="text"
                   value={promoInput}
-                  onChange={(e) => setPromoInput(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setPromoInput(next);
+
+                    // Hide message if input is cleared or no longer matches the last validated code
+                    if (!next.trim() || next.trim().toLowerCase() !== (lastValidatedCode || '').toLowerCase()) {
+                      setPromoResult(null);
+                    }
+                  }}
                   placeholder="Have a promo code?"
                   autoComplete="off"
                   inputMode="text"
