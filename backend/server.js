@@ -18,6 +18,7 @@ const tagsRouter = require('./src/routes/tagsRoutes');
 const cartRouter = require('./src/routes/cartRoutes');
 const testEmail = require('./src/routes/testEmail');
 const deliveryQuote = require('./api/delivery/quote');
+const promoRouter = require('./src/routes/promoRoutes');
 const { getUserByAuthId } = require('./src/queries/user');
 const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
@@ -378,6 +379,7 @@ app.use('/contact', contactRouter);
 app.use('/tags', tagsRouter);
 app.use('/cart', cartRouter);
 app.use('/dev', testEmail);
+app.use('/promo', promoRouter);
 
 app.post('/delivery/quote', deliveryQuote);
 app.post('/api/delivery/quote', deliveryQuote);
