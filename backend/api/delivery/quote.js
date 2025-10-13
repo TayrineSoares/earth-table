@@ -94,9 +94,9 @@ module.exports = async (req, res) => {
       return res.json({ ok: false, reason: "OUT_OF_ZONE", km: distanceKm });
     }
 
-    // FREE DELIVERY WEEK — TEMPORARY HARD CODE
-    // const fee_cents = distanceKm <= 10 ? 1500 : 3000;
-    const fee_cents = 0; // FREE DELIVERY WEEK
+
+    const fee_cents = distanceKm <= 10 ? 1500 : 3000;
+ 
 
     return res.json({ ok: true, km: distanceKm, fee_cents });
   } catch (e) {

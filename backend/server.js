@@ -312,9 +312,8 @@ const createCheckoutSession = async (req, res) => {
       }
 
 
-      // FREE DELIVERY WEEK — TEMPORARY HARD CODE
-      // deliveryFeeCentsServer = quote.fee_cents;
-      deliveryFeeCentsServer = 0;
+      
+      deliveryFeeCentsServer = quote.fee_cents;
 
       deliveryKm = quote.km;
 
@@ -324,11 +323,9 @@ const createCheckoutSession = async (req, res) => {
       items.push({
         price_data: {
           currency: 'cad',
-          // FREE DELIVERY WEEK — TEMPORARY HARD CODE
-          // product_data: { name: 'Delivery fee (includes tax)' },
-          // unit_amount: Math.round(deliveryFeeCentsServer * 1.13),
-          product_data: { name: 'Delivery (Free until October 12)' },
-          unit_amount: Math.round(deliveryFeeCentsServer * 1.13), // → 0
+          product_data: { name: 'Delivery fee (includes tax)' },
+          unit_amount: Math.round(deliveryFeeCentsServer * 1.13),
+
         },
         quantity: 1,
       });
