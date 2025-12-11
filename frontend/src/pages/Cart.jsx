@@ -146,7 +146,15 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   }, [fulfillment, postalCode, postalValid]);
 
   // totals
-  const promoDiscountCents = promoResult?.valid ? (promoResult.amountOffCents || 0) : 0;
+  let promoDiscountCents = 0;
+
+  if (promoResult?.valid && promoResult.discountPercentage != null) {
+    const rate = promoResult.discountPercentage / 100; // e.g. 20 → 0.2
+    promoDiscountCents = Math.round(subtotalCents * rate);
+
+    // safety: don't discount more than subtotal
+    promoDiscountCents = Math.min(promoDiscountCents, subtotalCents);
+  }
 
   const itemsSubtotalAfterPromoCents = Math.max(0, subtotalCents - promoDiscountCents);
   const totalBeforeTaxCents = itemsSubtotalAfterPromoCents + (fulfillment === "delivery" ? deliveryFeeCents : 0);
