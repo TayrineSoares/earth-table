@@ -26,6 +26,17 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames }) => {
 
   const tagNames = product.tags?.length ? getTagNames(product.tags) : [];
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
   
 
   return (
