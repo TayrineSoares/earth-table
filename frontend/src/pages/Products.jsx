@@ -2,14 +2,14 @@ import Lottie from 'lottie-react';
 import { useEffect, useState } from "react";
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
+import ProductCard from './ProductCard';
 
 
 const Products = ({ addToCart }) => {
 
   const { categoryId } = useParams();
-  const navigate = useNavigate();
 
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
@@ -24,6 +24,8 @@ const Products = ({ addToCart }) => {
   
   const filteredProducts = categoryId
   ? visibleProducts.filter(product => product.category_id === Number(categoryId)) :  visibleProducts;
+
+
 
   // define norm (case/accents-insensitive compare)
   const norm = (s) =>
@@ -105,6 +107,10 @@ const Products = ({ addToCart }) => {
       .filter(Boolean)
       .map(tag => tag.name);
   };
+
+  
+
+
 
 
   if (isLoading) {
@@ -206,55 +212,17 @@ const Products = ({ addToCart }) => {
         </div>
 
       <div className='products-container'>
-      {productsToShow.map((product) => {
-        return (
-          <div className='products' key={product.id}>
-            {product.tags && product.tags.length > 0 && (
-              <div className="product-tags">
-                {getTagNames(product.tags).map((tagName) => (
-                  <div key={tagName} className="tag-icon">
-                    {tagIcons[tagName.toLowerCase()] || null}
-                    <span style={{ marginLeft: '4px' }}>{tagName}</span>
-                  </div>
-                ))}
-              </div>
-            )}  
-            <img 
-              className='product-image' 
-              src={product.image_url} 
-              alt={product.slug}
-            />
-            <div className='product-header-info-container'>
-              <p className='product-header-price'>${(product.price_cents / 100).toFixed(2)}</p>    
-              <p className='product-header-name'>{product.slug}</p>  
-            </div>
-
-            <div className='product-description-container'>
-              <p className='product-description'>{product.description}</p>
-            </div>
-            
-            <div className='product-add-button-container'>
-              {product.is_available ? (
-                <button 
-                  className='product-add-button'
-                  onClick={() => addToCart(product)}
-                >
-                  <p className='product-add-button-text'>ADD TO CART</p>
-              </button>
-              ) : (
-                <button 
-                  className='product-add-button'
-                  disabled
-                  style={{ cursor: 'not-allowed' }}
-                >
-                  <p className='product-add-button-text'>SOLD OUT!</p>
-                </button>
-              )}
-            </div>
-          </div>
-          
-        );
-      })}
+   
+        {productsToShow.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            addToCart={addToCart}
+            tagIcons={tagIcons}
+            getTagNames={getTagNames}
+          />
+        ))}
+      
       </div>
 
       {visibleCount < searchFilteredProducts.length && (
