@@ -278,3 +278,4 @@ const Products = ({ addToCart }) => {
 };
 
 export default Products;
+
