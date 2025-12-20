@@ -37,9 +37,20 @@ const PORT = process.env.PORT || 8080;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 
-// BLOCKED DATES FOR DELIVERY AND PICKUP 
-const BLOCKED_DATES = ["2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01"];
-const isBlockedDate = (yyyyMmDd) => BLOCKED_DATES.includes(yyyyMmDd);
+// BLOCKED HOLIDAYS FOR DELIVERY AND PICKUP 
+const BLOCKED_MMDD = new Set(["12-25", "12-26", "12-31", "01-01"]);
+
+const isBlockedHoliday = (yyyyMmDd) => {
+  if (!yyyyMmDd) return false;
+
+  const parts = String(yyyyMmDd).split("-");
+  if (parts.length !== 3) return false;
+
+  const mm = parts[1];
+  const dd = parts[2];
+  return BLOCKED_MMDD.has(`${mm}-${dd}`);
+};
+
 const holidayError = (type) =>
   `${type} is unavailable on holidays (Dec 25, Dec 26, Dec 31, Jan 1).`;
 
@@ -105,12 +116,12 @@ const stripeWebhookHandler = async (request, response) => {
     const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
 
     // --- Holiday blocking (safety net) ---
-    if (pickupDate && isBlockedDate(pickupDate)) {
+    if (pickupDate && isBlockedHoliday(pickupDate)) {
       console.warn("[webhook] blocked holiday pickup date:", pickupDate);
       return response.status(200).send("ok");
     }
 
-    if (delivery && deliveryDate && isBlockedDate(deliveryDate)) {
+    if (delivery && deliveryDate && isBlockedHoliday(deliveryDate)) {
       console.warn("[webhook] blocked holiday delivery date:", deliveryDate);
       return response.status(200).send("ok");
     }
@@ -279,16 +290,15 @@ const createCheckoutSession = async (req, res) => {
     let discountFactor = 1; // default: no discount
 
     // --- Holiday blocking (source of truth) ---
-    if (pickup_date && isBlockedDate(pickup_date)) {
+    if (pickup_date && isBlockedHoliday(pickup_date)) {
       return res.status(400).json({ error: holidayError("Pickup") });
     }
 
-    if (delivery && delivery_date && isBlockedDate(delivery_date)) {
+    if (delivery && delivery_date && isBlockedHoliday(delivery_date)) {
       return res.status(400).json({ error: holidayError("Delivery") });
     }
 
     
-
     if (promoCode && normalize(promoCode)) {
       try {
 
