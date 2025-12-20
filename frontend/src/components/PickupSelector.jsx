@@ -66,6 +66,8 @@ const PickupSelector = ({
     return SLOTS.filter(isSlotAllowed);
   }, [pickupDate, minDateStr]); // isSlotAllowed depends on these
 
+  
+
   const handleDateChange = (e) => {
     const selectedStr = e.target.value;
     if (!selectedStr) return;

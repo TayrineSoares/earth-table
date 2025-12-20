@@ -36,6 +36,15 @@ const PORT = process.env.PORT || 8080;
 // single source of truth for where the frontend lives
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+
+// BLOCKED DATES FOR DELIVERY AND PICKUP 
+const BLOCKED_DATES = ["2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01"];
+const isBlockedDate = (yyyyMmDd) => BLOCKED_DATES.includes(yyyyMmDd);
+const holidayError = (type) =>
+  `${type} is unavailable on holidays (Dec 25, Dec 26, Dec 31, Jan 1).`;
+
+
+
 // --- Stripe Webhook Handler (shared) ---
 // IMPORTANT: This handler expects the request body to be raw (NOT JSON-parsed).
 const stripeWebhookHandler = async (request, response) => {
@@ -94,6 +103,17 @@ const stripeWebhookHandler = async (request, response) => {
     const pickupSlot = md.pickup_time_slot || null;
 
     const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
+
+    // --- Holiday blocking (safety net) ---
+    if (pickupDate && isBlockedDate(pickupDate)) {
+      console.warn("[webhook] blocked holiday pickup date:", pickupDate);
+      return response.status(200).send("ok");
+    }
+
+    if (delivery && deliveryDate && isBlockedDate(deliveryDate)) {
+      console.warn("[webhook] blocked holiday delivery date:", deliveryDate);
+      return response.status(200).send("ok");
+    }
 
     // Cart: from draft if available; otherwise parse metadata.cart (legacy fallback)
     let cart = Array.isArray(draft?.cart) ? draft.cart : [];
@@ -257,6 +277,17 @@ const createCheckoutSession = async (req, res) => {
     // --- Promo validation FIRST → compute discountFactor ---
     const normalize = s => (s || '').trim();
     let discountFactor = 1; // default: no discount
+
+    // --- Holiday blocking (source of truth) ---
+    if (pickup_date && isBlockedDate(pickup_date)) {
+      return res.status(400).json({ error: holidayError("Pickup") });
+    }
+
+    if (delivery && delivery_date && isBlockedDate(delivery_date)) {
+      return res.status(400).json({ error: holidayError("Delivery") });
+    }
+
+    
 
     if (promoCode && normalize(promoCode)) {
       try {
