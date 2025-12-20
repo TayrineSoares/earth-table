@@ -1,16 +1,6 @@
 import '../styles/PickupSelector.css';
 import { useMemo, useEffect } from 'react';
-
-const BLOCKED_DATES = ["2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01"];
-
-const isBlockedDate = (yyyyMmDd) => BLOCKED_DATES.includes(yyyyMmDd);
-
-const formatBlockedDatesForHumans = () =>
-  BLOCKED_DATES.map((d) => {
-    const [y, m, day] = d.split("-");
-    return `${day}/${m}/${y}`; // shows 25/12/2025 style
-  }).join(", ");
-
+import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates'; 
 
 
 const pcRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/; // Canadian postal code
@@ -75,12 +65,12 @@ export default function DeliverySelector({
     const selectedStr = e.target.value;
     if (!selectedStr) return;
 
-    // Block holidays
-    if (isBlockedDate(selectedStr)) {
-      onDeliveryDateChange(""); // clear
-      alert(`Delivery is unavailable on holidays (${formatBlockedDatesForHumans()}).`);
-      return;    }
-
+    //block holidays 
+    if (isBlockedHoliday(selectedStr)) {
+      onDeliveryDateChange("");
+      alert(`Delivery is unavailable on holidays (${blockedHolidaysLabel()}).`);
+      return;
+    }
 
 
     // If date is before the earliest allowed date, snap to earliest
