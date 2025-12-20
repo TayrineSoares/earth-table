@@ -1,6 +1,17 @@
 import '../styles/PickupSelector.css';
 import { useMemo } from 'react';
 
+const BLOCKED_DATES = ["2025-12-25", "2025-12-26", "2025-12-31", "2026-01-01"];
+
+const isBlockedDate = (yyyyMmDd) => BLOCKED_DATES.includes(yyyyMmDd);
+
+const formatBlockedDatesForHumans = () =>
+  BLOCKED_DATES.map((d) => {
+    const [y, m, day] = d.split("-");
+    return `${day}/${m}/${y}`; // shows 25/12/2025 style
+  }).join(", ");
+
+
 const PickupSelector = ({
   pickupDate,
   pickupTime,
@@ -58,6 +69,14 @@ const PickupSelector = ({
   const handleDateChange = (e) => {
     const selectedStr = e.target.value;
     if (!selectedStr) return;
+
+    // Block holidays
+    if (isBlockedDate(selectedStr)) {
+      onDateChange("");     // clear date
+      onTimeChange("");     // clear time
+      alert(`Pickup is unavailable on holidays (${formatBlockedDatesForHumans()}).`);
+      return;
+    }
 
     // If date is before the min date, bump to min date
     const selected = parseLocal(selectedStr);
