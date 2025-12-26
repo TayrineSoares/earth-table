@@ -1,18 +1,19 @@
 import '../styles/PickupSelector.css';
-import { useMemo, useEffect } from 'react';
-import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates'; 
-
+import { useMemo, useEffect, useState } from 'react';
+import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates';
 
 const pcRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/; // Canadian postal code
 
 export default function DeliverySelector({
   deliveryDate,
-  onDeliveryDateChange,   // (yyyy-mm-dd)
+  onDeliveryDateChange, // (yyyy-mm-dd)
   postalCode,
   onPostalCodeChange,
   feeCents,
-  onValidate,             // ({ valid, normalizedPostal })
+  onValidate, // ({ valid, normalizedPostal })
 }) {
+  const [dateError, setDateError] = useState('');
+
   // Date -> "YYYY-MM-DD" LOCAL
   const formatAsInputDate = (date) => {
     const y = date.getFullYear();
@@ -37,11 +38,11 @@ export default function DeliverySelector({
 
   // Delivery window (start/end minutes from midnight)
   const START_MIN = 11 * 60; // 11:00
-  const END_MIN   = 18 * 60; // 18:00
+  const END_MIN = 18 * 60; // 18:00
   const cutoffMinutes = minDateTime.getHours() * 60 + minDateTime.getMinutes();
 
   // If chosen date is the earliest allowed date, we only have a valid slot
-  // if the 24h cutoff is *before* the window end.
+  // if the 24h cutoff is before the window end.
   const isMinDate = deliveryDate && deliveryDate === minDateStr;
   const hasAnyTimeLeftToday = cutoffMinutes < END_MIN;
 
@@ -56,43 +57,55 @@ export default function DeliverySelector({
   // Validate postal on change
   useEffect(() => {
     const valid = pcRegex.test(postalCode || '');
-    onValidate?.({ valid, normalizedPostal: valid ? normalizePostal(postalCode) : null });
+    onValidate?.({
+      valid,
+      normalizedPostal: valid ? normalizePostal(postalCode) : null,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postalCode]);
 
-
+  // iOS-safe: do NOT validate/alert inside onChange (date picker fires while scrolling)
   const handleDateChange = (e) => {
     const selectedStr = e.target.value;
     if (!selectedStr) return;
 
-    //block holidays 
-    if (isBlockedHoliday(selectedStr)) {
-      onDeliveryDateChange("");
-      alert(`Delivery is unavailable on holidays (${blockedHolidaysLabel()}).`);
+    setDateError('');
+    onDeliveryDateChange(selectedStr);
+  };
+
+  // Validate AFTER picker closes
+  const handleDateBlur = () => {
+    if (!deliveryDate) return;
+
+    // Block holidays (keep date visible; show error + prevent proceeding elsewhere)
+    if (isBlockedHoliday(deliveryDate)) {
+      setDateError(
+        `Delivery is unavailable on holidays (${blockedHolidaysLabel()}).`
+      );
       return;
     }
-
 
     // If date is before the earliest allowed date, snap to earliest
-    const selected = parseLocal(selectedStr);
+    const selected = parseLocal(deliveryDate);
     const minDateOnly = parseLocal(minDateStr);
+
     if (selected < minDateOnly) {
+      setDateError(`Earliest delivery date is ${minDateStr}.`);
       onDeliveryDateChange(minDateStr);
-      alert(`Earliest delivery date is ${minDateStr}.`);
       return;
     }
 
-    // Otherwise accept the user's choice; helper below will inform if no time left
-    onDeliveryDateChange(selectedStr);
+    setDateError('');
   };
 
   return (
     <section className="pickup-section">
       <div className="pickup-grid">
-
         {/* Postal Code */}
         <div className="pickup-field">
-          <label className="pickup-label" htmlFor="delivery-postal">Postal Code (Delivery Quote)</label>
+          <label className="pickup-label" htmlFor="delivery-postal">
+            Postal Code (Delivery Quote)
+          </label>
           <input
             id="delivery-postal"
             className="pickup-input"
@@ -101,7 +114,9 @@ export default function DeliverySelector({
             onChange={(e) => onPostalCodeChange(e.target.value)}
           />
           {feeCents > 0 && (
-            <p className="pickup-hint">Estimated delivery fee: ${(feeCents / 100).toFixed(2)}</p>
+            <p className="pickup-hint">
+              Estimated delivery fee: ${(feeCents / 100).toFixed(2)}
+            </p>
           )}
         </div>
 
@@ -111,7 +126,9 @@ export default function DeliverySelector({
 
         {/* Delivery Date */}
         <div className="pickup-field">
-          <label className="pickup-label" htmlFor="delivery-date">Delivery Date</label>
+          <label className="pickup-label" htmlFor="delivery-date">
+            Delivery Date
+          </label>
           <input
             id="delivery-date"
             className="pickup-input"
@@ -119,10 +136,18 @@ export default function DeliverySelector({
             value={deliveryDate}
             min={minDateStr}
             onChange={handleDateChange}
+            onBlur={handleDateBlur}
           />
+
           <p className="pickup-hint">
-            Deliveries require at least 24 hours' notice. Delivery window is 11:00 AM – 6:00 PM.
+            Deliveries require at least 24 hours&apos; notice. Delivery window is 11:00 AM – 6:00 PM.
           </p>
+
+          {dateError && (
+            <p className="pickup-error" role="alert">
+              {dateError}
+            </p>
+          )}
 
           {/* Neutral helper if picking earliest date but 24h pushes past window end */}
           {isMinDate && !hasAnyTimeLeftToday && (
@@ -130,14 +155,12 @@ export default function DeliverySelector({
               <span>No slots left for this date.</span>
             </div>
           )}
-
         </div>
 
         <div className="general-text">
           <p>Please review your order details before continuing.</p>
           <p>Once payment is processed, orders cannot be modified or cancelled.</p>
         </div>
-
       </div>
     </section>
   );
