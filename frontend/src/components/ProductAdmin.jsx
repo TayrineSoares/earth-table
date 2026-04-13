@@ -1,5 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
-import { fetchAllProducts, fetchAllCategories, addProduct, updateProduct, toggleProductActive } from '../helpers/adminHelpers';
+import { useEffect, useState, useRef, useMemo, Fragment } from 'react';
+import {
+  fetchAllProducts,
+  fetchAllCategories,
+  fetchAllTags,
+  addProduct,
+  updateProduct,
+  toggleProductActive,
+} from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
 import AdminTabLoading from './AdminTabLoading';
 import '../styles/ProductAdmin.css';
@@ -7,10 +14,12 @@ import '../styles/ProductAdmin.css';
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [allTags, setAllTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -19,13 +28,15 @@ const ProductAdmin = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [productsData, categoriesData] = await Promise.all([
+        const [productsData, categoriesData, tagsData] = await Promise.all([
           fetchAllProducts(),
           fetchAllCategories(),
+          fetchAllTags(),
         ]);
         if (!cancelled) {
           setProducts(productsData);
           setCategories(categoriesData);
+          setAllTags(tagsData || []);
         }
       } catch (err) {
         console.error('Error fetching products or categories:', err);
@@ -90,18 +101,38 @@ const ProductAdmin = () => {
     return category ? category.name : '';
   };
 
+  const getTagNames = (product) => {
+    const ids = Array.isArray(product.tags) ? product.tags : [];
+    return ids
+      .map((tid) => allTags.find((t) => String(t.id) === String(tid))?.name)
+      .filter(Boolean);
+  };
 
-  const filteredProducts = products.filter((product) => {
-    const term = searchTerm.toLowerCase();
-    const categoryName = getCategoryName(product.category_id).toLowerCase();
+  const categorySelectOptions = useMemo(() => {
+    const ids = [...new Set(products.map((p) => p.category_id).filter((id) => id != null && id !== ''))];
+    return ids
+      .map((id) => ({ id: String(id), name: getCategoryName(id) || `Category ${id}` }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products, categories]);
 
-    return (
-      product.slug?.toLowerCase().includes(term) ||
-      product.description?.toLowerCase().includes(term) ||
-      (product.price_cents / 100).toFixed(2).includes(term) ||
-      categoryName.includes(term)
-    );
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      if (categoryFilter !== '' && String(product.category_id) !== categoryFilter) {
+        return false;
+      }
+      const term = searchTerm.toLowerCase().trim();
+      if (!term) return true;
+      const categoryName = getCategoryName(product.category_id).toLowerCase();
+      const tagNamesJoined = getTagNames(product).join(' ').toLowerCase();
+      return (
+        product.slug?.toLowerCase().includes(term) ||
+        product.description?.toLowerCase().includes(term) ||
+        (product.price_cents / 100).toFixed(2).includes(term) ||
+        categoryName.includes(term) ||
+        tagNamesJoined.includes(term)
+      );
+    });
+  }, [products, searchTerm, categoryFilter, categories, allTags]);
 
   if (loading) {
     return (
@@ -117,15 +148,30 @@ const ProductAdmin = () => {
       <h1 className="product-admin-title">Products Management </h1>
       <br />
 
-      <input
-        type="text"
-        className="product-search-input"
-        placeholder="Search by category, slug, description, or price"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
+      <div className="product-admin-toolbar">
+        <input
+          type="text"
+          className="product-search-input"
+          placeholder="Search slug, description, price, category, or tags"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          className="product-category-filter"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          aria-label="Filter by category"
+        >
+          <option value="">All Categories</option>
+          {categorySelectOptions.map(({ id, name }) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <br /> <br/>
+      <br />
 
       <button
         className="toggle-form-button"
@@ -152,27 +198,68 @@ const ProductAdmin = () => {
         <p>No products found.</p>
       ) : (
         <div className="product-card-container">
-          {filteredProducts.map(product => (
-            <div
-              key={product.id}
-              className="product-card"
-            >
-              <img src={product.image_url} alt={product.slug} className="admin-product-image" />
-              <div className="product-details">
-                <p><strong>Slug:</strong> {product.slug}</p>
-                <p><strong>Description:</strong> {product.description}</p>
-                <p><strong>Price:</strong> ${(product.price_cents / 100).toFixed(2)}</p>
-                <p><strong>Category:</strong> {getCategoryName(product.category_id)}</p>
-
-                <div className='manage-buttons'> 
-                  {!product.is_active && (
-                    <span className="archived-badge">
-                      Archived
+          {filteredProducts.map((product) => {
+            const tagNames = getTagNames(product);
+            const isAvailable = product.is_available !== false && product.is_available !== 0;
+            return (
+            <div key={product.id} className="product-card">
+              <img
+                src={product.image_url}
+                alt=""
+                className="admin-product-thumb"
+              />
+              <div className="product-card-body">
+                <div className="product-card-info">
+                  <span className="product-card-slug" title={product.slug}>
+                    {product.slug}
+                  </span>
+                  {product.description?.trim() ? (
+                    <span
+                      className="product-card-desc-truncate"
+                      title={product.description}
+                    >
+                      {product.description}
                     </span>
-                  )}
-
-                  <button 
-                    style={{ marginRight: '0.5rem' }} 
+                  ) : null}
+                  <span className="product-card-line2">
+                    {getCategoryName(product.category_id) || '—'} · $
+                    {(product.price_cents / 100).toFixed(2)}
+                  </span>
+                  <div className="product-card-tags" aria-label="Tags">
+                    {tagNames.length ? (
+                      <span className="product-card-tags-inline">
+                        {tagNames.map((name, i) => (
+                          <Fragment key={`${name}-${i}`}>
+                            {i > 0 ? (
+                              <span className="product-card-tag-sep" aria-hidden>
+                                ·
+                              </span>
+                            ) : null}
+                            {name}
+                          </Fragment>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="product-card-tags-empty">No tags</span>
+                    )}
+                  </div>
+                  <div className="product-card-availability-row">
+                    <span
+                      className={
+                        isAvailable
+                          ? 'product-card-avail product-card-avail--yes'
+                          : 'product-card-avail product-card-avail--no'
+                      }
+                    >
+                      {isAvailable ? 'Available for purchase' : 'Not available for purchase'}
+                    </span>
+                  </div>
+                </div>
+                <div className="product-card-actions">
+                  {!product.is_active && <span className="archived-badge">Archived</span>}
+                  <button
+                    type="button"
+                    className="product-card-action-btn"
                     onClick={() => {
                       setEditProduct(product);
                       setShowForm(true);
@@ -183,14 +270,18 @@ const ProductAdmin = () => {
                   >
                     Edit
                   </button>
-
-                  <button onClick={() => handleToggleArchive(product)}>
+                  <button
+                    type="button"
+                    className="product-card-action-btn"
+                    onClick={() => handleToggleArchive(product)}
+                  >
                     {product.is_active ? 'Archive' : 'Unarchive'}
                   </button>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

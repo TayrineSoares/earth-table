@@ -98,38 +98,36 @@ const CategoryAdmin = () => {
       <h1 className="category-admin-title">Categories Management</h1>
       <br />
 
-      <input
-        type="text"
-        className="category-search-input"
-        placeholder="Search by Category Name or Description"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-    
-      <br /> <br />
+      <div className="category-admin-toolbar">
+        <input
+          type="text"
+          className="category-search-input"
+          placeholder="Search by name or description"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
-
-      <button 
-          className="toggle-form-button"
-          onClick={() => setShowForm(prev => !prev)}
-        >
-          {showForm ? 'Close Form' : 'Add New Category'}
+      <button
+        type="button"
+        className="toggle-form-button"
+        onClick={() => setShowForm((prev) => !prev)}
+      >
+        {showForm ? 'Close Form' : 'Add New Category'}
       </button>
-      <br /> <br />
-      
 
       {showForm && (
         <div ref={formRef}>
-          <CategoryForm 
+          <CategoryForm
             onSubmit={(formData) => {
               if (categoryToEdit) {
-                handleUpdateCategory(formData); 
+                handleUpdateCategory(formData);
               } else {
                 handleAddCategory(formData);
               }
-            }} 
+            }}
             onCancel={() => {
-              setShowForm(false)
+              setShowForm(false);
               setCategoryToEdit(null);
             }}
             initialData={categoryToEdit}
@@ -137,56 +135,60 @@ const CategoryAdmin = () => {
         </div>
       )}
 
-      <div >
-      <br /> <br /> 
-        
-        
+      <div className="category-card-container">
         {filteredCategories.map((category) => (
-          <div
-            className="category-card"
-            key={category.id}
-            
-          >
-            <img 
-              className="category-image"
-              src={category.image_url} 
-              alt={category.name} 
-               />
-
-            <div className="category-details">
-              <h2>{category.name}</h2>
-             
-              <p><strong>Description:</strong> {category.description}</p>
-              <p><strong>Show on Homepage:</strong> {category.show_on_homepage ? 'Yes' : 'No'}</p>
-
-              
-              <div className='manage-buttons'> 
-                <button 
+          <div className="category-card" key={category.id}>
+            <img
+              className="category-thumb"
+              src={category.image_url}
+              alt=""
+            />
+            <div className="category-card-body">
+              <div className="category-card-info">
+                <span className="category-card-name" title={category.name}>
+                  {category.name}
+                </span>
+                <span className="category-card-line2">
+                  <span
+                    className="category-card-desc-preview"
+                    title={category.description || ''}
+                  >
+                    {category.description?.trim() ? category.description : '—'}
+                  </span>
+                  <span className="category-card-line2-sep"> · </span>
+                  <span>
+                    Homepage: {category.show_on_homepage ? 'Yes' : 'No'}
+                  </span>
+                </span>
+              </div>
+              <div className="category-card-actions">
+                <button
+                  type="button"
+                  className="category-card-action-btn"
                   onClick={() => {
                     setCategoryToEdit(category);
                     setShowForm(true);
                     setTimeout(() => {
                       formRef.current?.scrollIntoView({ behavior: 'smooth' });
                     }, 0);
-                  }}         
+                  }}
                 >
                   Edit
                 </button>
-                <button 
+                <button
+                  type="button"
+                  className="category-card-action-btn"
                   onClick={() => handleDeleteCategory(category.id)}
                 >
                   Delete
                 </button>
-
               </div>
-              
             </div>
           </div>
         ))}
       </div>
-      
     </div>
-  )
+  );
 };
 
 export default CategoryAdmin;
