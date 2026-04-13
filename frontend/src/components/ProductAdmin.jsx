@@ -20,8 +20,8 @@ const ProductAdmin = () => {
   const [editProduct, setEditProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  /** 'active' = listed on the storefront; 'archived' = hidden from customers */
-  const [archiveTab, setArchiveTab] = useState('active');
+  /** 'all' | 'active' (listed) | 'archived' (hidden from storefront) */
+  const [archiveTab, setArchiveTab] = useState('all');
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -137,6 +137,7 @@ const ProductAdmin = () => {
   }, [products, searchTerm, categoryFilter, categories, allTags]);
 
   const tabFilteredProducts = useMemo(() => {
+    if (archiveTab === 'all') return filteredProducts;
     return filteredProducts.filter((product) =>
       archiveTab === 'active' ? product.is_active : !product.is_active
     );
@@ -181,8 +182,9 @@ const ProductAdmin = () => {
           className="product-category-filter"
           value={archiveTab}
           onChange={(e) => setArchiveTab(e.target.value)}
-          aria-label="Show active or archived products"
+          aria-label="Filter by listing status"
         >
+          <option value="all">All</option>
           <option value="active">Active</option>
           <option value="archived">Archived</option>
         </select>
@@ -221,9 +223,11 @@ const ProductAdmin = () => {
         <p>No products found.</p>
       ) : tabFilteredProducts.length === 0 ? (
         <p className="product-admin-empty-tab">
-          {archiveTab === 'active'
-            ? 'No active products match your search or category filter.'
-            : 'No archived products match your search or category filter.'}
+          {archiveTab === 'all'
+            ? 'No products match your search or category filter.'
+            : archiveTab === 'active'
+              ? 'No active products match your search or category filter.'
+              : 'No archived products match your search or category filter.'}
         </p>
       ) : (
         <div className="product-card-container">
