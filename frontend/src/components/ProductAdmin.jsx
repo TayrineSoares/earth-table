@@ -20,6 +20,8 @@ const ProductAdmin = () => {
   const [editProduct, setEditProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  /** 'active' = listed on the storefront; 'archived' = hidden from customers */
+  const [archiveTab, setArchiveTab] = useState('active');
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -134,6 +136,12 @@ const ProductAdmin = () => {
     });
   }, [products, searchTerm, categoryFilter, categories, allTags]);
 
+  const tabFilteredProducts = useMemo(() => {
+    return filteredProducts.filter((product) =>
+      archiveTab === 'active' ? product.is_active : !product.is_active
+    );
+  }, [filteredProducts, archiveTab]);
+
   if (loading) {
     return (
       <div className="product-admin-container">
@@ -169,7 +177,22 @@ const ProductAdmin = () => {
             </option>
           ))}
         </select>
+        <select
+          className="product-category-filter"
+          value={archiveTab}
+          onChange={(e) => setArchiveTab(e.target.value)}
+          aria-label="Show active or archived products"
+        >
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
       </div>
+
+      {archiveTab === 'archived' && (
+        <p className="product-admin-tab-help">
+          Archived products are hidden from the storefront and are not shown to customers.
+        </p>
+      )}
 
       <br />
 
@@ -196,9 +219,15 @@ const ProductAdmin = () => {
 
       {products.length === 0 ? (
         <p>No products found.</p>
+      ) : tabFilteredProducts.length === 0 ? (
+        <p className="product-admin-empty-tab">
+          {archiveTab === 'active'
+            ? 'No active products match your search or category filter.'
+            : 'No archived products match your search or category filter.'}
+        </p>
       ) : (
         <div className="product-card-container">
-          {filteredProducts.map((product) => {
+          {tabFilteredProducts.map((product) => {
             const tagNames = getTagNames(product);
             const isAvailable = product.is_available !== false && product.is_available !== 0;
             return (
@@ -256,7 +285,9 @@ const ProductAdmin = () => {
                   </div>
                 </div>
                 <div className="product-card-actions">
-                  {!product.is_active && <span className="archived-badge">Archived</span>}
+                  {!product.is_active && (
+                    <span className="archived-badge">Archived</span>
+                  )}
                   <button
                     type="button"
                     className="product-card-action-btn"
