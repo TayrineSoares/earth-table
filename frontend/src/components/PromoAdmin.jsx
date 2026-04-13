@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import AdminTabLoading from './AdminTabLoading';
 import '../styles/PromoAdmin.css';
 
 const normalizeCode = (value) => (value || '').trim();
@@ -15,6 +16,7 @@ function formatExpiresDisplay(iso) {
 
 const PromoAdmin = () => {
   const [promos, setPromos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [code, setCode] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
@@ -30,13 +32,25 @@ const PromoAdmin = () => {
 
     if (error) {
       console.error('Error fetching promo codes:', error);
-      return;
+      return [];
     }
-    setPromos(data || []);
+    return data || [];
   };
 
   useEffect(() => {
-    loadPromos();
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await loadPromos();
+        if (!cancelled) setPromos(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   const filteredPromos = useMemo(() => {
@@ -126,6 +140,15 @@ const PromoAdmin = () => {
 
     setPromos((prev) => prev.filter((p) => p.id !== id));
   };
+
+  if (loading) {
+    return (
+      <div className="promo-admin-container">
+        <h1 className="promo-admin-title">Promo Codes Management</h1>
+        <AdminTabLoading message="Loading promo codes…" />
+      </div>
+    );
+  }
 
   return (
     <div className="promo-admin-container">

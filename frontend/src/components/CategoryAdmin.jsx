@@ -6,26 +6,34 @@ import {
   deleteCategory 
 } from '../helpers/adminHelpers'
 import CategoryForm from './CategoryForm'
+import AdminTabLoading from './AdminTabLoading';
 import '../styles/CategoryAdmin.css'
 
 const CategoryAdmin = () => {
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const formRef = useRef();
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchCategories = async () => {
+      setLoading(true);
       try {
         const data = await fetchAllCategories();
-        setCategories(data);
+        if (!cancelled) setCategories(data);
       } catch (error) {
         console.error("Error fetching categories:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchCategories();
+    return () => { cancelled = true; };
   }, []);
 
 
@@ -76,6 +84,14 @@ const CategoryAdmin = () => {
     );
   });
 
+  if (loading) {
+    return (
+      <div className="category-admin-container">
+        <h1 className="category-admin-title">Categories Management</h1>
+        <AdminTabLoading message="Loading categories…" />
+      </div>
+    );
+  }
 
   return (
     <div className="category-admin-container">

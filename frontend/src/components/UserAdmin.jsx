@@ -1,21 +1,29 @@
 import { useEffect, useState } from 'react';
 import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
+import AdminTabLoading from './AdminTabLoading';
 import '../styles/UsersAdmin.css'
 
 const UserAdmin = () => {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect (() => {
+    let cancelled = false;
+
     const loadUsers = async () => {
+      setLoading(true);
       try {
         const data = await fetchAllUsers();
-        setUsers(data);
+        if (!cancelled) setUsers(data);
       } catch (err) {
         console.error("Error fetching users:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
     loadUsers();
+    return () => { cancelled = true; };
   }, []); 
 
   const formatPhoneNumber = (phone) => {
@@ -51,6 +59,14 @@ const UserAdmin = () => {
     );
   });
 
+  if (loading) {
+    return (
+      <div className="user-admin-container">
+        <h1 className="user-admin-title">Users Management</h1>
+        <AdminTabLoading message="Loading users…" />
+      </div>
+    );
+  }
 
   return (
     <div className="user-admin-container">

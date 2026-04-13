@@ -61,3 +61,30 @@
   background-color: #EDA413;
   color: white;
 }
+
+/* Shared by admin tab panels (Products, Orders, etc.) while data is fetching */
+.admin-tab-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1.5rem;
+  font-family: var(--body-font);
+  color: #BE7200;
+}
+
+.admin-tab-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #FEE8D4;
+  border-top-color: #EDA413;
+  border-radius: 50%;
+  animation: admin-tab-spin 0.75s linear infinite;
+}
+
+@keyframes admin-tab-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

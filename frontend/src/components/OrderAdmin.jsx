@@ -1,5 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import { fetchAllOrders, fetchOrderById, setOrderPickedUp } from '../helpers/orderHelpers';
+import AdminTabLoading from './AdminTabLoading';
 import '../styles/OrderAdmin.css';
 
 const HST_RATE = 0.13;
@@ -78,17 +79,21 @@ const OrderAdmin = () => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadOrders = async () => {
+      setLoading(true);
       try {
         const data = await fetchAllOrders();
-        setOrders(data);
+        if (!cancelled) setOrders(data);
       } catch (err) {
         console.error("Failed to load orders:", err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadOrders();
+    return () => { cancelled = true; };
   }, []);
 
   const toggleDetailedOrder = async (orderId) => {
@@ -145,7 +150,14 @@ const OrderAdmin = () => {
     );
   });
 
-  if (loading) return <p>Loading orders...</p>;
+  if (loading) {
+    return (
+      <div className="order-admin-page">
+        <h1>Order Admin</h1>
+        <AdminTabLoading message="Loading orders…" />
+      </div>
+    );
+  }
 
   return (
     <div className="order-admin-page">

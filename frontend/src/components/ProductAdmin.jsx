@@ -1,38 +1,44 @@
 import { useEffect, useState, useRef } from 'react';
 import { fetchAllProducts, fetchAllCategories, addProduct, updateProduct, toggleProductActive } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
-import '../styles/ProductAdmin.css'
+import AdminTabLoading from './AdminTabLoading';
+import '../styles/ProductAdmin.css';
 
 const ProductAdmin = () => {
-  const [products, setProducts] = useState([]); 
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const formRef = useRef(null);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
       try {
-        const data = await fetchAllProducts();
-        setProducts(data);
+        const [productsData, categoriesData] = await Promise.all([
+          fetchAllProducts(),
+          fetchAllCategories(),
+        ]);
+        if (!cancelled) {
+          setProducts(productsData);
+          setCategories(categoriesData);
+        }
       } catch (err) {
-        console.error("Error fetching products:", err);
+        console.error('Error fetching products or categories:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
-    const loadCategories = async () => {
-      try {
-        const data = await fetchAllCategories();
-        setCategories(data);
-      } catch (err) {
-        console.error("Error fetching categories:", err);
-      }
+    load();
+    return () => {
+      cancelled = true;
     };
-
-    loadProducts(); 
-    loadCategories();
-  },[]);
+  }, []);
 
 
   const handleAddProduct = async (newProductData) => {
@@ -85,7 +91,7 @@ const ProductAdmin = () => {
   };
 
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = products.filter((product) => {
     const term = searchTerm.toLowerCase();
     const categoryName = getCategoryName(product.category_id).toLowerCase();
 
@@ -97,7 +103,15 @@ const ProductAdmin = () => {
     );
   });
 
-  
+  if (loading) {
+    return (
+      <div className="product-admin-container">
+        <h1 className="product-admin-title">Products Management </h1>
+        <AdminTabLoading message="Loading products…" />
+      </div>
+    );
+  }
+
   return (
     <div className="product-admin-container">
       <h1 className="product-admin-title">Products Management </h1>
@@ -109,32 +123,30 @@ const ProductAdmin = () => {
         placeholder="Search by category, slug, description, or price"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-      
       />
 
       <br /> <br/>
 
-      <button 
-          className="toggle-form-button" 
-          onClick={() => setShowForm(prev => !prev)}
-        >
-          {showForm ? 'Close Form' : 'Add New Product'}
-        </button>
+      <button
+        className="toggle-form-button"
+        onClick={() => setShowForm((prev) => !prev)}
+      >
+        {showForm ? 'Close Form' : 'Add New Product'}
+      </button>
       {showForm && (
         <>
           <div ref={formRef}></div>
-          <ProductForm 
+          <ProductForm
             onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
             onCancel={() => {
               setShowForm(false);
-              setEditProduct(null); 
+              setEditProduct(null);
             }}
             initialData={editProduct}
             categories={categories}
-    
           />
         </>
-      )}  
+      )}
 
       {products.length === 0 ? (
         <p>No products found.</p>
