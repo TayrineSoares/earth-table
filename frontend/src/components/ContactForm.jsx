@@ -70,14 +70,16 @@ const ContactForm = () => {
         <br />
         <div className='your-message-container'>
           <p className='your-name-header'>Message</p>
-          <input
+          <textarea
             className='your-message-input'
             name="message"
             placeholder="TYPE YOUR MESSAGE HERE"
             value={form.message}
             onChange={handleChange}
             required
-            />
+            rows={6}
+            enterKeyHint="enter"
+          />
         </div>
         <br />
           <button
