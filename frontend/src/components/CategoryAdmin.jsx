@@ -148,17 +148,14 @@ const CategoryAdmin = () => {
                 <span className="category-card-name" title={category.name}>
                   {category.name}
                 </span>
-                <span className="category-card-line2">
-                  <span
-                    className="category-card-desc-preview"
-                    title={category.description || ''}
-                  >
-                    {category.description?.trim() ? category.description : '—'}
-                  </span>
-                  <span className="category-card-line2-sep"> · </span>
-                  <span>
-                    Homepage: {category.show_on_homepage ? 'Yes' : 'No'}
-                  </span>
+                <span
+                  className="category-card-desc-preview"
+                  title={category.description || ''}
+                >
+                  {category.description?.trim() ? category.description : '—'}
+                </span>
+                <span className="category-card-homepage">
+                  Homepage: {category.show_on_homepage ? 'Yes' : 'No'}
                 </span>
               </div>
               <div className="category-card-actions">

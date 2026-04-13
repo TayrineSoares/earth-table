@@ -97,7 +97,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .category-card-name {
@@ -111,25 +111,25 @@
   text-overflow: ellipsis;
 }
 
-.category-card-line2 {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  font-family: var(--body-font);
-  font-size: 14px;
-  color: #BE7200;
-}
-
 .category-card-desc-preview {
-  flex: 1 1 auto;
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--body-font);
+  font-size: 14px;
+  line-height: 1.35;
+  color: #444;
 }
 
-.category-card-line2-sep {
-  flex-shrink: 0;
+.category-card-homepage {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--body-font);
+  font-size: 14px;
+  line-height: 1.35;
+  color: #BE7200;
 }
 
 .category-card-actions {
