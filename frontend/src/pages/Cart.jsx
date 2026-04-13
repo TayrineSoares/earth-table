@@ -189,10 +189,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     }
     setPromoLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
       const res = await fetch(`${API_BASE}/promo/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotalCents }),
+        body: JSON.stringify({ code, subtotalCents, userId }),
       });
       const data = await res.json();
       setPromoResult(data);

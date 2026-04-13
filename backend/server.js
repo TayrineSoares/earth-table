@@ -22,7 +22,7 @@ const promoRouter = require('./src/routes/promoRoutes');
 const { getUserByAuthId } = require('./src/queries/user');
 const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
-const { getActivePromoByCode } = require('./src/queries/promo_code');
+const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
 const { ensureStripePromotionCode } = require('./src/stripePromo');
 
 require('dotenv').config();
@@ -195,6 +195,16 @@ const stripeWebhookHandler = async (request, response) => {
         special_note: specialNote,
       });
 
+      // Promo was applied at checkout; bump global usage only after the order is saved.
+      const promoId = md.promo_id || null;
+      if (promoId) {
+        try {
+          await incrementPromoUsedCount(promoId);
+        } catch (e) {
+          console.warn('[webhook] incrementPromoUsedCount failed:', e.message);
+        }
+      }
+
       // Fetch full order for emails
       const detailedOrder = await getOrderByStripeSessionId(session.id);
 
@@ -299,18 +309,17 @@ const createCheckoutSession = async (req, res) => {
     }
 
     
+    // Same rules as POST /promo/validate — never trust the client to have validated alone.
     if (promoCode && normalize(promoCode)) {
-      try {
-
-        const promo = await getActivePromoByCode(normalize(promoCode));
-        if (promo && promo.active) {
-          const pct = promo.discount_percentage;          // e.g., 10
-          discountFactor = (100 - pct) / 100;             // e.g., 0.9
-          req._etPromo = { code: promo.code, pct };       // metadata
-        }
-      } catch (e) {
-        console.warn('[checkout] promo validation skipped:', e.message);
+      const promoResult = await getActivePromoByCode(normalize(promoCode), userId || null);
+      if (!promoResult.ok) {
+        return res.status(400).json({ error: promoResult.message });
       }
+      const promo = promoResult.promo;
+      const pct = promo.discount_percentage;
+      discountFactor = (100 - pct) / 100;
+      // id goes on the Stripe session so the webhook can increment used_count after payment.
+      req._etPromo = { code: promo.code, pct, id: promo.id };
     }
 
     // --- Build line items (DISCOUNT BEFORE TAX) ---
@@ -412,7 +421,7 @@ const createCheckoutSession = async (req, res) => {
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
-        
+        ...(req._etPromo?.id != null ? { promo_id: String(req._etPromo.id) } : {}),
       },
     });
 

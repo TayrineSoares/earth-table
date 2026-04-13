@@ -1,0 +1,141 @@
+.promo-admin-container {
+  padding: 2rem;
+  background-color: #FFFBF3;
+  border-radius: 15px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.promo-admin-title {
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-weight: 400;
+  color: #000;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+.promo-admin-form {
+  margin-bottom: 1rem;
+}
+
+.promo-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.promo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: var(--body-font);
+  font-size: 14px;
+}
+
+.promo-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.promo-field-checkbox input {
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.promo-input {
+  padding: 0.5rem;
+  min-width: 180px;
+  font-size: 16px;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  background-color: #fff8f0;
+  font-family: var(--body-font);
+}
+
+.promo-search-input {
+  padding: 0.5rem;
+  width: 300px;
+  font-size: 16px;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-color: #fff8f0;
+}
+
+.promo-submit-button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.promo-submit-button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.promo-delete-button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.promo-delete-button:active {
+  background-color: #EDA413;
+}
+
+.promo-empty {
+  font-family: var(--body-font);
+  margin-top: 1rem;
+}
+
+.promo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.promo-table th,
+.promo-table td {
+  border: 1px solid #FEE8D4;
+  padding: 10px;
+  text-align: left;
+  font-family: var(--body-font);
+  font-size: 14px;
+}
+
+.promo-table th {
+  background-color: #FEE8D4;
+  color: #000;
+  font-variant: small-caps;
+}
+
+.promo-table tr:nth-child(even) {
+  background-color: #fffaf4;
+}
+
+.promo-table tr:hover {
+  background-color: #fff0dc;
+}
+
+.promo-table input[type='checkbox'] {
+  transform: scale(1.2);
+  cursor: pointer;
+}

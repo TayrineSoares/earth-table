@@ -6,7 +6,8 @@ import '../styles/Admin.css'
 import CategoryAdmin from '../components/CategoryAdmin';
 import OrderAdmin from '../components/OrderAdmin';
 import ProductAdmin from '../components/ProductAdmin';
-import UserAdmin from '../components/UserAdmin'; 
+import UserAdmin from '../components/UserAdmin';
+import PromoAdmin from '../components/PromoAdmin';
 
 
 const Admin = () => {
@@ -79,6 +80,12 @@ const Admin = () => {
         >
           Users
         </button>
+        <button 
+          className={activeTab === 'promos' ? 'active' : ''}
+          onClick={() => setActiveTab('promos')}
+        >
+          Promo Codes
+        </button>
       </div>
 
       {/* Active tab section */}
@@ -86,6 +93,7 @@ const Admin = () => {
       {activeTab === 'products' && <ProductAdmin />}
       {activeTab === 'orders' && <OrderAdmin />}
       {activeTab === 'users' && <UserAdmin />}
+      {activeTab === 'promos' && <PromoAdmin />}
     </div>
   );
 };

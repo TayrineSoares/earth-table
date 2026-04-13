@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { getActivePromoByCode, normalize } = require('../queries/promo_code');
 
+// Cart calls this to preview the discount. Pass userId when logged in so first-time / capped rules work.
 router.post('/validate', async (req, res) => {
   try {
-    const { code, subtotalCents } = req.body || {};
+    const { code, subtotalCents, userId } = req.body || {};
     const cleaned = normalize(code);
 
     if (!cleaned) {
@@ -14,11 +15,12 @@ router.post('/validate', async (req, res) => {
       return res.status(400).json({ valid: false, message: 'Subtotal is invalid.' });
     }
 
-    const promo = await getActivePromoByCode(cleaned);
-    if (!promo) {
-      return res.json({ valid: false, message: 'Invalid or inactive promo code.' });
+    const result = await getActivePromoByCode(cleaned, userId || null);
+    if (!result.ok) {
+      return res.json({ valid: false, message: result.message });
     }
 
+    const promo = result.promo;
     const pct = promo.discount_percentage;
     const amountOffCents = Math.floor((subtotalCents * pct) / 100);
 
