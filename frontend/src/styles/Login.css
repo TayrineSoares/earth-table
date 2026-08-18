@@ -199,6 +199,19 @@ input[type="submit"].login-submit-button:disabled {
     display: none;
   }
 
+  .login-header-footer {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .login-detail-header-text,
+  .login-detail-input-field,
+  .login-submit-button {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .login-detail-input-field {
     padding: 20px;
   }
@@ -207,13 +220,8 @@ input[type="submit"].login-submit-button:disabled {
 
 @media (max-width: 480px) {
 
-  .login-detail-input-field {
-    width: 90%;
-    padding: 20px;
-  }
-
   .account-sign-in, .account-register {
-    font-size: 35px;
+    font-size: 28px;
   }
 
 }

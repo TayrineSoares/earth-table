@@ -278,11 +278,6 @@
 }
 
 @media (max-width: 1024px) {
-  .profile-page .page-wrapper {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-
   .profile-text {
     font-size: 48px;
   }
@@ -306,8 +301,6 @@
 
 @media (max-width: 768px) {
   .profile-page .page-wrapper {
-    padding-left: 20px;
-    padding-right: 20px;
     padding-top: 1.5rem;
     padding-bottom: 2rem;
   }
@@ -377,11 +370,6 @@
 }
 
 @media (max-width: 480px) {
-  .profile-page .page-wrapper {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
   .profile-text {
     font-size: 26px;
   }

@@ -193,8 +193,27 @@
 }
 
 .special-note-container{
-  width: 450px;
+  width: 100%;
+  max-width: 450px;
   margin-bottom: 1rem;
+  box-sizing: border-box;
+}
+
+.special-note-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid #D8C7B0;
+  border-radius: 10px;
+  background: #fff;
+  font-family: var(--body-font);
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
 }
 
 
@@ -386,6 +405,25 @@
 } 
 
 @media (max-width: 768px) {
+
+  .checkout-order-summary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .checkout-summary-text {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    font-size: 36px;
+  }
+
+  .special-note-container,
+  .checkout-button {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 
   .checkout-item-title {
     font-size: 26px;

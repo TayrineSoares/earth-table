@@ -298,11 +298,6 @@ a.order-item-link:hover .order-item-name {
 }
 
 @media (max-width: 1024px) {
-  .order-history-page .page-wrapper {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-
   .order-history-page .checkout-page-header-image {
     height: 200px;
   }
@@ -314,8 +309,6 @@ a.order-item-link:hover .order-item-name {
 
 @media (max-width: 768px) {
   .order-history-page .page-wrapper {
-    padding-left: 20px;
-    padding-right: 20px;
     padding-top: 1.5rem;
     padding-bottom: 2rem;
   }
@@ -388,11 +381,6 @@ a.order-item-link:hover .order-item-name {
 }
 
 @media (max-width: 480px) {
-  .order-history-page .page-wrapper {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
   .order-history-page .checkout-page-header-image {
     height: 160px;
   }
