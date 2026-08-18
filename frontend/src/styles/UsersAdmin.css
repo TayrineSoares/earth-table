@@ -54,9 +54,87 @@
   background-color: #fff0dc;
 }
 
-.user-table input[type="checkbox"] {
-  transform: scale(1.2);
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
+  user-select: none;
+}
+
+.admin-toggle.is-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.admin-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  transform: none;
+}
+
+.admin-toggle-track {
+  width: 36px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #d1d5db;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.admin-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.admin-toggle input:checked + .admin-toggle-track {
+  background: #EDA413;
+}
+
+.admin-toggle input:checked + .admin-toggle-track::after {
+  transform: translateX(16px);
+}
+
+.admin-toggle-label {
+  font-family: var(--body-font);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-family: var(--body-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.6;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+}
+
+.admin-badge::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
 }
 
 .user-name-with-badge {
@@ -69,14 +147,15 @@
 .partner-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
+  gap: 4px;
+  padding: 0 6px;
   border-radius: 9999px;
   font-family: var(--body-font);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1.6;
   color: #BE7200;
   background: #FEE8D4;
   border: 1px solid #EDA413;
@@ -84,8 +163,8 @@
 
 .partner-badge::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: currentColor;
   opacity: 0.9;

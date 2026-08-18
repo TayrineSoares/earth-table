@@ -99,7 +99,7 @@ const Admin = () => {
       {activeTab === 'categories' && <CategoryAdmin />}
       {activeTab === 'products' && <ProductAdmin />}
       {activeTab === 'orders' && <OrderAdmin />}
-      {activeTab === 'users' && <UserAdmin />}
+      {activeTab === 'users' && <UserAdmin currentUserId={user.auth_user_id} />}
       {activeTab === 'promos' && <PromoAdmin />}
       {activeTab === 'partners' && <PartnerAdmin />}
     </div>
