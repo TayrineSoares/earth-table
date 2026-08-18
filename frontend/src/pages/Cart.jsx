@@ -36,6 +36,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [promoResult, setPromoResult] = useState(null); // { valid, code, discountPercentage, amountOffCents, message }
   const [promoLoading, setPromoLoading] = useState(false);
   const [lastValidatedCode, setLastValidatedCode] = useState('');
+  const [partnerWallet, setPartnerWallet] = useState(null);
 
 
   useEffect(() => {
@@ -52,11 +53,34 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   }, []);
 
   useEffect(() => {
-    const checkSession = async () => {
+    let cancelled = false;
+
+    const loadSessionAndWallet = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
+      const userId = session?.user?.id || null;
+      if (!cancelled) setIsLoggedIn(!!session);
+
+      if (!userId) {
+        if (!cancelled) setPartnerWallet(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/partners/by-user/${userId}`);
+        if (!res.ok) {
+          if (!cancelled) setPartnerWallet(null);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setPartnerWallet(data);
+      } catch (err) {
+        console.error('[cart] partner wallet fetch failed', err);
+        if (!cancelled) setPartnerWallet(null);
+      }
     };
-    checkSession();
+
+    loadSessionAndWallet();
+    return () => { cancelled = true; };
   }, []);
 
   const subtotalCents = cart.reduce((sum, item) => {
@@ -144,6 +168,16 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     return () => { cancelled = true; };
   }, [fulfillment, postalCode, postalValid]);
 
+  useEffect(() => {
+    if (!promoResult?.valid || promoResult.kind !== 'referral') return;
+    if (subtotalCents >= 5000) return;
+    setPromoResult({
+      valid: false,
+      kind: 'referral',
+      message: 'Referral codes require an item subtotal of at least $50 (before tax and delivery).',
+    });
+  }, [subtotalCents, promoResult?.valid, promoResult?.kind]);
+
   // totals
   let promoDiscountCents = 0;
 
@@ -160,6 +194,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const hstRate = 0.13;
   const taxCents = Math.round(totalBeforeTaxCents * hstRate);
   const grandTotalCents = totalBeforeTaxCents + taxCents;
+  const STRIPE_MIN_CENTS = 50;
+  const availableCreditCents = Math.max(0, Number(partnerWallet?.available_credit_cents) || 0);
+  const maxCreditCents = Math.max(0, grandTotalCents - STRIPE_MIN_CENTS);
+  const creditPreviewCents = Math.min(availableCreditCents, maxCreditCents);
+  const showStoreCredit = availableCreditCents > 0 && cart.length > 0;
+  const chargeCents = grandTotalCents - creditPreviewCents;
 
   if (isLoading) {
     return (
@@ -422,15 +462,22 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             )}
 
             {/* TAX */}
+            {showStoreCredit && (
+              <div className='checkout-summary-subtotal'>
+                <p className='subtotal'>Store credit</p>
+                <p className='subtotal'>- ${(creditPreviewCents / 100).toFixed(2)}</p>
+              </div>
+            )}
+
             <div className='checkout-summary-tax'>
-              <p className='tax'>HST</p>
-              <p className='tax'>13%</p>
+              <p className='tax'>HST (13%)</p>
+              <p className='tax'>${(taxCents / 100).toFixed(2)}</p>
             </div>
 
             {/* TOTAL */}
             <div className='checkout-total'>
               <p className='total'>Total</p>
-              <p className='total'>${(grandTotalCents / 100).toFixed(2)}</p>
+              <p className='total'>${(chargeCents / 100).toFixed(2)}</p>
             </div>
 
 
