@@ -506,6 +506,15 @@
   letter-spacing: 0.04em;
 }
 
+.partner-month-orders tfoot tr.partner-month-total-cash td,
+.partner-month-orders tfoot tr.partner-month-total-pay td {
+  background-color: #FFF3D6;
+}
+
+.partner-month-orders tfoot tr.partner-month-total-pay td {
+  font-weight: 700;
+}
+
 .admin-toggle {
   display: inline-flex;
   align-items: center;

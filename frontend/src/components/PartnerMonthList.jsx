@@ -128,12 +128,22 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={4} className="partner-month-total-label">TOTAL CASH</td>
-                        <td colSpan={2}>{formatCents(month.cash_cents)}</td>
+                        <td colSpan={4} className="partner-month-total-label">Total earnings</td>
+                        <td colSpan={2}>{formatCents(month.earn_cents)}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="partner-month-total-label">TOTAL CREDIT</td>
+                        <td colSpan={4} className="partner-month-total-label">Total store credit (already applied)</td>
                         <td colSpan={2}>{formatCents(month.credit_cents)}</td>
+                      </tr>
+                      <tr className="partner-month-total-cash">
+                        <td colSpan={4} className="partner-month-total-label">Total cash</td>
+                        <td colSpan={2}>{formatCents(month.cash_cents)}</td>
+                      </tr>
+                      <tr className="partner-month-total-pay">
+                        <td colSpan={4} className="partner-month-total-label">
+                          {isAdmin ? 'Amount to pay' : 'Amount you will be paid'}
+                        </td>
+                        <td colSpan={2}>{formatCents(month.cash_cents)}</td>
                       </tr>
                     </tfoot>
                   </table>
