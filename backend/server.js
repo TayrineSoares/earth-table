@@ -1,9 +1,11 @@
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const supabase = require('./supabase/db');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
-const { sendEmail } = require('./src/utils/email');
+const { sendEmail, ownerNotificationEmails } = require('./src/utils/email');
 const {
   renderCustomerOrderEmail,
   renderOwnerOrderEmail,
@@ -315,10 +317,7 @@ const stripeWebhookHandler = async (request, response) => {
       });
 
       // Owner email(s)
-      const ownerTo = (process.env.OWNER_NOTIFICATIONS_TO || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const ownerTo = ownerNotificationEmails();
 
       const ownerMsg = renderOwnerOrderEmail(detailedOrder, { partnerEarn });
       if (ownerTo.length) {
@@ -668,6 +667,13 @@ app.use('/contact', contactRouter);
 app.use('/tags', tagsRouter);
 app.use('/cart', cartRouter);
 app.use('/dev', testEmail);
+
+const emailPreviewDir = path.join(__dirname, 'email-previews');
+if (fs.existsSync(emailPreviewDir)) {
+  app.use('/email-previews', express.static(emailPreviewDir));
+  app.use('/assets/email', express.static(path.join(__dirname, 'assets/email')));
+}
+
 app.use('/promo', promoRouter);
 app.use('/api/promo', promoRouter);
 app.use('/partners', partnerRouter);

@@ -13,19 +13,12 @@ const {
   setPayoutPreference,
   setInvoicePaid,
 } = require('../queries/partner');
-const { sendEmail } = require('../utils/email');
+const { sendEmail, ownerNotificationEmails } = require('../utils/email');
 const { renderPartnerInvoicePdf, invoicePdfFilename } = require('../utils/partnerInvoicePdf');
 const {
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
 } = require('../utils/emailTemplates');
-
-function ownerNotificationEmails() {
-  return (process.env.OWNER_NOTIFICATIONS_TO || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 function handlePartnerError(res, err, label) {
   if (err instanceof PartnerError) {

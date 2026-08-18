@@ -1,6 +1,25 @@
 const { Resend } = require('resend');
+const fs = require('fs');
+const path = require('path');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+const LOGO_PATH = path.join(__dirname, '../../assets/email/high-logo-2.png');
+
+function logoAttachment() {
+  try {
+    if (!fs.existsSync(LOGO_PATH)) return null;
+    return {
+      filename: 'high-logo-2.png',
+      content: fs.readFileSync(LOGO_PATH).toString('base64'),
+      contentId: 'earth-table-logo',
+      contentType: 'image/png',
+    };
+  } catch (error) {
+    console.warn('[email] could not attach header logo:', error.message);
+    return null;
+  }
+}
 
 /**
  * Send email via Resend
@@ -18,6 +37,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from, attachments }) {
   try {
+    const logo = logoAttachment();
+    const allAttachments = [
+      ...(logo ? [logo] : []),
+      ...(attachments || []),
+    ];
     const response = await resend.emails.send({
       from: 
         from || process.env.RESEND_FROM || 'Earth Table <orders@earthtableco.ca>',
@@ -28,7 +52,7 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from, atta
       reply_to: replyTo || process.env.CONTACT_FROM || 'Earth Table <hello@earthtableco.ca>',
       cc,
       bcc,
-      ...(attachments?.length ? { attachments } : {}),
+      ...(allAttachments.length ? { attachments: allAttachments } : {}),
     });
     //console.log('Email sent:', response?.data?.id || response);
     return response;
@@ -43,4 +67,11 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from, atta
   }
 }
 
-module.exports = { sendEmail };
+function ownerNotificationEmails() {
+  return (process.env.OWNER_NOTIFICATIONS_TO || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+module.exports = { sendEmail, ownerNotificationEmails };
