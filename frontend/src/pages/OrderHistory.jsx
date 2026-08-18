@@ -110,7 +110,7 @@ const OrderHistory = ({ user, addToCart }) => {
         ) : !orders.length ? (
           <div className="order-history-empty">
             <p className="order-history-empty-copy">You haven't placed an order yet.</p>
-            <Link to="/products/category" className="order-history-button">Shop meals</Link>
+            <Link to="/products/category" className="order-history-button">Shop</Link>
           </div>
         ) : (
           orders.map((order) => {
