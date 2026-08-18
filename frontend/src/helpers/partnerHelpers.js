@@ -16,6 +16,12 @@ const fetchPartnerDetail = async (partnerId) => {
   return parseJson(res);
 };
 
+const fetchPartnerDetailByUser = async (authUserId) => {
+  const res = await fetch(`/api/partners/by-user/${authUserId}/detail`);
+  if (res.status === 404) return null;
+  return parseJson(res);
+};
+
 const createPartner = async ({ user_id, referral_code }) => {
   const res = await fetch('/api/partners', {
     method: 'POST',
@@ -73,7 +79,14 @@ const invoiceCreditCents = (invoice) => {
   return 0;
 };
 
-const formatInvoiceSummary = (invoice, statusLabel) => {
+const formatInvoiceStatus = (status) => {
+  if (status === 'paid') return 'Paid';
+  if (status === 'credited') return 'Credited';
+  if (status === 'unpaid') return 'Unpaid';
+  return status || 'No invoice';
+};
+
+const formatInvoiceSummary = (invoice, statusLabel = formatInvoiceStatus) => {
   if (!invoice) return 'None yet (settles at month-end)';
   const cash = invoiceCashCents(invoice);
   const credit = invoiceCreditCents(invoice);
@@ -102,6 +115,7 @@ const formatOrderDate = (iso) => {
 export {
   fetchPartners,
   fetchPartnerDetail,
+  fetchPartnerDetailByUser,
   createPartner,
   setPartnerActive,
   updatePartnerCode,
@@ -109,5 +123,6 @@ export {
   formatCents,
   formatPayoutLabel,
   formatInvoiceSummary,
+  formatInvoiceStatus,
   formatOrderDate,
 };

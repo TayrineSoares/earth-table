@@ -1,11 +1,33 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Check, Info, Star } from 'lucide-react';
 import { fetchUserByAuthId, patchUserProfile } from '../helpers/userHelpers';
+import {
+  fetchPartnerDetailByUser,
+  formatCents,
+  formatPayoutLabel,
+  setPayoutPreference,
+} from '../helpers/partnerHelpers';
+import PartnerMonthList from '../components/PartnerMonthList';
 import "../styles/Profile.css";
 import loginImage from "../assets/images/accountImage.png"
 import loadingAnimation from '../assets/loading.json'
 import Lottie from 'lottie-react';
 
+const ProfileInfoTip = ({ text }) => (
+  <span className="profile-info-tip">
+    <button
+      type="button"
+      className="profile-info-button"
+      aria-label={text}
+    >
+      <Info size={14} strokeWidth={2} />
+    </button>
+    <span className="profile-info-tooltip" role="tooltip">
+      {text}
+    </span>
+  </span>
+);
 
 const Profile = () => {
   const { auth_user_id } = useParams();
@@ -16,6 +38,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [partner, setPartner] = useState(null);
+  const [savingPayout, setSavingPayout] = useState(false);
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
@@ -38,12 +62,6 @@ const Profile = () => {
     setDraft((prev) => ({ ...prev, phone_number: digitsOnly }));
   };
 
-  const editableFields = [
-    { label: "First Name", name: "first_name", type: "text" },
-    { label: "Last Name", name: "last_name", type: "text" },
-    { label: "Phone Number", name: "phone_number", type: "tel" },
-  ];
-
   const validateForm = (data) => {
     const formErrors = [];
     const nameRegex = /^[a-zA-ZÀ-ÿ' -]{2,}$/;
@@ -65,8 +83,12 @@ const Profile = () => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const data = await fetchUserByAuthId(auth_user_id);
+        const [data, partnerData] = await Promise.all([
+          fetchUserByAuthId(auth_user_id),
+          fetchPartnerDetailByUser(auth_user_id).catch(() => null),
+        ]);
         setUser(data);
+        setPartner(partnerData);
       } catch (err) {
         setError(`Error: ${err.message}`);
       } finally {
@@ -117,6 +139,24 @@ const Profile = () => {
     }
   };
 
+  const handlePayoutSwitch = async (payoutType) => {
+    if (!partner || partner.payout_type === payoutType || savingPayout) return;
+    setSavingPayout(true);
+    setError("");
+    try {
+      const updated = await setPayoutPreference(auth_user_id, payoutType);
+      setPartner((prev) => ({
+        ...prev,
+        ...updated,
+        months: prev.months,
+      }));
+    } catch (err) {
+      setError(err.message || 'Failed to update payout preference.');
+    } finally {
+      setSavingPayout(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div 
@@ -143,35 +183,46 @@ const Profile = () => {
       </div>
       <div className="profile-form">
         <div className='page-wrapper'>
-          <h1 className="profile-text">{user.first_name}'s Profile</h1>
-          <br />
+          <h1 className="profile-text">
+            <span>{user.first_name}'s Profile</span>
+            {partner && (
+              <span className="profile-partner-badge">
+                <Star size={12} fill="currentColor" strokeWidth={0} />
+                Partner
+              </span>
+            )}
+          </h1>
 
-          {message && <p style={{ color: "green" }}>{message}</p>}
-          {error && <p style={{ whiteSpace: "pre-line", color: "red" }}>{error}</p>}
+          {message && <p className="profile-status is-success">{message}</p>}
+          {error && <p className="profile-status is-error">{error}</p>}
 
           {!isEditing ? (
             <>
-              <div className="your-name-container">
-                <p className="your-name-header">Email</p>
-                <p className='your-detail'>{user.email}</p>
+              <div className="profile-grid">
+                <div className="profile-field">
+                  <p className="profile-field-label">First Name</p>
+                  <p className="profile-field-value">{user.first_name || '(not set)'}</p>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Last Name</p>
+                  <p className="profile-field-value">{user.last_name || '(not set)'}</p>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Phone Number</p>
+                  <p className="profile-field-value">{formatPhoneNumber(user.phone_number)}</p>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Email</p>
+                  <p className="profile-field-value">{user.email}</p>
+                </div>
               </div>
 
-              {editableFields.map(({ label, name }) => (
-                <div key={name} className="your-name-container">
-                  <p className="your-name-header">{label}</p>
-                  <p className="your-detail">
-                    {name === "phone_number"
-                      ? formatPhoneNumber(user[name])
-                      : (user[name] || "(not set)")}
-                  </p>
-                </div>
-              ))}
-
               <button
-                className="contact-submit-button"
+                className="profile-submit-button"
+                type="button"
                 onClick={() => {
                   setIsEditing(true);
-                  setDraft({...user});  
+                  setDraft({...user});
                   setMessage("");
                   setError("");
                 }}
@@ -181,64 +232,132 @@ const Profile = () => {
             </>
           ) : (
             <form onSubmit={handleUpdate}>
-              <div className="your-name-container">
-                <p className="your-name-header">Email</p>
-                <input
-                  name="email"
-                  value={user.email}
-                  disabled
-                  className="your-name-input"
-                />
+              <div className="profile-grid">
+                <div className="profile-field">
+                  <p className="profile-field-label">First Name</p>
+                  <input
+                    type="text"
+                    name="first_name"
+                    value={draft?.first_name || ""}
+                    onChange={handleChange}
+                    className="profile-field-input"
+                  />
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Last Name</p>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={draft?.last_name || ""}
+                    onChange={handleChange}
+                    className="profile-field-input"
+                  />
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Phone Number</p>
+                  <input
+                    type="tel"
+                    name="phone_number"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={formatPhoneForInput(draft?.phone_number)}
+                    onChange={handlePhoneTyping}
+                    className="profile-field-input"
+                    placeholder="(XXX) XXX-XXXX"
+                  />
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">Email</p>
+                  <input
+                    name="email"
+                    value={user.email}
+                    disabled
+                    className="profile-field-input"
+                  />
+                </div>
               </div>
 
-              {editableFields.map(({ label, name, type }) => (
-                <div key={name} className="your-name-container">
-                  <p className="your-name-header">{label}</p>
-                  {name === "phone_number" ? (
-                    <input
-                      type="tel"
-                      name="phone_number"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      value={formatPhoneForInput(draft?.phone_number)}
-                      onChange={handlePhoneTyping}
-                      className="your-name-input"
-                      placeholder="(XXX) XXX-XXXX"
-                    />
-                  ) : (
-                    <input
-                      type={type}
-                      name={name}
-                      value={draft?.[name] || ""}
-                      onChange={handleChange}
-                      className="your-name-input"
-                    />
-                  )}
-                </div>
-              ))}
-
-              <br />
-              <button
-                className="contact-submit-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? "Updating..." : "Update Profile"}
-              </button>
-              <br /><br />
-              <button
-                className="contact-submit-button"
-                type="button"
-                onClick={() => {
-                  setIsEditing(false);
-                  setDraft(null);
-                  setMessage("");
-                  setError("");
-                }}
-              >
-                Go Back
-              </button>
+              <div className="profile-actions">
+                <button
+                  className="profile-submit-button"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Update Profile"}
+                </button>
+                <button
+                  className="profile-submit-button"
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setDraft(null);
+                    setMessage("");
+                    setError("");
+                  }}
+                >
+                  Go Back
+                </button>
+              </div>
             </form>
+          )}
+
+          {partner && (
+            <section className="profile-partner">
+              <h2 className="profile-partner-title">Partner earnings</h2>
+
+              <div className="profile-partner-grid">
+                <div className="profile-field">
+                  <p className="profile-field-label">Referral code</p>
+                  <p className="profile-field-value">{partner.referral_code}</p>
+                </div>
+                <div className="profile-field profile-payout-field">
+                  <p className="profile-field-label">
+                    Payout
+                    <ProfileInfoTip text="Applies to new orders immediately. Cash is invoiced at the end of the month; credit is available immediately." />
+                  </p>
+                  <div className="profile-payout-switch">
+                    {['cash', 'credit'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        className={
+                          partner.payout_type === type
+                            ? 'profile-payout-button is-active'
+                            : 'profile-payout-button'
+                        }
+                        disabled={savingPayout || partner.payout_type === type}
+                        onClick={() => handlePayoutSwitch(type)}
+                      >
+                        {partner.payout_type === type && (
+                          <Check size={14} strokeWidth={2.5} />
+                        )}
+                        {formatPayoutLabel(type)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">This month</p>
+                  <p className="profile-field-value">{formatCents(partner.current_month_cents)}</p>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">
+                    Total earnings
+                    <ProfileInfoTip text="All cashback you've earned from referrals, including cash and store credit." />
+                  </p>
+                  <p className="profile-field-value">{formatCents(partner.total_earn_cents)}</p>
+                </div>
+                <div className="profile-field">
+                  <p className="profile-field-label">
+                    Wallet balance
+                    <ProfileInfoTip text="Store credit applied automatically on your next order." />
+                  </p>
+                  <p className="profile-field-value">{formatCents(partner.available_credit_cents)}</p>
+                </div>
+              </div>
+
+              <PartnerMonthList months={partner.months || []} />
+            </section>
           )}
         </div>
       </div>

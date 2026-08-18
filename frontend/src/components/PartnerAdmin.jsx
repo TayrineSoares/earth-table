@@ -6,13 +6,12 @@ import {
   fetchPartnerDetail,
   fetchPartners,
   formatCents,
-  formatInvoiceSummary,
-  formatOrderDate,
   formatPayoutLabel,
   setPartnerActive,
   updatePartnerCode,
 } from '../helpers/partnerHelpers';
 import AdminTabLoading from './AdminTabLoading';
+import PartnerMonthList from './PartnerMonthList';
 import '../styles/PartnerAdmin.css';
 
 const PartnerAdmin = () => {
@@ -29,7 +28,6 @@ const PartnerAdmin = () => {
   const [editingCodeId, setEditingCodeId] = useState(null);
   const [editCode, setEditCode] = useState('');
   const [savingCode, setSavingCode] = useState(false);
-  const [openedClosedMonths, setOpenedClosedMonths] = useState({});
 
   const load = async () => {
     const [partnerRows, userRows] = await Promise.all([
@@ -162,16 +160,6 @@ const PartnerAdmin = () => {
     }
   };
 
-  const handleToggleClosedMonth = (partnerId, period) => {
-    setOpenedClosedMonths((prev) => ({
-      ...prev,
-      [partnerId]: {
-        ...(prev[partnerId] || {}),
-        [period]: !prev[partnerId]?.[period],
-      },
-    }));
-  };
-
   const handleToggleRow = async (partnerId) => {
     const nextId = expandedId === partnerId ? null : partnerId;
     setExpandedId(nextId);
@@ -188,13 +176,6 @@ const PartnerAdmin = () => {
         [partnerId]: { loading: false, error: err.message || 'Failed to load months.' },
       }));
     }
-  };
-
-  const invoiceStatusLabel = (status) => {
-    if (status === 'paid') return 'Paid';
-    if (status === 'credited') return 'Credited';
-    if (status === 'unpaid') return 'Unpaid';
-    return status || 'No invoice';
   };
 
   const partnerName = (partner) => {
@@ -385,102 +366,8 @@ const PartnerAdmin = () => {
                           </p>
                           {detail.loading && <p className="partner-empty">Loading months…</p>}
                           {detail.error && <p className="partner-empty">{detail.error}</p>}
-                          {!detail.loading && !detail.error && months.length === 0 && (
-                            <p className="partner-empty">No invoices or monthly cashback yet.</p>
-                          )}
-                          {!detail.loading && !detail.error && months.length > 0 && (
-                            <div className="partner-month-list">
-                              {months.map((month) => {
-                                const isOpenMonth = !month.invoice;
-                                const isExpandedMonth =
-                                  isOpenMonth || !!openedClosedMonths[row.id]?.[month.period];
-                                return (
-                                <div key={month.period} className="partner-month-card">
-                                  <button
-                                    type="button"
-                                    className={
-                                      isOpenMonth
-                                        ? 'partner-month-header'
-                                        : 'partner-month-header is-toggle'
-                                    }
-                                    onClick={() => {
-                                      if (!isOpenMonth) {
-                                        handleToggleClosedMonth(row.id, month.period);
-                                      }
-                                    }}
-                                    disabled={isOpenMonth}
-                                    aria-expanded={isExpandedMonth}
-                                  >
-                                    <div className="partner-month-title">
-                                      {!isOpenMonth && (
-                                        <span className="partner-month-chevron">
-                                          {isExpandedMonth ? '▾' : '▸'}
-                                        </span>
-                                      )}
-                                      <strong>{month.label}</strong>
-                                      <span
-                                        className={
-                                          isOpenMonth
-                                            ? 'partner-month-badge is-open'
-                                            : 'partner-month-badge is-closed'
-                                        }
-                                      >
-                                        {isOpenMonth ? 'Open' : 'Closed'}
-                                      </span>
-                                    </div>
-                                    <span>{formatCents(month.earn_cents)}</span>
-                                  </button>
-                                  {isExpandedMonth && (
-                                    <div className="partner-month-body">
-                                      <p className="partner-month-meta">
-                                        Invoice: {formatInvoiceSummary(month.invoice, invoiceStatusLabel)}
-                                      </p>
-                                      {month.orders.length > 0 && (
-                                        <table className="partner-month-orders">
-                                          <thead>
-                                            <tr>
-                                              <th>ORDER DATE</th>
-                                              <th>ORDER #</th>
-                                              <th>CUSTOMER NAME</th>
-                                              <th>SUBTOTAL</th>
-                                              <th>CASHBACK</th>
-                                              <th>METHOD</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {month.orders.map((order, idx) => (
-                                              <tr key={`${order.order_id || 'earn'}-${idx}`}>
-                                                <td>{formatOrderDate(order.order_date)}</td>
-                                                <td>{order.order_id || '—'}</td>
-                                                <td>{order.customer_name || '—'}</td>
-                                                <td>
-                                                  {order.item_subtotal_cents != null
-                                                    ? formatCents(order.item_subtotal_cents)
-                                                    : '—'}
-                                                </td>
-                                                <td>{formatCents(order.amount_cents)}</td>
-                                                <td>{formatPayoutLabel(order.payout_type)}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                          <tfoot>
-                                            <tr>
-                                              <td colSpan={4} className="partner-month-total-label">TOTAL CASH</td>
-                                              <td colSpan={2}>{formatCents(month.cash_cents)}</td>
-                                            </tr>
-                                            <tr>
-                                              <td colSpan={4} className="partner-month-total-label">TOTAL CREDIT</td>
-                                              <td colSpan={2}>{formatCents(month.credit_cents)}</td>
-                                            </tr>
-                                          </tfoot>
-                                        </table>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                );
-                              })}
-                            </div>
+                          {!detail.loading && !detail.error && (
+                            <PartnerMonthList months={months} />
                           )}
                         </td>
                       </tr>

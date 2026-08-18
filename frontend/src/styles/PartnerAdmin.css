@@ -265,6 +265,7 @@
   border-radius: 10px;
   padding: 12px;
   background: #FFFBF3;
+  font-family: var(--body-font);
 }
 
 .partner-month-header {
@@ -279,7 +280,7 @@
   background: none;
   text-align: left;
   font-family: var(--body-font);
-  font-size: 14px;
+  font-size: 16px;
   color: inherit;
 }
 
@@ -347,7 +348,7 @@
 .partner-month-meta {
   margin: 6px 0 10px;
   font-family: var(--body-font);
-  font-size: 13px;
+  font-size: 14px;
   color: #BE7200;
 }
 
@@ -359,13 +360,14 @@
 .partner-month-orders th,
 .partner-month-orders td {
   border: 1px solid #FEE8D4;
-  padding: 6px 8px;
-  font-size: 12px;
+  padding: 8px 10px;
+  font-family: var(--body-font);
+  font-size: 14px;
 }
 
 .partner-month-orders th {
   background-color: #FEE8D4;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
 }
 
@@ -377,7 +379,7 @@
 .partner-month-total-label {
   text-align: right;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
 }
 

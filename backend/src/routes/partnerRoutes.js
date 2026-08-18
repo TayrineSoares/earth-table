@@ -8,6 +8,7 @@ const {
   updatePartner,
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
+  getPartnerDetailByUserId,
   setPayoutPreference,
 } = require('../queries/partner');
 const { sendEmail } = require('../utils/email');
@@ -92,6 +93,18 @@ router.get('/by-user/:auth_user_id', async (req, res) => {
     res.json(partner);
   } catch (err) {
     handlePartnerError(res, err, '[GET /partners/by-user]');
+  }
+});
+
+router.get('/by-user/:auth_user_id/detail', async (req, res) => {
+  try {
+    const partner = await getPartnerDetailByUserId(req.params.auth_user_id);
+    if (!partner) {
+      return res.status(404).json({ error: 'Partner not found' });
+    }
+    res.json(partner);
+  } catch (err) {
+    handlePartnerError(res, err, '[GET /partners/by-user/detail]');
   }
 });
 

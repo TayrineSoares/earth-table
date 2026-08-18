@@ -391,6 +391,12 @@ async function getPartnerAdminDetail(id) {
   });
 }
 
+async function getPartnerDetailByUserId(userId) {
+  const partner = await getPartnerByUserId(userId);
+  if (!partner) return null;
+  return getPartnerAdminDetail(partner.id);
+}
+
 async function assertReferralCodeAvailable(referralCode, excludePartnerId = null) {
   const existingCode = await getPartnerByCode(referralCode);
   if (existingCode && existingCode.id !== excludePartnerId) {
@@ -689,6 +695,7 @@ module.exports = {
   listPartners,
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
+  getPartnerDetailByUserId,
   createPartner,
   updatePartner,
   getActiveReferralByCode,
