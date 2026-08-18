@@ -24,20 +24,216 @@ const getPostalFromBuyerInfo = (buyerStripeInfo) => {
   }
 };
 
-// STRICT: read fee_cents_server (pre-tax) from Stripe meta and compute tax-included
-const getDeliveryFeeFromBuyerInfoStrict = (buyerStripeInfo) => {
+const parseBuyerStripeInfo = (buyerStripeInfo) => {
   try {
-    const parsed =
-      typeof buyerStripeInfo === "string"
-        ? JSON.parse(buyerStripeInfo)
-        : buyerStripeInfo || {};
-    const preTax = Number(parsed?.delivery_meta?.fee_cents_server) || 0;
-    const withTax = preTax > 0 ? Math.round(preTax * (1 + HST_RATE)) : 0;
-    return { preTaxCents: preTax, withTaxCents: withTax };
+    return typeof buyerStripeInfo === "string"
+      ? JSON.parse(buyerStripeInfo)
+      : buyerStripeInfo || {};
   } catch {
-    return { preTaxCents: 0, withTaxCents: 0 };
+    return {};
   }
 };
+
+// STRICT: read fee_cents_server (pre-tax) from Stripe meta and compute tax-included
+const getDeliveryFeeFromBuyerInfoStrict = (buyerStripeInfo) => {
+  const parsed = parseBuyerStripeInfo(buyerStripeInfo);
+  const preTax = Number(parsed?.delivery_meta?.fee_cents_server) || 0;
+  const withTax = preTax > 0 ? Math.round(preTax * (1 + HST_RATE)) : 0;
+  return { preTaxCents: preTax, withTaxCents: withTax };
+};
+
+function wrapEmail(inner) {
+  return `<div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">${inner}</div>`;
+}
+
+function h1(text) {
+  return `<h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">${text}</h1>`;
+}
+
+function h2(text) {
+  return `<h2 style="font-size:16px; margin:16px 0 8px; color:#333;">${text}</h2>`;
+}
+
+function card(inner) {
+  return `<div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">${inner}</div>`;
+}
+
+function rowHtml(label, value, last = false) {
+  return `<p style="margin:0 0 ${last ? "0" : "6px"};"><strong>${label}:</strong> ${value}</p>`;
+}
+
+function getOrderDiscount(order = {}) {
+  const parsed = parseBuyerStripeInfo(order.buyer_stripe_payment_info);
+  const meta = parsed.discount_meta || {};
+  const code = String(meta.code || order.referral_code || "").trim();
+  if (!code) return null;
+
+  const kind = meta.kind || (order.referral_code ? "referral" : "promo");
+  const percent = Number(meta.percent);
+  const itemSubtotalCents = Number(order.item_subtotal_cents) || 0;
+  let amountOffCents = Number(meta.amount_off_cents);
+  if (!Number.isFinite(amountOffCents) || amountOffCents < 0) {
+    const pct = Number.isFinite(percent) ? percent : kind === "referral" ? 15 : 0;
+    amountOffCents = Math.round(itemSubtotalCents * pct / 100);
+  }
+
+  return {
+    kind,
+    label: kind === "referral" ? "Referral" : "Promo",
+    code: code.toUpperCase(),
+    percent: Number.isFinite(percent) ? percent : kind === "referral" ? 15 : null,
+    amountOffCents,
+    itemSubtotalCents,
+  };
+}
+
+function listItems(order) {
+  return Array.isArray(order.products) ? order.products : [];
+}
+
+function itemsHtml(order) {
+  return listItems(order)
+    .map((p) => {
+      const name = p.slug ?? p.name ?? "Item";
+      const qty = p.quantity ?? 1;
+      return `<li style="margin:2px 0;">${qty} × ${name} — ${formatMoney(p.unit_price_cents ?? 0)}</li>`;
+    })
+    .join("");
+}
+
+function itemsText(order) {
+  const rows = listItems(order).map((p) => {
+    const name = p.slug ?? p.name ?? "Item";
+    const qty = p.quantity ?? 1;
+    return `- ${qty}x ${name} @ ${formatMoney(p.unit_price_cents ?? 0)}`;
+  });
+  return rows.join("\n") || "(no items)";
+}
+
+function totalsParts(order = {}) {
+  const discount = getOrderDiscount(order);
+  const itemSubtotalCents = Number(order.item_subtotal_cents) || 0;
+  const creditCents = Number(order.credit_applied_cents) || 0;
+  return { discount, itemSubtotalCents, creditCents };
+}
+
+function renderTotalsHtml(order, {
+  totalLabel = "Total",
+  subtotalLabel,
+  includeBreakdown = true,
+  includeTotal = true,
+} = {}) {
+  const { discount, itemSubtotalCents, creditCents } = totalsParts(order);
+  const lines = [];
+  const subtotalText = subtotalLabel
+    || (discount ? "Items subtotal (before discount)" : "Subtotal");
+  if (includeBreakdown && itemSubtotalCents > 0) {
+    lines.push(rowHtml(subtotalText, formatMoney(itemSubtotalCents)));
+  }
+  if (includeBreakdown && discount) {
+    const pct = discount.percent != null ? ` — ${discount.percent}% off` : "";
+    lines.push(rowHtml(
+      `${discount.label} (${discount.code})${pct}`,
+      `−${formatMoney(discount.amountOffCents)}`
+    ));
+  }
+  if (includeBreakdown && creditCents > 0) {
+    lines.push(rowHtml("Store credit", `−${formatMoney(creditCents)}`));
+  }
+  if (includeTotal) {
+    lines.push(
+      `<p style="margin:${includeBreakdown ? "8px 0 0" : "0"};"><strong>${totalLabel}:</strong> ${formatMoney(order.total_cents ?? 0)}</p>`
+    );
+  }
+  return lines.join("\n");
+}
+
+function renderTotalsText(order, {
+  totalLabel = "Total",
+  subtotalLabel,
+  includeBreakdown = true,
+  includeTotal = true,
+} = {}) {
+  const { discount, itemSubtotalCents, creditCents } = totalsParts(order);
+  const lines = [];
+  const subtotalText = subtotalLabel
+    || (discount ? "Items subtotal (before discount)" : "Subtotal");
+  if (includeBreakdown && itemSubtotalCents > 0) {
+    lines.push(`${subtotalText}: ${formatMoney(itemSubtotalCents)}`);
+  }
+  if (includeBreakdown && discount) {
+    const pct = discount.percent != null ? ` (${discount.percent}% off)` : "";
+    lines.push(`${discount.label} (${discount.code})${pct}: -${formatMoney(discount.amountOffCents)}`);
+  }
+  if (includeBreakdown && creditCents > 0) {
+    lines.push(`Store credit: -${formatMoney(creditCents)}`);
+  }
+  if (includeTotal) {
+    lines.push(`${totalLabel}: ${formatMoney(order.total_cents ?? 0)}`);
+  }
+  return lines.join("\n");
+}
+
+function mutedHtml(text) {
+  return `<p style="margin:0 0 6px; font-size:12px; color:#888;">${text}</p>`;
+}
+
+function deliveryFeeLine(order) {
+  const { preTaxCents, withTaxCents } = getDeliveryFeeFromBuyerInfoStrict(
+    order.buyer_stripe_payment_info
+  );
+  if (preTaxCents <= 0) return { html: "", text: "" };
+  const value = `${formatMoney(preTaxCents)} + HST (13%): = ${formatMoney(withTaxCents)} Total`;
+  return {
+    html: rowHtml("Delivery Fee", value),
+    text: `Delivery Fee: ${value}`,
+  };
+}
+
+function fulfillmentHtml(order) {
+  const note = (order.special_note || "").trim();
+  if (order.delivery === true) {
+    const postal = getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
+    const date = order.delivery_date_formatted ?? "—";
+    const fee = deliveryFeeLine(order);
+    return `
+      ${h2("Delivery")}
+      ${rowHtml("Delivery Date & Time", `${date}, between 11:00 AM – 6:00 PM`)}
+      ${fee.html}
+      ${mutedHtml(`Delivery Postal Code (used for Quote) ${postal}`)}
+      <p style="margin:8px 0 4px;"><strong>Full Address and Special Instructions:</strong></p>
+      <blockquote style="margin:8px 0 0; padding-left:12px; border-left:3px solid #ddd;">${nl2br(note || "—")}</blockquote>
+    `;
+  }
+  const date = order.pickup_date_formatted ?? "—";
+  const time = order.pickup_time_slot ?? "—";
+  return `
+    ${h2("Pickup")}
+    ${rowHtml("Pickup Date & Time", `${date}, between ${time}`)}
+    ${rowHtml("Pickup Address", "77 Woodstream Blvd, Vaughan, ON L4L 7Y7", !note)}
+    ${note ? rowHtml("Special Instructions", nl2br(note), true) : ""}
+  `;
+}
+
+function fulfillmentText(order) {
+  const note = (order.special_note || "").trim();
+  if (order.delivery === true) {
+    const postal = getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
+    const date = order.delivery_date_formatted ?? "—";
+    const fee = deliveryFeeLine(order);
+    return `Delivery
+Delivery Date & Time: ${date}, between 11:00 AM – 6:00 PM
+${fee.text ? `${fee.text}\n` : ""}Delivery Postal Code (used for Quote) ${postal}
+
+Full Address and Special Instructions:
+${note || "—"}`;
+  }
+  const date = order.pickup_date_formatted ?? "—";
+  const time = order.pickup_time_slot ?? "—";
+  return `Pickup
+Pickup Date & Time: ${date}, between ${time}
+Pickup Address: 77 Woodstream Blvd, Vaughan, ON L4L 7Y7${note ? `\nSpecial Instructions: ${note}` : ""}`;
+}
 
 /**
  * Customer order confirmation email
@@ -45,283 +241,143 @@ const getDeliveryFeeFromBuyerInfoStrict = (buyerStripeInfo) => {
 function renderCustomerOrderEmail(detailedOrder = {}) {
   const id = detailedOrder.id ?? "N/A";
   const status = detailedOrder.status ?? "processing";
-  const total = formatMoney(detailedOrder.total_cents ?? 0);
-  const pickupDate = detailedOrder.pickup_date_formatted ?? "—";
-  const pickupTime = detailedOrder.pickup_time_slot ?? "—";
-
-  const isDelivery = detailedOrder.delivery === true;
-  const deliveryDate = detailedOrder.delivery_date_formatted ?? "—";
-  const specialInstructions = detailedOrder.special_note ?? "—";
-
-  const deliveryPostal = getPostalFromBuyerInfo(
-    detailedOrder.buyer_stripe_payment_info
-  );
-  const { preTaxCents, withTaxCents } = getDeliveryFeeFromBuyerInfoStrict(
-    detailedOrder.buyer_stripe_payment_info
-  );
-
-  const items = Array.isArray(detailedOrder.products)
-    ? detailedOrder.products
-    : [];
-  const itemsHtml = items
-    .map((p) => {
-      const name = p.slug ?? p.name ?? "Item";
-      const qty = p.quantity ?? 1;
-      const each = formatMoney(p.unit_price_cents ?? 0);
-      return `<li style="margin:2px 0;">${qty} x ${name} — ${each}</li>`;
-    })
-    .join("");
-
   const subject = `Order Confirmation #${id} — Earth Table`;
 
-  const html = `
-    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
-      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">Thank you for your order!</h1>
-      <p style="margin:0 0 16px;">We've received your order and it's being processed.</p>
+  const html = wrapEmail(`
+      ${h1("Thank you for your order!")}
+      <p style="margin:0 0 16px;">We've received your order and it's being prepared.</p>
+      ${card(`
+        ${rowHtml("Order ID", id)}
+        ${rowHtml("Status", status)}
+        ${rowHtml("Total", formatMoney(detailedOrder.total_cents ?? 0), true)}
+      `)}
 
-      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
-        <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
-        <p style="margin:0;"><strong>Status:</strong> ${status}</p>
-      </div>
+      ${h2("Items")}
+      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml(detailedOrder)}</ul>
 
-      <h2 style="font-size:16px; margin:0 0 8px; color:#333;">Items</h2>
-      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
+      ${(getOrderDiscount(detailedOrder) || Number(detailedOrder.credit_applied_cents) > 0)
+        ? renderTotalsHtml(detailedOrder, { includeTotal: false })
+        : ""}
 
-      <p style="margin:12px 0 6px;"><strong>Total:</strong> ${total} <span style="color:#666; font-size:12px;">(includes 13% HST)</span></p>
+      ${fulfillmentHtml(detailedOrder)}
 
-      ${
-        isDelivery
-          ? `
-            <p style="margin:6px 0;"><strong>Order Type:</strong> Delivery</p>
-            <p style="margin:6px 0;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
-            <p style="margin:6px 0;"><strong>Delivery Window:</strong> 11:00 AM – 6:00 PM</p>
-            ${
-              withTaxCents > 0
-                ? `<p style="margin:6px 0;"><strong>Delivery Fee:</strong> ${formatMoney(
-                    withTaxCents
-                  )} <span style="color:#666; font-size:12px;">(incl 13% HST)</span></p>`
-                : ""
-            }
-            ${
-              preTaxCents > 0
-                ? `<div style="font-size:12px; color:#666; margin:2px 0 10px;">
-              Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(
-                    Math.max(withTaxCents - preTaxCents, 0)
-                  )}
-            </div>`
-                : ""
-            }
-            <p style="margin:6px 0;"><strong>Delivery Postal Code used for Quote:</strong> ${deliveryPostal}</p>
-            <p style="margin:6px 0;"><strong>Delivery address and Special Instructions:</strong></p>
-            <blockquote style="margin:8px 0; padding-left:12px; border-left:3px solid #ddd;">
-              ${nl2br(specialInstructions)}
-            </blockquote>
-          `
-          : `
-            <p style="margin:6px 0;"><strong>Order Type:</strong> Pickup</p>
-            <p style="margin:6px 0;"><strong>Pickup Date:</strong> ${pickupDate}</p>
-            <p style="margin:0 0 16px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
-            <p style="margin:0 0 16px;"><strong>Pickup Address:</strong> 77 Woodstream Blvd, Vaughan, ON  - L4L 7Y7 </p>
-            <p style="margin:0 0 16px;"><strong>Special Instructions:</strong> ${nl2br(
-              specialInstructions
-            )}</p>
-          `
-      }
-
-      <p style="margin:16px 0;">Earth Table Team 🧡</p>
-
-      <hr style="border:none; border-top:1px solid #eee; margin:12px 0;" />
-
+      <p style="margin:16px 0 0;">Earth Table Team 🧡</p>
+      <hr style="border:none; border-top:1px solid #eee; margin:16px 0 12px;" />
       <p style="margin:8px 0 0; font-size:12px; color:#666;">
-        Questions about your order? Email us at
-        <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
+        Questions? Email <a href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
       </p>
-      <p style="margin:4px 0 0; font-size:12px; color:#666;">*** Please do not reply to this email. *** </p>
-    </div>
-  `;
+      <p style="margin:4px 0 0; font-size:12px; color:#666;">Please do not reply to this email.</p>
+  `);
 
-  const itemsText = items
-    .map((p) => {
-      const name = p.slug ?? p.name ?? "Item";
-      const qty = p.quantity ?? 1;
-      const price = formatMoney(p.unit_price_cents ?? 0);
-      return `- ${qty}x ${name} @ ${price}`;
-    })
-    .join("\n");
-
-  const text = `Earth Table — Order #${id} confirmed
-
-Thank you for your order!
+  const text = `Thank you for your order!
 
 Order ID: ${id}
 Status: ${status}
+Total: ${formatMoney(detailedOrder.total_cents ?? 0)}
 
-Items:
-${itemsText || "(no items)"}
+Items
+${itemsText(detailedOrder)}
+${(getOrderDiscount(detailedOrder) || Number(detailedOrder.credit_applied_cents) > 0)
+  ? `\n${renderTotalsText(detailedOrder, { includeTotal: false })}\n`
+  : "\n"}
 
-Total: ${total} (includes 13% HST)
-${
-  isDelivery
-    ? `Order Type: Delivery
-Delivery Date: ${deliveryDate}
-Delivery Window: 11:00 AM – 6:00 PM
-${
-  withTaxCents > 0
-    ? `Delivery Fee (incl 13% HST): ${formatMoney(withTaxCents)}
-Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(
-        Math.max(withTaxCents - preTaxCents, 0)
-      )}`
-    : ""
-}
-Delivery Postal (for quote): ${deliveryPostal}
-Delivery address and Special Instructions:
-${detailedOrder.special_note ?? "—"}`
-    : `Order Type: Pickup
-Pickup Date: ${pickupDate}
-Pickup Time: ${pickupTime}
-Special Instructions:
-${detailedOrder.special_note ?? "—"}`
-}
+${fulfillmentText(detailedOrder)}
 
-Earth Table Team`;
+Earth Table Team
+Questions? hello@earthtableco.ca
+Please do not reply to this email.`;
 
   return { subject, html, text };
+}
+
+function partnerFirstName(partnerEarn) {
+  const name = partnerEarn?.name || "Partner";
+  return (partnerEarn?.first_name || name.split(" ")[0] || "Partner").trim();
+}
+
+function partnerEarnHtml(partnerEarn) {
+  if (!partnerEarn) return "";
+  const name = partnerEarn.name || "Partner";
+  const first = partnerFirstName(partnerEarn);
+  return `
+      ${h2("Partner cashback")}
+      ${card(`
+        ${rowHtml("Partner", name)}
+        ${rowHtml("Code", partnerEarn.code || "—")}
+        ${rowHtml("Items subtotal (before discount)", formatMoney(partnerEarn.item_subtotal_cents))}
+        ${rowHtml(`${first} cashback`, formatMoney(partnerEarn.cashback_cents), true)}
+      `)}
+  `;
+}
+
+function partnerEarnText(partnerEarn) {
+  if (!partnerEarn) return "";
+  const name = partnerEarn.name || "Partner";
+  const first = partnerFirstName(partnerEarn);
+  return `
+Partner cashback
+Partner: ${name}
+Code: ${partnerEarn.code || "—"}
+Items subtotal (before discount): ${formatMoney(partnerEarn.item_subtotal_cents)}
+${first} cashback: ${formatMoney(partnerEarn.cashback_cents)}
+`;
 }
 
 /**
  * Owner/manager notification email
  */
-function renderOwnerOrderEmail(detailedOrder = {}) {
+function renderOwnerOrderEmail(detailedOrder = {}, extras = {}) {
   const id = detailedOrder.id ?? "N/A";
   const status = detailedOrder.status ?? "processing";
-  const total = formatMoney(detailedOrder.total_cents ?? 0);
-  const pickupDate = detailedOrder.pickup_date_formatted ?? "—";
-  const pickupTime = detailedOrder.pickup_time_slot ?? "—";
   const buyerEmail = detailedOrder.buyer_email ?? "—";
   const buyerName = detailedOrder.buyer_name ?? "—";
   const buyerPhone = detailedOrder.buyer_phone_number ?? "—";
-  const specialInstructions = detailedOrder.special_note ?? "—";
-  const isDelivery = detailedOrder.delivery === true;
-  const deliveryDate = detailedOrder.delivery_date_formatted ?? "—";
-
-  const deliveryPostal = getPostalFromBuyerInfo(
-    detailedOrder.buyer_stripe_payment_info
-  );
-  const { preTaxCents, withTaxCents } = getDeliveryFeeFromBuyerInfoStrict(
-    detailedOrder.buyer_stripe_payment_info
-  );
-
-  const items = Array.isArray(detailedOrder.products)
-    ? detailedOrder.products
-    : [];
-  const itemsHtml = items
-    .map((p) => {
-      const name = p.slug ?? p.name ?? "Item";
-      const qty = p.quantity ?? 1;
-      const price = formatMoney(p.unit_price_cents ?? 0);
-      return `<li>${qty}x ${name} — ${price}</li>`;
-    })
-    .join("");
-
+  const partnerEarn = extras.partnerEarn || detailedOrder.partnerEarn || null;
   const subject = `🛒 New order #${id} — Earth Table`;
 
-  const html = `
-    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
-      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">New order received</h1>
+  const html = wrapEmail(`
+      ${h1("New order received!")}
+      ${card(`
+        ${rowHtml("Buyer Name", buyerName)}
+        ${rowHtml("Email", buyerEmail)}
+        ${rowHtml("Phone", buyerPhone)}
+        ${rowHtml("Order ID", id)}
+        ${rowHtml("Status", status)}
+        ${rowHtml("Total", formatMoney(detailedOrder.total_cents ?? 0), true)}
+      `)}
 
-      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
-        <p style="margin:0 0 6px;"><strong>Order ID:</strong> ${id}</p>
-        <p style="margin:0 0 6px;"><strong>Status:</strong> ${status}</p>
-        <p style="margin:0;"><strong>Total:</strong> ${total}</p>
-      </div>
+      ${h2("Items")}
+      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml(detailedOrder)}</ul>
 
-      ${
-        isDelivery
-          ? `
-            <p style="margin:0 0 6px;"><strong>Order Type:</strong> Delivery</p>
-            <p style="margin:0 0 6px;"><strong>Delivery Date:</strong> ${deliveryDate}</p>
-            <p style="margin:0 0 6px;"><strong>Delivery Window:</strong> 11:00 AM - 6:00 PM</p>
-            ${
-              withTaxCents > 0
-                ? `<p style="margin:0 0 6px;"><strong>Delivery Fee:</strong> ${formatMoney(
-                    withTaxCents
-                  )} <span style="color:#666; font-size:12px;">(incl 13% HST)</span></p>`
-                : ""
-            }
-            ${
-              preTaxCents > 0
-                ? `<div style="font-size:12px; color:#666; margin:2px 0 10px;">
-              Pre-tax: ${formatMoney(preTaxCents)} • HST (13%): ${formatMoney(
-                    Math.max(withTaxCents - preTaxCents, 0)
-                  )}
-            </div>`
-                : ""
-            }
-            <p style="margin:0 0 12px;"><strong>Delivery Postal Code used for Quote:</strong> ${deliveryPostal}</p>
-            <p style="margin:0 0 12px;"><strong>Delivery address and Special Instructions:</strong><br/>${nl2br(
-              specialInstructions
-            )}</p>
-          `
-          : `
-            <p style="margin:0 0 6px;"><strong>Order Type:</strong> Pickup</p>
-            <p style="margin:0 0 6px;"><strong>Pickup Date:</strong> ${pickupDate}</p>
-            <p style="margin:0 0 12px;"><strong>Pickup Time:</strong> ${pickupTime}</p>
-            <p style="margin:0 0 12px;"><strong>Special Instructions:</strong> ${nl2br(
-              specialInstructions
-            )}</p>
-          `
-      }
+      ${renderTotalsHtml(detailedOrder, {
+        subtotalLabel: "Subtotal",
+        totalLabel: "Total (including tax)",
+      })}
 
-      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Customer</h2>
-      <p style="margin:0 0 4px;"><strong>Buyer Name:</strong> ${buyerName}</p>
-      <p style="margin:0 0 4px;"><strong>Email:</strong> ${buyerEmail}</p>
-      <p style="margin:0 0 12px;"><strong>Phone:</strong> ${buyerPhone}</p>
+      ${fulfillmentHtml(detailedOrder)}
 
-      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Items</h2>
-      <ul style="margin:0 0 12px; padding-left:18px;">${itemsHtml}</ul>
-    </div>
-  `;
+      ${partnerEarnHtml(partnerEarn)}
+  `);
 
-  const itemsText = items
-    .map((p) => {
-      const name = p.slug ?? p.name ?? "Item";
-      const qty = p.quantity ?? 1;
-      const price = formatMoney(p.unit_price_cents ?? 0);
-      return `- ${qty}x ${name} @ ${price}`;
-    })
-    .join("\n");
+  const text = `New order received!
 
-  const text = `New order received
-
-Customer: ${buyerName} <${buyerEmail}>
+Buyer Name: ${buyerName}
+Email: ${buyerEmail}
 Phone: ${buyerPhone}
+Order ID: ${id}
 Status: ${status}
-Total: ${total}
-${
-  isDelivery
-    ? `Order Type: Delivery
-Delivery Date: ${deliveryDate}
-Delivery Window: 11:00 AM – 6:00 PM
-${
-  withTaxCents > 0
-    ? `Delivery Fee (incl 13% HST): ${formatMoney(withTaxCents)}
-  - Pre-tax: ${formatMoney(preTaxCents)}
-  - HST (13%): ${formatMoney(Math.max(withTaxCents - preTaxCents, 0))}`
-    : ""
-}
-Delivery Postal (for quote): ${deliveryPostal}
-Delivery address and Special Instructions:
-${specialInstructions}`
-    : `Order Type: Pickup
-Pickup Date: ${pickupDate}
-Pickup Time: ${pickupTime}
-Special Instructions:
-${specialInstructions}`
-}
+Total: ${formatMoney(detailedOrder.total_cents ?? 0)}
 
-Items:
-${itemsText || "(no items)"}
-`;
+Items
+${itemsText(detailedOrder)}
+
+${renderTotalsText(detailedOrder, {
+  subtotalLabel: "Subtotal",
+  totalLabel: "Total (including tax)",
+})}
+
+${fulfillmentText(detailedOrder)}
+${partnerEarnText(partnerEarn)}`;
 
   return { subject, html, text };
 }
@@ -341,12 +397,12 @@ function partnerProgramRulesHtml(audience = 'partner') {
       : "Store credit never expires and auto-applies at the partner's own checkout.";
   const payoutSwitch =
     audience === 'partner'
-      ? 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. You can switch to <strong>store credit</strong> (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
-      : 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. The partner can switch to <strong>store credit</strong> (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+      ? 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. You can switch to <strong>store credit</strong> (or back) from your <strong>profile page</strong> at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
+      : 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. The partner can switch to <strong>store credit</strong> (or back) from their <strong>profile page</strong> at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
   const invoiceLine =
     audience === 'partner'
-      ? "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see the same details on your profile page."
-      : "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see the same details on their profile page.";
+      ? "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see monthly invoices on your profile page."
+      : "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see monthly invoices on their profile page.";
 
   return `
       <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">How the code works</h2>
@@ -383,12 +439,12 @@ function partnerProgramRulesText(audience = 'partner') {
       : "Store credit never expires and auto-applies at the partner's own checkout.";
   const payoutSwitch =
     audience === 'partner'
-      ? 'Default payout is cash, paid by Earth Table outside the site. You can switch to store credit (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
-      : 'Default payout is cash, paid by Earth Table outside the site. The partner can switch to store credit (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+      ? 'Default payout is cash, paid by Earth Table outside the site. You can switch to store credit (or back) from your profile page at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
+      : 'Default payout is cash, paid by Earth Table outside the site. The partner can switch to store credit (or back) from their profile page at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
   const invoiceLine =
     audience === 'partner'
-      ? "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see the same details on your profile page."
-      : "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see the same details on their profile page.";
+      ? "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see monthly invoices on your profile page."
+      : "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see monthly invoices on their profile page.";
 
   return `How the code works
 - Friends get 15% off their item subtotal (delivery and tax excluded from the discount).
@@ -420,7 +476,7 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
 
       <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
         <p style="margin:0 0 6px;"><strong>Your referral code:</strong> ${code}</p>
-        <p style="margin:0;"><strong>Payout type:</strong> Cash (you can switch to store credit later from your partner wallet)</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash. You can switch to store credit from your profile page (once a month; it takes effect the following month).</p>
       </div>
 
       ${partnerProgramRulesHtml()}
@@ -434,7 +490,7 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
 Hi ${firstName}, you've been set up as an Earth Table partner.
 
 Your referral code: ${code}
-Payout type: Cash (you can switch to store credit later from your partner wallet)
+Payout type: Cash. You can switch to store credit from your profile page (once a month; it takes effect the following month).
 
 ${partnerProgramRulesText()}
 
@@ -463,7 +519,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
         <p style="margin:0 0 6px;"><strong>Code:</strong> ${code}</p>
         <p style="margin:0 0 6px;"><strong>Name:</strong> ${name}</p>
         <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
-        <p style="margin:0;"><strong>Payout type:</strong> Cash (default)</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash (default). They can switch to store credit from their profile page (once a month; it takes effect the following month).</p>
       </div>
 
       ${partnerProgramRulesHtml('admin')}
@@ -475,9 +531,49 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
 Code: ${code}
 Name: ${name}
 Email: ${email}
-Payout type: Cash (default)
+Payout type: Cash (default). They can switch to store credit from their profile page (once a month; it takes effect the following month).
 
 ${partnerProgramRulesText('admin')}
+`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Notify a partner that their referral code was used on an order.
+ */
+function renderPartnerCodeUsedEmail({
+  partner = {},
+  partnerUser = {},
+  order = {},
+  earn = {},
+} = {}) {
+  const code = String(partner.referral_code || order.referral_code || "").toUpperCase() || "—";
+  const firstName = partnerUser.first_name || "there";
+  const orderId = order.id ?? "N/A";
+  const buyerName = order.buyer_name || "—";
+
+  const subject = `Your code ${code} was used — Earth Table`;
+
+  const html = wrapEmail(`
+      ${h1("Your referral code was used")}
+      <p style="margin:0 0 16px;">Hi ${firstName}, someone just placed an order with your code <strong>${code}</strong>.</p>
+
+      ${card(`
+        ${rowHtml("Order ID", orderId)}
+        ${rowHtml("Customer Name", buyerName)}
+        ${rowHtml("Items subtotal (before discount)", formatMoney(order.item_subtotal_cents))}
+        ${rowHtml("Your cashback", formatMoney(earn.amount_cents), true)}
+      `)}
+  `);
+
+  const text = `Your referral code was used
+Hi ${firstName}, someone just placed an order with your code ${code}.
+
+Order ID: ${orderId}
+Customer Name: ${buyerName}
+Items subtotal (before discount): ${formatMoney(order.item_subtotal_cents)}
+Your cashback: ${formatMoney(earn.amount_cents)}
 `;
 
   return { subject, html, text };
@@ -489,4 +585,5 @@ module.exports = {
   renderOwnerOrderEmail,
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
+  renderPartnerCodeUsedEmail,
 };

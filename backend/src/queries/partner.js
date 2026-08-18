@@ -366,6 +366,42 @@ async function getActiveReferralByCode(rawCode, userId = null, subtotalCents = n
   };
 }
 
+function torontoMonthStart(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === 'year')?.value;
+  const month = parts.find((p) => p.type === 'month')?.value;
+  return `${year}-${month}-01`;
+}
+
+async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payoutType }) {
+  const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * CASHBACK_PERCENT / 100);
+  if (!partnerId || !orderId || amountCents <= 0) return null;
+
+  const { data, error } = await supabase
+    .from('partner_ledger')
+    .insert([{
+      partner_id: partnerId,
+      kind: 'earn',
+      order_id: orderId,
+      amount_cents: amountCents,
+      payout_type: payoutType === 'credit' ? 'credit' : 'cash',
+      status: 'pending',
+      accrual_month: torontoMonthStart(),
+    }])
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === '23505') return null;
+    throw error;
+  }
+  return data;
+}
+
 module.exports = {
   PartnerError,
   REFERRAL_PERCENT,
@@ -380,4 +416,5 @@ module.exports = {
   createPartner,
   setPartnerActive,
   getActiveReferralByCode,
+  recordReferralEarn,
 };

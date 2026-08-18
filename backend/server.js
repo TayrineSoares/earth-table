@@ -4,7 +4,11 @@ const morgan = require('morgan');
 const supabase = require('./supabase/db');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
 const { sendEmail } = require('./src/utils/email');
-const { renderCustomerOrderEmail, renderOwnerOrderEmail } = require('./src/utils/emailTemplates');
+const {
+  renderCustomerOrderEmail,
+  renderOwnerOrderEmail,
+  renderPartnerCodeUsedEmail,
+} = require('./src/utils/emailTemplates');
 
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
@@ -23,6 +27,11 @@ const partnerRouter = require('./src/routes/partnerRoutes');
 const { getUserByAuthId } = require('./src/queries/user');
 const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
+const {
+  getActiveReferralByCode,
+  getPartnerById,
+  recordReferralEarn,
+} = require('./src/queries/partner');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
 const { ensureStripePromotionCode } = require('./src/stripePromo');
 
@@ -158,7 +167,20 @@ const stripeWebhookHandler = async (request, response) => {
 
     // Create order
     try {
-      await createOrderWithProducts({
+      let referralPartnerId = md.referral_partner_id || null;
+      let referralCode = md.referral_code || null;
+      let referralPartner = null;
+      if (referralPartnerId) {
+        referralPartner = await getPartnerById(referralPartnerId);
+        if (referralPartner && userId && referralPartner.user_id === userId) {
+          console.warn('[webhook] skipped self-referral on order', referralPartnerId);
+          referralPartnerId = null;
+          referralCode = null;
+          referralPartner = null;
+        }
+      }
+
+      const order = await createOrderWithProducts({
         user_id: userId || null,
         buyer_email: email,
         buyer_name: buyerName,
@@ -181,6 +203,16 @@ const stripeWebhookHandler = async (request, response) => {
             fee_cents_server: Number(deliveryFeeCentsServer || 0),
             delivery_flag: delivery,
           },
+          ...(md.discount_code
+            ? {
+                discount_meta: {
+                  kind: md.discount_kind || (referralCode ? 'referral' : 'promo'),
+                  code: md.discount_code,
+                  percent: Number(md.discount_pct) || null,
+                  amount_off_cents: Number(md.discount_off_cents) || 0,
+                },
+              }
+            : {}),
         }),
 
         status: session.payment_status,
@@ -194,7 +226,27 @@ const stripeWebhookHandler = async (request, response) => {
         delivery,
         delivery_date: deliveryDate,
         special_note: specialNote,
+        referral_partner_id: referralPartnerId,
+        referral_code: referralCode,
+        credit_applied_cents: 0,
+        item_subtotal_cents: Number.isFinite(Number(md.item_subtotal_cents))
+          ? Number(md.item_subtotal_cents)
+          : null,
       });
+
+      let earnRow = null;
+      if (referralPartnerId && order?.id) {
+        try {
+          earnRow = await recordReferralEarn({
+            partnerId: referralPartnerId,
+            orderId: order.id,
+            itemSubtotalCents: Number(md.item_subtotal_cents) || 0,
+            payoutType: referralPartner?.payout_type || 'cash',
+          });
+        } catch (e) {
+          console.warn('[webhook] recordReferralEarn failed:', e.message);
+        }
+      }
 
       // Promo was applied at checkout; bump global usage only after the order is saved.
       const promoId = md.promo_id || null;
@@ -208,6 +260,26 @@ const stripeWebhookHandler = async (request, response) => {
 
       // Fetch full order for emails
       const detailedOrder = await getOrderByStripeSessionId(session.id);
+
+      let partnerUser = null;
+      if (referralPartner) {
+        try {
+          partnerUser = await getUserByAuthId(referralPartner.user_id);
+        } catch (e) {
+          console.warn('[webhook] get partner user failed (non-fatal):', e.message);
+        }
+      }
+
+      const partnerEarn = referralPartner
+        ? {
+            name: [partnerUser?.first_name, partnerUser?.last_name].filter(Boolean).join(' ') || 'Partner',
+            first_name: partnerUser?.first_name || null,
+            code: (referralPartner.referral_code || referralCode || '').toUpperCase(),
+            cashback_cents: earnRow?.amount_cents
+              ?? Math.floor((Number(detailedOrder?.item_subtotal_cents) || 0) * 10 / 100),
+            item_subtotal_cents: Number(detailedOrder?.item_subtotal_cents) || 0,
+          }
+        : null;
 
       // Customer email
       const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
@@ -225,7 +297,7 @@ const stripeWebhookHandler = async (request, response) => {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const ownerMsg = renderOwnerOrderEmail(detailedOrder);
+      const ownerMsg = renderOwnerOrderEmail(detailedOrder, { partnerEarn });
       if (ownerTo.length) {
         await sendEmail({
           to: ownerTo,
@@ -233,6 +305,30 @@ const stripeWebhookHandler = async (request, response) => {
           html: ownerMsg.html,
           text: ownerMsg.text,
         });
+      }
+
+      if (earnRow && referralPartner) {
+        try {
+          if (partnerUser?.email) {
+            const partnerMsg = renderPartnerCodeUsedEmail({
+              partner: referralPartner,
+              partnerUser,
+              order: detailedOrder,
+              earn: earnRow,
+            });
+            await sendEmail({
+              to: partnerUser.email,
+              subject: partnerMsg.subject,
+              html: partnerMsg.html,
+              text: partnerMsg.text,
+              replyTo: 'hello@earthtableco.ca',
+            });
+          } else {
+            console.warn('[webhook] partner has no email; skipped code-used notice');
+          }
+        } catch (e) {
+          console.warn('[webhook] partner code-used email failed (non-fatal):', e.message);
+        }
       }
 
       // Best-effort cleanup: remove the draft now that it's used
@@ -311,24 +407,48 @@ const createCheckoutSession = async (req, res) => {
 
     
     // Same rules as POST /promo/validate — never trust the client to have validated alone.
+    const itemSubtotalCents = (cartItems || []).reduce((sum, item) => {
+      return sum + (Number(item.price_cents) || 0) * (Number(item.quantity) || 0);
+    }, 0);
+
     if (promoCode && normalize(promoCode)) {
-      const promoResult = await getActivePromoByCode(normalize(promoCode), userId || null);
-      if (!promoResult.ok) {
-        return res.status(400).json({ error: promoResult.message });
+      const referralResult = await getActiveReferralByCode(
+        normalize(promoCode),
+        userId || null,
+        itemSubtotalCents
+      );
+      if (referralResult.found) {
+        if (!referralResult.ok) {
+          return res.status(400).json({ error: referralResult.message });
+        }
+        const pct = referralResult.discountPercentage;
+        discountFactor = (100 - pct) / 100;
+        req._etReferral = {
+          partnerId: referralResult.partner.id,
+          code: (referralResult.partner.referral_code || '').toUpperCase(),
+          pct,
+        };
+      } else {
+        const promoResult = await getActivePromoByCode(normalize(promoCode), userId || null);
+        if (!promoResult.ok) {
+          return res.status(400).json({ error: promoResult.message });
+        }
+        const promo = promoResult.promo;
+        const pct = promo.discount_percentage;
+        discountFactor = (100 - pct) / 100;
+        req._etPromo = { code: promo.code, pct, id: promo.id };
       }
-      const promo = promoResult.promo;
-      const pct = promo.discount_percentage;
-      discountFactor = (100 - pct) / 100;
-      // id goes on the Stripe session so the webhook can increment used_count after payment.
-      req._etPromo = { code: promo.code, pct, id: promo.id };
     }
 
     // --- Build line items (DISCOUNT BEFORE TAX) ---
     // price_cents = pre-tax price
     // Apply discount to pre-tax, THEN apply 13% tax
+    let discountOffCents = 0;
     const items = cartItems.map(item => {
       const base = Number(item.price_cents) || 0;                     // pre-tax
       const discountedPreTax = Math.floor(base * discountFactor);     // apply promo BEFORE tax
+      const qty = Number(item.quantity) || 0;
+      discountOffCents += Math.max(0, base - discountedPreTax) * qty;
       const unitWithTax = Math.round(discountedPreTax * 1.13);        // 13% tax after discount
       return {
         price_data: {
@@ -422,7 +542,22 @@ const createCheckoutSession = async (req, res) => {
         delivery_postal_code: delivery_postal_code || '',
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
+        item_subtotal_cents: String(itemSubtotalCents || 0),
         ...(req._etPromo?.id != null ? { promo_id: String(req._etPromo.id) } : {}),
+        ...(req._etReferral?.partnerId
+          ? {
+              referral_partner_id: String(req._etReferral.partnerId),
+              referral_code: req._etReferral.code || '',
+            }
+          : {}),
+        ...(req._etReferral || req._etPromo
+          ? {
+              discount_kind: req._etReferral ? 'referral' : 'promo',
+              discount_code: req._etReferral?.code || req._etPromo?.code || '',
+              discount_pct: String(req._etReferral?.pct ?? req._etPromo?.pct ?? ''),
+              discount_off_cents: String(discountOffCents || 0),
+            }
+          : {}),
       },
     });
 

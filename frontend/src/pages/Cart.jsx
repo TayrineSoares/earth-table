@@ -2,7 +2,6 @@ import loadingAnimation from '../assets/loading.json'
 import { useState, useEffect } from 'react';
 import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png"
-import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
@@ -178,8 +177,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     );
   }
 
-  const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
   // APPLY PROMO CODE 
   const handleApplyPromo = async () => {
     const code = (promoInput || '').trim();
@@ -221,7 +218,30 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const userId = session?.user?.id || null;
     const email = session?.user?.email || null;
 
-    const stripe = await stripePromise;
+    const code = (promoInput || '').trim();
+    let checkoutPromoCode = null;
+
+    if (code) {
+      try {
+        const res = await fetch(`${API_BASE}/promo/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, subtotalCents, userId }),
+        });
+        const data = await res.json();
+        setPromoResult(data);
+        setLastValidatedCode(code);
+        if (!data.valid) {
+          alert(data.message || 'That code could not be applied.');
+          return;
+        }
+        checkoutPromoCode = code;
+      } catch (e) {
+        console.error('[checkout] promo validate failed', e);
+        alert('Could not validate your code. Try again.');
+        return;
+      }
+    }
 
     // Send nulls for inactive fields
     const payload = {
@@ -236,7 +256,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
       delivery_date: fulfillment === "delivery" ? deliveryDate : null,
       special_note: specialNote,
-      ...(promoResult?.valid ? { promoCode: promoInput.trim() } : {}),
+      ...(checkoutPromoCode ? { promoCode: checkoutPromoCode } : {}),
     };
 
 
@@ -364,7 +384,9 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             {/* PROMO LINE (only if valid) */}
             {promoResult?.valid && (
               <div className='checkout-summary-subtotal'>
-                <p className='subtotal'>Promo ({promoResult.code})</p>
+                <p className='subtotal'>
+                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
+                </p>
                 <p className='subtotal'>- ${(promoDiscountCents / 100).toFixed(2)}</p>
               </div>
             )}

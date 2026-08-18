@@ -104,7 +104,11 @@ async function createOrderWithProducts({
   pickup_time_slot,
   delivery,
   delivery_date, 
-  special_note
+  special_note,
+  referral_partner_id = null,
+  referral_code = null,
+  credit_applied_cents = 0,
+  item_subtotal_cents = null,
   
 }) {
 
@@ -131,6 +135,10 @@ async function createOrderWithProducts({
       delivery,
       delivery_date,
       special_note,
+      referral_partner_id: referral_partner_id || null,
+      referral_code: referral_code || null,
+      credit_applied_cents: Number(credit_applied_cents) || 0,
+      item_subtotal_cents: item_subtotal_cents == null ? null : Number(item_subtotal_cents),
     }])
     .select()
     .single();
@@ -205,6 +213,12 @@ const getOrderByStripeSessionId = async (sessionId) => {
     delivery_date: order.delivery_date || null,
     delivery_date_formatted: formatDisplayDate(order.delivery_date),
     special_note: order.special_note || null,
+    referral_code: order.referral_code || null,
+    referral_partner_id: order.referral_partner_id || null,
+    credit_applied_cents: Number(order.credit_applied_cents) || 0,
+    item_subtotal_cents: order.item_subtotal_cents == null
+      ? null
+      : Number(order.item_subtotal_cents),
     products: (orderProducts || []).map(op => ({
       slug: op.product?.slug || 'Unnamed Product',
       image_url: op.product?.image_url || '',
