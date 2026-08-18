@@ -1,20 +1,19 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; 
+import { useCallback, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import FeedbackDialog from '../components/FeedbackDialog';
 import "../styles/Login.css"
 import loginImage from "../assets/images/accountImage.png"
 
-
 const Login = ({setUser}) => {
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState("");
+  const [dialog, setDialog] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-
   const navigate = useNavigate();
+  const closeDialog = useCallback(() => setDialog(null), []);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -25,11 +24,36 @@ const Login = ({setUser}) => {
     });
 
     if (error) {
-      setMessage(`Login failed: ${error.message}`);
-    } else {
-      setUser(data.user);
-      navigate(`/`)
+      const isInvalid = /invalid login credentials/i.test(error.message);
+      const isUnconfirmed = /email not confirmed/i.test(error.message);
+
+      if (isUnconfirmed) {
+        setDialog({
+          icon: 'mail',
+          title: 'Check your email',
+          body: 'Please confirm your account from the email we sent before signing in.',
+          hint: "Don't see it? Check spam, or try registering again.",
+          primaryLabel: 'Got it',
+        });
+        return;
+      }
+
+      setDialog({
+        icon: 'alert',
+        title: 'Login failed',
+        body: isInvalid ? 'Invalid login credentials.' : error.message,
+        hint: isInvalid
+          ? 'Check your email and password, or reset your password if you forgot it.'
+          : undefined,
+        primaryLabel: 'Got it',
+        secondaryLabel: isInvalid ? 'Forgot password?' : undefined,
+        secondaryTo: isInvalid ? '/reset-password' : undefined,
+      });
+      return;
     }
+
+    setUser(data.user);
+    navigate(`/`);
   };
 
   return (
@@ -109,12 +133,10 @@ const Login = ({setUser}) => {
         </div>
         <br />
 
-        {message && <p>{message}</p>}
-
-            <Link 
+            <Link
             className='forgot-password-text'
             to="/reset-password">FORGOT PASSWORD?</Link>
-            
+
             <p className='dont-have-account'>DON'T HAVE AN ACCOUNT? {' '}
               <Link className="footer-account-register" to="/register">
               SIGN UP
@@ -122,6 +144,8 @@ const Login = ({setUser}) => {
             </p>
         <br />
       </div>
+
+      <FeedbackDialog dialog={dialog} onClose={closeDialog} />
     </div>
   );
 };

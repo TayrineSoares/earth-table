@@ -1,14 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CircleAlert, LogIn, Mail } from 'lucide-react';
 import loginImage from "../assets/images/accountImage.png"
+import FeedbackDialog from '../components/FeedbackDialog';
 import "../styles/Register.css"
-
-const DIALOG_ICONS = {
-  mail: Mail,
-  login: LogIn,
-  alert: CircleAlert,
-};
 
 const BANNER_COPY = {
   confirmEmail: {
@@ -30,15 +24,6 @@ const BANNER_COPY = {
   },
 };
 
-function DialogAction({ to, className, onClick, children }) {
-  if (to) return <Link className={className} to={to}>{children}</Link>;
-  return (
-    <button type="button" className={className} onClick={onClick}>
-      {children}
-    </button>
-  );
-}
-
 const Register = ({setUser}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,7 +38,7 @@ const Register = ({setUser}) => {
 
   const navigate = useNavigate();
   const passwordsMismatch = Boolean(confirmPassword) && password !== confirmPassword;
-  const closeDialog = () => setDialog(null);
+  const closeDialog = useCallback(() => setDialog(null), []);
   const openErrorDialog = (title, body) => setDialog({
     type: 'error',
     icon: 'alert',
@@ -61,22 +46,6 @@ const Register = ({setUser}) => {
     body,
     primaryLabel: 'Got it',
   });
-
-  useEffect(() => {
-    if (!dialog) return;
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setDialog(null);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [dialog]);
 
   const formatPhoneForInput = (value) => {
     const cleaned = (value || "").replace(/\D/g, "").slice(0, 10);
@@ -187,7 +156,6 @@ const Register = ({setUser}) => {
     }
   };
 
-  const DialogIcon = dialog ? DIALOG_ICONS[dialog.icon] || CircleAlert : null;
   const bannerCopy = banner && dialog?.type !== banner ? BANNER_COPY[banner] : null;
 
   return (
@@ -330,51 +298,7 @@ const Register = ({setUser}) => {
         </div>
       </div>
 
-      {dialog && (
-        <div
-          className="register-dialog-overlay"
-          role="presentation"
-          onClick={closeDialog}
-        >
-          <div
-            className="register-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="register-dialog-title"
-            aria-describedby="register-dialog-body"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {DialogIcon && <DialogIcon className="register-dialog-icon" aria-hidden="true" />}
-            <h2 id="register-dialog-title" className="register-dialog-title">
-              {dialog.title}
-            </h2>
-            <p id="register-dialog-body" className="register-dialog-body">
-              {dialog.body}
-            </p>
-            {dialog.hint && (
-              <p className="register-dialog-hint">{dialog.hint}</p>
-            )}
-            <div className="register-dialog-actions">
-              <DialogAction
-                className="register-dialog-primary"
-                to={dialog.primaryTo}
-                onClick={closeDialog}
-              >
-                {dialog.primaryLabel}
-              </DialogAction>
-              {dialog.secondaryLabel && (
-                <DialogAction
-                  className="register-dialog-secondary"
-                  to={dialog.secondaryTo}
-                  onClick={closeDialog}
-                >
-                  {dialog.secondaryLabel}
-                </DialogAction>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <FeedbackDialog dialog={dialog} onClose={closeDialog} />
     </div>
   );
 };
