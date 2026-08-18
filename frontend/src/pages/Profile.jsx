@@ -174,15 +174,14 @@ const Profile = () => {
   }
 
   return (
-    <div className='profile-form-container'>
+    <div className="profile-page">
       <div className="contact-header-image-container">
         <img
           className="contact-header-image"
           src={loginImage}
         />
       </div>
-      <div className="profile-form">
-        <div className='page-wrapper'>
+      <div className="page-wrapper">
           <h1 className="profile-text">
             <span>{user.first_name}'s Profile</span>
             {partner && (
@@ -359,7 +358,6 @@ const Profile = () => {
               <PartnerMonthList months={partner.months || []} />
             </section>
           )}
-        </div>
       </div>
     </div>
   );
