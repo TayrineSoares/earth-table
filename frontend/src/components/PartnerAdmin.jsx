@@ -7,6 +7,7 @@ import {
   fetchPartners,
   formatCents,
   formatPayoutLabel,
+  formatPhoneNumber,
   setPartnerActive,
   setInvoicePaid,
   updatePartnerCode,
@@ -260,6 +261,7 @@ const PartnerAdmin = () => {
                         {[user.first_name, user.last_name].filter(Boolean).join(' ') || '—'}
                         {' — '}
                         {user.email}
+                        {user.phone_number ? ` — ${formatPhoneNumber(user.phone_number)}` : ''}
                       </button>
                     </li>
                   ))}
@@ -316,6 +318,9 @@ const PartnerAdmin = () => {
                         {row.user?.email && (
                           <div className="partner-email">{row.user.email}</div>
                         )}
+                        <div className="partner-email">
+                          {formatPhoneNumber(row.user?.phone_number)}
+                        </div>
                       </td>
                       <td
                         className="partner-code-cell"

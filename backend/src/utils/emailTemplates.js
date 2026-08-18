@@ -507,6 +507,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
   const code = String(partner.referral_code || '').toUpperCase() || '—';
   const email = user.email || '—';
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
+  const phone = user.phone_number || '—';
 
   const subject = `New partner assigned — ${code}`;
 
@@ -519,6 +520,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
         <p style="margin:0 0 6px;"><strong>Code:</strong> ${code}</p>
         <p style="margin:0 0 6px;"><strong>Name:</strong> ${name}</p>
         <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
+        <p style="margin:0 0 6px;"><strong>Phone:</strong> ${phone}</p>
         <p style="margin:0;"><strong>Payout type:</strong> Cash (default). They can switch to store credit anytime from their partner wallet.</p>
       </div>
 
@@ -531,6 +533,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
 Code: ${code}
 Name: ${name}
 Email: ${email}
+Phone: ${phone}
 Payout type: Cash (default). They can switch to store credit anytime from their partner wallet.
 
 ${partnerProgramRulesText('admin')}

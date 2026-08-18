@@ -32,6 +32,15 @@ function clip(text, max) {
   return `${value.slice(0, max - 1)}…`;
 }
 
+function formatPhone(phone) {
+  if (!phone) return null;
+  const cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  }
+  return String(phone);
+}
+
 function renderPartnerInvoicePdf({ invoice, partner, user, periodLabel, orders }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
@@ -59,6 +68,8 @@ function renderPartnerInvoicePdf({ invoice, partner, user, periodLabel, orders }
     doc.fillColor('#000000').fontSize(10);
     doc.text(`Partner: ${partnerName}`);
     if (user?.email) doc.text(`Email: ${user.email}`);
+    const phone = formatPhone(user?.phone_number);
+    if (phone) doc.text(`Phone: ${phone}`);
     doc.text(`Referral code: ${partner.referral_code || '—'}`);
     doc.text(`Period: ${periodLabel}`);
     doc.text(`Status: ${statusLabel(invoice.status)}`);
