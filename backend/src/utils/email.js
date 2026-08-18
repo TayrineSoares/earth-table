@@ -13,9 +13,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @param {string|string[]} [params.cc]
  * @param {string|string[]} [params.bcc]
  * @param {string} [params.from] - Override default sender if needed
+ * @param {Array} [params.attachments] - Resend attachments ({ filename, content })
  */
 
-async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from }) {
+async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from, attachments }) {
   try {
     const response = await resend.emails.send({
       from: 
@@ -27,6 +28,7 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from }) {
       reply_to: replyTo || process.env.CONTACT_FROM || 'Earth Table <hello@earthtableco.ca>',
       cc,
       bcc,
+      ...(attachments?.length ? { attachments } : {}),
     });
     //console.log('Email sent:', response?.data?.id || response);
     return response;

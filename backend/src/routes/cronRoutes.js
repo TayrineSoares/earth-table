@@ -12,6 +12,10 @@ const {
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
 } = require('../utils/emailTemplates');
+const {
+  renderPartnerInvoicePdf,
+  invoicePdfFilename,
+} = require('../utils/partnerInvoicePdf');
 
 function ownerNotificationEmails() {
   return (process.env.OWNER_NOTIFICATIONS_TO || '')
@@ -52,9 +56,26 @@ function handleCron(req, res) {
     .then(async (result) => {
       const ownerTo = ownerNotificationEmails();
       const sends = [];
-      const invoiceSends = (result.payloads || []).map((payload) => {
+      const invoiceSends = [];
+
+      for (const payload of result.payloads || []) {
         const tasks = [];
         const user = payload.user || {};
+        let attachments;
+        try {
+          const pdf = await renderPartnerInvoicePdf(payload);
+          attachments = [{
+            filename: invoicePdfFilename(payload.periodKey, payload.partner?.referral_code),
+            content: Buffer.isBuffer(pdf) ? pdf.toString('base64') : pdf,
+          }];
+        } catch (e) {
+          console.warn(
+            '[cron/partner-monthly] invoice PDF attach failed (sending without PDF):',
+            payload.invoice?.id,
+            e.message
+          );
+        }
+
         if (user.email) {
           const partnerMsg = renderPartnerMonthlyInvoiceEmail(payload);
           tasks.push(
@@ -64,6 +85,7 @@ function handleCron(req, res) {
               html: partnerMsg.html,
               text: partnerMsg.text,
               replyTo: 'hello@earthtableco.ca',
+              attachments,
             })
           );
         } else {
@@ -78,12 +100,13 @@ function handleCron(req, res) {
               subject: adminMsg.subject,
               html: adminMsg.html,
               text: adminMsg.text,
+              attachments,
             })
           );
         }
 
-        return { invoiceId: payload.invoice?.id, tasks };
-      });
+        invoiceSends.push({ invoiceId: payload.invoice?.id, tasks });
+      }
 
       if (!ownerTo.length) {
         console.warn('[cron/partner-monthly] OWNER_NOTIFICATIONS_TO empty; skipped admin statements');

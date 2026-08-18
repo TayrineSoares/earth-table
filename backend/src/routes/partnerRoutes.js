@@ -14,7 +14,7 @@ const {
   setInvoicePaid,
 } = require('../queries/partner');
 const { sendEmail } = require('../utils/email');
-const { renderPartnerInvoicePdf } = require('../utils/partnerInvoicePdf');
+const { renderPartnerInvoicePdf, invoicePdfFilename } = require('../utils/partnerInvoicePdf');
 const {
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
@@ -144,11 +144,11 @@ router.get('/invoices/:invoiceId/pdf', async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
     const pdf = await renderPartnerInvoicePdf(payload);
-    const slug = (payload.periodKey || 'invoice').replace(/[^0-9-]/g, '');
+    const filename = invoicePdfFilename(payload.periodKey, payload.partner?.referral_code);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="earth-table-partner-invoice-${slug}.pdf"`
+      `attachment; filename="${filename}"`
     );
     res.send(pdf);
   } catch (err) {

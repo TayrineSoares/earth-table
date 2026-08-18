@@ -26,6 +26,17 @@ function formatDate(iso) {
   });
 }
 
+function invoicePdfFilename(periodKey, referralCode) {
+  const slug = String(periodKey || 'invoice').replace(/[^0-9-]/g, '') || 'invoice';
+  const code = String(referralCode || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 16);
+  return code
+    ? `earth-table-partner-${code}-${slug}.pdf`
+    : `earth-table-partner-invoice-${slug}.pdf`;
+}
+
 function clip(text, max) {
   const value = String(text || '—');
   if (value.length <= max) return value;
@@ -127,20 +138,49 @@ function renderPartnerInvoicePdf({ invoice, partner, user, periodLabel, orders }
       y += 18;
     });
 
-    y += 10;
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text(`Total cash: ${money(cash)}`, 50, y, { align: 'right', width: 512 });
     y += 16;
-    doc.text(`Total store credit: ${money(credit)}`, 50, y, { align: 'right', width: 512 });
-    y += 16;
-    doc.text(`Total: ${money(cash + credit)}`, 50, y, { align: 'right', width: 512 });
+    if (y > 640) {
+      doc.addPage();
+      y = 50;
+    }
+    const drawTotalLine = (label, value, highlight = false) => {
+      const h = highlight ? 22 : 18;
+      if (highlight) {
+        doc.rect(50, y - 3, 512, h).fill('#FFF3D6');
+      }
+      doc.fillColor('#000000')
+        .font(highlight ? 'Helvetica-Bold' : 'Helvetica')
+        .fontSize(highlight ? 11 : 10)
+        .text(label, 58, y, { width: 330, lineBreak: false })
+        .text(value, 400, y, { width: 154, align: 'right', lineBreak: false });
+      y += h + (highlight ? 4 : 2);
+    };
 
-    doc.moveDown(2);
+    drawTotalLine('Total earnings', money(cash + credit));
+    drawTotalLine('Total store credit (already applied)', money(credit));
+    drawTotalLine('Total cash', money(cash), true);
+
+    y += 8;
+    doc.save();
+    doc.lineWidth(1.5)
+      .roundedRect(50, y, 512, 52, 6)
+      .fillAndStroke('#FFF3D6', '#BE7200');
+    doc.restore();
+    doc.fillColor('#BE7200')
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .text('AMOUNT TO PAY (CASH ONLY)', 62, y + 10, { width: 400, lineBreak: false });
+    doc.fillColor('#000000')
+      .font('Helvetica-Bold')
+      .fontSize(16)
+      .text(money(cash), 50, y + 24, { width: 500, align: 'right' });
+    y += 64;
+
     doc.font('Helvetica').fontSize(9).fillColor('#4b5563');
     doc.text(
-      'Cash is invoiced at month-end. Store credit is added to the partner wallet and applied automatically on their next order.',
+      'Store credit is already in the partner wallet. Earth Table pays the cash amount only.',
       50,
-      doc.y,
+      y,
       { width: 512 }
     );
 
@@ -150,5 +190,6 @@ function renderPartnerInvoicePdf({ invoice, partner, user, periodLabel, orders }
 
 module.exports = {
   renderPartnerInvoicePdf,
+  invoicePdfFilename,
   money,
 };

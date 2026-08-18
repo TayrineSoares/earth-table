@@ -79,6 +79,50 @@ function rowHtml(label, value, last = false) {
   return `<p style="margin:0 0 ${last ? "0" : "6px"};"><strong>${label}:</strong> ${value}</p>`;
 }
 
+function highlightRowHtml(label, value, last = false) {
+  return `<p style="margin:0 0 ${last ? "0" : "6px"}; background:#FFF3D6; padding:8px 10px; border-radius:8px;"><strong>${label}:</strong> ${value}</p>`;
+}
+
+function amountToPayHtml(label, amount, note) {
+  return `
+      <div style="border:2px solid #BE7200; background:#FFF3D6; border-radius:12px; padding:16px; margin:0 0 16px;">
+        <p style="margin:0 0 4px; font-size:12px; letter-spacing:0.04em; text-transform:uppercase; color:#BE7200; font-weight:700;">${label}</p>
+        <p style="margin:0 0 ${note ? "8px" : "0"}; font-size:28px; line-height:1.2; font-weight:700; color:#000;">${amount}</p>
+        ${note ? `<p style="margin:0; font-size:13px; color:#333;">${note}</p>` : ""}
+      </div>
+  `;
+}
+
+function payoutBreakdownHtml({ cash, credit, total, audience = "admin" }) {
+  const earningsLabel = "Total earnings";
+  const creditLabel = audience === "admin"
+    ? "Total store credit (already applied)"
+    : "Total store credit (already in your wallet)";
+  const payLabel = audience === "admin"
+    ? "Amount to pay"
+    : "Amount you will be paid (cash)";
+  return `
+        ${rowHtml(earningsLabel, formatMoney(total))}
+        ${rowHtml(creditLabel, formatMoney(credit))}
+        ${highlightRowHtml("Total cash", formatMoney(cash))}
+        ${highlightRowHtml(payLabel, formatMoney(cash), true)}
+  `;
+}
+
+function payoutBreakdownText({ cash, credit, total, audience = "admin" }) {
+  const earningsLabel = "Total earnings";
+  const creditLabel = audience === "admin"
+    ? "Total store credit (already applied)"
+    : "Total store credit (already in your wallet)";
+  const payLabel = audience === "admin"
+    ? "AMOUNT TO PAY (cash only)"
+    : "AMOUNT YOU WILL BE PAID (cash)";
+  return `${earningsLabel}: ${formatMoney(total)}
+${creditLabel}: ${formatMoney(credit)}
+Total cash: ${formatMoney(cash)}
+${payLabel}: ${formatMoney(cash)}`;
+}
+
 function getOrderDiscount(order = {}) {
   const parsed = parseBuyerStripeInfo(order.buyer_stripe_payment_info);
   const meta = parsed.discount_meta || {};
@@ -650,37 +694,41 @@ function renderPartnerMonthlyInvoiceEmail({
 
   const subject = `Your Earth Table partner statement — ${periodLabel}`;
 
+  const payNote = credit > 0
+    ? 'Store credit is already in your wallet — Earth Table will not pay that amount in cash. Your statement PDF is attached.'
+    : 'Your statement PDF is attached. Cash is paid by Earth Table outside the site.';
+
   const html = wrapEmail(`
       ${h1('Your partner statement is ready')}
       <p style="margin:0 0 16px;">Hi ${firstName}, ${periodLabel} is closed. Here's the cashback from orders that used <strong>${code}</strong>.</p>
+      ${amountToPayHtml('Amount you will be paid (cash only)', formatMoney(cash), payNote)}
       ${card(`
         ${rowHtml('Period', periodLabel)}
         ${rowHtml('Referral code', code)}
-        ${rowHtml('Total cash', formatMoney(cash))}
-        ${rowHtml('Total store credit', formatMoney(credit))}
-        ${rowHtml('Total', formatMoney(total), true)}
+        ${payoutBreakdownHtml({ cash, credit, total, audience: 'partner' })}
       `)}
       ${h2('Referred orders')}
       ${lines.length
         ? `<ul style="margin:0 0 16px; padding-left:18px;">${lines.map((line) => `<li style="margin:2px 0;">${line}</li>`).join('')}</ul>`
         : '<p style="margin:0 0 16px;">No referred orders this period.</p>'}
-      <p style="margin:0 0 8px;">Store credit is in your wallet and will auto-apply on your next order. Cash is paid by Earth Table outside the site.</p>
+      <p style="margin:0 0 8px;">Store credit auto-applies on your next order. Cash is paid by Earth Table outside the site.</p>
       <p style="margin:0; color:#666; font-size:13px;">Questions? Reply to this email or write to hello@earthtableco.ca.</p>
   `);
 
   const text = `Your partner statement is ready
 Hi ${firstName}, ${periodLabel} is closed. Here's the cashback from orders that used ${code}.
 
+AMOUNT YOU WILL BE PAID (cash only): ${formatMoney(cash)}
+${payNote}
+
 Period: ${periodLabel}
 Referral code: ${code}
-Total cash: ${formatMoney(cash)}
-Total store credit: ${formatMoney(credit)}
-Total: ${formatMoney(total)}
+${payoutBreakdownText({ cash, credit, total, audience: 'partner' })}
 
 Referred orders
 ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
 
-Store credit is in your wallet and will auto-apply on your next order. Cash is paid by Earth Table outside the site.
+Store credit auto-applies on your next order. Cash is paid by Earth Table outside the site.
 
 Questions? Reply to this email or write to hello@earthtableco.ca.
 `;
@@ -706,10 +754,10 @@ function renderAdminMonthlyInvoiceEmail({
   const total = Number(invoice.total_cents) || cash + credit;
   const status = cash > 0 ? 'Unpaid (cash)' : 'Credited';
   const lines = invoiceOrderLines(orders);
-  const dueLabel = cash > 0 ? 'Amount due (cash only)' : 'Amount due';
+  const dueLabel = cash > 0 ? 'Amount to pay (cash only)' : 'Amount to pay';
   const creditNote = credit > 0
-    ? 'Store credit was added to their wallet automatically — do not include it in the cash payment.'
-    : 'No store credit this period.';
+    ? 'Store credit is already in their wallet. Invoice PDF is attached.'
+    : 'No store credit this period. Invoice PDF is attached.';
 
   const subject = cash > 0
     ? `Pay ${formatMoney(cash)} cash — ${code} — ${periodLabel}`
@@ -718,18 +766,13 @@ function renderAdminMonthlyInvoiceEmail({
   const html = wrapEmail(`
       ${h1('Monthly partner invoice')}
       <p style="margin:0 0 16px;">${periodLabel} closed for <strong>${code}</strong>.</p>
-      <div style="border:2px solid #BE7200; background:#FFF3D6; border-radius:12px; padding:16px; margin:0 0 16px;">
-        <p style="margin:0 0 4px; font-size:12px; letter-spacing:0.04em; text-transform:uppercase; color:#BE7200; font-weight:700;">${dueLabel}</p>
-        <p style="margin:0 0 8px; font-size:28px; line-height:1.2; font-weight:700; color:#000;">${formatMoney(cash)}</p>
-        <p style="margin:0; font-size:13px; color:#333;">${creditNote}</p>
-      </div>
+      ${amountToPayHtml(dueLabel, formatMoney(cash), creditNote)}
       ${card(`
         ${rowHtml('Partner', name)}
         ${rowHtml('Email', email)}
         ${rowHtml('Code', code)}
         ${rowHtml('Status', status)}
-        ${rowHtml('Store credit (already applied)', formatMoney(credit))}
-        ${rowHtml('Total earnings (do not pay this)', formatMoney(total), true)}
+        ${payoutBreakdownHtml({ cash, credit, total, audience: 'admin' })}
       `)}
       ${h2('Referred orders')}
       ${lines.length
@@ -740,15 +783,14 @@ function renderAdminMonthlyInvoiceEmail({
   const text = `Monthly partner invoice
 ${periodLabel} closed for ${code}.
 
-PAY THIS (CASH ONLY): ${formatMoney(cash)}
+AMOUNT TO PAY (CASH ONLY): ${formatMoney(cash)}
 ${creditNote}
 
 Partner: ${name}
 Email: ${email}
 Code: ${code}
 Status: ${status}
-Store credit (already applied): ${formatMoney(credit)}
-Total earnings (do not pay this): ${formatMoney(total)}
+${payoutBreakdownText({ cash, credit, total, audience: 'admin' })}
 
 Referred orders
 ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
