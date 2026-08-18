@@ -138,7 +138,13 @@ const labels = {
   '05-partner-code-used.html': 'Partner code used',
   '06-partner-monthly.html': 'Partner monthly statement',
   '07-admin-monthly.html': 'Admin monthly invoice',
+  '08-confirm-signup.html': 'Confirm signup (Supabase Auth)',
 };
+
+const confirmSignupPreview = '08-confirm-signup.html';
+if (fs.existsSync(path.join(outDir, confirmSignupPreview))) {
+  files.push(confirmSignupPreview);
+}
 
 fs.writeFileSync(path.join(outDir, 'index.html'), `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Email previews</title></head>
