@@ -33,6 +33,7 @@ function emptyWallet() {
     current_month_cash_cents: 0,
     current_month_credit_cents: 0,
     cashback_cents: 0,
+    total_earn_cents: 0,
   };
 }
 
@@ -125,8 +126,9 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
     const bag = totals[row.partner_id];
     if (!bag) continue;
     const amount = Number(row.amount_cents) || 0;
-    if (row.kind === 'earn' && row.status === 'pending') {
-      bag.pending_cents += amount;
+    if (row.kind === 'earn') {
+      bag.total_earn_cents += amount;
+      if (row.status === 'pending') bag.pending_cents += amount;
     }
     if (row.kind === 'earn' && row.status === 'available' && row.payout_type === 'credit') {
       bag.available_credit_cents += amount;
@@ -165,6 +167,7 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
     bag.current_month_cash_cents = Math.max(0, bag.current_month_cash_cents);
     bag.current_month_credit_cents = Math.max(0, bag.current_month_credit_cents);
     bag.cashback_cents = bag.pending_cents + bag.unpaid_cash_cents;
+    bag.total_earn_cents = Math.max(0, bag.total_earn_cents);
   }
 
   return totals;
@@ -463,25 +466,62 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
   });
 }
 
-async function setPartnerActive(id, active) {
-  if (typeof active !== 'boolean') {
-    throw new PartnerError('active must be a boolean.');
-  }
-
+async function updatePartner(id, { active, referral_code: rawCode } = {}) {
   const existing = await getPartnerById(id);
   if (!existing) {
     throw new PartnerError('Partner not found.', 404);
   }
 
+  const patch = {};
+
+  if (typeof active === 'boolean') {
+    patch.active = active;
+  }
+
+  if (rawCode != null) {
+    const referralCode = normalizeReferralCode(rawCode);
+    if (!referralCode) {
+      throw new PartnerError('referral_code is required.');
+    }
+    if (referralCode !== normalizeReferralCode(existing.referral_code)) {
+      const existingCode = await getPartnerByCode(referralCode);
+      if (existingCode && existingCode.id !== id) {
+        throw new PartnerError('That referral code is already in use.', 409);
+      }
+      const collidingPromo = await getPromoByCode(referralCode);
+      if (collidingPromo) {
+        throw new PartnerError('Referral code collides with an existing promo code.');
+      }
+      patch.referral_code = referralCode;
+    }
+  }
+
+  if (!Object.keys(patch).length) {
+    return displayPartner(existing);
+  }
+
   const { data, error } = await supabase
     .from('partners')
-    .update({ active })
+    .update(patch)
     .eq('id', id)
     .select('*')
     .single();
 
-  if (error) throw error;
+  if (error) {
+    const msg = error.message || '';
+    if (error.code === '23505') {
+      throw new PartnerError('That referral code is already in use.', 409);
+    }
+    if (/collides with an existing promo code/i.test(msg)) {
+      throw new PartnerError('Referral code collides with an existing promo code.');
+    }
+    throw error;
+  }
   return displayPartner(data);
+}
+
+async function setPartnerActive(id, active) {
+  return updatePartner(id, { active });
 }
 
 async function userHasAnyOrder(userId) {
@@ -672,6 +712,7 @@ module.exports = {
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
   createPartner,
+  updatePartner,
   setPartnerActive,
   getActiveReferralByCode,
   recordReferralEarn,

@@ -115,7 +115,6 @@
   background-color: #EDA413;
 }
 
-.partner-admin-note,
 .partner-empty,
 .partner-email {
   font-family: var(--body-font);
@@ -124,6 +123,9 @@
 }
 
 .partner-admin-note {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #000;
   margin-top: 1.5rem;
 }
 
@@ -149,7 +151,7 @@
   text-align: left;
   font-family: var(--body-font);
   font-size: 14px;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .partner-table th {
@@ -183,9 +185,84 @@
   font-size: 12px;
 }
 
+.partner-code-display {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.partner-code-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.partner-code-input {
+  padding: 4px 8px;
+  min-width: 110px;
+  max-width: 160px;
+  font-size: 14px;
+  font-family: var(--body-font);
+  text-transform: uppercase;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  background-color: #fff8f0;
+}
+
+.partner-code-edit-button,
+.partner-code-save,
+.partner-code-cancel {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--body-font);
+  font-size: 12px;
+  color: #BE7200;
+}
+
+.partner-code-edit-button {
+  display: inline-flex;
+  align-items: center;
+  color: #BE7200;
+}
+
+.partner-code-save,
+.partner-code-cancel {
+  text-decoration: underline;
+}
+
+.partner-code-save {
+  color: #000;
+  font-weight: 500;
+}
+
+.partner-code-edit-button:hover,
+.partner-code-save:hover,
+.partner-code-cancel:hover {
+  color: #EDA413;
+}
+
+.partner-code-save:disabled,
+.partner-code-cancel:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .partner-expand-row td {
   background-color: #fffaf4;
   padding: 16px;
+  vertical-align: top;
+}
+
+.partner-wallet-balance {
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 14px;
 }
 
 .partner-month-list {
@@ -204,9 +281,78 @@
 .partner-month-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
   font-family: var(--body-font);
   font-size: 14px;
+  color: inherit;
+}
+
+.partner-month-header:disabled {
+  cursor: default;
+  opacity: 1;
+  color: inherit;
+}
+
+.partner-month-header.is-toggle {
+  cursor: pointer;
+}
+
+.partner-month-header.is-toggle:hover {
+  color: #BE7200;
+}
+
+.partner-month-chevron {
+  color: #BE7200;
+  font-size: 12px;
+  width: 0.9rem;
+}
+
+.partner-month-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.partner-month-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-family: var(--body-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.partner-month-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.partner-month-badge.is-open {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.partner-month-badge.is-closed {
+  color: #4b5563;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
 }
 
 .partner-month-meta {

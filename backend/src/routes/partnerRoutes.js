@@ -5,7 +5,7 @@ const {
   PartnerError,
   listPartners,
   createPartner,
-  setPartnerActive,
+  updatePartner,
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
   setPayoutPreference,
@@ -135,8 +135,8 @@ router.get('/:id', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { active } = req.body || {};
-    const updated = await setPartnerActive(req.params.id, active);
+    const { active, referral_code } = req.body || {};
+    const updated = await updatePartner(req.params.id, { active, referral_code });
     res.json(updated);
   } catch (err) {
     handlePartnerError(res, err, '[PATCH /partners/:id]');

@@ -1,6 +1,6 @@
--- Demo data for Tayrine Soares / JOSH15 so Admin → Partners expand has rows.
--- Safe to re-run: deletes previous seed-* orders/ledger/invoice first.
--- Run in the Supabase SQL editor.
+-- Wipe ALL wallet data for Tayrine / JOSH15, then insert only the 4 demo referred orders.
+-- Removes: $20 store-credit seed, real test earns/redeems, old invoices.
+-- Does NOT delete her real checkout orders — they just stop showing in Partners expand.
 
 do $$
 declare
@@ -13,17 +13,12 @@ declare
   o_priya int;
   o_jordan int;
 begin
-  -- Remove prior demo rows (ledger first because of FKs)
+  -- Clear the whole wallet (earns with no order_id, redeems, real test earns)
   delete from public.partner_ledger
-  where order_id in (
-    select id from public.orders where stripe_session_id like 'seed-josh15-%'
-  );
+  where partner_id = v_partner;
 
   delete from public.partner_invoices
-  where partner_id = v_partner
-    and period_year = 2026
-    and period_month = 7
-    and emailed_at is null;
+  where partner_id = v_partner;
 
   delete from public.order_products
   where order_id in (
@@ -33,7 +28,6 @@ begin
   delete from public.orders
   where stripe_session_id like 'seed-josh15-%';
 
-  -- July (closed month): cash + credit
   insert into public.orders (
     buyer_email, buyer_name, buyer_phone_number, status, stripe_session_id,
     total_cents, item_subtotal_cents, referral_partner_id, referral_code,
@@ -54,7 +48,6 @@ begin
     '2026-07-22', '10:00-13:00', false, '2026-07-19 11:05:00-04'
   ) returning id into o_sam;
 
-  -- August (open month): cash + credit, still pending
   insert into public.orders (
     buyer_email, buyer_name, buyer_phone_number, status, stripe_session_id,
     total_cents, item_subtotal_cents, referral_partner_id, referral_code,
@@ -81,7 +74,6 @@ begin
     v_partner, 2026, 7, 800, 500, 1300, 'unpaid'
   ) returning id into v_inv;
 
-  -- 10% of pre-discount item subtotal
   insert into public.partner_ledger (
     partner_id, kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id
   ) values
@@ -91,6 +83,7 @@ begin
     (v_partner, 'earn', o_jordan, 600,  'credit', 'pending',   v_aug,  null);
 end $$;
 
+-- Should be exactly these 4 rows, nothing else
 select
   o.id as order_id,
   o.buyer_name,
@@ -101,6 +94,6 @@ select
   l.amount_cents,
   l.accrual_month
 from public.partner_ledger l
-join public.orders o on o.id = l.order_id
-where o.stripe_session_id like 'seed-josh15-%'
-order by o.created_at;
+left join public.orders o on o.id = l.order_id
+where l.partner_id = '4b5121a4-8a69-449e-a0ca-18ca98795070'
+order by l.accrual_month, o.created_at;

@@ -34,6 +34,15 @@ const setPartnerActive = async (partnerId, active) => {
   return parseJson(res);
 };
 
+const updatePartnerCode = async (partnerId, referralCode) => {
+  const res = await fetch(`/api/partners/${partnerId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ referral_code: referralCode }),
+  });
+  return parseJson(res);
+};
+
 const setPayoutPreference = async (authUserId, payoutType) => {
   if (!authUserId) throw new Error('authUserId is required');
 
@@ -82,13 +91,6 @@ const formatInvoiceSummary = (invoice, statusLabel) => {
   return parts.join(' · ');
 };
 
-const formatMonthEarnSummary = (month) => {
-  const parts = [];
-  if (month.cash_cents > 0) parts.push(`Cash ${formatCents(month.cash_cents)}`);
-  if (month.credit_cents > 0) parts.push(`Store credit ${formatCents(month.credit_cents)}`);
-  return parts.join(' · ') || formatCents(month.earn_cents);
-};
-
 const formatYmd = (ymd) => {
   if (!ymd) return '—';
   const [y, m, d] = String(ymd).slice(0, 10).split('-').map(Number);
@@ -116,11 +118,11 @@ export {
   fetchPartnerDetail,
   createPartner,
   setPartnerActive,
+  updatePartnerCode,
   setPayoutPreference,
   formatCents,
   formatPayoutLabel,
   formatInvoiceSummary,
-  formatMonthEarnSummary,
   formatOrderDate,
   formatYmd,
 };
