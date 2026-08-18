@@ -15,7 +15,7 @@
   gap: 12px;
   font-family: var(--heading-font);
   font-weight: 400;
-  font-size: 62px;
+  font-size: 48px;
   line-height: 1.1;
   letter-spacing: 0;
   width: 100%;
@@ -79,7 +79,7 @@
   gap: 6px;
   font-family: var(--heading-font);
   font-weight: 400;
-  font-size: 30px;
+  font-size: 22px;
   line-height: 1.2;
   font-variant: small-caps;
   color: #BE7200;
@@ -91,7 +91,7 @@
   padding-bottom: 8px;
   font-family: var(--body-font);
   font-weight: 400;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.35;
   word-break: break-word;
   color: #000;
@@ -125,9 +125,9 @@
 .profile-submit-button {
   width: auto;
   min-width: 160px;
-  height: 58px;
+  height: 48px;
   margin-bottom: 0;
-  padding: 0 28px;
+  padding: 0 20px;
   border-radius: 15px;
   border: 1px solid #EDA413;
   background-color: #FFFBF3;
@@ -162,7 +162,7 @@
 .profile-partner-title {
   font-family: var(--heading-font);
   font-weight: 400;
-  font-size: 32px;
+  font-size: 28px;
   color: #000;
   margin: 0 0 1rem;
 }
@@ -285,15 +285,15 @@
 
 @media (max-width: 1024px) {
   .profile-text {
-    font-size: 48px;
+    font-size: 40px;
   }
 
   .profile-field-label {
-    font-size: 26px;
+    font-size: 20px;
   }
 
   .profile-partner-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 
   .profile-partner-grid {
@@ -323,7 +323,7 @@
   }
 
   .profile-field-label {
-    font-size: 22px;
+    font-size: 18px;
   }
 
   .profile-grid,
@@ -371,7 +371,7 @@
   }
 
   .profile-partner-title {
-    font-size: 24px;
+    font-size: 22px;
   }
 }
 
@@ -381,7 +381,7 @@
   }
 
   .profile-field-label {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .profile-field-value {
