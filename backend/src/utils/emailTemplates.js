@@ -326,8 +326,167 @@ ${itemsText || "(no items)"}
   return { subject, html, text };
 }
 
+function partnerProgramRulesHtml(audience = 'partner') {
+  const ownCode =
+    audience === 'partner'
+      ? '<strong>You cannot use your own referral code</strong> on your own orders.'
+      : 'The partner <strong>cannot use their own referral code</strong> on their own orders.';
+  const earn =
+    audience === 'partner'
+      ? 'You earn <strong>10% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use your code.'
+      : 'The partner earns <strong>10% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use their code.';
+  const creditApply =
+    audience === 'partner'
+      ? "Store credit never expires and auto-applies at your own checkout."
+      : "Store credit never expires and auto-applies at the partner's own checkout.";
+  const payoutSwitch =
+    audience === 'partner'
+      ? 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. You can switch to <strong>store credit</strong> (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
+      : 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. The partner can switch to <strong>store credit</strong> (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+  const invoiceLine =
+    audience === 'partner'
+      ? "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see the same details on your profile page."
+      : "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see the same details on their profile page.";
+
+  return `
+      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">How the code works</h2>
+      <ul style="margin:0 0 12px; padding-left:18px;">
+        <li>Friends get <strong>15% off</strong> their item subtotal (delivery and tax excluded from the discount).</li>
+        <li>They must be registered with Earth Table and logged in.</li>
+        <li>It only applies to their <strong>first order ever</strong> on the site, and the item subtotal must be at least <strong>$50</strong> before discount, tax, and delivery.</li>
+        <li>A referral code cannot be combined with a regular promo code.</li>
+        <li>${ownCode}</li>
+      </ul>
+
+      <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">Cashback</h2>
+      <ul style="margin:0 0 12px; padding-left:18px;">
+        <li>${earn}</li>
+        <li>${invoiceLine}</li>
+        <li>${payoutSwitch}</li>
+        <li>${creditApply}</li>
+      </ul>
+  `;
+}
+
+function partnerProgramRulesText(audience = 'partner') {
+  const ownCode =
+    audience === 'partner'
+      ? 'You cannot use your own referral code on your own orders.'
+      : 'The partner cannot use their own referral code on their own orders.';
+  const earn =
+    audience === 'partner'
+      ? 'You earn 10% of the pre-discount item subtotal (not the discounted amount, not delivery, not tax) on orders that use your code.'
+      : 'The partner earns 10% of the pre-discount item subtotal (not the discounted amount, not delivery, not tax) on orders that use their code.';
+  const creditApply =
+    audience === 'partner'
+      ? 'Store credit never expires and auto-applies at your own checkout.'
+      : "Store credit never expires and auto-applies at the partner's own checkout.";
+  const payoutSwitch =
+    audience === 'partner'
+      ? 'Default payout is cash, paid by Earth Table outside the site. You can switch to store credit (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
+      : 'Default payout is cash, paid by Earth Table outside the site. The partner can switch to store credit (or back) at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+  const invoiceLine =
+    audience === 'partner'
+      ? "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see the same details on your profile page."
+      : "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see the same details on their profile page.";
+
+  return `How the code works
+- Friends get 15% off their item subtotal (delivery and tax excluded from the discount).
+- They must be registered with Earth Table and logged in.
+- It only applies to their first order ever on the site, and the item subtotal must be at least $50 before discount, tax, and delivery.
+- A referral code cannot be combined with a regular promo code.
+- ${ownCode}
+
+Cashback
+- ${earn}
+- ${invoiceLine}
+- ${payoutSwitch}
+- ${creditApply}`;
+}
+
+/**
+ * Partner program welcome — sent to the new partner when admin assigns a code.
+ */
+function renderPartnerWelcomeEmail(partner = {}, user = {}) {
+  const code = String(partner.referral_code || '').toUpperCase() || '—';
+  const firstName = user.first_name || 'there';
+
+  const subject = `You're an Earth Table partner — code ${code}`;
+
+  const html = `
+    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
+      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">Welcome to the partner program</h1>
+      <p style="margin:0 0 16px;">Hi ${firstName}, you've been set up as an Earth Table partner.</p>
+
+      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
+        <p style="margin:0 0 6px;"><strong>Your referral code:</strong> ${code}</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash (you can switch to store credit later from your partner wallet)</p>
+      </div>
+
+      ${partnerProgramRulesHtml()}
+
+      <p style="margin:16px 0 0; color:#666; font-size:13px;">Questions? Reply to this email or write to hello@earthtableco.ca.</p>
+    </div>
+  `;
+
+  const text = `Welcome to the Earth Table partner program
+
+Hi ${firstName}, you've been set up as an Earth Table partner.
+
+Your referral code: ${code}
+Payout type: Cash (you can switch to store credit later from your partner wallet)
+
+${partnerProgramRulesText()}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.
+`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Admin copy when a partner is created.
+ */
+function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
+  const code = String(partner.referral_code || '').toUpperCase() || '—';
+  const email = user.email || '—';
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
+
+  const subject = `New partner assigned — ${code}`;
+
+  const html = `
+    <div style="font-family:Arial, sans-serif; max-width:600px; margin:0 auto; color:#111; line-height:1.5;">
+      <h1 style="font-size:20px; margin:0 0 8px; color:#BE7200;">New partner created</h1>
+      <p style="margin:0 0 16px;">A registered user was assigned a referral code.</p>
+
+      <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
+        <p style="margin:0 0 6px;"><strong>Code:</strong> ${code}</p>
+        <p style="margin:0 0 6px;"><strong>Name:</strong> ${name}</p>
+        <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash (default)</p>
+      </div>
+
+      ${partnerProgramRulesHtml('admin')}
+    </div>
+  `;
+
+  const text = `New partner created
+
+Code: ${code}
+Name: ${name}
+Email: ${email}
+Payout type: Cash (default)
+
+${partnerProgramRulesText('admin')}
+`;
+
+  return { subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
   renderOwnerOrderEmail,
+  renderPartnerWelcomeEmail,
+  renderAdminPartnerWelcomeEmail,
 };

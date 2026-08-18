@@ -1,5 +1,35 @@
 const supabase = require('../../supabase/db')
 
+function decorateUserWithPartner(user, partner) {
+  if (!user) return user;
+  return {
+    ...user,
+    is_partner: !!partner,
+    referral_code: partner ? String(partner.referral_code || '').toUpperCase() : null,
+  };
+}
+
+async function attachPartnerFields(users) {
+  const isArray = Array.isArray(users);
+  const list = isArray ? users : users ? [users] : [];
+  if (!list.length) return isArray ? [] : null;
+
+  const ids = [...new Set(list.map((u) => u.auth_user_id).filter(Boolean))];
+  let byUserId = {};
+
+  if (ids.length) {
+    const { data, error } = await supabase
+      .from('partners')
+      .select('user_id, referral_code, active')
+      .in('user_id', ids);
+
+    if (error) throw new Error(`Error fetching partners for users: ${error.message}`);
+    byUserId = Object.fromEntries((data || []).map((p) => [p.user_id, p]));
+  }
+
+  const decorated = list.map((u) => decorateUserWithPartner(u, byUserId[u.auth_user_id]));
+  return isArray ? decorated : decorated[0];
+}
 
 async function getAllUsers() {
   const { data, error } = await supabase
@@ -7,7 +37,7 @@ async function getAllUsers() {
     .select('*');
     
   if (error) throw new Error(`Error fetching users: ${error.message}`);
-  return data;
+  return attachPartnerFields(data || []);
 };
 
 async function getUserByAuthId(authUserId) {
@@ -22,8 +52,8 @@ async function getUserByAuthId(authUserId) {
     .maybeSingle();
 
   if (error) throw new Error(`Error fetching user by Auth Id: ${error.message}`);
-  return data;
-  
+  if (!data) return data;
+  return attachPartnerFields(data);
 }
 
 async function updateUserByAuthId(authUserId, updates) {
@@ -42,8 +72,7 @@ async function updateUserByAuthId(authUserId, updates) {
     throw new Error(`Error updating user: ${error.message}`);
   }
 
-  return data;
-  
+  return attachPartnerFields(data);
 }
 
 module.exports = {
