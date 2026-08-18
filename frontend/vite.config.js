@@ -7,9 +7,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://earth-table-backend-v9hsi4xdb-earth-table.vercel.app',
+        target: 'http://localhost:8080',
         changeOrigin: true,
-        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
