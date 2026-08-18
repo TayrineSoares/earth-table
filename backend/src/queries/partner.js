@@ -383,6 +383,54 @@ function torontoMonthStart(date = new Date()) {
   return `${year}-${month}-01`;
 }
 
+function torontoNextMonthStart(date = new Date()) {
+  const [year, month] = torontoMonthStart(date).split('-').map(Number);
+  if (month === 12) return `${year + 1}-01-01`;
+  return `${year}-${String(month + 1).padStart(2, '0')}-01`;
+}
+
+function isSameTorontoMonth(isoTimestamp, date = new Date()) {
+  if (!isoTimestamp) return false;
+  return torontoMonthStart(new Date(isoTimestamp)) === torontoMonthStart(date);
+}
+
+async function setPayoutPreference(userId, payoutType) {
+  const nextType = payoutType === 'credit' ? 'credit' : payoutType === 'cash' ? 'cash' : null;
+  if (!nextType) {
+    throw new PartnerError('payout_type must be cash or credit.');
+  }
+  if (!userId) {
+    throw new PartnerError('user_id is required.');
+  }
+
+  const partner = await getPartnerByUserId(userId);
+  if (!partner) {
+    throw new PartnerError('Partner not found.', 404);
+  }
+
+  if (isSameTorontoMonth(partner.last_payout_switch_at)) {
+    throw new PartnerError('You can only switch payout type once per month.');
+  }
+
+  if (nextType === partner.payout_type && !partner.pending_payout_type) {
+    throw new PartnerError(`Payout type is already ${nextType}.`);
+  }
+
+  const { data, error } = await supabase
+    .from('partners')
+    .update({
+      pending_payout_type: nextType,
+      pending_payout_effective_on: torontoNextMonthStart(),
+      last_payout_switch_at: new Date().toISOString(),
+    })
+    .eq('id', partner.id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return getPartnerWalletByUserId(userId);
+}
+
 async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payoutType }) {
   const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * CASHBACK_PERCENT / 100);
   if (!partnerId || !orderId || amountCents <= 0) return null;
@@ -465,4 +513,5 @@ module.exports = {
   getActiveReferralByCode,
   recordReferralEarn,
   recordCreditRedeem,
+  setPayoutPreference,
 };

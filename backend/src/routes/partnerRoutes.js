@@ -7,6 +7,7 @@ const {
   createPartner,
   setPartnerActive,
   getPartnerWalletByUserId,
+  setPayoutPreference,
 } = require('../queries/partner');
 const { sendEmail } = require('../utils/email');
 const {
@@ -90,6 +91,18 @@ router.get('/by-user/:auth_user_id', async (req, res) => {
     res.json(partner);
   } catch (err) {
     handlePartnerError(res, err, '[GET /partners/by-user]');
+  }
+});
+
+router.patch('/by-user/:auth_user_id/payout-preference', async (req, res) => {
+  try {
+    const updated = await setPayoutPreference(
+      req.params.auth_user_id,
+      req.body?.payout_type
+    );
+    res.json(updated);
+  } catch (err) {
+    handlePartnerError(res, err, '[PATCH /partners/by-user/payout-preference]');
   }
 });
 
