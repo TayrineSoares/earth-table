@@ -1,68 +1,96 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import {
   formatCents,
-  formatInvoiceSummary,
   formatOrderDate,
   formatPayoutLabel,
 } from '../helpers/partnerHelpers';
 import '../styles/PartnerAdmin.css';
 
-const PartnerMonthList = ({ months = [] }) => {
+const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
   const [openedClosed, setOpenedClosed] = useState({});
+  const [savingPaidId, setSavingPaidId] = useState(null);
 
   if (!months.length) {
     return <p className="partner-empty">No invoices or monthly cashback yet.</p>;
   }
 
+  const handleMarkPaid = async (invoice, paid) => {
+    if (!onMarkPaid || !invoice?.id) return;
+    setSavingPaidId(invoice.id);
+    try {
+      await onMarkPaid(invoice.id, paid);
+    } catch (err) {
+      console.error('Error updating invoice:', err);
+      alert(err.message || 'Failed to update invoice.');
+    } finally {
+      setSavingPaidId(null);
+    }
+  };
+
   return (
     <div className="partner-month-list">
       {months.map((month) => {
         const isOpenMonth = !month.invoice;
-        const isExpandedMonth = isOpenMonth || !!openedClosed[month.period];
+        const isExpandedMonth = openedClosed[month.period] ?? isOpenMonth;
+        const isPaid = month.invoice?.status === 'paid';
         return (
           <div key={month.period} className="partner-month-card">
-            <button
-              type="button"
-              className={
-                isOpenMonth
-                  ? 'partner-month-header'
-                  : 'partner-month-header is-toggle'
-              }
-              onClick={() => {
-                if (!isOpenMonth) {
+            <div className="partner-month-header-row">
+              <button
+                type="button"
+                className="partner-month-header is-toggle"
+                onClick={() => {
                   setOpenedClosed((prev) => ({
                     ...prev,
-                    [month.period]: !prev[month.period],
+                    [month.period]: !(prev[month.period] ?? isOpenMonth),
                   }));
-                }
-              }}
-              disabled={isOpenMonth}
-              aria-expanded={isExpandedMonth}
-            >
-              <div className="partner-month-title">
-                {!isOpenMonth && (
-                  <span className="partner-month-chevron">
-                    {isExpandedMonth ? '▾' : '▸'}
+                }}
+                aria-expanded={isExpandedMonth}
+              >
+                <span className="partner-month-chevron">
+                  {isExpandedMonth ? '▾' : '▸'}
+                </span>
+                <strong>{month.label}</strong>
+              </button>
+              <div className="partner-month-badges">
+                {isOpenMonth && (
+                  <span className="partner-month-badge is-open">Open</span>
+                )}
+                {month.invoice?.id && (
+                  <a
+                    className="partner-month-badge is-download"
+                    href={`/api/partners/invoices/${month.invoice.id}/pdf`}
+                  >
+                    Download invoice
+                  </a>
+                )}
+                {month.invoice?.id && isAdmin && (
+                  <button
+                    type="button"
+                    className={
+                      isPaid
+                        ? 'partner-month-badge is-paid is-toggle'
+                        : 'partner-month-badge is-unpaid is-toggle'
+                    }
+                    disabled={savingPaidId === month.invoice.id}
+                    onClick={() => handleMarkPaid(month.invoice, !isPaid)}
+                  >
+                    {isPaid && <Check size={12} strokeWidth={2.5} />}
+                    {isPaid ? 'Paid' : 'Not paid'}
+                  </button>
+                )}
+                {month.invoice?.id && !isAdmin && isPaid && (
+                  <span className="partner-month-badge is-paid">
+                    <Check size={12} strokeWidth={2.5} />
+                    Paid
                   </span>
                 )}
-                <strong>{month.label}</strong>
-                <span
-                  className={
-                    isOpenMonth
-                      ? 'partner-month-badge is-open'
-                      : 'partner-month-badge is-closed'
-                  }
-                >
-                  {isOpenMonth ? 'Open' : 'Closed'}
-                </span>
               </div>
-              <span>{formatCents(month.earn_cents)}</span>
-            </button>
+              <span className="partner-month-earn">{formatCents(month.earn_cents)}</span>
+            </div>
             {isExpandedMonth && (
               <div className="partner-month-body">
-                <p className="partner-month-meta">
-                  Invoice: {formatInvoiceSummary(month.invoice)}
-                </p>
                 {month.orders.length > 0 && (
                   <table className="partner-month-orders">
                     <thead>

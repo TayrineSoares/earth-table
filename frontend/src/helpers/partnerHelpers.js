@@ -46,6 +46,15 @@ const setPartnerActive = (partnerId, active) =>
 const updatePartnerCode = (partnerId, referralCode) =>
   updatePartner(partnerId, { referral_code: referralCode });
 
+const setInvoicePaid = async (invoiceId, paid) => {
+  const res = await fetch(`/api/partners/invoices/${invoiceId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paid: !!paid }),
+  });
+  return parseJson(res);
+};
+
 const setPayoutPreference = async (authUserId, payoutType) => {
   if (!authUserId) throw new Error('authUserId is required');
 
@@ -120,6 +129,7 @@ export {
   setPartnerActive,
   updatePartnerCode,
   setPayoutPreference,
+  setInvoicePaid,
   formatCents,
   formatPayoutLabel,
   formatInvoiceSummary,

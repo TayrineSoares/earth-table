@@ -9,9 +9,12 @@ const {
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
   getPartnerDetailByUserId,
+  getInvoicePdfPayload,
   setPayoutPreference,
+  setInvoicePaid,
 } = require('../queries/partner');
 const { sendEmail } = require('../utils/email');
+const { renderPartnerInvoicePdf } = require('../utils/partnerInvoicePdf');
 const {
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
@@ -131,6 +134,35 @@ router.post('/', async (req, res) => {
     res.status(201).json(partner);
   } catch (err) {
     handlePartnerError(res, err, '[POST /partners]');
+  }
+});
+
+router.get('/invoices/:invoiceId/pdf', async (req, res) => {
+  try {
+    const payload = await getInvoicePdfPayload(req.params.invoiceId);
+    if (!payload) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    const pdf = await renderPartnerInvoicePdf(payload);
+    const slug = (payload.periodKey || 'invoice').replace(/[^0-9-]/g, '');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="earth-table-partner-invoice-${slug}.pdf"`
+    );
+    res.send(pdf);
+  } catch (err) {
+    handlePartnerError(res, err, '[GET /partners/invoices/pdf]');
+  }
+});
+
+router.patch('/invoices/:invoiceId', async (req, res) => {
+  try {
+    const paid = req.body?.paid;
+    const updated = await setInvoicePaid(req.params.invoiceId, paid);
+    res.json(updated);
+  } catch (err) {
+    handlePartnerError(res, err, '[PATCH /partners/invoices]');
   }
 });
 

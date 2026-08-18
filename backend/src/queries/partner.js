@@ -397,6 +397,83 @@ async function getPartnerDetailByUserId(userId) {
   return getPartnerAdminDetail(partner.id);
 }
 
+async function getInvoicePdfPayload(invoiceId) {
+  if (!invoiceId) return null;
+
+  const { data: invoice, error: invErr } = await supabase
+    .from('partner_invoices')
+    .select('id, partner_id, period_year, period_month, payout_type, cash_cents, credit_cents, total_cents, status, paid_at, created_at')
+    .eq('id', invoiceId)
+    .maybeSingle();
+
+  if (invErr) throw invErr;
+  if (!invoice) return null;
+
+  const partner = await getPartnerById(invoice.partner_id);
+  if (!partner) return null;
+
+  const usersByAuth = await getUsersByAuthIds([partner.user_id]);
+  const user = usersByAuth[partner.user_id] || null;
+
+  let { data: ledger, error: ledgerErr } = await supabase
+    .from('partner_ledger')
+    .select('kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
+    .eq('partner_id', partner.id)
+    .eq('kind', 'earn')
+    .eq('invoice_id', invoice.id)
+    .order('created_at', { ascending: true });
+
+  if (ledgerErr) throw ledgerErr;
+
+  if (!ledger?.length) {
+    const accrual = `${invoice.period_year}-${String(invoice.period_month).padStart(2, '0')}-01`;
+    const fallback = await supabase
+      .from('partner_ledger')
+      .select('kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
+      .eq('partner_id', partner.id)
+      .eq('kind', 'earn')
+      .eq('accrual_month', accrual)
+      .order('created_at', { ascending: true });
+    if (fallback.error) throw fallback.error;
+    ledger = fallback.data || [];
+  }
+
+  const orderIds = [...new Set(
+    (ledger || []).filter((row) => row.order_id).map((row) => row.order_id)
+  )];
+  let ordersById = {};
+  if (orderIds.length) {
+    const { data: orders, error: ordersErr } = await supabase
+      .from('orders')
+      .select('id, buyer_name, item_subtotal_cents, created_at')
+      .in('id', orderIds);
+    if (ordersErr) throw ordersErr;
+    ordersById = Object.fromEntries((orders || []).map((o) => [o.id, o]));
+  }
+
+  const periodKey = monthKeyFromPeriod(invoice.period_year, invoice.period_month);
+  const orders = (ledger || []).map((row) => {
+    const order = ordersById[row.order_id] || {};
+    return {
+      order_id: row.order_id,
+      amount_cents: Number(row.amount_cents) || 0,
+      payout_type: row.payout_type,
+      customer_name: order.buyer_name || '—',
+      item_subtotal_cents: order.item_subtotal_cents ?? null,
+      order_date: order.created_at || null,
+    };
+  });
+
+  return {
+    invoice: normalizeInvoiceRow(invoice),
+    partner: displayPartner(partner),
+    user,
+    periodLabel: monthLabelFromKey(periodKey),
+    periodKey,
+    orders,
+  };
+}
+
 async function assertReferralCodeAvailable(referralCode, excludePartnerId = null) {
   const existingCode = await getPartnerByCode(referralCode);
   if (existingCode && existingCode.id !== excludePartnerId) {
@@ -623,6 +700,39 @@ async function setPayoutPreference(userId, payoutType) {
   return getPartnerWalletByUserId(userId);
 }
 
+async function setInvoicePaid(invoiceId, paid) {
+  if (!invoiceId) {
+    throw new PartnerError('invoice id is required.');
+  }
+  if (typeof paid !== 'boolean') {
+    throw new PartnerError('paid must be a boolean.');
+  }
+
+  const { data: existing, error: findErr } = await supabase
+    .from('partner_invoices')
+    .select('id')
+    .eq('id', invoiceId)
+    .maybeSingle();
+
+  if (findErr) throw findErr;
+  if (!existing) {
+    throw new PartnerError('Invoice not found.', 404);
+  }
+
+  const { data, error } = await supabase
+    .from('partner_invoices')
+    .update({
+      status: paid ? 'paid' : 'unpaid',
+      paid_at: paid ? new Date().toISOString() : null,
+    })
+    .eq('id', invoiceId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return normalizeInvoiceRow(data);
+}
+
 async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payoutType }) {
   const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * CASHBACK_PERCENT / 100);
   if (!partnerId || !orderId || amountCents <= 0) return null;
@@ -696,10 +806,12 @@ module.exports = {
   getPartnerWalletByUserId,
   getPartnerAdminDetail,
   getPartnerDetailByUserId,
+  getInvoicePdfPayload,
   createPartner,
   updatePartner,
   getActiveReferralByCode,
   recordReferralEarn,
   recordCreditRedeem,
   setPayoutPreference,
+  setInvoicePaid,
 };

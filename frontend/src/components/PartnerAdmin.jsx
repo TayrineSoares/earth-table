@@ -8,6 +8,7 @@ import {
   formatCents,
   formatPayoutLabel,
   setPartnerActive,
+  setInvoicePaid,
   updatePartnerCode,
 } from '../helpers/partnerHelpers';
 import AdminTabLoading from './AdminTabLoading';
@@ -178,6 +179,28 @@ const PartnerAdmin = () => {
     }
   };
 
+  const handleMarkPaid = async (partnerId, invoiceId, paid) => {
+    const updated = await setInvoicePaid(invoiceId, paid);
+    setDetails((prev) => {
+      const current = prev[partnerId];
+      if (!current?.data?.months) return prev;
+      return {
+        ...prev,
+        [partnerId]: {
+          ...current,
+          data: {
+            ...current.data,
+            months: current.data.months.map((month) => (
+              month.invoice?.id === invoiceId
+                ? { ...month, invoice: { ...month.invoice, ...updated } }
+                : month
+            )),
+          },
+        },
+      };
+    });
+  };
+
   const partnerName = (partner) => {
     const user = partner.user || {};
     const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -264,7 +287,7 @@ const PartnerAdmin = () => {
         <p className="partner-empty">No partners yet.</p>
       ) : (
         <div className="partner-table-wrap">
-          <table className="partner-table">
+          <table className={expandedId ? 'partner-table has-expanded' : 'partner-table'}>
             <thead>
               <tr>
                 <th></th>
@@ -289,7 +312,7 @@ const PartnerAdmin = () => {
                     >
                       <td className="partner-expand-cell">{isExpanded ? '▾' : '▸'}</td>
                       <td>
-                        <div>{partnerName(row)}</div>
+                        <div className="partner-name">{partnerName(row)}</div>
                         {row.user?.email && (
                           <div className="partner-email">{row.user.email}</div>
                         )}
@@ -367,7 +390,13 @@ const PartnerAdmin = () => {
                           {detail.loading && <p className="partner-empty">Loading months…</p>}
                           {detail.error && <p className="partner-empty">{detail.error}</p>}
                           {!detail.loading && !detail.error && (
-                            <PartnerMonthList months={months} />
+                            <PartnerMonthList
+                              months={months}
+                              isAdmin
+                              onMarkPaid={(invoiceId, paid) =>
+                                handleMarkPaid(row.id, invoiceId, paid)
+                              }
+                            />
                           )}
                         </td>
                       </tr>

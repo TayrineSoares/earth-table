@@ -164,8 +164,18 @@
   cursor: pointer;
 }
 
-.partner-row.is-expanded {
-  background-color: #fff0dc;
+.partner-table.has-expanded .partner-row:not(.is-expanded) td {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+}
+
+.partner-table.has-expanded .partner-row:not(.is-expanded) .partner-email,
+.partner-table.has-expanded .partner-row:not(.is-expanded) .partner-expand-cell {
+  color: #9ca3af;
+}
+
+.partner-table.has-expanded .partner-row:not(.is-expanded):hover td {
+  background-color: #e5e7eb;
 }
 
 .partner-expand-cell {
@@ -261,19 +271,32 @@
 }
 
 .partner-month-card {
-  border: 1px solid #FEE8D4;
+  border: 2px solid #e8c4a0;
   border-radius: 10px;
   padding: 12px;
   background: #FFFBF3;
   font-family: var(--body-font);
 }
 
-.partner-month-header {
+.partner-month-header-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
   width: 100%;
+}
+
+.partner-month-body {
+  margin-top: 14px;
+}
+
+.partner-month-header {
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   border: none;
@@ -311,6 +334,14 @@
   flex-wrap: wrap;
 }
 
+.partner-month-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .partner-month-badge {
   display: inline-flex;
   align-items: center;
@@ -334,15 +365,62 @@
 }
 
 .partner-month-badge.is-open {
-  color: #166534;
-  background: #dcfce7;
-  border: 1px solid #86efac;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
 }
 
 .partner-month-badge.is-closed {
   color: #4b5563;
   background: #f3f4f6;
   border: 1px solid #d1d5db;
+}
+
+.partner-month-badge.is-download {
+  color: #4b5563;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.partner-month-badge.is-download:hover {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.partner-month-badge.is-paid {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.partner-month-badge.is-unpaid {
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+}
+
+.partner-month-badge.is-paid::before,
+.partner-month-badge.is-unpaid::before {
+  display: none;
+}
+
+.partner-month-badge.is-toggle {
+  cursor: pointer;
+}
+
+.partner-month-badge.is-toggle:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.partner-month-earn {
+  margin-left: auto;
+  font-family: var(--body-font);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .partner-month-meta {
@@ -376,7 +454,7 @@
   background-color: #fff8f0;
 }
 
-.partner-month-total-label {
+.partner-month-orders tfoot td.partner-month-total-label {
   text-align: right;
   text-transform: uppercase;
   font-size: 12px;
