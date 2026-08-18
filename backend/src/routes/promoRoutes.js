@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { getActivePromoByCode, normalize } = require('../queries/promo_code');
+const { getActiveReferralByCode } = require('../queries/partner');
 
 // Cart calls this to preview the discount. Pass userId when logged in so first-time / capped rules work.
+// Referral codes are checked first; if the string is a partner code, do not fall through to promo_codes.
 router.post('/validate', async (req, res) => {
   try {
     const { code, subtotalCents, userId } = req.body || {};
@@ -13,6 +15,25 @@ router.post('/validate', async (req, res) => {
     }
     if (!Number.isFinite(subtotalCents) || subtotalCents <= 0) {
       return res.status(400).json({ valid: false, message: 'Subtotal is invalid.' });
+    }
+
+    const referral = await getActiveReferralByCode(cleaned, userId || null, subtotalCents);
+    if (referral.found) {
+      if (!referral.ok) {
+        return res.json({ valid: false, kind: 'referral', message: referral.message });
+      }
+      const pct = referral.discountPercentage;
+      const amountOffCents = Math.floor((subtotalCents * pct) / 100);
+      const displayCode = (referral.partner.referral_code || cleaned).toUpperCase();
+      return res.json({
+        valid: true,
+        kind: 'referral',
+        code: displayCode,
+        discountPercentage: pct,
+        amountOffCents,
+        appliesTo: 'subtotal',
+        message: `Applied ${pct}% off items with referral ${displayCode} (delivery excluded).`,
+      });
     }
 
     const result = await getActivePromoByCode(cleaned, userId || null);
@@ -26,10 +47,11 @@ router.post('/validate', async (req, res) => {
 
     return res.json({
       valid: true,
+      kind: 'promo',
       code: promo.code,
       discountPercentage: pct,
       amountOffCents,
-      appliesTo: 'subtotal',               // explicit
+      appliesTo: 'subtotal',
       message: `Applied ${pct}% off items (delivery excluded).`,
     });
   } catch (err) {

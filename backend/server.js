@@ -457,6 +457,7 @@ app.use('/tags', tagsRouter);
 app.use('/cart', cartRouter);
 app.use('/dev', testEmail);
 app.use('/promo', promoRouter);
+app.use('/api/promo', promoRouter);
 app.use('/partners', partnerRouter);
 app.use('/api/partners', partnerRouter);
 

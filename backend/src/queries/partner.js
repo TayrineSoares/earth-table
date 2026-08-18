@@ -8,6 +8,10 @@
 const supabase = require('../../supabase/db');
 const { getUserByAuthId } = require('./user');
 
+const REFERRAL_PERCENT = 15;
+const CASHBACK_PERCENT = 10;
+const MIN_SUBTOTAL_CENTS = 5000;
+
 function normalizeReferralCode(raw) {
   return (raw || '').trim().toUpperCase();
 }
@@ -295,8 +299,78 @@ async function setPartnerActive(id, active) {
   return displayPartner(data);
 }
 
+async function userHasAnyOrder(userId) {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return !!data;
+}
+
+/**
+ * Look up a referral code and run partner-program rules.
+ * `found: false` means this is not a partner code — caller should try promo_codes.
+ */
+async function getActiveReferralByCode(rawCode, userId = null, subtotalCents = null) {
+  const code = normalizeReferralCode(rawCode);
+  if (!code) {
+    return { ok: false, found: false, message: 'Referral code is required.' };
+  }
+
+  const partner = await getPartnerByCode(code);
+  if (!partner) {
+    return { ok: false, found: false, message: 'Invalid referral code.' };
+  }
+
+  if (!partner.active) {
+    return { ok: false, found: true, message: 'This referral code is inactive.' };
+  }
+
+  if (!userId) {
+    return {
+      ok: false,
+      found: true,
+      message: 'Register with Earth Table and sign in to use a referral code.',
+    };
+  }
+
+  if (userId === partner.user_id) {
+    return { ok: false, found: true, message: "You can't use your own referral code." };
+  }
+
+  if (await userHasAnyOrder(userId)) {
+    return {
+      ok: false,
+      found: true,
+      message: 'Referral codes are only for first-time customers.',
+    };
+  }
+
+  if (subtotalCents != null && (!Number.isFinite(subtotalCents) || subtotalCents < MIN_SUBTOTAL_CENTS)) {
+    return {
+      ok: false,
+      found: true,
+      message: 'Referral codes require an item subtotal of at least $50 (before tax and delivery).',
+    };
+  }
+
+  return {
+    ok: true,
+    found: true,
+    partner,
+    discountPercentage: REFERRAL_PERCENT,
+  };
+}
+
 module.exports = {
   PartnerError,
+  REFERRAL_PERCENT,
+  CASHBACK_PERCENT,
+  MIN_SUBTOTAL_CENTS,
   normalizeReferralCode,
   getPartnerByCode,
   getPartnerById,
@@ -305,4 +379,5 @@ module.exports = {
   getPartnerWalletByUserId,
   createPartner,
   setPartnerActive,
+  getActiveReferralByCode,
 };
