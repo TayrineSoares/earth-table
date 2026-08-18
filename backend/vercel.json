@@ -1,6 +1,10 @@
 {
   "functions": {
-    "api/**.js": { "maxDuration": 10, "memory": 1024 }
+    "api/**.js": {
+      "maxDuration": 10,
+      "memory": 1024,
+      "includeFiles": "assets/email/**"
+    }
   },
   "crons": [
     { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" }

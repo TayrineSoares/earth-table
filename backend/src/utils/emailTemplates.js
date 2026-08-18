@@ -63,10 +63,18 @@ const C_PAGE = "#F4F1EA";
 const C_LINE = "#EEDCC0";
 const C_WHITE = "#FFFFFF";
 
-// Stacked lockup (high-logo-2.png). Embedded inline via cid:earth-table-logo
-// from backend/assets/email/high-logo-2.png so it renders without a public URL.
-// Optional override: set EMAIL_LOGO_URL to a public https image.
-const LOGO_URL = process.env.EMAIL_LOGO_URL || 'cid:earth-table-logo';
+// Stacked lockup (high-logo-2.png).
+// Production uses a public https URL so Gmail/Outlook can load it.
+// Local/dev falls back to an inline CID attachment from backend/assets/email/.
+// Override with EMAIL_LOGO_URL if needed.
+function getEmailLogoUrl() {
+  if (process.env.EMAIL_LOGO_URL) return process.env.EMAIL_LOGO_URL;
+  const frontend = String(process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+  if (frontend && !/localhost|127\.0\.0\.1/.test(frontend)) {
+    return `${frontend}/email/high-logo-2.png`;
+  }
+  return 'cid:earth-table-logo';
+}
 
 function spacer(px = 24) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td style="height:${px}px; line-height:${px}px; font-size:1px;">&nbsp;</td></tr></table>`;
@@ -101,7 +109,7 @@ function wrapEmail(inner, { preheader, replyOk } = {}) {
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;">
           <tr>
             <td align="center" bgcolor="${C_WHITE}" style="padding:32px 24px 24px; background-color:${C_WHITE};">
-              <img src="${LOGO_URL}" width="140" alt="Earth Table Co" style="display:block; margin:0 auto; width:140px; max-width:140px; height:auto; border:0; outline:none; text-decoration:none;">
+              <img src="${getEmailLogoUrl()}" width="140" alt="Earth Table Co" style="display:block; margin:0 auto; width:140px; max-width:140px; height:auto; border:0; outline:none; text-decoration:none;">
             </td>
           </tr>
           <tr>
@@ -932,4 +940,5 @@ module.exports = {
   renderPartnerCodeUsedEmail,
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
+  getEmailLogoUrl,
 };

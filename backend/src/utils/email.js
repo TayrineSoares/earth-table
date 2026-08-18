@@ -1,6 +1,7 @@
 const { Resend } = require('resend');
 const fs = require('fs');
 const path = require('path');
+const { getEmailLogoUrl } = require('./emailTemplates');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -8,10 +9,11 @@ const LOGO_PATH = path.join(__dirname, '../../assets/email/high-logo-2.png');
 
 function logoAttachment() {
   try {
+    if (!String(getEmailLogoUrl()).startsWith('cid:')) return null;
     if (!fs.existsSync(LOGO_PATH)) return null;
     return {
       filename: 'high-logo-2.png',
-      content: fs.readFileSync(LOGO_PATH).toString('base64'),
+      content: fs.readFileSync(LOGO_PATH),
       contentId: 'earth-table-logo',
       contentType: 'image/png',
     };
