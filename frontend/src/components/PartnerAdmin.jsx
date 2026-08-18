@@ -30,6 +30,7 @@ const PartnerAdmin = () => {
   const [editingCodeId, setEditingCodeId] = useState(null);
   const [editCode, setEditCode] = useState('');
   const [savingCode, setSavingCode] = useState(false);
+  const [savingActiveId, setSavingActiveId] = useState(null);
 
   const load = async () => {
     const [partnerRows, userRows] = await Promise.all([
@@ -119,14 +120,26 @@ const PartnerAdmin = () => {
   };
 
   const handleToggleActive = async (row) => {
+    const nextActive = !row.active;
+    const name = partnerName(row);
+    const confirmed = window.confirm(
+      nextActive
+        ? `Activate ${name}? Their referral code will work at checkout again.`
+        : `Deactivate ${name}? Their referral code will stop working at checkout.`
+    );
+    if (!confirmed) return;
+
+    setSavingActiveId(row.id);
     try {
-      const updated = await setPartnerActive(row.id, !row.active);
+      const updated = await setPartnerActive(row.id, nextActive);
       setPartners((prev) =>
         prev.map((p) => (p.id === row.id ? { ...p, ...updated } : p))
       );
     } catch (err) {
       console.error('Error updating partner:', err);
       alert(err.message || 'Failed to update partner.');
+    } finally {
+      setSavingActiveId(null);
     }
   };
 
@@ -314,7 +327,10 @@ const PartnerAdmin = () => {
                     >
                       <td className="partner-expand-cell">{isExpanded ? '▾' : '▸'}</td>
                       <td>
-                        <div className="partner-name">{partnerName(row)}</div>
+                        <div className="partner-name-with-badge">
+                          <div className="partner-name">{partnerName(row)}</div>
+                          {!row.active && <span className="partner-inactive-badge">Inactive</span>}
+                        </div>
                         {row.user?.email && (
                           <div className="partner-email">{row.user.email}</div>
                         )}
@@ -379,11 +395,24 @@ const PartnerAdmin = () => {
                       <td>{formatCents(row.current_month_cents)}</td>
                       <td>{formatCents(row.total_earn_cents)}</td>
                       <td onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={!!row.active}
-                          onChange={() => handleToggleActive(row)}
-                        />
+                        <label
+                          className={
+                            savingActiveId === row.id
+                              ? 'admin-toggle is-disabled'
+                              : 'admin-toggle'
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!row.active}
+                            disabled={savingActiveId === row.id}
+                            onChange={() => handleToggleActive(row)}
+                          />
+                          <span className="admin-toggle-track" />
+                          <span className="admin-toggle-label">
+                            {row.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </label>
                       </td>
                     </tr>
                     {isExpanded && (
