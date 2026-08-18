@@ -7,7 +7,7 @@ const {
   closePartnerMonth,
   markInvoicesEmailed,
 } = require('../queries/partner');
-const { sendEmail, ownerNotificationEmails } = require('../utils/email');
+const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
@@ -43,7 +43,7 @@ function handleCron(req, res) {
 
   closePartnerMonth({ periodKey: period || undefined })
     .then(async (result) => {
-      const ownerTo = ownerNotificationEmails();
+      const adminTo = adminNotificationEmails();
       const sends = [];
       const invoiceSends = [];
 
@@ -66,11 +66,11 @@ function handleCron(req, res) {
           console.warn('[cron/partner-monthly] partner has no email; skipped partner statement', payload.invoice?.id);
         }
 
-        if (ownerTo.length) {
+        if (adminTo.length) {
           const adminMsg = renderAdminMonthlyInvoiceEmail(payload);
           tasks.push(
             sendEmail({
-              to: ownerTo,
+              to: adminTo,
               subject: adminMsg.subject,
               html: adminMsg.html,
               text: adminMsg.text,
@@ -81,8 +81,8 @@ function handleCron(req, res) {
         invoiceSends.push({ invoiceId: payload.invoice?.id, tasks });
       }
 
-      if (!ownerTo.length) {
-        console.warn('[cron/partner-monthly] OWNER_NOTIFICATIONS_TO empty; skipped admin statements');
+      if (!adminTo.length) {
+        console.warn('[cron/partner-monthly] ADMIN_NOTIFICATIONS_TO empty; skipped admin statements');
       }
 
       for (const group of invoiceSends) {

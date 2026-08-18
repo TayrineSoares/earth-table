@@ -67,11 +67,20 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, bcc, from, atta
   }
 }
 
-function ownerNotificationEmails() {
-  return (process.env.OWNER_NOTIFICATIONS_TO || '')
+function parseEmailList(value) {
+  return String(value || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
-module.exports = { sendEmail, ownerNotificationEmails };
+function ownerNotificationEmails() {
+  return parseEmailList(process.env.OWNER_NOTIFICATIONS_TO);
+}
+
+function adminNotificationEmails() {
+  const admin = parseEmailList(process.env.ADMIN_NOTIFICATIONS_TO);
+  return admin.length ? admin : ownerNotificationEmails();
+}
+
+module.exports = { sendEmail, ownerNotificationEmails, adminNotificationEmails };

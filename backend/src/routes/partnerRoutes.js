@@ -13,7 +13,7 @@ const {
   setPayoutPreference,
   setInvoicePaid,
 } = require('../queries/partner');
-const { sendEmail, ownerNotificationEmails } = require('../utils/email');
+const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const { renderPartnerInvoicePdf, invoicePdfFilename } = require('../utils/partnerInvoicePdf');
 const {
   renderPartnerWelcomeEmail,
@@ -30,7 +30,7 @@ function handlePartnerError(res, err, label) {
 
 async function sendPartnerWelcomeEmails(partner) {
   const user = partner.user || {};
-  const ownerTo = ownerNotificationEmails();
+  const adminTo = adminNotificationEmails();
 
   const sends = [];
 
@@ -49,18 +49,18 @@ async function sendPartnerWelcomeEmails(partner) {
     console.warn('[POST /partners] partner has no email; skipped partner welcome');
   }
 
-  if (ownerTo.length) {
+  if (adminTo.length) {
     const adminMsg = renderAdminPartnerWelcomeEmail(partner, user);
     sends.push(
       sendEmail({
-        to: ownerTo,
+        to: adminTo,
         subject: adminMsg.subject,
         html: adminMsg.html,
         text: adminMsg.text,
       })
     );
   } else {
-    console.warn('[POST /partners] OWNER_NOTIFICATIONS_TO empty; skipped admin welcome');
+    console.warn('[POST /partners] ADMIN_NOTIFICATIONS_TO empty; skipped admin welcome');
   }
 
   const results = await Promise.allSettled(sends);
