@@ -73,10 +73,15 @@ async function getOrderByUserId(userId) {
     .select(`
       *,
       order_products (
+        product_id,
         quantity,
         unit_price_cents,
         product:products (
-          slug
+          id,
+          slug,
+          image_url,
+          price_cents,
+          is_available
         )
       )
     `)

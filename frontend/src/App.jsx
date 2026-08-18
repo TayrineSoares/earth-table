@@ -113,20 +113,34 @@ const App = () => {
     }
   };
 
-  const addToCart = (product) => {
-    setCart((prevCart) => {
-      const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
-
+  const mergeIntoCart = (prevCart, products) => {
+    const next = [...prevCart];
+    for (const product of products) {
+      if (!product?.id) continue;
+      const qty = Math.max(1, Number(product.quantity) || 1);
+      const existingItemIndex = next.findIndex((item) => item.id === product.id);
       if (existingItemIndex !== -1) {
-        const updatedCart = [...prevCart];
-        updatedCart[existingItemIndex].quantity += 1;
-        return updatedCart;
+        next[existingItemIndex] = {
+          ...next[existingItemIndex],
+          quantity: next[existingItemIndex].quantity + qty,
+        };
       } else {
-        return [...prevCart, { ...product, quantity: 1 }];
+        const { quantity: _quantity, ...rest } = product;
+        next.push({ ...rest, quantity: qty });
       }
-    });
+    }
+    return next;
+  };
 
+  const addItemsToCart = (products = []) => {
+    const list = Array.isArray(products) ? products.filter((item) => item?.id) : [];
+    if (!list.length) return;
+    setCart((prevCart) => mergeIntoCart(prevCart, list));
     setShowCartPopup(true);
+  };
+
+  const addToCart = (product, quantity = 1) => {
+    addItemsToCart([{ ...product, quantity: Math.max(1, Number(quantity) || 1) }]);
   };
 
   const removeAll = (product) => {

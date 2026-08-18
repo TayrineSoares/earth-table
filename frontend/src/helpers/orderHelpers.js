@@ -1,5 +1,101 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
+export const PICKUP_ADDRESS = "77 Woodstream Blvd, Vaughan, ON L4L 7Y7";
+export const DELIVERY_WINDOW = "11:00 AM – 6:00 PM";
+
+export const formatMoney = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
+
+export const formatYmdLong = (ymd) => {
+  if (!ymd) return "";
+  const [y, m, d] = String(ymd).split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+export const formatOrderPlacedAt = (isoString) => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  return (
+    date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }) +
+    " at " +
+    date.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric" })
+  );
+};
+
+export const shortOrderId = (id) =>
+  String(id || "").replace(/-/g, "").slice(-8).toUpperCase();
+
+export const parsePaymentInfo = (order) => {
+  try {
+    const raw = order?.buyer_stripe_payment_info;
+    return typeof raw === "string" ? JSON.parse(raw) : raw || {};
+  } catch {
+    return {};
+  }
+};
+
+export const getPostalFromBuyerInfo = (buyerStripeInfo) => {
+  try {
+    const parsed =
+      typeof buyerStripeInfo === "string"
+        ? JSON.parse(buyerStripeInfo)
+        : buyerStripeInfo || {};
+    return parsed?.delivery_meta?.postal_code || "";
+  } catch {
+    return "";
+  }
+};
+
+export const getOrderDiscount = (order) => {
+  const meta = parsePaymentInfo(order).discount_meta || {};
+  const code = String(meta.code || order?.referral_code || "").trim();
+  if (!code) return null;
+
+  const kind = meta.kind || (order?.referral_code ? "referral" : "promo");
+  const percent = Number(meta.percent);
+  const itemSubtotalCents = Number(order?.item_subtotal_cents) || 0;
+  let amountOffCents = Number(meta.amount_off_cents);
+  if (!Number.isFinite(amountOffCents) || amountOffCents < 0) {
+    const pct = Number.isFinite(percent) ? percent : kind === "referral" ? 15 : 0;
+    amountOffCents = Math.round(itemSubtotalCents * pct / 100);
+  }
+
+  return {
+    label: kind === "referral" ? "Referral" : "Promo",
+    code: code.toUpperCase(),
+    percent: Number.isFinite(percent) ? percent : kind === "referral" ? 15 : null,
+    amountOffCents,
+  };
+};
+
+export const getDeliveryFeeCents = (order) => {
+  const preTax = Number(parsePaymentInfo(order)?.delivery_meta?.fee_cents_server) || 0;
+  return preTax > 0 ? Math.round(preTax * 1.13) : 0;
+};
+
+export const isOrderItemAvailable = (item) =>
+  Boolean(item?.product?.id) && item.product.is_available !== false;
+
+export const toCartProduct = (item) => {
+  const product = item?.product || {};
+  return {
+    id: product.id,
+    slug: product.slug,
+    price_cents: product.price_cents,
+    image_url: product.image_url,
+    quantity: Math.max(1, Number(item?.quantity) || 1),
+  };
+};
+
 const fetchOrderBySessionId = async (sessionId) => {
   try {
     const res = await fetch(`${API_BASE}/api/orders/session/${sessionId}`);

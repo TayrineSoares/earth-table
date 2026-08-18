@@ -52,7 +52,12 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/orders/:userId?" element={<OrderHistory user={user}/>} />
+          <Route path="/orders/:userId?" element={
+            <OrderHistory
+              user={user}
+              addToCart={addToCart}
+            />
+          } />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>

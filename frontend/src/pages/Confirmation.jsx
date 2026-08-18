@@ -1,64 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchOrderBySessionId } from '../helpers/orderHelpers';
+import {
+  fetchOrderBySessionId,
+  formatMoney,
+  formatYmdLong,
+  getDeliveryFeeCents,
+  getOrderDiscount,
+  PICKUP_ADDRESS,
+} from '../helpers/orderHelpers';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
 import checkoutImage from "../assets/images/checkoutImage.png";
 import "../styles/Cart.css";
 import "../styles/Confirmation.css";
-
-const PICKUP_ADDRESS = "77 Woodstream Blvd, Vaughan, ON L4L 7Y7";
-
-const formattedYmd = (ymd) => {
-  if (!ymd) return "";
-  const [y, m, d] = (ymd || "").split("-").map(Number);
-  if (!y || !m || !d) return "";
-  const localDate = new Date(y, m - 1, d);
-  return localDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-};
-
-const money = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
-
-const parsePaymentInfo = (order) => {
-  try {
-    const raw = order?.buyer_stripe_payment_info;
-    return typeof raw === "string" ? JSON.parse(raw) : raw || {};
-  } catch {
-    return {};
-  }
-};
-
-const getDiscount = (order) => {
-  const meta = parsePaymentInfo(order).discount_meta || {};
-  const code = String(meta.code || order?.referral_code || "").trim();
-  if (!code) return null;
-
-  const kind = meta.kind || (order?.referral_code ? "referral" : "promo");
-  const percent = Number(meta.percent);
-  const itemSubtotalCents = Number(order?.item_subtotal_cents) || 0;
-  let amountOffCents = Number(meta.amount_off_cents);
-  if (!Number.isFinite(amountOffCents) || amountOffCents < 0) {
-    const pct = Number.isFinite(percent) ? percent : kind === "referral" ? 15 : 0;
-    amountOffCents = Math.round(itemSubtotalCents * pct / 100);
-  }
-
-  return {
-    label: kind === "referral" ? "Referral" : "Promo",
-    code: code.toUpperCase(),
-    percent: Number.isFinite(percent) ? percent : kind === "referral" ? 15 : null,
-    amountOffCents,
-  };
-};
-
-const getDeliveryFeeCents = (order) => {
-  const preTax = Number(parsePaymentInfo(order)?.delivery_meta?.fee_cents_server) || 0;
-  return preTax > 0 ? Math.round(preTax * 1.13) : 0;
-};
 
 export default function Confirmation({ clearCart }) {
   const [searchParams] = useSearchParams();
@@ -127,12 +81,12 @@ export default function Confirmation({ clearCart }) {
   }
 
   const isDelivery = !!order?.delivery;
-  const pickupDateTxt = formattedYmd(order?.pickup_date);
-  const deliveryDateTxt = order?.delivery_date_formatted || formattedYmd(order?.delivery_date);
+  const pickupDateTxt = formatYmdLong(order?.pickup_date);
+  const deliveryDateTxt = order?.delivery_date_formatted || formatYmdLong(order?.delivery_date);
   const buyerEmail = order?.buyer_email || "your email address";
   const products = Array.isArray(order?.products) ? order.products : [];
   const itemSubtotalCents = Number(order?.item_subtotal_cents) || 0;
-  const discount = getDiscount(order);
+  const discount = getOrderDiscount(order);
   const deliveryFeeCents = isDelivery ? getDeliveryFeeCents(order) : 0;
   const creditCents = Number(order?.credit_applied_cents) || 0;
 
@@ -163,7 +117,7 @@ export default function Confirmation({ clearCart }) {
                 <p className="subtotal">
                   {discount ? "Subtotal (before discount)" : "Subtotal"}
                 </p>
-                <p className="subtotal">{money(itemSubtotalCents)}</p>
+                <p className="subtotal">{formatMoney(itemSubtotalCents)}</p>
               </div>
             )}
 
@@ -173,21 +127,21 @@ export default function Confirmation({ clearCart }) {
                   {discount.label} ({discount.code})
                   {discount.percent != null ? ` — ${discount.percent}% off` : ""}
                 </p>
-                <p className="subtotal">-{money(discount.amountOffCents)}</p>
+                <p className="subtotal">-{formatMoney(discount.amountOffCents)}</p>
               </div>
             )}
 
             {deliveryFeeCents > 0 && (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">Delivery fee</p>
-                <p className="subtotal">{money(deliveryFeeCents)}</p>
+                <p className="subtotal">{formatMoney(deliveryFeeCents)}</p>
               </div>
             )}
 
             {creditCents > 0 && (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">Store credit</p>
-                <p className="subtotal">-{money(creditCents)}</p>
+                <p className="subtotal">-{formatMoney(creditCents)}</p>
               </div>
             )}
 
@@ -198,7 +152,7 @@ export default function Confirmation({ clearCart }) {
 
             <div className="checkout-total">
               <p className="total">Total</p>
-              <p className="total">{money(order?.total_cents)}</p>
+              <p className="total">{formatMoney(order?.total_cents)}</p>
             </div>
 
             <div className="confirmation-fulfillment">
@@ -249,7 +203,7 @@ export default function Confirmation({ clearCart }) {
                 <div className="checkout-item-details">
                   <p className="checkout-item-title">{product.slug || "Item"}</p>
                   <p className="checkout-item-price">
-                    {product.quantity}x {money(product.unit_price_cents)}
+                    {product.quantity}x {formatMoney(product.unit_price_cents)}
                   </p>
                 </div>
               </div>
