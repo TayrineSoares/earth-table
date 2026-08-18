@@ -586,6 +586,145 @@ Recorded as: ${payoutLabel}
   return { subject, html, text };
 }
 
+function formatOrderDateShort(iso) {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function payoutTypeLabel(type) {
+  return type === 'credit' ? 'Store credit' : 'Cash';
+}
+
+function invoiceOrderLines(orders = []) {
+  return (orders || []).map((order) => {
+    const date = formatOrderDateShort(order.order_date);
+    const customer = order.customer_name || '—';
+    const cashback = formatMoney(order.amount_cents);
+    const method = order.payout_type ? payoutTypeLabel(order.payout_type) : '—';
+    return `${date} — ${customer} — ${cashback} (${method})`;
+  });
+}
+
+/**
+ * Monthly statement for the partner after month-end close.
+ */
+function renderPartnerMonthlyInvoiceEmail({
+  invoice = {},
+  partner = {},
+  user = {},
+  periodLabel = '',
+  orders = [],
+} = {}) {
+  const firstName = user.first_name || 'there';
+  const code = String(partner.referral_code || '').toUpperCase() || '—';
+  const cash = Number(invoice.cash_cents) || 0;
+  const credit = Number(invoice.credit_cents) || 0;
+  const total = Number(invoice.total_cents) || cash + credit;
+  const lines = invoiceOrderLines(orders);
+
+  const subject = `Your Earth Table partner statement — ${periodLabel}`;
+
+  const html = wrapEmail(`
+      ${h1('Your partner statement is ready')}
+      <p style="margin:0 0 16px;">Hi ${firstName}, ${periodLabel} is closed. Here's the cashback from orders that used <strong>${code}</strong>.</p>
+      ${card(`
+        ${rowHtml('Period', periodLabel)}
+        ${rowHtml('Referral code', code)}
+        ${rowHtml('Total cash', formatMoney(cash))}
+        ${rowHtml('Total store credit', formatMoney(credit))}
+        ${rowHtml('Total', formatMoney(total), true)}
+      `)}
+      ${h2('Referred orders')}
+      ${lines.length
+        ? `<ul style="margin:0 0 16px; padding-left:18px;">${lines.map((line) => `<li style="margin:2px 0;">${line}</li>`).join('')}</ul>`
+        : '<p style="margin:0 0 16px;">No referred orders this period.</p>'}
+      <p style="margin:0 0 8px;">Store credit is in your wallet and will auto-apply on your next order. Cash is paid by Earth Table outside the site.</p>
+      <p style="margin:0; color:#666; font-size:13px;">Questions? Reply to this email or write to hello@earthtableco.ca.</p>
+  `);
+
+  const text = `Your partner statement is ready
+Hi ${firstName}, ${periodLabel} is closed. Here's the cashback from orders that used ${code}.
+
+Period: ${periodLabel}
+Referral code: ${code}
+Total cash: ${formatMoney(cash)}
+Total store credit: ${formatMoney(credit)}
+Total: ${formatMoney(total)}
+
+Referred orders
+${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
+
+Store credit is in your wallet and will auto-apply on your next order. Cash is paid by Earth Table outside the site.
+
+Questions? Reply to this email or write to hello@earthtableco.ca.
+`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Admin copy of the monthly partner statement.
+ */
+function renderAdminMonthlyInvoiceEmail({
+  invoice = {},
+  partner = {},
+  user = {},
+  periodLabel = '',
+  orders = [],
+} = {}) {
+  const code = String(partner.referral_code || '').toUpperCase() || '—';
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
+  const email = user.email || '—';
+  const cash = Number(invoice.cash_cents) || 0;
+  const credit = Number(invoice.credit_cents) || 0;
+  const total = Number(invoice.total_cents) || cash + credit;
+  const status = cash > 0 ? 'Unpaid (cash)' : 'Credited';
+  const lines = invoiceOrderLines(orders);
+
+  const subject = `Partner invoice — ${code} — ${periodLabel}`;
+
+  const html = wrapEmail(`
+      ${h1('Monthly partner invoice')}
+      <p style="margin:0 0 16px;">${periodLabel} closed for <strong>${code}</strong>.</p>
+      ${card(`
+        ${rowHtml('Partner', name)}
+        ${rowHtml('Email', email)}
+        ${rowHtml('Code', code)}
+        ${rowHtml('Status', status)}
+        ${rowHtml('Total cash', formatMoney(cash))}
+        ${rowHtml('Total store credit', formatMoney(credit))}
+        ${rowHtml('Total', formatMoney(total), true)}
+      `)}
+      ${h2('Referred orders')}
+      ${lines.length
+        ? `<ul style="margin:0 0 16px; padding-left:18px;">${lines.map((line) => `<li style="margin:2px 0;">${line}</li>`).join('')}</ul>`
+        : '<p style="margin:0;">No referred orders this period.</p>'}
+  `);
+
+  const text = `Monthly partner invoice
+${periodLabel} closed for ${code}.
+
+Partner: ${name}
+Email: ${email}
+Code: ${code}
+Status: ${status}
+Total cash: ${formatMoney(cash)}
+Total store credit: ${formatMoney(credit)}
+Total: ${formatMoney(total)}
+
+Referred orders
+${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
+`;
+
+  return { subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
@@ -593,4 +732,6 @@ module.exports = {
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
   renderPartnerCodeUsedEmail,
+  renderPartnerMonthlyInvoiceEmail,
+  renderAdminMonthlyInvoiceEmail,
 };

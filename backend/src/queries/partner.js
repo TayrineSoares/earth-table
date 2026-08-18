@@ -798,6 +798,173 @@ async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
   return data;
 }
 
+function parsePeriodKey(raw) {
+  const match = String(raw || '').trim().match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!year || month < 1 || month > 12) return null;
+  return {
+    key: `${match[1]}-${match[2]}`,
+    year,
+    month,
+    accrual: `${match[1]}-${match[2]}-01`,
+  };
+}
+
+async function closePartnerMonth({ periodKey } = {}) {
+  const currentStart = torontoMonthStart();
+  const requested = periodKey ? parsePeriodKey(periodKey) : null;
+  if (periodKey && !requested) {
+    throw new PartnerError('period must be YYYY-MM.');
+  }
+
+  let pendingQuery = supabase
+    .from('partner_ledger')
+    .select('id, partner_id, amount_cents, payout_type, accrual_month, invoice_id, status')
+    .eq('kind', 'earn')
+    .eq('status', 'pending');
+
+  pendingQuery = requested
+    ? pendingQuery.eq('accrual_month', requested.accrual)
+    : pendingQuery.lt('accrual_month', currentStart);
+
+  const { data: pendingRows, error: pendingErr } = await pendingQuery;
+  if (pendingErr) throw pendingErr;
+
+  const groups = new Map();
+  for (const row of pendingRows || []) {
+    const key = monthKeyFromDate(row.accrual_month);
+    if (!key) continue;
+    const bagKey = `${row.partner_id}:${key}`;
+    if (!groups.has(bagKey)) {
+      const [year, month] = key.split('-').map(Number);
+      groups.set(bagKey, {
+        partnerId: row.partner_id,
+        periodKey: key,
+        year,
+        month,
+        accrual: `${key}-01`,
+        cashCents: 0,
+        creditCents: 0,
+        rows: [],
+      });
+    }
+    const bag = groups.get(bagKey);
+    const amount = Number(row.amount_cents) || 0;
+    if (row.payout_type === 'credit') bag.creditCents += amount;
+    else bag.cashCents += amount;
+    bag.rows.push(row);
+  }
+
+  const created = [];
+  const reused = [];
+
+  for (const bag of groups.values()) {
+    const { data: existing, error: existingErr } = await supabase
+      .from('partner_invoices')
+      .select('id, partner_id, period_year, period_month, cash_cents, credit_cents, total_cents, status, emailed_at')
+      .eq('partner_id', bag.partnerId)
+      .eq('period_year', bag.year)
+      .eq('period_month', bag.month)
+      .maybeSingle();
+    if (existingErr) throw existingErr;
+
+    let invoice = existing;
+    if (!invoice) {
+      const cashCents = bag.cashCents;
+      const creditCents = bag.creditCents;
+      const totalCents = cashCents + creditCents;
+      const mixed = cashCents > 0 && creditCents > 0;
+      const insertRow = {
+        partner_id: bag.partnerId,
+        period_year: bag.year,
+        period_month: bag.month,
+        payout_type: mixed ? null : (creditCents > 0 ? 'credit' : 'cash'),
+        cash_cents: cashCents,
+        credit_cents: creditCents,
+        total_cents: totalCents,
+        status: cashCents > 0 ? 'unpaid' : 'credited',
+      };
+      const { data: inserted, error: insertErr } = await supabase
+        .from('partner_invoices')
+        .insert([insertRow])
+        .select('id, partner_id, period_year, period_month, cash_cents, credit_cents, total_cents, status, emailed_at')
+        .single();
+
+      if (insertErr) {
+        if (insertErr.code !== '23505') throw insertErr;
+        const retry = await supabase
+          .from('partner_invoices')
+          .select('id, partner_id, period_year, period_month, cash_cents, credit_cents, total_cents, status, emailed_at')
+          .eq('partner_id', bag.partnerId)
+          .eq('period_year', bag.year)
+          .eq('period_month', bag.month)
+          .maybeSingle();
+        if (retry.error) throw retry.error;
+        invoice = retry.data;
+        if (invoice) reused.push(invoice);
+      } else {
+        invoice = inserted;
+        created.push(inserted);
+      }
+    } else {
+      reused.push(invoice);
+    }
+
+    if (!invoice?.id) continue;
+
+    const { error: ledgerErr } = await supabase
+      .from('partner_ledger')
+      .update({ status: 'available', invoice_id: invoice.id })
+      .eq('partner_id', bag.partnerId)
+      .eq('kind', 'earn')
+      .eq('accrual_month', bag.accrual)
+      .eq('status', 'pending');
+    if (ledgerErr) throw ledgerErr;
+  }
+
+  let unsentQuery = supabase
+    .from('partner_invoices')
+    .select('id, partner_id, period_year, period_month, cash_cents, credit_cents, total_cents, status, emailed_at')
+    .is('emailed_at', null);
+
+  if (requested) {
+    unsentQuery = unsentQuery
+      .eq('period_year', requested.year)
+      .eq('period_month', requested.month);
+  }
+
+  const { data: unsent, error: unsentErr } = await unsentQuery;
+  if (unsentErr) throw unsentErr;
+
+  const payloads = [];
+  for (const invoice of unsent || []) {
+    const payload = await getInvoicePdfPayload(invoice.id);
+    if (payload) payloads.push(payload);
+  }
+
+  return {
+    period: requested ? requested.key : `before ${currentStart.slice(0, 7)}`,
+    periodLabel: requested ? monthLabelFromKey(requested.key) : 'past months',
+    created_count: created.length,
+    reused_count: reused.length,
+    unsent_count: payloads.length,
+    created: created.map((row) => row.id),
+    payloads,
+  };
+}
+
+async function markInvoicesEmailed(invoiceIds) {
+  const ids = [...new Set((invoiceIds || []).filter(Boolean))];
+  if (!ids.length) return;
+  const { error } = await supabase
+    .from('partner_invoices')
+    .update({ emailed_at: new Date().toISOString() })
+    .in('id', ids);
+  if (error) throw error;
+}
+
 module.exports = {
   PartnerError,
   getPartnerById,
@@ -814,4 +981,7 @@ module.exports = {
   recordCreditRedeem,
   setPayoutPreference,
   setInvoicePaid,
+  parsePeriodKey,
+  closePartnerMonth,
+  markInvoicesEmailed,
 };

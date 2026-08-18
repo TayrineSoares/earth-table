@@ -2,6 +2,9 @@
   "functions": {
     "api/**.js": { "maxDuration": 10, "memory": 1024 }
   },
+  "crons": [
+    { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" }
+  ],
   "rewrites": [
     { "source": "/api/webhook", "destination": "/webhook" },
     { "source": "/api/(.*)", "destination": "/api/index.js" }
