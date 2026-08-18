@@ -92,7 +92,8 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
             {isExpandedMonth && (
               <div className="partner-month-body">
                 {month.orders.length > 0 && (
-                  <table className="partner-month-orders">
+                  <div className="partner-month-table-wrap">
+                    <table className="partner-month-orders">
                     <thead>
                       <tr>
                         <th>ORDER DATE</th>
@@ -106,9 +107,9 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                     <tbody>
                       {month.orders.map((order, idx) => (
                         <tr key={`${order.order_id || 'earn'}-${idx}`}>
-                          <td>{formatOrderDate(order.order_date)}</td>
-                          <td>{order.order_id || '—'}</td>
-                          <td>
+                          <td data-label="Order date">{formatOrderDate(order.order_date)}</td>
+                          <td data-label="Order #">{order.order_id || '—'}</td>
+                          <td data-label="Customer">
                             {order.customer_name || '—'}
                             {order.cardholder_name ? (
                               <span className="partner-cardholder-name">
@@ -116,13 +117,13 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                               </span>
                             ) : null}
                           </td>
-                          <td>
+                          <td data-label="Subtotal">
                             {order.item_subtotal_cents != null
                               ? formatCents(order.item_subtotal_cents)
                               : '—'}
                           </td>
-                          <td>{formatCents(order.amount_cents)}</td>
-                          <td>{formatPayoutLabel(order.payout_type)}</td>
+                          <td data-label="Cashback">{formatCents(order.amount_cents)}</td>
+                          <td data-label="Method">{formatPayoutLabel(order.payout_type)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -146,7 +147,8 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                         <td colSpan={2}>{formatCents(month.cash_cents)}</td>
                       </tr>
                     </tfoot>
-                  </table>
+                    </table>
+                  </div>
                 )}
               </div>
             )}

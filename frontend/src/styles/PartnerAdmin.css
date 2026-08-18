@@ -571,3 +571,119 @@
   font-size: 13px;
   white-space: nowrap;
 }
+
+.partner-month-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .partner-month-card {
+    padding: 12px 10px;
+  }
+
+  .partner-month-header {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+  }
+
+  .partner-month-badges {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .partner-month-earn {
+    font-size: 15px;
+  }
+
+  .partner-month-orders thead {
+    display: none;
+  }
+
+  .partner-month-orders,
+  .partner-month-orders tbody,
+  .partner-month-orders tfoot {
+    display: block;
+    width: 100%;
+  }
+
+  .partner-month-orders tbody tr {
+    display: block;
+    margin-bottom: 10px;
+    border: 1px solid #FEE8D4;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .partner-month-orders tbody td {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    border-bottom: 1px solid #FEE8D4;
+    padding: 8px 10px;
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .partner-month-orders tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .partner-month-orders tbody td .partner-cardholder-name {
+    flex: 1 1 100%;
+    text-align: right;
+  }
+
+  .partner-month-orders tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #BE7200;
+    text-align: left;
+  }
+
+  .partner-month-orders tfoot tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #FEE8D4;
+    border-bottom: none;
+  }
+
+  .partner-month-orders tfoot tr:first-child {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .partner-month-orders tfoot tr:last-child {
+    border-bottom: 1px solid #FEE8D4;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .partner-month-orders tfoot td {
+    border: none;
+    padding: 0;
+    width: auto;
+    font-size: 13px;
+  }
+
+  .partner-month-orders tfoot td.partner-month-total-label {
+    text-align: left;
+    flex: 1 1 auto;
+    text-transform: uppercase;
+  }
+}

@@ -1,3 +1,8 @@
+.order-history-page {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 .order-history-page .page-wrapper {
   padding-top: 2rem;
   padding-bottom: 3rem;
@@ -15,6 +20,8 @@
 
 .order-history-empty {
   max-width: 520px;
+  width: 100%;
+  box-sizing: border-box;
   background-color: #FFFBF3;
   border: 2px solid #EDA413;
   border-radius: 15px;
@@ -73,6 +80,8 @@
   padding: 24px;
   margin-bottom: 24px;
   max-width: 860px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .order-card-header {
@@ -157,6 +166,7 @@
   line-height: 1.4;
   color: #333;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .order-items {
@@ -219,6 +229,7 @@ a.order-item-link:hover .order-item-name {
   font-size: 22px;
   line-height: 1.2;
   margin: 0 0 6px;
+  overflow-wrap: anywhere;
 }
 
 .order-item-price {
@@ -271,6 +282,11 @@ a.order-item-link:hover .order-item-name {
   margin-bottom: 8px;
 }
 
+.order-total-row span:last-child {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .order-total-row--grand {
   font-size: 18px;
   font-variant: normal;
@@ -283,22 +299,51 @@ a.order-item-link:hover .order-item-name {
 
 @media (max-width: 1024px) {
   .order-history-page .page-wrapper {
-    padding-left: 60px;
-    padding-right: 60px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  .order-history-page .checkout-page-header-image {
+    height: 200px;
+  }
+
+  .order-history-title {
+    font-size: 40px;
   }
 }
 
 @media (max-width: 768px) {
+  .order-history-page .page-wrapper {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+  }
+
+  .order-history-page .checkout-page-header-image {
+    height: 180px;
+  }
+
   .order-history-title {
     font-size: 32px;
   }
 
+  .order-history-empty {
+    padding: 1.5rem;
+  }
+
+  .order-history-empty .order-history-button {
+    width: 100%;
+  }
+
   .order-card {
     padding: 16px;
+    margin-bottom: 16px;
   }
 
   .order-card-header {
     flex-direction: column;
+    gap: 8px;
   }
 
   .order-card-placed {
@@ -306,28 +351,39 @@ a.order-item-link:hover .order-item-name {
   }
 
   .order-card-id {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .order-meta-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .order-item {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+  }
+
+  .order-item-link {
+    gap: 12px;
   }
 
   .order-item-name {
     font-size: 18px;
   }
 
+  .order-item .order-history-button--small {
+    width: auto;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+  }
+
   .order-totals {
     max-width: none;
     margin-left: 0;
-  }
-
-  .order-history-button {
-    width: 100%;
   }
 }
 
@@ -335,6 +391,10 @@ a.order-item-link:hover .order-item-name {
   .order-history-page .page-wrapper {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .order-history-page .checkout-page-header-image {
+    height: 160px;
   }
 
   .order-history-title {
@@ -345,8 +405,40 @@ a.order-item-link:hover .order-item-name {
     padding: 1.25rem;
   }
 
+  .order-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .order-item {
+    flex-wrap: wrap;
+  }
+
+  .order-item-link {
+    flex: 1 1 100%;
+  }
+
+  .order-item .order-history-button--small,
+  .order-item-unavailable {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .order-item-unavailable {
+    display: block;
+  }
+
   .order-item-image {
     width: 56px;
     height: 56px;
+  }
+
+  .order-item-name {
+    font-size: 16px;
+  }
+
+  .order-notes {
+    padding: 10px 12px;
   }
 }
