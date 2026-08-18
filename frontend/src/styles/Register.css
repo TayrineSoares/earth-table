@@ -1,9 +1,3 @@
-/* Base styles (1440px and up) */
-.register-page {
-  display: flex;
-  flex-direction: column;
-}
-
 .register-form {
   display: flex;
   flex-direction: column;
@@ -20,10 +14,6 @@
   margin-bottom: 20px;
 }
 
-.first-name-container {
-  width: 550px;
-}
-
 .register-text {
   font-family: var(--heading-font);
   font-weight: 400;
@@ -33,7 +23,6 @@
   color: #BE7200;
   margin-bottom: 0;
 }
-
 
 .register-input {
   margin-top: 15px;
@@ -51,6 +40,28 @@
   color: #000000;
 }
 
+.register-input.register-input-error {
+  border-color: #c0392b;
+  background: #fff6f4;
+}
+
+.register-field-error,
+.register-password-mismatch {
+  font-family: var(--body-font);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.3;
+  color: #c0392b;
+  margin: 0 0 20px;
+}
+
+.register-password-mismatch {
+  background: #fff6f4;
+  border: 2px solid #c0392b;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
 .have-account-text {
   font-family: var(--body-font);
   font-weight: 400;
@@ -61,17 +72,12 @@
 }
 
 /* iOS Safari: keep register submit text black */
-.register-submit-button,
-.register-submit-button *,
 .register-form button[type="submit"],
 .register-form input[type="submit"] {
   -webkit-text-fill-color: #000 !important;
   color: #000 !important;
 }
 
-.register-submit-button:focus,
-.register-submit-button:hover,
-.register-submit-button:active,
 .register-form button[type="submit"]:focus,
 .register-form button[type="submit"]:hover,
 .register-form button[type="submit"]:active,
@@ -82,45 +88,161 @@
   color: #000 !important;
 }
 
-@media (max-width: 1366px) {
-  .register-input {
-    width: 400px;
-    padding: 18px 40px;
-  }
+.register-confirm-banner {
+  background: #FEE8D4;
+  border: 2px solid #EDA413;
+  border-radius: 15px;
+  padding: 18px 22px;
+  margin-bottom: 28px;
+}
 
+.register-confirm-banner-title {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 24px;
+  margin: 0 0 8px;
+  color: #000;
+}
+
+.register-confirm-banner-text {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.register-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 9999;
+}
+
+.register-dialog {
+  width: 100%;
+  max-width: 460px;
+  background: #FFFBF3;
+  border: 4px solid #EDA413;
+  border-radius: 18px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.register-dialog-icon {
+  width: 40px;
+  height: 40px;
+  color: #BE7200;
+  margin-bottom: 12px;
+}
+
+.register-dialog-title {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.1;
+  margin: 0 0 12px;
+  color: #000;
+}
+
+.register-dialog-body,
+.register-dialog-hint {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 0 0 12px;
+  color: #000;
+}
+
+.register-dialog-hint {
+  font-size: 14px;
+  color: #5a5a5a;
+}
+
+.register-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.register-dialog-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 280px;
+  height: 52px;
+  border-radius: 15px;
+  border: 1px solid #EDA413;
+  background-color: #EDA413;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  font-variant: small-caps;
+  cursor: pointer;
+  color: #000;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.register-dialog-primary:hover,
+.register-dialog-primary:focus {
+  background-color: #d69410;
+}
+
+.register-dialog-secondary {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  font-variant: small-caps;
+  text-decoration: underline;
+  text-decoration-color: #EDA413;
+  text-underline-offset: 4px;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+@media (max-width: 1366px) {
   .register-form-name-container,
   .register-email-number-container,
   .register-password-container {
-    display: flex;
     flex-direction: column;
     gap: 0;
   }
 
   .register-input {
     width: 455px;
+    padding: 18px 40px;
     margin-bottom: 10px;
   }
-
 }
 
-
 @media (max-width: 768px) {
-
   .register-input {
     width: 100%;
     padding: 15px;
   }
 
-  .account-sign-in, .account-register{
+  .account-sign-in,
+  .account-register {
     font-size: 33px;
   }
-
 }
 
 @media (max-width: 480px) {
-
   .register-input {
     width: 90%;
   }
-
 }
