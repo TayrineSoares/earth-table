@@ -113,7 +113,7 @@ function renderPartnerInvoicePdf({ invoice, partner, user, periodLabel, orders }
       const cells = [
         formatDate(order.order_date),
         order.order_id ? String(order.order_id) : '—',
-        clip(order.customer_name, 22),
+        clip(order.customer_name, 28),
         order.item_subtotal_cents != null ? money(order.item_subtotal_cents) : '—',
         money(order.amount_cents),
         order.payout_type ? payoutLabel(order.payout_type) : '—',

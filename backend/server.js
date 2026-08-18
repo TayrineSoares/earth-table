@@ -157,12 +157,13 @@ const stripeWebhookHandler = async (request, response) => {
       'unknown';
     const buyerName = session.customer_details?.name || '';
     const userId = md.userId || null;
+    let buyerUser = null;
 
     if (userId) {
       try {
-        const user = await getUserByAuthId(userId);
-        if (user) {
-          buyerPhoneNumber = user.phone_number || buyerPhoneNumber;
+        buyerUser = await getUserByAuthId(userId);
+        if (buyerUser) {
+          buyerPhoneNumber = buyerUser.phone_number || buyerPhoneNumber;
         }
       } catch (e) {
         console.warn('[webhook] getUserByAuthId failed (non-fatal):', e.message);
@@ -280,6 +281,8 @@ const stripeWebhookHandler = async (request, response) => {
 
       // Fetch full order for emails
       const detailedOrder = await getOrderByStripeSessionId(session.id);
+      if (buyerUser) detailedOrder.user = buyerUser;
+      detailedOrder.cardholder_name = session.customer_details?.name || detailedOrder.buyer_name;
 
       let partnerUser = null;
       if (referralPartner) {

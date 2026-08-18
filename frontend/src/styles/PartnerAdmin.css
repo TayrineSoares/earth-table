@@ -481,6 +481,13 @@
   font-size: 14px;
 }
 
+.partner-cardholder-name {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .partner-month-orders th {
   background-color: #FEE8D4;
   font-size: 12px;

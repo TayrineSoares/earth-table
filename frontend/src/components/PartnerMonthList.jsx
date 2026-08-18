@@ -108,7 +108,14 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                         <tr key={`${order.order_id || 'earn'}-${idx}`}>
                           <td>{formatOrderDate(order.order_date)}</td>
                           <td>{order.order_id || '—'}</td>
-                          <td>{order.customer_name || '—'}</td>
+                          <td>
+                            {order.customer_name || '—'}
+                            {order.cardholder_name ? (
+                              <span className="partner-cardholder-name">
+                                Card: {order.cardholder_name}
+                              </span>
+                            ) : null}
+                          </td>
                           <td>
                             {order.item_subtotal_cents != null
                               ? formatCents(order.item_subtotal_cents)

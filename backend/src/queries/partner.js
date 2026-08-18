@@ -108,6 +108,40 @@ async function getUsersByAuthIds(authUserIds) {
   return Object.fromEntries((data || []).map((u) => [u.auth_user_id, u]));
 }
 
+function namesMatch(a, b) {
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+}
+
+function accountNameFromUser(user) {
+  return [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
+}
+
+function customerDisplayFromOrder(order, user) {
+  const account = accountNameFromUser(user);
+  const card = String(order?.buyer_name || '').trim();
+  return {
+    customer_name: account || card || '—',
+    cardholder_name: account && card && !namesMatch(account, card) ? card : null,
+  };
+}
+
+async function loadOrdersByIds(orderIds) {
+  const ids = [...new Set((orderIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('id, user_id, buyer_name, item_subtotal_cents, created_at')
+    .in('id', ids);
+  if (error) throw error;
+
+  const buyersByAuth = await getUsersByAuthIds((orders || []).map((o) => o.user_id));
+  return Object.fromEntries((orders || []).map((order) => {
+    const names = customerDisplayFromOrder(order, buyersByAuth[order.user_id]);
+    return [order.id, { ...order, ...names }];
+  }));
+}
+
 async function getWalletTotalsByPartnerIds(partnerIds) {
   const ids = [...new Set((partnerIds || []).filter(Boolean))];
   const totals = Object.fromEntries(ids.map((id) => [id, emptyWallet()]));
@@ -319,7 +353,8 @@ function buildMonthBreakdown(ledger = [], invoices = [], ordersById = {}) {
       amount_cents: amount,
       status: row.status,
       payout_type: row.payout_type,
-      customer_name: order.buyer_name || '—',
+      customer_name: order.customer_name || order.buyer_name || '—',
+      cardholder_name: order.cardholder_name || null,
       item_subtotal_cents: order.item_subtotal_cents ?? null,
       order_date: order.created_at || null,
     });
@@ -374,15 +409,7 @@ async function getPartnerAdminDetail(id) {
   const orderIds = [...new Set(
     ledger.filter((row) => row.kind === 'earn' && row.order_id).map((row) => row.order_id)
   )];
-  let ordersById = {};
-  if (orderIds.length) {
-    const { data: orders, error: ordersErr } = await supabase
-      .from('orders')
-      .select('id, buyer_name, item_subtotal_cents, created_at')
-      .in('id', orderIds);
-    if (ordersErr) throw ordersErr;
-    ordersById = Object.fromEntries((orders || []).map((o) => [o.id, o]));
-  }
+  const ordersById = await loadOrdersByIds(orderIds);
 
   return displayPartner(partner, {
     user: usersByAuth[partner.user_id] || null,
@@ -441,15 +468,7 @@ async function getInvoicePdfPayload(invoiceId) {
   const orderIds = [...new Set(
     (ledger || []).filter((row) => row.order_id).map((row) => row.order_id)
   )];
-  let ordersById = {};
-  if (orderIds.length) {
-    const { data: orders, error: ordersErr } = await supabase
-      .from('orders')
-      .select('id, buyer_name, item_subtotal_cents, created_at')
-      .in('id', orderIds);
-    if (ordersErr) throw ordersErr;
-    ordersById = Object.fromEntries((orders || []).map((o) => [o.id, o]));
-  }
+  const ordersById = await loadOrdersByIds(orderIds);
 
   const periodKey = monthKeyFromPeriod(invoice.period_year, invoice.period_month);
   const orders = (ledger || []).map((row) => {
@@ -458,7 +477,8 @@ async function getInvoicePdfPayload(invoiceId) {
       order_id: row.order_id,
       amount_cents: Number(row.amount_cents) || 0,
       payout_type: row.payout_type,
-      customer_name: order.buyer_name || '—',
+      customer_name: order.customer_name || order.buyer_name || '—',
+      cardholder_name: order.cardholder_name || null,
       item_subtotal_cents: order.item_subtotal_cents ?? null,
       order_date: order.created_at || null,
     };

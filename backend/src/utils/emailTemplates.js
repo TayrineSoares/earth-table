@@ -34,6 +34,23 @@ const parseBuyerStripeInfo = (buyerStripeInfo) => {
   }
 };
 
+function namesMatch(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function customerNamesFromOrder(order = {}) {
+  const user = order.user || {};
+  const account = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  const stripe = parseBuyerStripeInfo(order.buyer_stripe_payment_info);
+  const card = String(
+    order.cardholder_name || stripe.customer_name || order.buyer_name || ""
+  ).trim();
+  return {
+    customerName: account || card || "—",
+    cardholderName: account && card && !namesMatch(account, card) ? card : "",
+  };
+}
+
 // STRICT: read fee_cents_server (pre-tax) from Stripe meta and compute tax-included
 const getDeliveryFeeFromBuyerInfoStrict = (buyerStripeInfo) => {
   const parsed = parseBuyerStripeInfo(buyerStripeInfo);
@@ -330,7 +347,7 @@ function renderOwnerOrderEmail(detailedOrder = {}, extras = {}) {
   const id = detailedOrder.id ?? "N/A";
   const status = detailedOrder.status ?? "processing";
   const buyerEmail = detailedOrder.buyer_email ?? "—";
-  const buyerName = detailedOrder.buyer_name ?? "—";
+  const { customerName, cardholderName } = customerNamesFromOrder(detailedOrder);
   const buyerPhone = detailedOrder.buyer_phone_number ?? "—";
   const partnerEarn = extras.partnerEarn || detailedOrder.partnerEarn || null;
   const subject = `🛒 New order #${id} — Earth Table`;
@@ -338,7 +355,8 @@ function renderOwnerOrderEmail(detailedOrder = {}, extras = {}) {
   const html = wrapEmail(`
       ${h1("New order received!")}
       ${card(`
-        ${rowHtml("Buyer Name", buyerName)}
+        ${rowHtml("Customer", customerName)}
+        ${cardholderName ? rowHtml("Cardholder", cardholderName) : ""}
         ${rowHtml("Email", buyerEmail)}
         ${rowHtml("Phone", buyerPhone)}
         ${rowHtml("Order ID", id)}
@@ -361,7 +379,7 @@ function renderOwnerOrderEmail(detailedOrder = {}, extras = {}) {
 
   const text = `New order received!
 
-Buyer Name: ${buyerName}
+Customer: ${customerName}${cardholderName ? `\nCardholder: ${cardholderName}` : ""}
 Email: ${buyerEmail}
 Phone: ${buyerPhone}
 Order ID: ${id}
@@ -554,7 +572,7 @@ function renderPartnerCodeUsedEmail({
   const code = String(partner.referral_code || order.referral_code || "").toUpperCase() || "—";
   const firstName = partnerUser.first_name || "there";
   const orderId = order.id ?? "N/A";
-  const buyerName = order.buyer_name || "—";
+  const { customerName, cardholderName } = customerNamesFromOrder(order);
 
   const subject = `Your code ${code} was used — Earth Table`;
 
@@ -566,7 +584,8 @@ function renderPartnerCodeUsedEmail({
 
       ${card(`
         ${rowHtml("Order ID", orderId)}
-        ${rowHtml("Customer Name", buyerName)}
+        ${rowHtml("Customer Name", customerName)}
+        ${cardholderName ? rowHtml("Cardholder", cardholderName) : ""}
         ${rowHtml("Items subtotal (before discount)", formatMoney(order.item_subtotal_cents))}
         ${rowHtml("Your cashback", formatMoney(earn.amount_cents), true)}
         ${rowHtml("Recorded as", payoutLabel)}
@@ -577,7 +596,7 @@ function renderPartnerCodeUsedEmail({
 Hi ${firstName}, someone just placed an order with your code ${code}.
 
 Order ID: ${orderId}
-Customer Name: ${buyerName}
+Customer Name: ${customerName}${cardholderName ? `\nCardholder: ${cardholderName}` : ""}
 Items subtotal (before discount): ${formatMoney(order.item_subtotal_cents)}
 Your cashback: ${formatMoney(earn.amount_cents)}
 Recorded as: ${payoutLabel}
@@ -605,9 +624,10 @@ function invoiceOrderLines(orders = []) {
   return (orders || []).map((order) => {
     const date = formatOrderDateShort(order.order_date);
     const customer = order.customer_name || '—';
+    const card = order.cardholder_name ? ` (card: ${order.cardholder_name})` : '';
     const cashback = formatMoney(order.amount_cents);
     const method = order.payout_type ? payoutTypeLabel(order.payout_type) : '—';
-    return `${date} — ${customer} — ${cashback} (${method})`;
+    return `${date} — ${customer}${card} — ${cashback} (${method})`;
   });
 }
 
