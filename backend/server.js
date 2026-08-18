@@ -30,7 +30,10 @@ const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 const {
   getActiveReferralByCode,
   getPartnerById,
+  getPartnerByUserId,
+  getPartnerWalletByUserId,
   recordReferralEarn,
+  recordCreditRedeem,
 } = require('./src/queries/partner');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
 const { ensureStripePromotionCode } = require('./src/stripePromo');
@@ -228,7 +231,7 @@ const stripeWebhookHandler = async (request, response) => {
         special_note: specialNote,
         referral_partner_id: referralPartnerId,
         referral_code: referralCode,
-        credit_applied_cents: 0,
+        credit_applied_cents: Number(md.credit_applied_cents) || 0,
         item_subtotal_cents: Number.isFinite(Number(md.item_subtotal_cents))
           ? Number(md.item_subtotal_cents)
           : null,
@@ -245,6 +248,22 @@ const stripeWebhookHandler = async (request, response) => {
           });
         } catch (e) {
           console.warn('[webhook] recordReferralEarn failed:', e.message);
+        }
+      }
+
+      const creditAppliedCents = Number(md.credit_applied_cents) || 0;
+      if (creditAppliedCents > 0 && userId && order?.id) {
+        try {
+          const buyerPartner = await getPartnerByUserId(userId);
+          if (buyerPartner) {
+            await recordCreditRedeem({
+              partnerId: buyerPartner.id,
+              orderId: order.id,
+              requestedCents: creditAppliedCents,
+            });
+          }
+        } catch (e) {
+          console.warn('[webhook] recordCreditRedeem failed:', e.message);
         }
       }
 
@@ -379,6 +398,38 @@ app.get('/cart', (req, res) => {
   });
 });
 
+const STRIPE_MIN_CENTS = 50;
+
+function lineItemsTotalCents(items) {
+  return (items || []).reduce((sum, item) => {
+    const unit = Number(item?.price_data?.unit_amount) || 0;
+    const qty = Number(item?.quantity) || 0;
+    return sum + unit * qty;
+  }, 0);
+}
+
+// Stripe Checkout does not allow negative line items. Reduce unit_amounts instead.
+function applyStoreCreditToItems(items, creditCents) {
+  let left = Math.max(0, Math.floor(Number(creditCents) || 0));
+  if (!left) return 0;
+
+  for (let i = items.length - 1; i >= 0 && left > 0; i--) {
+    const item = items[i];
+    const qty = Number(item.quantity) || 1;
+    const unit = Number(item.price_data?.unit_amount) || 0;
+    const line = unit * qty;
+    if (line <= 0) continue;
+
+    const take = Math.min(line, left);
+    const newLine = line - take;
+    item.price_data.unit_amount = Math.floor(newLine / qty);
+    const actualNewLine = item.price_data.unit_amount * qty;
+    left -= (line - actualNewLine);
+  }
+
+  return Math.max(0, Math.floor(Number(creditCents) || 0) - left);
+}
+
 // Create Checkout Session
 const createCheckoutSession = async (req, res) => {
   const {
@@ -502,6 +553,25 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
+    let creditAppliedCents = 0;
+    if (userId) {
+      try {
+        const wallet = await getPartnerWalletByUserId(userId);
+        const available = Math.max(0, Number(wallet?.available_credit_cents) || 0);
+        if (wallet && available > 0) {
+          const itemsTotal = lineItemsTotalCents(items);
+          const maxCredit = Math.max(0, itemsTotal - STRIPE_MIN_CENTS);
+          const toApply = Math.min(available, maxCredit);
+          if (toApply > 0) {
+            creditAppliedCents = applyStoreCreditToItems(items, toApply);
+            req._etCredit = { partnerId: wallet.id, amountCents: creditAppliedCents };
+          }
+        }
+      } catch (e) {
+        console.warn('[checkout] store credit lookup failed (non-fatal):', e.message);
+      }
+    }
+
     // Stash large payload in DB, keep Stripe metadata small
     const { data: draft, error: draftErr } = await supabase
       .from('checkout_drafts')
@@ -543,6 +613,9 @@ const createCheckoutSession = async (req, res) => {
         delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
         delivery_km: deliveryKm != null ? String(deliveryKm) : '',
         item_subtotal_cents: String(itemSubtotalCents || 0),
+        ...(creditAppliedCents > 0
+          ? { credit_applied_cents: String(creditAppliedCents) }
+          : {}),
         ...(req._etPromo?.id != null ? { promo_id: String(req._etPromo.id) } : {}),
         ...(req._etReferral?.partnerId
           ? {

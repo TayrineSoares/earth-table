@@ -145,6 +145,12 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
     }
   }
 
+  for (const bag of Object.values(totals)) {
+    bag.pending_cents = Math.max(0, bag.pending_cents);
+    bag.available_credit_cents = Math.max(0, bag.available_credit_cents);
+    bag.unpaid_cash_cents = Math.max(0, bag.unpaid_cash_cents);
+  }
+
   return totals;
 }
 
@@ -402,11 +408,52 @@ async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payou
   return data;
 }
 
+async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
+  const requested = Math.floor(Number(requestedCents) || 0);
+  if (!partnerId || !orderId || requested <= 0) return null;
+
+  const wallets = await getWalletTotalsByPartnerIds([partnerId]);
+  const available = Math.max(0, wallets[partnerId]?.available_credit_cents || 0);
+  const amountCents = Math.min(requested, available);
+
+  if (amountCents <= 0) {
+    console.warn('[recordCreditRedeem] skipped — no available credit for order', orderId);
+    return null;
+  }
+  if (amountCents < requested) {
+    console.warn('[recordCreditRedeem] short credit on order', orderId, {
+      requested,
+      applied: amountCents,
+    });
+  }
+
+  const { data, error } = await supabase
+    .from('partner_ledger')
+    .insert([{
+      partner_id: partnerId,
+      kind: 'redeem',
+      order_id: orderId,
+      amount_cents: amountCents,
+      payout_type: 'credit',
+      status: 'applied',
+      accrual_month: null,
+    }])
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === '23505') return null;
+    throw error;
+  }
+  return data;
+}
+
 module.exports = {
   PartnerError,
   REFERRAL_PERCENT,
   CASHBACK_PERCENT,
   MIN_SUBTOTAL_CENTS,
+  STRIPE_MIN_CENTS: 50,
   normalizeReferralCode,
   getPartnerByCode,
   getPartnerById,
@@ -417,4 +464,5 @@ module.exports = {
   setPartnerActive,
   getActiveReferralByCode,
   recordReferralEarn,
+  recordCreditRedeem,
 };
