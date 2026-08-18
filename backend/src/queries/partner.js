@@ -201,17 +201,15 @@ async function listPartners() {
   if (error) throw error;
   const rows = partners || [];
   const ids = rows.map((p) => p.id);
-  const [usersByAuth, wallets, latestStatus] = await Promise.all([
+  const [usersByAuth, wallets] = await Promise.all([
     getUsersByAuthIds(rows.map((p) => p.user_id)),
     getWalletTotalsByPartnerIds(ids),
-    getLatestInvoiceStatusByPartnerIds(ids),
   ]);
 
   return rows.map((p) =>
     displayPartner(p, {
       user: usersByAuth[p.user_id] || null,
       ...(wallets[p.id] || emptyWallet()),
-      latest_invoice_status: latestStatus[p.id] || null,
     })
   );
 }
@@ -351,10 +349,9 @@ async function getPartnerAdminDetail(id) {
   const partner = await getPartnerById(id);
   if (!partner) return null;
 
-  const [usersByAuth, wallets, latestStatus, invoicesRes, ledgerRes] = await Promise.all([
+  const [usersByAuth, wallets, invoicesRes, ledgerRes] = await Promise.all([
     getUsersByAuthIds([partner.user_id]),
     getWalletTotalsByPartnerIds([partner.id]),
-    getLatestInvoiceStatusByPartnerIds([partner.id]),
     supabase
       .from('partner_invoices')
       .select('id, period_year, period_month, payout_type, cash_cents, credit_cents, total_cents, status, paid_at, created_at')
@@ -390,10 +387,34 @@ async function getPartnerAdminDetail(id) {
   return displayPartner(partner, {
     user: usersByAuth[partner.user_id] || null,
     ...(wallets[partner.id] || emptyWallet()),
-    latest_invoice_status: latestStatus[partner.id] || null,
-    invoices,
     months: buildMonthBreakdown(ledger, invoices, ordersById),
   });
+}
+
+async function assertReferralCodeAvailable(referralCode, excludePartnerId = null) {
+  const existingCode = await getPartnerByCode(referralCode);
+  if (existingCode && existingCode.id !== excludePartnerId) {
+    throw new PartnerError('That referral code is already in use.', 409);
+  }
+  const collidingPromo = await getPromoByCode(referralCode);
+  if (collidingPromo) {
+    throw new PartnerError('Referral code collides with an existing promo code.');
+  }
+}
+
+function throwIfPartnerWriteError(error) {
+  const msg = error?.message || '';
+  if (error?.code === '23505') {
+    throw new PartnerError(
+      /user_id/i.test(msg)
+        ? 'This user is already a partner.'
+        : 'That referral code is already in use.',
+      409
+    );
+  }
+  if (/collides with an existing promo code/i.test(msg)) {
+    throw new PartnerError('Referral code collides with an existing promo code.');
+  }
 }
 
 async function createPartner({ user_id: userId, referral_code: rawCode }) {
@@ -416,15 +437,7 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
     throw new PartnerError('This user is already a partner.', 409);
   }
 
-  const existingCode = await getPartnerByCode(referralCode);
-  if (existingCode) {
-    throw new PartnerError('That referral code is already in use.', 409);
-  }
-
-  const collidingPromo = await getPromoByCode(referralCode);
-  if (collidingPromo) {
-    throw new PartnerError('Referral code collides with an existing promo code.');
-  }
+  await assertReferralCodeAvailable(referralCode);
 
   const { data, error } = await supabase
     .from('partners')
@@ -438,18 +451,7 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
     .single();
 
   if (error) {
-    const msg = error.message || '';
-    if (error.code === '23505') {
-      throw new PartnerError(
-        /user_id/i.test(msg)
-          ? 'This user is already a partner.'
-          : 'That referral code is already in use.',
-        409
-      );
-    }
-    if (/collides with an existing promo code/i.test(msg)) {
-      throw new PartnerError('Referral code collides with an existing promo code.');
-    }
+    throwIfPartnerWriteError(error);
     throw error;
   }
 
@@ -462,7 +464,6 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
       phone_number: user.phone_number,
     },
     ...emptyWallet(),
-    latest_invoice_status: null,
   });
 }
 
@@ -484,14 +485,7 @@ async function updatePartner(id, { active, referral_code: rawCode } = {}) {
       throw new PartnerError('referral_code is required.');
     }
     if (referralCode !== normalizeReferralCode(existing.referral_code)) {
-      const existingCode = await getPartnerByCode(referralCode);
-      if (existingCode && existingCode.id !== id) {
-        throw new PartnerError('That referral code is already in use.', 409);
-      }
-      const collidingPromo = await getPromoByCode(referralCode);
-      if (collidingPromo) {
-        throw new PartnerError('Referral code collides with an existing promo code.');
-      }
+      await assertReferralCodeAvailable(referralCode, id);
       patch.referral_code = referralCode;
     }
   }
@@ -508,20 +502,10 @@ async function updatePartner(id, { active, referral_code: rawCode } = {}) {
     .single();
 
   if (error) {
-    const msg = error.message || '';
-    if (error.code === '23505') {
-      throw new PartnerError('That referral code is already in use.', 409);
-    }
-    if (/collides with an existing promo code/i.test(msg)) {
-      throw new PartnerError('Referral code collides with an existing promo code.');
-    }
+    throwIfPartnerWriteError(error);
     throw error;
   }
   return displayPartner(data);
-}
-
-async function setPartnerActive(id, active) {
-  return updatePartner(id, { active });
 }
 
 async function userHasAnyOrder(userId) {
@@ -700,12 +684,6 @@ async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
 
 module.exports = {
   PartnerError,
-  REFERRAL_PERCENT,
-  CASHBACK_PERCENT,
-  MIN_SUBTOTAL_CENTS,
-  STRIPE_MIN_CENTS: 50,
-  normalizeReferralCode,
-  getPartnerByCode,
   getPartnerById,
   getPartnerByUserId,
   listPartners,
@@ -713,7 +691,6 @@ module.exports = {
   getPartnerAdminDetail,
   createPartner,
   updatePartner,
-  setPartnerActive,
   getActiveReferralByCode,
   recordReferralEarn,
   recordCreditRedeem,

@@ -25,23 +25,20 @@ const createPartner = async ({ user_id, referral_code }) => {
   return parseJson(res);
 };
 
-const setPartnerActive = async (partnerId, active) => {
+const updatePartner = async (partnerId, body) => {
   const res = await fetch(`/api/partners/${partnerId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active: !!active }),
+    body: JSON.stringify(body),
   });
   return parseJson(res);
 };
 
-const updatePartnerCode = async (partnerId, referralCode) => {
-  const res = await fetch(`/api/partners/${partnerId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ referral_code: referralCode }),
-  });
-  return parseJson(res);
-};
+const setPartnerActive = (partnerId, active) =>
+  updatePartner(partnerId, { active: !!active });
+
+const updatePartnerCode = (partnerId, referralCode) =>
+  updatePartner(partnerId, { referral_code: referralCode });
 
 const setPayoutPreference = async (authUserId, payoutType) => {
   if (!authUserId) throw new Error('authUserId is required');
@@ -91,17 +88,6 @@ const formatInvoiceSummary = (invoice, statusLabel) => {
   return parts.join(' · ');
 };
 
-const formatYmd = (ymd) => {
-  if (!ymd) return '—';
-  const [y, m, d] = String(ymd).slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return String(ymd);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
 const formatOrderDate = (iso) => {
   if (!iso) return '—';
   const date = new Date(iso);
@@ -124,5 +110,4 @@ export {
   formatPayoutLabel,
   formatInvoiceSummary,
   formatOrderDate,
-  formatYmd,
 };

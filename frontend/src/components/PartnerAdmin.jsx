@@ -395,14 +395,7 @@ const PartnerAdmin = () => {
                                 const isExpandedMonth =
                                   isOpenMonth || !!openedClosedMonths[row.id]?.[month.period];
                                 return (
-                                <div
-                                  key={month.period}
-                                  className={
-                                    isExpandedMonth
-                                      ? 'partner-month-card is-expanded'
-                                      : 'partner-month-card'
-                                  }
-                                >
+                                <div key={month.period} className="partner-month-card">
                                   <button
                                     type="button"
                                     className={
@@ -455,13 +448,7 @@ const PartnerAdmin = () => {
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {[...month.orders]
-                                              .sort((a, b) => {
-                                                const ta = a.order_date ? new Date(a.order_date).getTime() : 0;
-                                                const tb = b.order_date ? new Date(b.order_date).getTime() : 0;
-                                                return ta - tb;
-                                              })
-                                              .map((order, idx) => (
+                                            {month.orders.map((order, idx) => (
                                               <tr key={`${order.order_id || 'earn'}-${idx}`}>
                                                 <td>{formatOrderDate(order.order_date)}</td>
                                                 <td>{order.order_id || '—'}</td>
