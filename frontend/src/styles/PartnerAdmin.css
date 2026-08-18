@@ -1,0 +1,252 @@
+.partner-admin-container {
+  padding: 2rem;
+  background-color: #FFFBF3;
+  border-radius: 15px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.partner-admin-title {
+  font-family: var(--heading-font);
+  font-size: 38px;
+  font-weight: 400;
+  color: #000;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+.partner-toggle-button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 16px;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+
+.partner-toggle-button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.partner-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.partner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: var(--body-font);
+  font-size: 14px;
+  position: relative;
+}
+
+.partner-input {
+  padding: 0.5rem;
+  min-width: 220px;
+  font-size: 16px;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  background-color: #fff8f0;
+  font-family: var(--body-font);
+}
+
+.partner-user-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #EDA413;
+  border-radius: 8px;
+  background: #fff;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 2;
+}
+
+.partner-user-results button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: var(--body-font);
+  font-size: 14px;
+}
+
+.partner-user-results button:hover {
+  background-color: #fff0dc;
+}
+
+.partner-submit-button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  height: fit-content;
+}
+
+.partner-submit-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.partner-submit-button:not(:disabled):active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.partner-admin-note,
+.partner-empty,
+.partner-email {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #BE7200;
+}
+
+.partner-admin-note {
+  margin-top: 1.5rem;
+}
+
+.partner-email {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.partner-table-wrap {
+  overflow-x: auto;
+}
+
+.partner-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.partner-table th,
+.partner-table td {
+  border: 1px solid #FEE8D4;
+  padding: 10px;
+  text-align: left;
+  font-family: var(--body-font);
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.partner-table th {
+  background-color: #FEE8D4;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.partner-table tr:nth-child(even) {
+  background-color: #fffaf4;
+}
+
+.partner-table tr:hover {
+  background-color: #fff0dc;
+}
+
+.partner-row {
+  cursor: pointer;
+}
+
+.partner-row.is-expanded {
+  background-color: #fff0dc;
+}
+
+.partner-expand-cell {
+  width: 1.5rem;
+  color: #BE7200;
+  font-size: 12px;
+}
+
+.partner-expand-row td {
+  background-color: #fffaf4;
+  padding: 16px;
+}
+
+.partner-month-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-month-card {
+  border: 1px solid #FEE8D4;
+  border-radius: 10px;
+  padding: 12px;
+  background: #FFFBF3;
+}
+
+.partner-month-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--body-font);
+  font-size: 14px;
+}
+
+.partner-month-meta {
+  margin: 6px 0 10px;
+  font-family: var(--body-font);
+  font-size: 13px;
+  color: #BE7200;
+}
+
+.partner-month-orders {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.partner-month-orders th,
+.partner-month-orders td {
+  border: 1px solid #FEE8D4;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.partner-month-orders th {
+  background-color: #FEE8D4;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.partner-month-orders tfoot td {
+  font-weight: 600;
+  background-color: #fff8f0;
+}
+
+.partner-month-total-label {
+  text-align: right;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.partner-table input[type='checkbox'] {
+  transform: scale(1.2);
+  cursor: pointer;
+}

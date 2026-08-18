@@ -104,7 +104,12 @@ const UserAdmin = () => {
             {filteredUsers.map(user => (
               <tr key={user.auth_user_id || user.id || user.email}>
                 <td>{user.email}</td>
-                <td>{user.first_name}</td>
+                <td>
+                  <span className="user-name-with-badge">
+                    {user.first_name}
+                    {user.is_partner && <span className="partner-badge">Partner</span>}
+                  </span>
+                </td>
                 <td>{user.last_name}</td>
                 <td>{user.address_line1} {user.address_line2}</td>
                 <td>{user.city}</td>

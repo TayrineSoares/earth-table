@@ -36,7 +36,9 @@ create table if not exists public.partner_invoices (
   partner_id uuid not null references public.partners (id),
   period_year int not null,
   period_month int not null check (period_month between 1 and 12),
-  payout_type text not null check (payout_type in ('cash', 'credit')),
+  payout_type text check (payout_type in ('cash', 'credit')),
+  cash_cents int not null default 0,
+  credit_cents int not null default 0,
   total_cents int not null default 0,
   status text not null default 'unpaid'
     check (status in ('unpaid', 'paid', 'credited')),
@@ -119,3 +121,14 @@ alter table public.partner_ledger enable row level security;
 revoke all on public.partners from anon, authenticated;
 revoke all on public.partner_invoices from anon, authenticated;
 revoke all on public.partner_ledger from anon, authenticated;
+
+-- Migration (run if partner_invoices already exists from an earlier deploy):
+-- alter table public.partner_invoices
+--   add column if not exists cash_cents int not null default 0,
+--   add column if not exists credit_cents int not null default 0;
+-- alter table public.partner_invoices alter column payout_type drop not null;
+-- update public.partner_invoices set cash_cents = total_cents, credit_cents = 0
+--   where payout_type = 'cash' and total_cents > 0 and cash_cents = 0 and credit_cents = 0;
+-- update public.partner_invoices set credit_cents = total_cents, cash_cents = 0
+--   where payout_type = 'credit' and total_cents > 0 and cash_cents = 0 and credit_cents = 0;
+-- update public.partners set pending_payout_type = null, pending_payout_effective_on = null;

@@ -397,12 +397,12 @@ function partnerProgramRulesHtml(audience = 'partner') {
       : "Store credit never expires and auto-applies at the partner's own checkout.";
   const payoutSwitch =
     audience === 'partner'
-      ? 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. You can switch to <strong>store credit</strong> (or back) from your <strong>profile page</strong> at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
-      : 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. The partner can switch to <strong>store credit</strong> (or back) from their <strong>profile page</strong> at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+      ? 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. You can switch to <strong>store credit</strong> (or back) anytime from your <strong>partner wallet</strong>. Each order keeps whatever payout type was active when that order was placed.'
+      : 'Default payout is <strong>cash</strong>, paid by Earth Table outside the site. The partner can switch to <strong>store credit</strong> (or back) anytime from their partner wallet. Each order keeps whatever payout type was active when that order was placed.';
   const invoiceLine =
     audience === 'partner'
-      ? "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see monthly invoices on your profile page."
-      : "Cashback starts as <strong>pending</strong>. Payout is <strong>once a month</strong>: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see monthly invoices on their profile page.";
+      ? "Cashback starts as <strong>pending</strong>. On the 1st of each month, the previous month's invoice closes. You'll get an email showing <strong>cash</strong> and <strong>store credit</strong> totals separately — including who used your code. Store credit is added to your wallet automatically; cash can be marked paid after the invoice is sent."
+      : "Cashback starts as pending. On the 1st of each month, the previous month's invoice closes. The partner (and admin) get an email showing cash and store credit totals separately — including who used the code. Store credit is added to the wallet automatically; cash can be marked paid after the invoice is sent.";
 
   return `
       <h2 style="font-size:16px; margin:16px 0 8px; color:#333;">How the code works</h2>
@@ -439,12 +439,12 @@ function partnerProgramRulesText(audience = 'partner') {
       : "Store credit never expires and auto-applies at the partner's own checkout.";
   const payoutSwitch =
     audience === 'partner'
-      ? 'Default payout is cash, paid by Earth Table outside the site. You can switch to store credit (or back) from your profile page at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.'
-      : 'Default payout is cash, paid by Earth Table outside the site. The partner can switch to store credit (or back) from their profile page at most once a month; the change takes effect the following month. Amounts already earned keep the payout type they were earned under.';
+      ? 'Default payout is cash, paid by Earth Table outside the site. You can switch to store credit (or back) anytime from your partner wallet. Each order keeps whatever payout type was active when that order was placed.'
+      : 'Default payout is cash, paid by Earth Table outside the site. The partner can switch to store credit (or back) anytime from their partner wallet. Each order keeps whatever payout type was active when that order was placed.';
   const invoiceLine =
     audience === 'partner'
-      ? "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. You'll get an email with a breakdown of that month's cashback — including who used your code — and you can also see monthly invoices on your profile page."
-      : "Cashback starts as pending. Payout is once a month: on the 1st, the previous month's invoice closes. The partner (and admin) get an email with a breakdown of that month's cashback — including who used the code — and the partner can also see monthly invoices on their profile page.";
+      ? "Cashback starts as pending. On the 1st of each month, the previous month's invoice closes. You'll get an email showing cash and store credit totals separately — including who used your code. Store credit is added to your wallet automatically; cash can be marked paid after the invoice is sent."
+      : "Cashback starts as pending. On the 1st of each month, the previous month's invoice closes. The partner (and admin) get an email showing cash and store credit totals separately — including who used the code. Store credit is added to the wallet automatically; cash can be marked paid after the invoice is sent.";
 
   return `How the code works
 - Friends get 15% off their item subtotal (delivery and tax excluded from the discount).
@@ -476,7 +476,7 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
 
       <div style="border:1px solid #EDA413; background:#FFFBF3; border-radius:12px; padding:12px; margin:0 0 16px;">
         <p style="margin:0 0 6px;"><strong>Your referral code:</strong> ${code}</p>
-        <p style="margin:0;"><strong>Payout type:</strong> Cash. You can switch to store credit from your profile page (once a month; it takes effect the following month).</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash (default). Switch to store credit anytime from your partner wallet — new orders use whatever you have selected.</p>
       </div>
 
       ${partnerProgramRulesHtml()}
@@ -490,7 +490,7 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
 Hi ${firstName}, you've been set up as an Earth Table partner.
 
 Your referral code: ${code}
-Payout type: Cash. You can switch to store credit from your profile page (once a month; it takes effect the following month).
+Payout type: Cash (default). Switch to store credit anytime from your partner wallet — new orders use whatever you have selected.
 
 ${partnerProgramRulesText()}
 
@@ -519,7 +519,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
         <p style="margin:0 0 6px;"><strong>Code:</strong> ${code}</p>
         <p style="margin:0 0 6px;"><strong>Name:</strong> ${name}</p>
         <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
-        <p style="margin:0;"><strong>Payout type:</strong> Cash (default). They can switch to store credit from their profile page (once a month; it takes effect the following month).</p>
+        <p style="margin:0;"><strong>Payout type:</strong> Cash (default). They can switch to store credit anytime from their partner wallet.</p>
       </div>
 
       ${partnerProgramRulesHtml('admin')}
@@ -531,7 +531,7 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
 Code: ${code}
 Name: ${name}
 Email: ${email}
-Payout type: Cash (default). They can switch to store credit from their profile page (once a month; it takes effect the following month).
+Payout type: Cash (default). They can switch to store credit anytime from their partner wallet.
 
 ${partnerProgramRulesText('admin')}
 `;
@@ -555,6 +555,8 @@ function renderPartnerCodeUsedEmail({
 
   const subject = `Your code ${code} was used — Earth Table`;
 
+  const payoutLabel = earn.payout_type === 'credit' ? 'Store credit' : 'Cash';
+
   const html = wrapEmail(`
       ${h1("Your referral code was used")}
       <p style="margin:0 0 16px;">Hi ${firstName}, someone just placed an order with your code <strong>${code}</strong>.</p>
@@ -564,6 +566,7 @@ function renderPartnerCodeUsedEmail({
         ${rowHtml("Customer Name", buyerName)}
         ${rowHtml("Items subtotal (before discount)", formatMoney(order.item_subtotal_cents))}
         ${rowHtml("Your cashback", formatMoney(earn.amount_cents), true)}
+        ${rowHtml("Recorded as", payoutLabel)}
       `)}
   `);
 
@@ -574,6 +577,7 @@ Order ID: ${orderId}
 Customer Name: ${buyerName}
 Items subtotal (before discount): ${formatMoney(order.item_subtotal_cents)}
 Your cashback: ${formatMoney(earn.amount_cents)}
+Recorded as: ${payoutLabel}
 `;
 
   return { subject, html, text };

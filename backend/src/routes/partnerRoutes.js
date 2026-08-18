@@ -7,6 +7,7 @@ const {
   createPartner,
   setPartnerActive,
   getPartnerWalletByUserId,
+  getPartnerAdminDetail,
   setPayoutPreference,
 } = require('../queries/partner');
 const { sendEmail } = require('../utils/email');
@@ -117,6 +118,18 @@ router.post('/', async (req, res) => {
     res.status(201).json(partner);
   } catch (err) {
     handlePartnerError(res, err, '[POST /partners]');
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const partner = await getPartnerAdminDetail(req.params.id);
+    if (!partner) {
+      return res.status(404).json({ error: 'Partner not found' });
+    }
+    res.json(partner);
+  } catch (err) {
+    handlePartnerError(res, err, '[GET /partners/:id]');
   }
 });
 

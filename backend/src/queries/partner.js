@@ -29,6 +29,10 @@ function emptyWallet() {
     pending_cents: 0,
     available_credit_cents: 0,
     unpaid_cash_cents: 0,
+    current_month_cents: 0,
+    current_month_cash_cents: 0,
+    current_month_credit_cents: 0,
+    cashback_cents: 0,
   };
 }
 
@@ -110,10 +114,12 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
 
   const { data: ledger, error: ledgerErr } = await supabase
     .from('partner_ledger')
-    .select('partner_id, kind, status, payout_type, amount_cents')
+    .select('partner_id, kind, status, payout_type, amount_cents, accrual_month')
     .in('partner_id', ids);
 
   if (ledgerErr) throw ledgerErr;
+
+  const thisMonth = torontoMonthStart();
 
   for (const row of ledger || []) {
     const bag = totals[row.partner_id];
@@ -128,11 +134,16 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
     if (row.kind === 'redeem') {
       bag.available_credit_cents -= amount;
     }
+    if (row.kind === 'earn' && monthKeyFromDate(row.accrual_month) === thisMonth.slice(0, 7)) {
+      bag.current_month_cents += amount;
+      if (row.payout_type === 'credit') bag.current_month_credit_cents += amount;
+      else bag.current_month_cash_cents += amount;
+    }
   }
 
   const { data: invoices, error: invErr } = await supabase
     .from('partner_invoices')
-    .select('partner_id, payout_type, status, total_cents')
+    .select('partner_id, payout_type, cash_cents, credit_cents, status, total_cents')
     .in('partner_id', ids);
 
   if (invErr) throw invErr;
@@ -140,8 +151,9 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
   for (const inv of invoices || []) {
     const bag = totals[inv.partner_id];
     if (!bag) continue;
-    if (inv.payout_type === 'cash' && inv.status === 'unpaid') {
-      bag.unpaid_cash_cents += Number(inv.total_cents) || 0;
+    const cashOwed = invoiceCashCents(inv);
+    if (cashOwed > 0 && inv.status === 'unpaid') {
+      bag.unpaid_cash_cents += cashOwed;
     }
   }
 
@@ -149,6 +161,10 @@ async function getWalletTotalsByPartnerIds(partnerIds) {
     bag.pending_cents = Math.max(0, bag.pending_cents);
     bag.available_credit_cents = Math.max(0, bag.available_credit_cents);
     bag.unpaid_cash_cents = Math.max(0, bag.unpaid_cash_cents);
+    bag.current_month_cents = Math.max(0, bag.current_month_cents);
+    bag.current_month_cash_cents = Math.max(0, bag.current_month_cash_cents);
+    bag.current_month_credit_cents = Math.max(0, bag.current_month_credit_cents);
+    bag.cashback_cents = bag.pending_cents + bag.unpaid_cash_cents;
   }
 
   return totals;
@@ -211,6 +227,169 @@ async function getPartnerWalletByUserId(userId) {
     user: usersByAuth[partner.user_id] || null,
     ...(wallets[partner.id] || emptyWallet()),
     latest_invoice_status: latestStatus[partner.id] || null,
+  });
+}
+
+function monthKeyFromDate(value) {
+  if (!value) return null;
+  const raw = String(value).slice(0, 10);
+  const [year, month] = raw.split('-');
+  if (!year || !month) return null;
+  return `${year}-${month}`;
+}
+
+function monthKeyFromPeriod(year, month) {
+  if (!year || !month) return null;
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function monthLabelFromKey(key) {
+  if (!key) return '—';
+  const [year, month] = key.split('-').map(Number);
+  if (!year || !month) return key;
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function invoiceCashCents(inv) {
+  if (!inv) return 0;
+  if (inv.cash_cents != null && inv.cash_cents !== '') {
+    return Math.max(0, Number(inv.cash_cents) || 0);
+  }
+  if (inv.payout_type === 'cash') return Math.max(0, Number(inv.total_cents) || 0);
+  return 0;
+}
+
+function invoiceCreditCents(inv) {
+  if (!inv) return 0;
+  if (inv.credit_cents != null && inv.credit_cents !== '') {
+    return Math.max(0, Number(inv.credit_cents) || 0);
+  }
+  if (inv.payout_type === 'credit') return Math.max(0, Number(inv.total_cents) || 0);
+  return 0;
+}
+
+function normalizeInvoiceRow(inv) {
+  if (!inv) return null;
+  const cashCents = invoiceCashCents(inv);
+  const creditCents = invoiceCreditCents(inv);
+  const totalCents = Math.max(0, Number(inv.total_cents) || 0) || cashCents + creditCents;
+  return {
+    ...inv,
+    cash_cents: cashCents,
+    credit_cents: creditCents,
+    total_cents: totalCents,
+  };
+}
+
+function emptyMonth(key) {
+  return {
+    period: key,
+    label: monthLabelFromKey(key),
+    earn_cents: 0,
+    pending_cents: 0,
+    cash_cents: 0,
+    credit_cents: 0,
+    invoice: null,
+    orders: [],
+  };
+}
+
+function buildMonthBreakdown(ledger = [], invoices = [], ordersById = {}) {
+  const months = {};
+
+  for (const row of ledger) {
+    if (row.kind !== 'earn') continue;
+    const key = monthKeyFromDate(row.accrual_month);
+    if (!key) continue;
+    if (!months[key]) months[key] = emptyMonth(key);
+
+    const amount = Number(row.amount_cents) || 0;
+    months[key].earn_cents += amount;
+    if (row.status === 'pending') months[key].pending_cents += amount;
+    if (row.payout_type === 'credit') months[key].credit_cents += amount;
+    else months[key].cash_cents += amount;
+
+    const order = ordersById[row.order_id] || {};
+    months[key].orders.push({
+      order_id: row.order_id,
+      amount_cents: amount,
+      status: row.status,
+      payout_type: row.payout_type,
+      customer_name: order.buyer_name || '—',
+      item_subtotal_cents: order.item_subtotal_cents ?? null,
+      order_date: order.created_at || null,
+    });
+  }
+
+  for (const inv of invoices) {
+    const key = monthKeyFromPeriod(inv.period_year, inv.period_month);
+    if (!key) continue;
+    if (!months[key]) months[key] = emptyMonth(key);
+    months[key].invoice = normalizeInvoiceRow(inv);
+  }
+
+  return Object.keys(months)
+    .sort((a, b) => (a < b ? 1 : -1))
+    .map((key) => {
+      const month = months[key];
+      month.orders.sort((a, b) => {
+        const ta = a.order_date ? new Date(a.order_date).getTime() : 0;
+        const tb = b.order_date ? new Date(b.order_date).getTime() : 0;
+        return ta - tb;
+      });
+      return month;
+    });
+}
+
+async function getPartnerAdminDetail(id) {
+  const partner = await getPartnerById(id);
+  if (!partner) return null;
+
+  const [usersByAuth, wallets, latestStatus, invoicesRes, ledgerRes] = await Promise.all([
+    getUsersByAuthIds([partner.user_id]),
+    getWalletTotalsByPartnerIds([partner.id]),
+    getLatestInvoiceStatusByPartnerIds([partner.id]),
+    supabase
+      .from('partner_invoices')
+      .select('id, period_year, period_month, payout_type, cash_cents, credit_cents, total_cents, status, paid_at, created_at')
+      .eq('partner_id', partner.id)
+      .order('period_year', { ascending: false })
+      .order('period_month', { ascending: false }),
+    supabase
+      .from('partner_ledger')
+      .select('kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
+      .eq('partner_id', partner.id)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  if (invoicesRes.error) throw invoicesRes.error;
+  if (ledgerRes.error) throw ledgerRes.error;
+
+  const invoices = invoicesRes.data || [];
+  const ledger = ledgerRes.data || [];
+
+  const orderIds = [...new Set(
+    ledger.filter((row) => row.kind === 'earn' && row.order_id).map((row) => row.order_id)
+  )];
+  let ordersById = {};
+  if (orderIds.length) {
+    const { data: orders, error: ordersErr } = await supabase
+      .from('orders')
+      .select('id, buyer_name, item_subtotal_cents, created_at')
+      .in('id', orderIds);
+    if (ordersErr) throw ordersErr;
+    ordersById = Object.fromEntries((orders || []).map((o) => [o.id, o]));
+  }
+
+  return displayPartner(partner, {
+    user: usersByAuth[partner.user_id] || null,
+    ...(wallets[partner.id] || emptyWallet()),
+    latest_invoice_status: latestStatus[partner.id] || null,
+    invoices,
+    months: buildMonthBreakdown(ledger, invoices, ordersById),
   });
 }
 
@@ -383,17 +562,6 @@ function torontoMonthStart(date = new Date()) {
   return `${year}-${month}-01`;
 }
 
-function torontoNextMonthStart(date = new Date()) {
-  const [year, month] = torontoMonthStart(date).split('-').map(Number);
-  if (month === 12) return `${year + 1}-01-01`;
-  return `${year}-${String(month + 1).padStart(2, '0')}-01`;
-}
-
-function isSameTorontoMonth(isoTimestamp, date = new Date()) {
-  if (!isoTimestamp) return false;
-  return torontoMonthStart(new Date(isoTimestamp)) === torontoMonthStart(date);
-}
-
 async function setPayoutPreference(userId, payoutType) {
   const nextType = payoutType === 'credit' ? 'credit' : payoutType === 'cash' ? 'cash' : null;
   if (!nextType) {
@@ -408,24 +576,18 @@ async function setPayoutPreference(userId, payoutType) {
     throw new PartnerError('Partner not found.', 404);
   }
 
-  if (isSameTorontoMonth(partner.last_payout_switch_at)) {
-    throw new PartnerError('You can only switch payout type once per month.');
-  }
-
-  if (nextType === partner.payout_type && !partner.pending_payout_type) {
+  if (nextType === partner.payout_type) {
     throw new PartnerError(`Payout type is already ${nextType}.`);
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('partners')
     .update({
-      pending_payout_type: nextType,
-      pending_payout_effective_on: torontoNextMonthStart(),
-      last_payout_switch_at: new Date().toISOString(),
+      payout_type: nextType,
+      pending_payout_type: null,
+      pending_payout_effective_on: null,
     })
-    .eq('id', partner.id)
-    .select('*')
-    .single();
+    .eq('id', partner.id);
 
   if (error) throw error;
   return getPartnerWalletByUserId(userId);
@@ -508,6 +670,7 @@ module.exports = {
   getPartnerByUserId,
   listPartners,
   getPartnerWalletByUserId,
+  getPartnerAdminDetail,
   createPartner,
   setPartnerActive,
   getActiveReferralByCode,
