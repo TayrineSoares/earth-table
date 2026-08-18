@@ -23,6 +23,7 @@ const PromoAdmin = () => {
   const [expiresAt, setExpiresAt] = useState('');
   const [firstTimeOnly, setFirstTimeOnly] = useState(false);
   const [maxUses, setMaxUses] = useState('');
+  const [savingActiveId, setSavingActiveId] = useState(null);
 
   const loadPromos = async () => {
     const { data, error } = await supabase
@@ -113,19 +114,32 @@ const PromoAdmin = () => {
 
   const handleToggleActive = async (row) => {
     const next = !row.active;
-    const { error } = await supabase
-      .from('promo_codes')
-      .update({ active: next })
-      .eq('id', row.id);
-
-    if (error) {
-      console.error('Error updating promo code:', error);
-      return;
-    }
-
-    setPromos((prev) =>
-      prev.map((p) => (p.id === row.id ? { ...p, active: next } : p))
+    const confirmed = window.confirm(
+      next
+        ? `Activate ${row.code}? It will work at checkout again.`
+        : `Deactivate ${row.code}? It will stop working at checkout.`
     );
+    if (!confirmed) return;
+
+    setSavingActiveId(row.id);
+    try {
+      const { error } = await supabase
+        .from('promo_codes')
+        .update({ active: next })
+        .eq('id', row.id);
+
+      if (error) {
+        console.error('Error updating promo code:', error);
+        alert(error.message || 'Failed to update promo code.');
+        return;
+      }
+
+      setPromos((prev) =>
+        prev.map((p) => (p.id === row.id ? { ...p, active: next } : p))
+      );
+    } finally {
+      setSavingActiveId(null);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -244,20 +258,36 @@ const PromoAdmin = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPromos.map((row) => (
+            {filteredPromos.map((row) => {
+              const isSaving = savingActiveId === row.id;
+              return (
               <tr key={row.id}>
-                <td>{row.code}</td>
+                <td>
+                  <span className="promo-code-with-badge">
+                    {row.code}
+                    {!row.active && <span className="promo-inactive-badge">Inactive</span>}
+                  </span>
+                </td>
                 <td>{row.discount_percentage}</td>
                 <td>{formatExpiresDisplay(row.expires_at)}</td>
                 <td>{row.first_time_only ? 'Yes' : 'No'}</td>
                 <td>{row.max_uses == null ? '—' : row.max_uses}</td>
                 <td>{row.used_count ?? 0}</td>
                 <td>
-                  <input
-                    type="checkbox"
-                    checked={!!row.active}
-                    onChange={() => handleToggleActive(row)}
-                  />
+                  <label
+                    className={isSaving ? 'admin-toggle is-disabled' : 'admin-toggle'}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!row.active}
+                      disabled={isSaving}
+                      onChange={() => handleToggleActive(row)}
+                    />
+                    <span className="admin-toggle-track" />
+                    <span className="admin-toggle-label">
+                      {row.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </label>
                 </td>
                 <td>
                   <button
@@ -269,7 +299,8 @@ const PromoAdmin = () => {
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}
