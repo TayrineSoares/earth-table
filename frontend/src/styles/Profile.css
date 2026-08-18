@@ -40,6 +40,12 @@
   vertical-align: middle;
 }
 
+.profile-partner-badge.is-inactive {
+  color: #6b7280;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
 .profile-status {
   font-family: var(--body-font);
   font-size: 14px;

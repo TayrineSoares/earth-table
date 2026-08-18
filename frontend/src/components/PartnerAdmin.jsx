@@ -31,6 +31,7 @@ const PartnerAdmin = () => {
   const [editCode, setEditCode] = useState('');
   const [savingCode, setSavingCode] = useState(false);
   const [savingActiveId, setSavingActiveId] = useState(null);
+  const [statusTab, setStatusTab] = useState('active');
 
   const load = async () => {
     const [partnerRows, userRows] = await Promise.all([
@@ -69,6 +70,16 @@ const PartnerAdmin = () => {
     () => new Set(partners.map((p) => p.user_id)),
     [partners]
   );
+
+  const activePartners = useMemo(
+    () => partners.filter((p) => p.active),
+    [partners]
+  );
+  const inactivePartners = useMemo(
+    () => partners.filter((p) => !p.active),
+    [partners]
+  );
+  const visiblePartners = statusTab === 'active' ? activePartners : inactivePartners;
 
   const candidateUsers = useMemo(() => {
     const term = userSearch.trim().toLowerCase();
@@ -135,6 +146,7 @@ const PartnerAdmin = () => {
       setPartners((prev) =>
         prev.map((p) => (p.id === row.id ? { ...p, ...updated } : p))
       );
+      if (expandedId === row.id) setExpandedId(null);
     } catch (err) {
       console.error('Error updating partner:', err);
       alert(err.message || 'Failed to update partner.');
@@ -298,8 +310,41 @@ const PartnerAdmin = () => {
         </form>
       )}
 
-      {partners.length === 0 ? (
-        <p className="partner-empty">No partners yet.</p>
+      <div className="partner-status-tabs" role="tablist" aria-label="Partner status">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusTab === 'active'}
+          className={statusTab === 'active' ? 'active' : ''}
+          onClick={() => {
+            setStatusTab('active');
+            setExpandedId(null);
+          }}
+        >
+          Active ({activePartners.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusTab === 'inactive'}
+          className={statusTab === 'inactive' ? 'active' : ''}
+          onClick={() => {
+            setStatusTab('inactive');
+            setExpandedId(null);
+          }}
+        >
+          Inactive ({inactivePartners.length})
+        </button>
+      </div>
+
+      {visiblePartners.length === 0 ? (
+        <p className="partner-empty">
+          {partners.length === 0
+            ? 'No partners yet.'
+            : statusTab === 'active'
+              ? 'No active partners.'
+              : 'No inactive partners.'}
+        </p>
       ) : (
         <div className="partner-table-wrap">
           <table className={expandedId ? 'partner-table has-expanded' : 'partner-table'}>
@@ -315,7 +360,7 @@ const PartnerAdmin = () => {
               </tr>
             </thead>
             <tbody>
-              {partners.map((row) => {
+              {visiblePartners.map((row) => {
                 const isExpanded = expandedId === row.id;
                 const detail = details[row.id] || {};
                 const months = detail.data?.months || [];

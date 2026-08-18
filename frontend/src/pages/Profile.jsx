@@ -185,9 +185,9 @@ const Profile = () => {
           <h1 className="profile-text">
             <span>{user.first_name}'s Profile</span>
             {partner && (
-              <span className="profile-partner-badge">
+              <span className={`profile-partner-badge${partner.active === false ? ' is-inactive' : ''}`}>
                 <Star size={12} fill="currentColor" strokeWidth={0} />
-                Partner
+                {partner.active === false ? 'Inactive Partner' : 'Partner'}
               </span>
             )}
           </h1>

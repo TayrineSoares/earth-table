@@ -108,6 +108,38 @@
   font-family: var(--body-font);
   font-size: 14px;
   color: #BE7200;
+  margin-top: 1rem;
+}
+
+.partner-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0.25rem 0 0.25rem;
+}
+
+.partner-status-tabs button {
+  background-color: #FEE8D4;
+  color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.partner-status-tabs button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+}
+
+.partner-status-tabs button.active {
+  background-color: #EDA413;
+  color: #fff;
 }
 
 .partner-admin-note {
