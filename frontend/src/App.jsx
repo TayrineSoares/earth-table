@@ -13,16 +13,37 @@ const App = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Load guest cart immediately on mount (for not logged in users)
-    const guestCart = localStorage.getItem('cart_guest');
-    setCart(guestCart ? JSON.parse(guestCart) : []);
-    setShowCartPopup(guestCart ? JSON.parse(guestCart).length > 0 : false);
+    const fromCheckout = window.location.pathname.startsWith('/confirmation');
+    if (fromCheckout) {
+      sessionStorage.setItem('clear_cart_after_order', '1');
+      setCart([]);
+      setShowCartPopup(false);
+      localStorage.setItem('cart_guest', JSON.stringify([]));
+    } else {
+      const guestCart = localStorage.getItem('cart_guest');
+      setCart(guestCart ? JSON.parse(guestCart) : []);
+      setShowCartPopup(guestCart ? JSON.parse(guestCart).length > 0 : false);
+    }
   
     // 2. Then get user session asynchronously and load user cart if logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
   
+      if (
+        sessionStorage.getItem('clear_cart_after_order') ||
+        window.location.pathname.startsWith('/confirmation')
+      ) {
+        setCart([]);
+        setShowCartPopup(false);
+        localStorage.setItem('cart_guest', JSON.stringify([]));
+        if (currentUser) {
+          localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify([]));
+        }
+        sessionStorage.removeItem('clear_cart_after_order');
+        return;
+      }
+
       if (currentUser) {
         const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
         const parsedCart = savedCart ? JSON.parse(savedCart) : [];
@@ -35,6 +56,20 @@ const App = () => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
+
+      if (
+        sessionStorage.getItem('clear_cart_after_order') ||
+        window.location.pathname.startsWith('/confirmation')
+      ) {
+        setCart([]);
+        setShowCartPopup(false);
+        localStorage.setItem('cart_guest', JSON.stringify([]));
+        if (currentUser) {
+          localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify([]));
+        }
+        sessionStorage.removeItem('clear_cart_after_order');
+        return;
+      }
   
       if (currentUser) {
         const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
@@ -42,7 +77,6 @@ const App = () => {
         setCart(parsedCart);
         setShowCartPopup(parsedCart.length > 0);
       } else {
-        // logged out, restore guest cart
         const guestCart = localStorage.getItem('cart_guest');
         const parsedGuestCart = guestCart ? JSON.parse(guestCart) : [];
         setCart(parsedGuestCart);
@@ -128,11 +162,12 @@ const App = () => {
 
   const clearCart = () => {
     setCart([]);
+    setShowCartPopup(false);
+    localStorage.setItem('cart_guest', JSON.stringify([]));
     if (user) {
       localStorage.setItem(`cart_${user.id}`, JSON.stringify([]));
-    } else {
-      localStorage.setItem('cart_guest', JSON.stringify([]));
     }
+    sessionStorage.setItem('clear_cart_after_order', '1');
   };
 
   return (

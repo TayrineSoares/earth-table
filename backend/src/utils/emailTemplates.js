@@ -686,20 +686,30 @@ function renderAdminMonthlyInvoiceEmail({
   const total = Number(invoice.total_cents) || cash + credit;
   const status = cash > 0 ? 'Unpaid (cash)' : 'Credited';
   const lines = invoiceOrderLines(orders);
+  const dueLabel = cash > 0 ? 'Amount due (cash only)' : 'Amount due';
+  const creditNote = credit > 0
+    ? 'Store credit was added to their wallet automatically — do not include it in the cash payment.'
+    : 'No store credit this period.';
 
-  const subject = `Partner invoice — ${code} — ${periodLabel}`;
+  const subject = cash > 0
+    ? `Pay ${formatMoney(cash)} cash — ${code} — ${periodLabel}`
+    : `Partner invoice — ${code} — ${periodLabel}`;
 
   const html = wrapEmail(`
       ${h1('Monthly partner invoice')}
       <p style="margin:0 0 16px;">${periodLabel} closed for <strong>${code}</strong>.</p>
+      <div style="border:2px solid #BE7200; background:#FFF3D6; border-radius:12px; padding:16px; margin:0 0 16px;">
+        <p style="margin:0 0 4px; font-size:12px; letter-spacing:0.04em; text-transform:uppercase; color:#BE7200; font-weight:700;">${dueLabel}</p>
+        <p style="margin:0 0 8px; font-size:28px; line-height:1.2; font-weight:700; color:#000;">${formatMoney(cash)}</p>
+        <p style="margin:0; font-size:13px; color:#333;">${creditNote}</p>
+      </div>
       ${card(`
         ${rowHtml('Partner', name)}
         ${rowHtml('Email', email)}
         ${rowHtml('Code', code)}
         ${rowHtml('Status', status)}
-        ${rowHtml('Total cash', formatMoney(cash))}
-        ${rowHtml('Total store credit', formatMoney(credit))}
-        ${rowHtml('Total', formatMoney(total), true)}
+        ${rowHtml('Store credit (already applied)', formatMoney(credit))}
+        ${rowHtml('Total earnings (do not pay this)', formatMoney(total), true)}
       `)}
       ${h2('Referred orders')}
       ${lines.length
@@ -710,13 +720,15 @@ function renderAdminMonthlyInvoiceEmail({
   const text = `Monthly partner invoice
 ${periodLabel} closed for ${code}.
 
+PAY THIS (CASH ONLY): ${formatMoney(cash)}
+${creditNote}
+
 Partner: ${name}
 Email: ${email}
 Code: ${code}
 Status: ${status}
-Total cash: ${formatMoney(cash)}
-Total store credit: ${formatMoney(credit)}
-Total: ${formatMoney(total)}
+Store credit (already applied): ${formatMoney(credit)}
+Total earnings (do not pay this): ${formatMoney(total)}
 
 Referred orders
 ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}

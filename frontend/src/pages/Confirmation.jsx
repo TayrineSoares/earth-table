@@ -80,6 +80,8 @@ export default function Confirmation({ clearCart }) {
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
+    clearCart?.();
+
     const ac = new AbortController();
 
     (async () => {
@@ -89,8 +91,6 @@ export default function Confirmation({ clearCart }) {
           throw new Error("We couldn't find your order. If you were just charged, please contact support.");
         }
         setOrder(data);
-        // Clear the cart once, after we successfully loaded the order
-        clearCart?.();
       } catch (e) {
         console.error("[confirmation] failed:", e);
         setErrMsg(e?.message || "Something went wrong loading your order.");
