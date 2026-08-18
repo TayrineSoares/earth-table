@@ -10,7 +10,17 @@ const { getUserByAuthId } = require('./user');
 
 const REFERRAL_PERCENT = 15;
 const CASHBACK_PERCENT = 10;
-const MIN_SUBTOTAL_CENTS = 5000;
+
+function referralMinSubtotalCents() {
+  const raw = Number(process.env.REFERRAL_MIN_SUBTOTAL_CENTS);
+  if (Number.isFinite(raw) && raw >= 0) return Math.round(raw);
+  return 5000;
+}
+
+function referralMinSubtotalMessage() {
+  const dollars = (referralMinSubtotalCents() / 100).toFixed(0);
+  return `Referral codes require an item subtotal of at least $${dollars} (before tax and delivery).`;
+}
 
 function normalizeReferralCode(raw) {
   return (raw || '').trim().toUpperCase();
@@ -662,11 +672,12 @@ async function getActiveReferralByCode(rawCode, userId = null, subtotalCents = n
     };
   }
 
-  if (subtotalCents != null && (!Number.isFinite(subtotalCents) || subtotalCents < MIN_SUBTOTAL_CENTS)) {
+  const minSubtotalCents = referralMinSubtotalCents();
+  if (minSubtotalCents > 0 && subtotalCents != null && (!Number.isFinite(subtotalCents) || subtotalCents < minSubtotalCents)) {
     return {
       ok: false,
       found: true,
-      message: 'Referral codes require an item subtotal of at least $50 (before tax and delivery).',
+      message: referralMinSubtotalMessage(),
     };
   }
 

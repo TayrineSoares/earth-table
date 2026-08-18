@@ -168,16 +168,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     return () => { cancelled = true; };
   }, [fulfillment, postalCode, postalValid]);
 
-  useEffect(() => {
-    if (!promoResult?.valid || promoResult.kind !== 'referral') return;
-    if (subtotalCents >= 5000) return;
-    setPromoResult({
-      valid: false,
-      kind: 'referral',
-      message: 'Referral codes require an item subtotal of at least $50 (before tax and delivery).',
-    });
-  }, [subtotalCents, promoResult?.valid, promoResult?.kind]);
-
   // totals
   let promoDiscountCents = 0;
 
