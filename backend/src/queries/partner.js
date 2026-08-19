@@ -12,9 +12,12 @@ const REFERRAL_PERCENT = 15;
 const CASHBACK_PERCENT = 10;
 
 function referralMinSubtotalCents() {
-  const raw = Number(process.env.REFERRAL_MIN_SUBTOTAL_CENTS);
-  if (Number.isFinite(raw) && raw >= 0) return Math.round(raw);
-  return 5000;
+  const raw = String(process.env.REFERRAL_MIN_SUBTOTAL_CENTS ?? '0')
+    .trim()
+    .replace(/^["']|["']$/g, '');
+  const n = Number(raw);
+  if (Number.isFinite(n) && n >= 0) return Math.round(n);
+  return 0;
 }
 
 function referralMinSubtotalMessage() {
