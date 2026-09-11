@@ -123,12 +123,7 @@
   }
 
   .subscribe-meals-row {
-    flex-direction: column;
     gap: 20px;
-  }
-
-  .subscribe-meal-divider {
-    display: none;
   }
 
   .subscribe-meal-count {
@@ -153,6 +148,10 @@
 
   .subscribe-body {
     font-size: 14px;
+  }
+
+  .subscribe-meals-row {
+    gap: 12px;
   }
 
   .subscribe-meal-count {
