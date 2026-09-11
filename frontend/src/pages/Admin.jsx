@@ -67,7 +67,7 @@ const Admin = () => {
           className={activeTab === 'products' ? 'active' : ''}
           onClick={() => setActiveTab('products')}
         >
-          Products
+          Menu
         </button>
         <button 
           className={activeTab === 'orders' ? 'active' : ''}

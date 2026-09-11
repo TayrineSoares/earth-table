@@ -146,7 +146,7 @@ const ProductAdmin = () => {
   if (loading) {
     return (
       <div className="product-admin-container">
-        <h1 className="product-admin-title">Products Management </h1>
+        <h1 className="product-admin-title">Menu Management </h1>
         <AdminTabLoading message="Loading products…" />
       </div>
     );
@@ -154,7 +154,7 @@ const ProductAdmin = () => {
 
   return (
     <div className="product-admin-container">
-      <h1 className="product-admin-title">Products Management </h1>
+      <h1 className="product-admin-title">Menu Management </h1>
       <br />
 
       <div className="product-admin-toolbar">

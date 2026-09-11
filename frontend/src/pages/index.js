@@ -2,6 +2,7 @@ export { default as Home } from './Home';
 export { default as About } from './About';
 export { default as Contact } from './Contact';
 export { default as Products } from './Products';
+export { default as SubscribeAndSave } from './SubscribeAndSave';
 export { default as Cart } from './Cart';
 export { default as Confirmation } from './Confirmation';
 export { default as Admin } from './Admin';

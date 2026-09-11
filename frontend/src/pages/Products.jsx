@@ -52,6 +52,10 @@ const Products = ({ addToCart }) => {
   ? allCategories.find(cat => cat.id === Number(categoryId))
   : null;
 
+  const categoryHelperText = selectedCategory
+    ? selectedCategory.description?.trim()
+    : 'Browse every meal we offer, from weekly bowls to desserts and custom plans.';
+
   
 
   const tagIcons = {
@@ -133,7 +137,7 @@ const Products = ({ addToCart }) => {
     <div className='page-wrapper'>
       
       <div className='product-title'>
-        <p className='product-title-text'>Products</p>
+        <p className='product-title-text'>Menu</p>
       </div>
 
       <div className='categories-container'>
@@ -156,8 +160,13 @@ const Products = ({ addToCart }) => {
 
       <div className='category-title-container-2'>
         <p className='category-title-2'>
-          {selectedCategory ? selectedCategory.name : 'All Products'}
+          {selectedCategory ? selectedCategory.name : 'Full Menu'}
         </p>
+        {categoryHelperText && (
+          <p className='category-description'>
+            {categoryHelperText}
+          </p>
+        )}
       </div>
 
        {categoryId === "28" ? (

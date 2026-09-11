@@ -165,7 +165,7 @@
   .nav-links-wrapper {
     position: absolute;
     top: 53px;
-    width: 565px;
+    width: 720px;
     right: 0;
     display: flex;
   }
@@ -193,6 +193,7 @@
     font-variant: small-caps;
     letter-spacing: 0.6px;
     height: 39px;
+    white-space: nowrap;
   }
 
   .cart-header {
@@ -260,7 +261,7 @@
     top: 53px;
     left: 0;
     right: 0;
-    width: 565px;
+    width: 720px;
     margin: 0 auto;
     display: flex;
     gap: 38px;
@@ -289,6 +290,7 @@
     font-variant: small-caps;
     letter-spacing: 0.6px;
     height: 39px;
+    white-space: nowrap;
   }
 
   .cart-header {

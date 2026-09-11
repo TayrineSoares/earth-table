@@ -1,0 +1,170 @@
+.subscribe-page {
+  position: relative;
+}
+
+.subscribe-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 55px;
+  padding-bottom: 76px;
+}
+
+.subscribe-title {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 62px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  color: #000;
+  margin: 0;
+}
+
+.subscribe-subhead {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 100%;
+  letter-spacing: 0%;
+  color: #000;
+  margin-top: 17px;
+  margin-bottom: 0;
+}
+
+.subscribe-body {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.3;
+  color: #000;
+  margin: 20px 0 0;
+  max-width: 588px;
+}
+
+.subscribe-meals-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 36px;
+  margin-top: 44px;
+}
+
+.subscribe-meal-option {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.3;
+  color: #000;
+  margin: 0;
+}
+
+.subscribe-caption {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #757575;
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.subscribe-photo {
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-top: 44px;
+}
+
+@media (max-width: 1366px) {
+  .subscribe-title {
+    font-size: 54px;
+  }
+
+  .subscribe-subhead {
+    font-size: 34px;
+  }
+
+  .subscribe-body {
+    font-size: 18px;
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .subscribe-content {
+    padding-top: 40px;
+  }
+
+  .subscribe-title {
+    font-size: 44px;
+  }
+
+  .subscribe-subhead {
+    font-size: 28px;
+  }
+
+  .subscribe-body {
+    font-size: 18px;
+    max-width: 100%;
+  }
+
+  .subscribe-meal-option {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .subscribe-title {
+    font-size: 36px;
+  }
+
+  .subscribe-subhead {
+    font-size: 22px;
+  }
+
+  .subscribe-body {
+    font-size: 16px;
+  }
+
+  .subscribe-meals-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .subscribe-meal-option {
+    font-size: 16px;
+  }
+
+  .subscribe-photo {
+    width: 240px;
+    height: 240px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subscribe-content {
+    padding-top: 20px;
+    padding-bottom: 55px;
+  }
+
+  .subscribe-title {
+    font-size: 28px;
+  }
+
+  .subscribe-subhead {
+    font-size: 18px;
+  }
+
+  .subscribe-body {
+    font-size: 14px;
+  }
+
+  .subscribe-meal-option {
+    font-size: 14px;
+  }
+
+  .subscribe-photo {
+    width: 200px;
+    height: 200px;
+  }
+}
