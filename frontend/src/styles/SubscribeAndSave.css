@@ -23,13 +23,15 @@
 }
 
 .subscribe-subhead {
+  display: inline-block;
   font-family: var(--body-font);
-  font-weight: 400;
-  font-size: 20px;
-  line-height: 1.3;
+  font-size: 13px;
+  font-variant: small-caps;
   color: #000;
+  background-color: #FEE8D4;
+  border-radius: 999px;
+  padding: 6px 10px;
   margin: 0;
-  max-width: 588px;
 }
 
 .subscribe-body {
@@ -39,7 +41,7 @@
   line-height: 1.3;
   color: #000;
   margin: 20px 0 0;
-  max-width: 588px;
+  width: 100%;
 }
 
 .subscribe-meals-row {
@@ -88,14 +90,8 @@
 }
 
 @media (max-width: 1366px) {
-  .subscribe-subhead {
-    font-size: 18px;
-    max-width: 500px;
-  }
-
   .subscribe-body {
     font-size: 18px;
-    max-width: 500px;
   }
 }
 
@@ -108,14 +104,8 @@
     font-size: 32px;
   }
 
-  .subscribe-subhead {
-    font-size: 18px;
-    max-width: 100%;
-  }
-
   .subscribe-body {
     font-size: 18px;
-    max-width: 100%;
   }
 
   .subscribe-meal-count {
@@ -126,10 +116,6 @@
 @media (max-width: 768px) {
   .subscribe-title {
     font-size: 28px;
-  }
-
-  .subscribe-subhead {
-    font-size: 16px;
   }
 
   .subscribe-body {
@@ -163,10 +149,6 @@
 
   .subscribe-title {
     font-size: 24px;
-  }
-
-  .subscribe-subhead {
-    font-size: 14px;
   }
 
   .subscribe-body {

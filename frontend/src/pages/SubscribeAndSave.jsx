@@ -15,7 +15,8 @@ const SubscribeAndSave = () => {
           <h1 className="subscribe-title">Subscribe & Save</h1>
           <p className="subscribe-subhead">Coming soon</p>
           <p className="subscribe-body">
-            Pick your meals and save on your weekly order. We're building a subscription option so you never have to think about what's next.
+            We're building a subscription option so you never have to think about what's next.<br />
+            Pick your meals and save on your weekly order, delivered every Sunday.
           </p>
 
           <div className="subscribe-meals-row">
