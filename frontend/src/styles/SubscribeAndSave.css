@@ -79,14 +79,6 @@
   color: #EDA413;
 }
 
-.subscribe-caption {
-  font-family: var(--body-font);
-  font-size: 14px;
-  color: #757575;
-  margin-top: 6px;
-  margin-bottom: 0;
-}
-
 .subscribe-photo {
   width: 320px;
   height: 320px;

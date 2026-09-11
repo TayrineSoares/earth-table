@@ -34,7 +34,6 @@ const SubscribeAndSave = () => {
               <span className="subscribe-meal-label">meals</span>
             </div>
           </div>
-          <p className="subscribe-caption">Delivered every Sunday.</p>
 
           <img
             src={subscriptionMeals}
