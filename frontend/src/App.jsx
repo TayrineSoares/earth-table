@@ -12,6 +12,48 @@ const App = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  const readStoredCart = (key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const mergeIntoCart = (prevCart, products) => {
+    const next = [...prevCart];
+    for (const product of products) {
+      if (!product?.id) continue;
+      const qty = Math.max(1, Number(product.quantity) || 1);
+      const existingItemIndex = next.findIndex((item) => item.id === product.id);
+      if (existingItemIndex !== -1) {
+        next[existingItemIndex] = {
+          ...next[existingItemIndex],
+          quantity: next[existingItemIndex].quantity + qty,
+        };
+      } else {
+        const { quantity: _quantity, ...rest } = product;
+        next.push({ ...rest, quantity: qty });
+      }
+    }
+    return next;
+  };
+
+  /** Load user cart and fold in any guest cart items from before login. */
+  const adoptCartForUser = (currentUser) => {
+    const userKey = `cart_${currentUser.id}`;
+    const merged = mergeIntoCart(
+      readStoredCart(userKey),
+      readStoredCart('cart_guest')
+    );
+    localStorage.setItem(userKey, JSON.stringify(merged));
+    localStorage.setItem('cart_guest', JSON.stringify([]));
+    setCart(merged);
+    setShowCartPopup(merged.length > 0);
+  };
+
   useEffect(() => {
     const fromCheckout = window.location.pathname.startsWith('/confirmation');
     if (fromCheckout) {
@@ -20,9 +62,9 @@ const App = () => {
       setShowCartPopup(false);
       localStorage.setItem('cart_guest', JSON.stringify([]));
     } else {
-      const guestCart = localStorage.getItem('cart_guest');
-      setCart(guestCart ? JSON.parse(guestCart) : []);
-      setShowCartPopup(guestCart ? JSON.parse(guestCart).length > 0 : false);
+      const guestCart = readStoredCart('cart_guest');
+      setCart(guestCart);
+      setShowCartPopup(guestCart.length > 0);
     }
   
     // 2. Then get user session asynchronously and load user cart if logged in
@@ -45,10 +87,7 @@ const App = () => {
       }
 
       if (currentUser) {
-        const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
-        const parsedCart = savedCart ? JSON.parse(savedCart) : [];
-        setCart(parsedCart);
-        setShowCartPopup(parsedCart.length > 0);
+        adoptCartForUser(currentUser);
       }
     });
   
@@ -72,13 +111,9 @@ const App = () => {
       }
   
       if (currentUser) {
-        const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
-        const parsedCart = savedCart ? JSON.parse(savedCart) : [];
-        setCart(parsedCart);
-        setShowCartPopup(parsedCart.length > 0);
+        adoptCartForUser(currentUser);
       } else {
-        const guestCart = localStorage.getItem('cart_guest');
-        const parsedGuestCart = guestCart ? JSON.parse(guestCart) : [];
+        const parsedGuestCart = readStoredCart('cart_guest');
         setCart(parsedGuestCart);
         setShowCartPopup(parsedGuestCart.length > 0);
       }
@@ -111,25 +146,6 @@ const App = () => {
     } catch (err) {
       console.error('Logout error:', err.message);
     }
-  };
-
-  const mergeIntoCart = (prevCart, products) => {
-    const next = [...prevCart];
-    for (const product of products) {
-      if (!product?.id) continue;
-      const qty = Math.max(1, Number(product.quantity) || 1);
-      const existingItemIndex = next.findIndex((item) => item.id === product.id);
-      if (existingItemIndex !== -1) {
-        next[existingItemIndex] = {
-          ...next[existingItemIndex],
-          quantity: next[existingItemIndex].quantity + qty,
-        };
-      } else {
-        const { quantity: _quantity, ...rest } = product;
-        next.push({ ...rest, quantity: qty });
-      }
-    }
-    return next;
   };
 
   const addItemsToCart = (products = []) => {
