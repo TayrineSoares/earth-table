@@ -304,6 +304,17 @@ const Profile = () => {
             <section className="profile-partner">
               <h2 className="profile-partner-title">Partner earnings</h2>
 
+              <div className="profile-partner-rates">
+                <p>
+                  You get <strong>{partner.cashback_percent}%</strong> cashback
+                  when customers place a first order using your code.
+                </p>
+                <p>
+                  Your customers get <strong>{partner.discount_percent}%</strong> off
+                  their first order.
+                </p>
+              </div>
+
               <div className="profile-partner-grid">
                 <div className="profile-field">
                   <p className="profile-field-label">Referral code</p>

@@ -167,6 +167,28 @@
   margin: 0 0 1rem;
 }
 
+.profile-partner-rates {
+  margin: 0 0 1.5rem;
+  max-width: 36rem;
+}
+
+.profile-partner-rates p {
+  margin: 0 0 0.4rem;
+  font-family: var(--body-font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.profile-partner-rates p:last-child {
+  margin-bottom: 0;
+}
+
+.profile-partner-rates strong {
+  color: #000;
+  font-weight: 600;
+}
+
 .profile-partner-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
