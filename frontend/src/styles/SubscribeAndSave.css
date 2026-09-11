@@ -14,22 +14,22 @@
 .subscribe-title {
   font-family: var(--heading-font);
   font-weight: 400;
-  font-size: 62px;
-  line-height: 100%;
-  letter-spacing: 0%;
+  font-size: 38px;
+  line-height: normal;
   color: #000;
-  margin: 0;
+  margin: 0 0 1rem 0;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
 }
 
 .subscribe-subhead {
-  font-family: var(--heading-font);
+  font-family: var(--body-font);
   font-weight: 400;
-  font-size: 38px;
-  line-height: 100%;
-  letter-spacing: 0%;
+  font-size: 20px;
+  line-height: 1.3;
   color: #000;
-  margin-top: 17px;
-  margin-bottom: 0;
+  margin: 0;
+  max-width: 588px;
 }
 
 .subscribe-body {
@@ -46,17 +46,37 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 36px;
+  gap: 55px;
   margin-top: 44px;
 }
 
 .subscribe-meal-option {
-  font-family: var(--body-font);
-  font-weight: 400;
-  font-size: 20px;
-  line-height: 1.3;
-  color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin: 0;
+}
+
+.subscribe-meal-count {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: normal;
+  color: #000;
+}
+
+.subscribe-meal-label {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #757575;
+  margin-top: 6px;
+}
+
+.subscribe-meal-divider {
+  font-family: var(--body-font);
+  font-size: 20px;
+  line-height: 1;
+  color: #EDA413;
 }
 
 .subscribe-caption {
@@ -76,12 +96,9 @@
 }
 
 @media (max-width: 1366px) {
-  .subscribe-title {
-    font-size: 54px;
-  }
-
   .subscribe-subhead {
-    font-size: 34px;
+    font-size: 18px;
+    max-width: 500px;
   }
 
   .subscribe-body {
@@ -96,11 +113,12 @@
   }
 
   .subscribe-title {
-    font-size: 44px;
+    font-size: 32px;
   }
 
   .subscribe-subhead {
-    font-size: 28px;
+    font-size: 18px;
+    max-width: 100%;
   }
 
   .subscribe-body {
@@ -108,18 +126,18 @@
     max-width: 100%;
   }
 
-  .subscribe-meal-option {
-    font-size: 18px;
+  .subscribe-meal-count {
+    font-size: 32px;
   }
 }
 
 @media (max-width: 768px) {
   .subscribe-title {
-    font-size: 36px;
+    font-size: 28px;
   }
 
   .subscribe-subhead {
-    font-size: 22px;
+    font-size: 16px;
   }
 
   .subscribe-body {
@@ -128,11 +146,15 @@
 
   .subscribe-meals-row {
     flex-direction: column;
-    gap: 12px;
+    gap: 20px;
   }
 
-  .subscribe-meal-option {
-    font-size: 16px;
+  .subscribe-meal-divider {
+    display: none;
+  }
+
+  .subscribe-meal-count {
+    font-size: 28px;
   }
 
   .subscribe-photo {
@@ -148,19 +170,19 @@
   }
 
   .subscribe-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 
   .subscribe-subhead {
-    font-size: 18px;
+    font-size: 14px;
   }
 
   .subscribe-body {
     font-size: 14px;
   }
 
-  .subscribe-meal-option {
-    font-size: 14px;
+  .subscribe-meal-count {
+    font-size: 24px;
   }
 
   .subscribe-photo {
