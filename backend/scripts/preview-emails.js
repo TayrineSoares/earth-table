@@ -61,7 +61,11 @@ const sampleOrder = {
   ],
 };
 
-const partner = { referral_code: 'JOSH15' };
+const partner = {
+  referral_code: 'JOSH15',
+  discount_percent: 10,
+  cashback_percent: 10,
+};
 const partnerUser = {
   first_name: 'Tayrine',
   last_name: 'Soares',

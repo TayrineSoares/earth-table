@@ -22,11 +22,21 @@ const fetchPartnerDetailByUser = async (authUserId) => {
   return parseJson(res);
 };
 
-const createPartner = async ({ user_id, referral_code }) => {
+const createPartner = async ({
+  user_id,
+  referral_code,
+  discount_percent,
+  cashback_percent,
+}) => {
   const res = await fetch('/api/partners', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, referral_code }),
+    body: JSON.stringify({
+      user_id,
+      referral_code,
+      discount_percent,
+      cashback_percent,
+    }),
   });
   return parseJson(res);
 };
@@ -45,6 +55,9 @@ const setPartnerActive = (partnerId, active) =>
 
 const updatePartnerCode = (partnerId, referralCode) =>
   updatePartner(partnerId, { referral_code: referralCode });
+
+const updatePartnerRates = (partnerId, { discount_percent, cashback_percent }) =>
+  updatePartner(partnerId, { discount_percent, cashback_percent });
 
 const setInvoicePaid = async (invoiceId, paid) => {
   const res = await fetch(`/api/partners/invoices/${invoiceId}`, {
@@ -137,6 +150,7 @@ export {
   createPartner,
   setPartnerActive,
   updatePartnerCode,
+  updatePartnerRates,
   setPayoutPreference,
   setInvoicePaid,
   formatCents,

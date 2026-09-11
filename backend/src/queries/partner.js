@@ -8,8 +8,8 @@
 const supabase = require('../../supabase/db');
 const { getUserByAuthId } = require('./user');
 
-const REFERRAL_PERCENT = 15;
-const CASHBACK_PERCENT = 10;
+const DEFAULT_DISCOUNT_PERCENT = 10;
+const DEFAULT_CASHBACK_PERCENT = 10;
 
 function referralMinSubtotalCents() {
   const raw = String(process.env.REFERRAL_MIN_SUBTOTAL_CENTS ?? '0')
@@ -23,6 +23,29 @@ function referralMinSubtotalCents() {
 function referralMinSubtotalMessage() {
   const dollars = (referralMinSubtotalCents() / 100).toFixed(0);
   return `Referral codes require an item subtotal of at least $${dollars} (before tax and delivery).`;
+}
+
+function parsePercent(raw, fallback) {
+  if (raw === null || raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new PartnerError('Rates must be numbers between 0 and 100.');
+  }
+  const rounded = Math.round(n);
+  if (rounded < 0 || rounded > 100) {
+    throw new PartnerError('Rates must be between 0 and 100.');
+  }
+  return rounded;
+}
+
+function partnerDiscountPercent(partner) {
+  const n = Number(partner?.discount_percent);
+  return Number.isFinite(n) ? Math.round(n) : DEFAULT_DISCOUNT_PERCENT;
+}
+
+function partnerCashbackPercent(partner) {
+  const n = Number(partner?.cashback_percent);
+  return Number.isFinite(n) ? Math.round(n) : DEFAULT_CASHBACK_PERCENT;
 }
 
 function normalizeReferralCode(raw) {
@@ -55,6 +78,8 @@ function displayPartner(row, extras = {}) {
   return {
     ...row,
     referral_code: normalizeReferralCode(row.referral_code),
+    discount_percent: partnerDiscountPercent(row),
+    cashback_percent: partnerCashbackPercent(row),
     ...extras,
   };
 }
@@ -533,7 +558,12 @@ function throwIfPartnerWriteError(error) {
   }
 }
 
-async function createPartner({ user_id: userId, referral_code: rawCode }) {
+async function createPartner({
+  user_id: userId,
+  referral_code: rawCode,
+  discount_percent: rawDiscount,
+  cashback_percent: rawCashback,
+} = {}) {
   if (!userId) {
     throw new PartnerError('user_id is required.');
   }
@@ -542,6 +572,9 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
   if (!referralCode) {
     throw new PartnerError('referral_code is required.');
   }
+
+  const discountPercent = parsePercent(rawDiscount, DEFAULT_DISCOUNT_PERCENT);
+  const cashbackPercent = parsePercent(rawCashback, DEFAULT_CASHBACK_PERCENT);
 
   const user = await getUserByAuthId(userId);
   if (!user) {
@@ -562,6 +595,8 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
       referral_code: referralCode,
       active: true,
       payout_type: 'cash',
+      discount_percent: discountPercent,
+      cashback_percent: cashbackPercent,
     }])
     .select('*')
     .single();
@@ -583,7 +618,12 @@ async function createPartner({ user_id: userId, referral_code: rawCode }) {
   });
 }
 
-async function updatePartner(id, { active, referral_code: rawCode } = {}) {
+async function updatePartner(id, {
+  active,
+  referral_code: rawCode,
+  discount_percent: rawDiscount,
+  cashback_percent: rawCashback,
+} = {}) {
   const existing = await getPartnerById(id);
   if (!existing) {
     throw new PartnerError('Partner not found.', 404);
@@ -604,6 +644,14 @@ async function updatePartner(id, { active, referral_code: rawCode } = {}) {
       await assertReferralCodeAvailable(referralCode, id);
       patch.referral_code = referralCode;
     }
+  }
+
+  if (rawDiscount !== undefined) {
+    patch.discount_percent = parsePercent(rawDiscount, partnerDiscountPercent(existing));
+  }
+
+  if (rawCashback !== undefined) {
+    patch.cashback_percent = parsePercent(rawCashback, partnerCashbackPercent(existing));
   }
 
   if (!Object.keys(patch).length) {
@@ -688,7 +736,7 @@ async function getActiveReferralByCode(rawCode, userId = null, subtotalCents = n
     ok: true,
     found: true,
     partner,
-    discountPercentage: REFERRAL_PERCENT,
+    discountPercentage: partnerDiscountPercent(partner),
   };
 }
 
@@ -768,8 +816,12 @@ async function setInvoicePaid(invoiceId, paid) {
 }
 
 async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payoutType }) {
-  const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * CASHBACK_PERCENT / 100);
-  if (!partnerId || !orderId || amountCents <= 0) return null;
+  if (!partnerId || !orderId) return null;
+
+  const partner = await getPartnerById(partnerId);
+  const cashbackPercent = partnerCashbackPercent(partner);
+  const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * cashbackPercent / 100);
+  if (amountCents <= 0) return null;
 
   const { data, error } = await supabase
     .from('partner_ledger')

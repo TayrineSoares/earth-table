@@ -173,8 +173,18 @@ router.get('/:id', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { active, referral_code } = req.body || {};
-    const updated = await updatePartner(req.params.id, { active, referral_code });
+    const {
+      active,
+      referral_code,
+      discount_percent,
+      cashback_percent,
+    } = req.body || {};
+    const updated = await updatePartner(req.params.id, {
+      active,
+      referral_code,
+      discount_percent,
+      cashback_percent,
+    });
     res.json(updated);
   } catch (err) {
     handlePartnerError(res, err, '[PATCH /partners/:id]');

@@ -11,10 +11,18 @@ import {
   setPartnerActive,
   setInvoicePaid,
   updatePartnerCode,
+  updatePartnerRates,
 } from '../helpers/partnerHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import PartnerMonthList from './PartnerMonthList';
 import '../styles/PartnerAdmin.css';
+
+const parseRateInput = (raw) => {
+  if (raw === null || raw === undefined || String(raw).trim() === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) return null;
+  return n;
+};
 
 const PartnerAdmin = () => {
   const [partners, setPartners] = useState([]);
@@ -23,6 +31,8 @@ const PartnerAdmin = () => {
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [discountPercent, setDiscountPercent] = useState('');
+  const [cashbackPercent, setCashbackPercent] = useState('');
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -30,6 +40,12 @@ const PartnerAdmin = () => {
   const [editingCodeId, setEditingCodeId] = useState(null);
   const [editCode, setEditCode] = useState('');
   const [savingCode, setSavingCode] = useState(false);
+  const [editingDiscountId, setEditingDiscountId] = useState(null);
+  const [editDiscount, setEditDiscount] = useState('');
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [editingCashbackId, setEditingCashbackId] = useState(null);
+  const [editCashback, setEditCashback] = useState('');
+  const [savingCashback, setSavingCashback] = useState(false);
   const [savingActiveId, setSavingActiveId] = useState(null);
   const [statusTab, setStatusTab] = useState('active');
 
@@ -110,17 +126,27 @@ const PartnerAdmin = () => {
       alert('Referral code is required.');
       return;
     }
+    const discount = parseRateInput(discountPercent);
+    const cashback = parseRateInput(cashbackPercent);
+    if (discount == null || cashback == null) {
+      alert('Customer discount and partner cashback are required (whole numbers 0–100).');
+      return;
+    }
 
     setSaving(true);
     try {
       await createPartner({
         user_id: selectedUserId,
         referral_code: referralCode,
+        discount_percent: discount,
+        cashback_percent: cashback,
       });
       await load();
       setSelectedUserId('');
       setUserSearch('');
       setReferralCode('');
+      setDiscountPercent('');
+      setCashbackPercent('');
       setShowForm(false);
     } catch (err) {
       console.error('Error creating partner:', err);
@@ -187,6 +213,78 @@ const PartnerAdmin = () => {
     }
   };
 
+  const handleStartEditDiscount = (row) => {
+    setEditingCashbackId(null);
+    setEditCashback('');
+    setEditingDiscountId(row.id);
+    setEditDiscount(String(row.discount_percent ?? ''));
+  };
+
+  const handleCancelEditDiscount = () => {
+    setEditingDiscountId(null);
+    setEditDiscount('');
+  };
+
+  const handleSaveDiscount = async (row) => {
+    const discount = parseRateInput(editDiscount);
+    if (discount == null) {
+      alert('Customer discount must be a whole number from 0 to 100.');
+      return;
+    }
+    setSavingDiscount(true);
+    try {
+      const updated = await updatePartnerRates(row.id, {
+        discount_percent: discount,
+      });
+      setPartners((prev) =>
+        prev.map((p) => (p.id === row.id ? { ...p, ...updated } : p))
+      );
+      setEditingDiscountId(null);
+      setEditDiscount('');
+    } catch (err) {
+      console.error('Error updating customer discount:', err);
+      alert(err.message || 'Failed to update customer discount.');
+    } finally {
+      setSavingDiscount(false);
+    }
+  };
+
+  const handleStartEditCashback = (row) => {
+    setEditingDiscountId(null);
+    setEditDiscount('');
+    setEditingCashbackId(row.id);
+    setEditCashback(String(row.cashback_percent ?? ''));
+  };
+
+  const handleCancelEditCashback = () => {
+    setEditingCashbackId(null);
+    setEditCashback('');
+  };
+
+  const handleSaveCashback = async (row) => {
+    const cashback = parseRateInput(editCashback);
+    if (cashback == null) {
+      alert('Partner cashback must be a whole number from 0 to 100.');
+      return;
+    }
+    setSavingCashback(true);
+    try {
+      const updated = await updatePartnerRates(row.id, {
+        cashback_percent: cashback,
+      });
+      setPartners((prev) =>
+        prev.map((p) => (p.id === row.id ? { ...p, ...updated } : p))
+      );
+      setEditingCashbackId(null);
+      setEditCashback('');
+    } catch (err) {
+      console.error('Error updating partner cashback:', err);
+      alert(err.message || 'Failed to update partner cashback.');
+    } finally {
+      setSavingCashback(false);
+    }
+  };
+
   const handleToggleRow = async (partnerId) => {
     const nextId = expandedId === partnerId ? null : partnerId;
     setExpandedId(nextId);
@@ -247,13 +345,20 @@ const PartnerAdmin = () => {
       <h1 className="partner-admin-title">Partners Management</h1>
       <br />
 
-      <button
-        type="button"
-        className="partner-toggle-button"
-        onClick={() => setShowForm((prev) => !prev)}
-      >
-        {showForm ? 'Close' : 'Add partner'}
-      </button>
+      <div className="partner-form-toolbar">
+        {showForm ? (
+          <h2 className="partner-form-heading">Add new partner</h2>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          className="partner-toggle-button"
+          onClick={() => setShowForm((prev) => !prev)}
+        >
+          {showForm ? 'Close' : 'Add partner'}
+        </button>
+      </div>
 
       {showForm && (
         <form className="partner-admin-form" onSubmit={handleCreate}>
@@ -303,6 +408,36 @@ const PartnerAdmin = () => {
                 placeholder="e.g. JOSH15"
               />
             </label>
+            <label className="partner-field partner-field-rate">
+              <span>Customer discount %</span>
+              <input
+                type="number"
+                className="partner-input"
+                min={0}
+                max={100}
+                step={1}
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                placeholder="Required"
+                required
+              />
+            </label>
+            <label className="partner-field partner-field-rate">
+              <span>Partner cashback %</span>
+              <input
+                type="number"
+                className="partner-input"
+                min={0}
+                max={100}
+                step={1}
+                value={cashbackPercent}
+                onChange={(e) => setCashbackPercent(e.target.value)}
+                placeholder="Required"
+                required
+              />
+            </label>
+          </div>
+          <div className="partner-form-actions">
             <button type="submit" className="partner-submit-button" disabled={saving}>
               {saving ? 'Adding…' : 'Save'}
             </button>
@@ -353,6 +488,8 @@ const PartnerAdmin = () => {
                 <th></th>
                 <th>PARTNER</th>
                 <th>CODE</th>
+                <th className="partner-th-rate">CUSTOMER<br />DISCOUNT</th>
+                <th className="partner-th-rate">PARTNER<br />CASHBACK</th>
                 <th>PAYOUT</th>
                 <th>THIS MONTH</th>
                 <th>TOTAL EARNINGS</th>
@@ -436,6 +573,124 @@ const PartnerAdmin = () => {
                           </div>
                         )}
                       </td>
+                      <td
+                        className="partner-rates-cell"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {editingDiscountId === row.id ? (
+                          <div className="partner-rates-edit">
+                            <label className="partner-rate-inline">
+                              <input
+                                type="number"
+                                className="partner-rate-input"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={editDiscount}
+                                onChange={(e) => setEditDiscount(e.target.value)}
+                                autoFocus
+                                disabled={savingDiscount}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveDiscount(row);
+                                  }
+                                  if (e.key === 'Escape') handleCancelEditDiscount();
+                                }}
+                              />
+                              <span>%</span>
+                            </label>
+                            <button
+                              type="button"
+                              className="partner-code-save"
+                              onClick={() => handleSaveDiscount(row)}
+                              disabled={savingDiscount}
+                            >
+                              {savingDiscount ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              className="partner-code-cancel"
+                              onClick={handleCancelEditDiscount}
+                              disabled={savingDiscount}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="partner-code-display">
+                            <span>{row.discount_percent}%</span>
+                            <button
+                              type="button"
+                              className="partner-code-edit-button"
+                              onClick={() => handleStartEditDiscount(row)}
+                              aria-label="Edit customer discount"
+                              title="Edit customer discount"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className="partner-rates-cell"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {editingCashbackId === row.id ? (
+                          <div className="partner-rates-edit">
+                            <label className="partner-rate-inline">
+                              <input
+                                type="number"
+                                className="partner-rate-input"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={editCashback}
+                                onChange={(e) => setEditCashback(e.target.value)}
+                                autoFocus
+                                disabled={savingCashback}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveCashback(row);
+                                  }
+                                  if (e.key === 'Escape') handleCancelEditCashback();
+                                }}
+                              />
+                              <span>%</span>
+                            </label>
+                            <button
+                              type="button"
+                              className="partner-code-save"
+                              onClick={() => handleSaveCashback(row)}
+                              disabled={savingCashback}
+                            >
+                              {savingCashback ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              className="partner-code-cancel"
+                              onClick={handleCancelEditCashback}
+                              disabled={savingCashback}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="partner-code-display">
+                            <span>{row.cashback_percent}%</span>
+                            <button
+                              type="button"
+                              className="partner-code-edit-button"
+                              onClick={() => handleStartEditCashback(row)}
+                              aria-label="Edit partner cashback"
+                              title="Edit partner cashback"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
                       <td>{formatPayoutLabel(row.payout_type)}</td>
                       <td>{formatCents(row.current_month_cents)}</td>
                       <td>{formatCents(row.total_earn_cents)}</td>
@@ -462,7 +717,7 @@ const PartnerAdmin = () => {
                     </tr>
                     {isExpanded && (
                       <tr className="partner-expand-row">
-                        <td colSpan={7}>
+                        <td colSpan={9}>
                           <p className="partner-wallet-balance">
                             Wallet balance (store credit): {formatCents(row.available_credit_cents)}
                           </p>

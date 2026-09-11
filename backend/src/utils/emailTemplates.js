@@ -572,22 +572,42 @@ function stripHtml(s) {
   return String(s).replace(/<[^>]+>/g, "");
 }
 
-function partnerProgramRuleLists(audience = "partner") {
+function partnerProgramRuleLists(audience = "partner", rates = {}) {
   const isPartner = audience === "partner";
+  const discount = Number.isFinite(Number(rates.discount_percent))
+    ? Math.round(Number(rates.discount_percent))
+    : 10;
+  const cashback = Number.isFinite(Number(rates.cashback_percent))
+    ? Math.round(Number(rates.cashback_percent))
+    : 10;
+  const minCents = Number(process.env.REFERRAL_MIN_SUBTOTAL_CENTS ?? 0);
+  const minDollars = Number.isFinite(minCents) && minCents > 0
+    ? (minCents / 100).toFixed(0)
+    : null;
+
+  const how = [
+    `Friends get <strong>${discount}% off</strong> their item subtotal (delivery and tax excluded from the discount).`,
+    "They must be registered with Earth Table and logged in.",
+    "It only applies to their <strong>first order ever</strong> on the site.",
+  ];
+  if (minDollars) {
+    how.push(
+      `The item subtotal must be at least <strong>$${minDollars}</strong> before discount, tax, and delivery.`
+    );
+  }
+  how.push(
+    "A referral code cannot be combined with a regular promo code.",
+    isPartner
+      ? "<strong>You cannot use your own referral code</strong> on your own orders."
+      : "The partner <strong>cannot use their own referral code</strong> on their own orders."
+  );
+
   return {
-    how: [
-      "Friends get <strong>15% off</strong> their item subtotal (delivery and tax excluded from the discount).",
-      "They must be registered with Earth Table and logged in.",
-      "It only applies to their <strong>first order ever</strong> on the site, and the item subtotal must be at least <strong>$50</strong> before discount, tax, and delivery.",
-      "A referral code cannot be combined with a regular promo code.",
-      isPartner
-        ? "<strong>You cannot use your own referral code</strong> on your own orders."
-        : "The partner <strong>cannot use their own referral code</strong> on their own orders.",
-    ],
+    how,
     cashback: [
       isPartner
-        ? "You earn <strong>10% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use your code."
-        : "The partner earns <strong>10% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use their code.",
+        ? `You earn <strong>${cashback}% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use your code.`
+        : `The partner earns <strong>${cashback}% of the pre-discount item subtotal</strong> (not the discounted amount, not delivery, not tax) on orders that use their code.`,
       isPartner
         ? "Cashback starts as <strong>pending</strong>. On the 1st of each month, the previous month's invoice closes. You'll get an email showing <strong>cash</strong> and <strong>store credit</strong> totals separately — including who used your code. Store credit is added to your wallet automatically; cash can be marked paid after the invoice is sent."
         : "Cashback starts as pending. On the 1st of each month, the previous month's invoice closes. The partner (and admin) get an email showing cash and store credit totals separately — including who used the code. Store credit is added to the wallet automatically; cash can be marked paid after the invoice is sent.",
@@ -612,8 +632,8 @@ function ruleListHtml(items) {
       `);
 }
 
-function partnerProgramRulesHtml(audience = "partner") {
-  const { how, cashback } = partnerProgramRuleLists(audience);
+function partnerProgramRulesHtml(audience = "partner", rates = {}) {
+  const { how, cashback } = partnerProgramRuleLists(audience, rates);
   return `
       ${h2("How the code works")}
       ${ruleListHtml(how)}
@@ -622,8 +642,8 @@ function partnerProgramRulesHtml(audience = "partner") {
   `;
 }
 
-function partnerProgramRulesText(audience = "partner") {
-  const { how, cashback } = partnerProgramRuleLists(audience);
+function partnerProgramRulesText(audience = "partner", rates = {}) {
+  const { how, cashback } = partnerProgramRuleLists(audience, rates);
   return `How the code works
 ${how.map((item) => `- ${stripHtml(item)}`).join("\n")}
 
@@ -637,6 +657,13 @@ ${cashback.map((item) => `- ${stripHtml(item)}`).join("\n")}`;
 function renderPartnerWelcomeEmail(partner = {}, user = {}) {
   const code = String(partner.referral_code || '').toUpperCase() || '—';
   const firstName = user.first_name || 'there';
+  const discount = Number.isFinite(Number(partner.discount_percent))
+    ? Math.round(Number(partner.discount_percent))
+    : 10;
+  const cashback = Number.isFinite(Number(partner.cashback_percent))
+    ? Math.round(Number(partner.cashback_percent))
+    : 10;
+  const rates = { discount_percent: discount, cashback_percent: cashback };
 
   const subject = `You're an Earth Table partner — code ${code}`;
 
@@ -644,13 +671,13 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
       ${eyebrow("Partner program")}
       ${h1("Welcome to the partner program")}
       ${intro(`Hi ${firstName}, you've been set up as an Earth Table partner.`)}
-      ${heroBanner("Your referral code", code, "Share this with friends. They get 15% off their first $50+ order.")}
+      ${heroBanner("Your referral code", code, `Share this with friends. They get ${discount}% off their first order.`)}
       ${h2("Payout")}
       ${card(kvTable(`
         ${rowHtml("Payout type", "Cash (default)", true)}
       `))}
       <p style="margin:0 0 24px; font-size:14px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Switch to store credit anytime from your partner wallet — new orders use whatever you have selected.</p>
-      ${partnerProgramRulesHtml()}
+      ${partnerProgramRulesHtml("partner", rates)}
   `, {
     preheader: `Your Earth Table referral code is ${code}`,
     replyOk: true,
@@ -661,9 +688,10 @@ function renderPartnerWelcomeEmail(partner = {}, user = {}) {
 Hi ${firstName}, you've been set up as an Earth Table partner.
 
 Your referral code: ${code}
+Friends get ${discount}% off. You earn ${cashback}% cashback.
 Payout type: Cash (default). Switch to store credit anytime from your partner wallet — new orders use whatever you have selected.
 
-${partnerProgramRulesText()}
+${partnerProgramRulesText("partner", rates)}
 
 Questions? Reply to this email or write to hello@earthtableco.ca.
 `;
@@ -679,6 +707,13 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
   const email = user.email || '—';
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
   const phone = user.phone_number || '—';
+  const discount = Number.isFinite(Number(partner.discount_percent))
+    ? Math.round(Number(partner.discount_percent))
+    : 10;
+  const cashback = Number.isFinite(Number(partner.cashback_percent))
+    ? Math.round(Number(partner.cashback_percent))
+    : 10;
+  const rates = { discount_percent: discount, cashback_percent: cashback };
 
   const subject = `New partner assigned — ${code}`;
 
@@ -692,10 +727,12 @@ function renderAdminPartnerWelcomeEmail(partner = {}, user = {}) {
         ${rowHtml("Name", name)}
         ${rowHtml("Email", email)}
         ${rowHtml("Phone", phone)}
+        ${rowHtml("Discount", `${discount}%`)}
+        ${rowHtml("Cashback", `${cashback}%`)}
         ${rowHtml("Payout type", "Cash (default)", true)}
       `))}
       <p style="margin:0 0 24px; font-size:14px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">They can switch to store credit anytime from their partner wallet.</p>
-      ${partnerProgramRulesHtml('admin')}
+      ${partnerProgramRulesHtml('admin', rates)}
   `, { preheader: `New partner ${code} · ${name}` });
 
   const text = `New partner created
@@ -704,9 +741,11 @@ Code: ${code}
 Name: ${name}
 Email: ${email}
 Phone: ${phone}
+Discount: ${discount}%
+Cashback: ${cashback}%
 Payout type: Cash (default). They can switch to store credit anytime from their partner wallet.
 
-${partnerProgramRulesText('admin')}
+${partnerProgramRulesText('admin', rates)}
 `;
 
   return { subject, html, text };

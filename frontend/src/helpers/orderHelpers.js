@@ -65,14 +65,14 @@ export const getOrderDiscount = (order) => {
   const itemSubtotalCents = Number(order?.item_subtotal_cents) || 0;
   let amountOffCents = Number(meta.amount_off_cents);
   if (!Number.isFinite(amountOffCents) || amountOffCents < 0) {
-    const pct = Number.isFinite(percent) ? percent : kind === "referral" ? 15 : 0;
+    const pct = Number.isFinite(percent) ? percent : kind === "referral" ? 10 : 0;
     amountOffCents = Math.round(itemSubtotalCents * pct / 100);
   }
 
   return {
     label: kind === "referral" ? "Referral" : "Promo",
     code: code.toUpperCase(),
-    percent: Number.isFinite(percent) ? percent : kind === "referral" ? 15 : null,
+    percent: Number.isFinite(percent) ? percent : kind === "referral" ? 10 : null,
     amountOffCents,
   };
 };

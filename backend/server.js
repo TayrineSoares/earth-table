@@ -301,7 +301,11 @@ const stripeWebhookHandler = async (request, response) => {
             first_name: partnerUser?.first_name || null,
             code: (referralPartner.referral_code || referralCode || '').toUpperCase(),
             cashback_cents: earnRow?.amount_cents
-              ?? Math.floor((Number(detailedOrder?.item_subtotal_cents) || 0) * 10 / 100),
+              ?? Math.floor(
+                (Number(detailedOrder?.item_subtotal_cents) || 0)
+                * (Number(referralPartner.cashback_percent) || 10)
+                / 100
+              ),
             item_subtotal_cents: Number(detailedOrder?.item_subtotal_cents) || 0,
           }
         : null;
