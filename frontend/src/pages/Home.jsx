@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
 import arrow from  "../assets/images/arrow.png"
+import { sizedImageUrl } from "../helpers/imageHelpers";
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
@@ -59,7 +60,11 @@ const Home = () => {
                 </div>
 
                 <div className="zigzag-image">
-                  <img src={category.image_url} alt={category.name} />
+                  <img
+                    src={sizedImageUrl(category.image_url, 800)}
+                    srcSet={`${sizedImageUrl(category.image_url, 800)} 1x, ${sizedImageUrl(category.image_url, 1600)} 2x`}
+                    alt={category.name}
+                  />
                 </div>
               </div>
             </section>
@@ -74,9 +79,11 @@ const Home = () => {
             <div className="footer-category-container">
               {footerCategories.map(category => (
                 <div className="footer-category-card" key={category.id}>
-                  <img 
-                    src={category.image_url} 
-                    className="footer-category-image" 
+                  <img
+                    src={sizedImageUrl(category.image_url, 600)}
+                    srcSet={`${sizedImageUrl(category.image_url, 600)} 1x, ${sizedImageUrl(category.image_url, 1200)} 2x`}
+                    className="footer-category-image"
+                    alt={category.name}
                   />
                   <h3 className="footer-category-name">{category.name}</h3>
                 </div>
