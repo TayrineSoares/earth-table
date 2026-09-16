@@ -118,10 +118,10 @@ create index if not exists subscription_cycle_items_cycle_id_idx
 alter table public.orders
   add column if not exists subscription_cycle_id uuid references public.subscription_cycles (id);
 
--- Idempotent cron: one charge job and one lock job per week_key
+-- Idempotent cron: one charge job, one lock job, and one Monday pause email per week_key
 create table if not exists public.cutoff_runs (
   week_key text not null,
-  job text not null check (job in ('wednesday_charge', 'thursday_lock')),
+  job text not null check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder')),
   started_at timestamptz not null default now(),
   finished_at timestamptz,
   stats jsonb,
@@ -202,3 +202,9 @@ revoke all on public.subscription_cycles from anon, authenticated;
 revoke all on public.subscription_cycle_items from anon, authenticated;
 revoke all on public.cutoff_runs from anon, authenticated;
 revoke all on public.subscription_settings from anon, authenticated;
+
+-- Existing projects: allow Monday pause-reminder rows in cutoff_runs
+alter table public.cutoff_runs drop constraint if exists cutoff_runs_job_check;
+alter table public.cutoff_runs
+  add constraint cutoff_runs_job_check
+  check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder'));

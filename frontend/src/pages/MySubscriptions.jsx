@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
@@ -8,25 +8,41 @@ import DeliverySelector from '../components/DeliverySelector'
 import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
+  fetchSubscriptionPlans,
   formatPickupSlot,
   formatPlanPrice,
   mealsAWeek,
   updateSubscriptionFulfillment,
+  updateSubscriptionStatus,
+  changeSubscriptionPlan,
+  startCardSetup,
+  fetchCardSetup,
   sundayDatePart,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import { formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import { clearEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
 
 const HST_RATE = 0.13
 
+const cardLabel = (card) => {
+  if (!card?.last4) return 'No card on file'
+  const brand = String(card.brand || 'card')
+  const nice = brand.charAt(0).toUpperCase() + brand.slice(1)
+  return `${nice} •••• ${card.last4}`
+}
+
 const MySubscriptions = ({ user }) => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [rows, setRows] = useState([])
+  const [plans, setPlans] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [dialog, setDialog] = useState(null)
   const [editingId, setEditingId] = useState(null)
+  const [changingId, setChangingId] = useState(null)
   const [savingId, setSavingId] = useState(null)
   const [fulfillment, setFulfillment] = useState('pickup')
   const [pickupDate, setPickupDate] = useState('')
@@ -56,9 +72,15 @@ const MySubscriptions = ({ user }) => {
       setIsLoading(false)
       return undefined
     }
-    fetchMySubscriptions(user.id)
-      .then((data) => {
-        if (!cancelled) setRows(Array.isArray(data) ? data : [])
+    Promise.all([
+      fetchMySubscriptions(user.id),
+      fetchSubscriptionPlans({ activeOnly: true }).catch(() => []),
+    ])
+      .then(([data, nextPlans]) => {
+        if (!cancelled) {
+          setRows(Array.isArray(data) ? data : [])
+          setPlans(Array.isArray(nextPlans) ? nextPlans : [])
+        }
       })
       .catch((err) => {
         console.error(err)
@@ -79,6 +101,39 @@ const MySubscriptions = ({ user }) => {
       cancelled = true
     }
   }, [user])
+
+  useEffect(() => {
+    const sessionId = searchParams.get('card_session')
+    if (!sessionId || !user?.id) return undefined
+    let cancelled = false
+    fetchCardSetup(sessionId)
+      .then((result) => {
+        if (cancelled || !result?.ready) return
+        setSearchParams({}, { replace: true })
+        return load().then(() => {
+          setDialog({
+            icon: 'mail',
+            title: 'Card updated',
+            body: 'This weekly plan will use the new card for the next charge.',
+            primaryLabel: 'OK',
+          })
+        })
+      })
+      .catch((err) => {
+        console.error(err)
+        if (!cancelled) {
+          setDialog({
+            icon: 'alert',
+            title: 'Could not save that card',
+            body: err.message || 'Try Edit beside the card number again.',
+            primaryLabel: 'OK',
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, user])
 
   useEffect(() => {
     if (fulfillment === 'pickup') {
@@ -181,6 +236,140 @@ const MySubscriptions = ({ user }) => {
     }
   }
 
+  const persistStatus = async (row, action) => {
+    setSavingId(row.id)
+    setDialog(null)
+    try {
+      const result = await updateSubscriptionStatus(user.id, row.id, action)
+      await load()
+      setChangingId(null)
+      if (result?.pending && result?.message) {
+        setDialog({
+          icon: 'mail',
+          title: action === 'cancel' ? 'Cancel starts next week' : 'Pause starts next week',
+          body: result.message,
+          primaryLabel: 'OK',
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update this plan',
+        body: err.message || 'Try again in a moment.',
+        primaryLabel: 'OK',
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const confirmStatus = (row, action) => {
+    const beforeWed = row.charge?.before_wednesday !== false
+    const sunday = sundayDatePart(row.week?.delivery_label)
+    const copy = {
+      pause: beforeWed
+        ? {
+          title: 'Pause this plan?',
+          body: `This Sunday, ${sunday}, will be skipped. Your meals and card stay on file. We'll email you on Mondays in case you want to come back. Resume by Wednesday 5:00 PM for that week's box.`,
+        }
+        : {
+          title: 'Pause after this Sunday?',
+          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be paused starting the following week.`,
+        },
+      cancel: beforeWed
+        ? {
+          title: 'Cancel this plan?',
+          body: `This Sunday, ${sunday}, will be skipped. Your plan, meals, and saved card are removed. Start a new plan any time from Subscribe & Save.`,
+        }
+        : {
+          title: 'Cancel after this Sunday?',
+          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be cancelled starting the following week.`,
+        },
+      resume: {
+        title: 'Resume this plan?',
+        body: row.pending_status
+          ? `This Sunday still goes out, and the pending ${row.pending_status} will be cleared.`
+          : 'Your weekly plan will be active again and weekly charges resume.',
+      },
+    }[action]
+    setDialog({
+      icon: 'mail',
+      title: copy.title,
+      body: copy.body,
+      primaryLabel: action === 'cancel' ? 'Cancel plan' : action === 'pause' ? 'Pause' : 'Resume',
+      secondaryLabel: 'Never mind',
+      onPrimary: () => persistStatus(row, action),
+    })
+  }
+
+  const persistPlan = async (row, plan) => {
+    setSavingId(row.id)
+    setDialog(null)
+    try {
+      const result = await changeSubscriptionPlan(user.id, row.id, plan.id)
+      clearEditCart(user.id, row.id)
+      await load()
+      setChangingId(null)
+      if (result?.needs_meals) {
+        setDialog({
+          icon: 'mail',
+          title: 'Pick this week\'s meals',
+          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before Thursday 5:00 PM.`,
+          primaryLabel: 'Choose meals',
+          primaryTo: `/my-subscriptions/${row.id}/meals`,
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not change plan',
+        body: err.message || 'Try again in a moment.',
+        primaryLabel: 'OK',
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const confirmPlan = (row, plan) => {
+    const beforeWed = row.charge?.before_wednesday !== false
+    const sunday = sundayDatePart(row.week?.delivery_label)
+    setDialog({
+      icon: 'mail',
+      title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
+      body: beforeWed
+        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before Thursday 5:00 PM.`
+        : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
+      primaryLabel: 'Change plan',
+      secondaryLabel: 'Never mind',
+      onPrimary: () => persistPlan(row, plan),
+    })
+  }
+
+  const changeCard = async (row) => {
+    if (savingId) return
+    setSavingId(row.id)
+    try {
+      const result = await startCardSetup(user.id, row.id)
+      if (result?.url) {
+        window.location.assign(result.url)
+        return
+      }
+      throw new Error('Could not open card update.')
+    } catch (err) {
+      console.error(err)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update card',
+        body: err.message || 'Try again in a moment.',
+        primaryLabel: 'OK',
+      })
+      setSavingId(null)
+    }
+  }
+
   const saveFulfillment = (row) => {
     if (!fulfillmentReady || savingId) return
     const wasDelivery = !!(row.edit_cycle || row.cycle || {}).delivery
@@ -225,7 +414,7 @@ const MySubscriptions = ({ user }) => {
           </div>
         ) : !rows.length ? (
           <div className="order-history-empty">
-            <p className="order-history-empty-copy">You don&apos;t have a weekly plan yet.</p>
+            <p className="order-history-empty-copy">No current subscriptions available.</p>
             <Link to="/subscribe-and-save" className="order-history-button">Subscribe &amp; Save</Link>
           </div>
         ) : (
@@ -240,11 +429,29 @@ const MySubscriptions = ({ user }) => {
             const isDelivery = !!cycle.delivery
             const sunday = formatYmdLong(cycle.delivery_date || cycle.pickup_date)
             const canEdit = Boolean(row.can_edit)
+            const isPaused = row.status === 'paused'
+            const pending = row.pending_status
+            const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
-            const weekNote = row.week?.applies_to === 'next_week'
-              ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
-              : `You can change meals, add extras, or switch pickup/delivery until ${row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}.`
+            const weekNote = isPaused || pending === 'paused'
+              ? 'This plan is paused. Your last meals and card stay on file. We email you on Mondays in case you want to come back. Resume by Wednesday 5:00 PM to get that Sunday\'s box, or cancel to remove everything.'
+              : pending === 'cancelled'
+                ? 'The payment cutoff for this week has passed. You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
+              : row.week?.applies_to === 'next_week'
+                ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
+                : `You can change meals and extras until ${row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}. Pause, cancel, or change plan by ${row.charge?.charge_label || 'Wednesday at 5:00 PM ET'}.`
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
+            const otherPlans = plans.filter((planRow) => planRow.id !== row.plan_id)
+            const statusLabel = pending === 'paused'
+              ? 'Pausing'
+              : pending === 'cancelled'
+                ? 'Cancelling'
+              : isPaused
+                ? 'Paused'
+                : 'Active'
+            const statusChipClass = isPaused || pending
+              ? 'order-chip my-sub-chip-paused'
+              : 'order-chip my-sub-chip-active'
 
             return (
               <article key={row.id} className="order-card">
@@ -252,11 +459,74 @@ const MySubscriptions = ({ user }) => {
                   <div className="order-card-header-main">
                     <p className="order-card-id">{mealsAWeek(plan.meal_count)}</p>
                     <div className="order-card-chips">
-                      <span className="order-chip">{row.status}</span>
+                      <span className={statusChipClass}>{statusLabel}</span>
                       <span className="order-chip">{isDelivery ? 'Delivery' : 'Pickup'}</span>
                     </div>
                   </div>
                   <p className="order-card-placed">{formatPlanPrice(plan.price_cents)}/week</p>
+                  <div className="my-sub-heading-actions">
+                    {canEdit ? (
+                      <>
+                        <Link
+                          to={`/my-subscriptions/${row.id}/meals`}
+                          state={{ fresh: true }}
+                          className="order-history-button"
+                        >
+                          Edit plan
+                        </Link>
+                        <button
+                          type="button"
+                          className="order-history-button"
+                          onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
+                        >
+                          {editingId === row.id ? 'Close' : 'Edit pickup / delivery'}
+                        </button>
+                        <button
+                          type="button"
+                          className="order-history-button"
+                          onClick={() => setChangingId(changingId === row.id ? null : row.id)}
+                        >
+                          {changingId === row.id ? 'Close plans' : 'Change plan'}
+                        </button>
+                        {pending ? (
+                          <button
+                            type="button"
+                            className="order-history-button"
+                            disabled={savingId === row.id}
+                            onClick={() => confirmStatus(row, 'resume')}
+                          >
+                            Keep this Sunday
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="order-history-button"
+                            disabled={savingId === row.id}
+                            onClick={() => confirmStatus(row, 'pause')}
+                          >
+                            Pause
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="order-history-button"
+                        disabled={savingId === row.id}
+                        onClick={() => confirmStatus(row, 'resume')}
+                      >
+                        Resume
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="order-history-button"
+                      disabled={savingId === row.id}
+                      onClick={() => confirmStatus(row, 'cancel')}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </header>
 
                 <p className="my-sub-week-note">{weekNote}</p>
@@ -299,7 +569,37 @@ const MySubscriptions = ({ user }) => {
                     <p className="order-meta-label">Change meals by</p>
                     <p className="order-meta-value">{row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}</p>
                   </div>
+                  <div className="order-meta-field order-meta-field--wide">
+                    <p className="order-meta-label">Pause / cancel / change plan by</p>
+                    <p className="order-meta-value">{row.charge?.charge_label || 'Wednesday at 5:00 PM ET'}</p>
+                  </div>
+                  <div className="order-meta-field order-meta-field--wide">
+                    <p className="order-meta-label">Card on file</p>
+                    <p className="order-meta-value">
+                      {cardLabel(row.card)}
+                      <button
+                        type="button"
+                        className="my-sub-edit-link"
+                        disabled={savingId === row.id}
+                        onClick={() => changeCard(row)}
+                      >
+                        Edit
+                      </button>
+                    </p>
+                  </div>
                 </div>
+
+                {pendingPlan ? (
+                  <p className="my-sub-week-note">
+                    Starting next week: {mealsAWeek(pendingPlan.meal_count)} ({formatPlanPrice(pendingPlan.price_cents)}/week).
+                  </p>
+                ) : null}
+
+                {row.meals_need_update ? (
+                  <p className="my-sub-week-note">
+                    Pick exactly {plan.meal_count} meals for this Sunday before Thursday 5:00 PM.
+                  </p>
+                ) : null}
 
                 {cycle.special_note ? (
                   <div className="order-notes">
@@ -354,26 +654,21 @@ const MySubscriptions = ({ user }) => {
                   </>
                 ) : null}
 
-                {canEdit ? (
-                  <div className="my-sub-actions">
-                    <Link
-                      to={`/my-subscriptions/${row.id}/meals`}
-                      state={{ fresh: true }}
-                      className="order-history-button"
-                    >
-                      Edit plan
-                    </Link>
-                    <button
-                      type="button"
-                      className="order-history-button"
-                      onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
-                    >
-                      {editingId === row.id ? 'Close' : 'Edit pickup / delivery'}
-                    </button>
+                {changingId === row.id && canEdit && otherPlans.length ? (
+                  <div className="my-sub-plan-list">
+                    {otherPlans.map((planRow) => (
+                      <button
+                        key={planRow.id}
+                        type="button"
+                        className="order-history-button"
+                        disabled={savingId === row.id}
+                        onClick={() => confirmPlan(row, planRow)}
+                      >
+                        {mealsAWeek(planRow.meal_count)} — {formatPlanPrice(planRow.price_cents)}/week
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <p className="my-sub-locked">This plan is paused.</p>
-                )}
+                ) : null}
 
                 {editingId === row.id && canEdit ? (
                   <div className="my-sub-fulfillment">

@@ -143,7 +143,17 @@ const SubscriberAdmin = () => {
                         {mealsAWeek(plan.meal_count)}
                         <div className="sub-admin-muted">{formatPlanPrice(plan.price_cents)}/week</div>
                       </td>
-                      <td>{row.status}</td>
+                      <td>
+                        {row.status}
+                        {row.pending_status ? (
+                          <div className="sub-admin-muted">pending {row.pending_status}</div>
+                        ) : null}
+                        {row.pending_plan ? (
+                          <div className="sub-admin-muted">
+                            next: {mealsAWeek(row.pending_plan.meal_count)}
+                          </div>
+                        ) : null}
+                      </td>
                       <td>{sunday}</td>
                       <td>{fulfillment}</td>
                       <td>

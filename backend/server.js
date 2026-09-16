@@ -11,7 +11,7 @@ const {
   renderOwnerOrderEmail,
   renderPartnerCodeUsedEmail,
 } = require('./src/utils/emailTemplates');
-const { completeSubscriptionSignup } = require('./src/queries/subscriptionCheckout');
+const { completeSubscriptionSignup, completeCardSetup } = require('./src/queries/subscriptionCheckout');
 
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
@@ -101,6 +101,11 @@ const stripeWebhookHandler = async (request, response) => {
     // Subscription signups must not create a kitchen order (those wait until Thursday lock).
     if (String(md.kind || '') === 'subscription') {
       await completeSubscriptionSignup(session);
+      return response.status(200).send('ok');
+    }
+
+    if (String(md.kind || '') === 'subscription_card') {
+      await completeCardSetup(session);
       return response.status(200).send('ok');
     }
 

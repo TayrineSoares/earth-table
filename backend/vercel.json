@@ -7,7 +7,8 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" }
+    { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" },
+    { "path": "/api/cron/pause-reminder", "schedule": "0 13 * * 1" }
   ],
   "rewrites": [
     { "source": "/api/webhook", "destination": "/webhook" },

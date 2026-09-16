@@ -7,6 +7,7 @@ const {
   closePartnerMonth,
   markInvoicesEmailed,
 } = require('../queries/partner');
+const { sendPauseReminders } = require('../queries/subscriptionManage');
 const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
   renderPartnerMonthlyInvoiceEmail,
@@ -141,5 +142,25 @@ function handleCron(req, res) {
 
 router.get('/partner-monthly', handleCron);
 router.post('/partner-monthly', handleCron);
+
+function handlePauseReminder(req, res) {
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron/pause-reminder] CRON_SECRET is not set');
+    return res.status(500).json({ error: 'Cron is not configured.' });
+  }
+  if (!cronAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  sendPauseReminders()
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('[cron/pause-reminder]', err);
+      return res.status(500).json({ error: err.message || 'Server error' });
+    });
+}
+
+router.get('/pause-reminder', handlePauseReminder);
+router.post('/pause-reminder', handlePauseReminder);
 
 module.exports = router;

@@ -18,6 +18,7 @@ const {
   SubscriptionError,
   getPlanById,
   getSettings,
+  getOwnedSubscription,
 } = require('./subscription');
 const { getSignupDates, formatTorontoStamp } = require('./subscriptionWeek');
 
@@ -655,10 +656,98 @@ async function getSignupBySessionId(sessionId) {
   return completeSubscriptionSignup(session);
 }
 
+async function createCardSetupCheckout(userId, subscriptionId) {
+  const sub = await getOwnedSubscription(userId, subscriptionId);
+  if (sub.status === 'cancelled') {
+    throw new SubscriptionError(400, 'This subscription is cancelled.');
+  }
+  if (!sub.stripe_customer_id) {
+    throw new SubscriptionError(400, 'No card on file yet. Email hello@earthtableco.ca.');
+  }
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: 'setup',
+    customer: sub.stripe_customer_id,
+    payment_method_types: ['card'],
+    success_url: `${frontendUrl()}/my-subscriptions?card_session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${frontendUrl()}/my-subscriptions`,
+    custom_text: {
+      submit: {
+        message: 'This saves a card for your Earth Table weekly plan. We charge it each week for your meals and delivery. Extras are billed Thursday if you added any.',
+      },
+    },
+    metadata: {
+      kind: 'subscription_card',
+      userId,
+      subscription_id: sub.id,
+    },
+  });
+  return { url: session.url };
+}
+
+async function completeCardSetup(session) {
+  const md = (session && session.metadata) || {};
+  if (String(md.kind || '') !== 'subscription_card') return { ok: false, skipped: true };
+
+  const stripe = getStripe();
+  let setupId = session.setup_intent;
+  if (setupId && typeof setupId === 'object') setupId = setupId.id;
+  if (!setupId) {
+    const full = await stripe.checkout.sessions.retrieve(session.id, { expand: ['setup_intent'] });
+    setupId = typeof full.setup_intent === 'string' ? full.setup_intent : full.setup_intent?.id;
+    session = full;
+  }
+  if (!setupId) throw new SubscriptionError(400, 'Card setup was missing.');
+
+  const si = await stripe.setupIntents.retrieve(setupId);
+  const pmId = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method?.id;
+  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+  const subId = md.subscription_id;
+  const userId = md.userId;
+  if (!pmId || !subId || !userId) throw new SubscriptionError(400, 'Card setup was incomplete.');
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      stripe_payment_method_id: pmId,
+      ...(customerId ? { stripe_customer_id: customerId } : {}),
+    })
+    .eq('id', subId)
+    .eq('user_id', userId);
+  if (error) throw error;
+
+  if (customerId && pmId) {
+    try {
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: pmId },
+      });
+    } catch (err) {
+      console.warn('[subscriptions] could not set default payment method:', err.message);
+    }
+  }
+
+  return { ok: true };
+}
+
+async function getCardSetupBySessionId(sessionId) {
+  if (!sessionId) throw new SubscriptionError(400, 'Missing checkout session.');
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['setup_intent'] });
+  if (String((session.metadata || {}).kind || '') !== 'subscription_card') {
+    throw new SubscriptionError(404, 'Card update not found.');
+  }
+  if (session.status !== 'complete') return { ready: false };
+  await completeCardSetup(session);
+  return { ready: true };
+}
+
 module.exports = {
   createSubscriptionCheckout,
   completeSubscriptionSignup,
   getSignupBySessionId,
+  createCardSetupCheckout,
+  completeCardSetup,
+  getCardSetupBySessionId,
   qtyLines,
   resolveLines,
   PICKUP_SLOTS,

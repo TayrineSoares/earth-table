@@ -1222,6 +1222,90 @@ ${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@
   return { subject, html, text };
 }
 
+function renderSubscriptionManageEmail({
+  kind,
+  firstName,
+  mealCount,
+  nextMealCount,
+  deliveryLabel,
+  chargeLabel,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const charge = chargeLabel || 'Wednesday at 5:00 PM ET';
+  const manageHref = appUrl('/my-subscriptions');
+  const nextPlan = mealsAWeek(nextMealCount);
+
+  const copy = {
+    pause_now: {
+      subject: `Your weekly plan is paused until you resume`,
+      heading: `You're paused, ${name}`,
+      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume — we'll email you on Mondays in case you want a box this week.`,
+    },
+    pause_next: {
+      subject: `Pause confirmed — this Sunday still runs`,
+      heading: `Pause starts after this Sunday, ${name}`,
+      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume. We'll email you on Mondays in case you want a box that week.`,
+    },
+    cancel_now: {
+      subject: `Your weekly plan is cancelled`,
+      heading: `You're cancelled, ${name}`,
+      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your plan, meals, and saved card are removed. You can start fresh any time from Subscribe & Save.`,
+    },
+    cancel_next: {
+      subject: `Your weekly plan is cancelled — this Sunday still runs`,
+      heading: `This Sunday still goes out, ${name}`,
+      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is cancelled starting the following week — meals and card are not kept after that. Start a new plan any time from Subscribe & Save.`,
+    },
+    pause_nudge: {
+      subject: `Your weekly plan is still paused — resume for this Sunday?`,
+      heading: `We saved your plan, ${name}`,
+      intro: `Your ${planWeek} is still paused, with your meals and card on file. Resume in My Subscriptions by ${charge} if you want a box this Sunday. We'll keep inviting you back on Mondays until you resume or cancel.`,
+    },
+    resume: {
+      subject: `Your weekly plan is active again`,
+      heading: `Welcome back, ${name}`,
+      intro: `Your ${planWeek} is active again. Weekly boxes stay on until you pause or cancel. Pause by ${charge} to skip a Sunday.`,
+    },
+    plan_now: {
+      subject: `You're on a ${nextPlan}`,
+      heading: `Plan updated, ${name}`,
+      intro: `You're now on a ${nextPlan}. This Sunday, ${sundayDatePart(sunday)}, uses the new count — pick that many meals before Thursday 5:00 PM.`,
+    },
+    plan_next: {
+      subject: `Plan change saved — starts after this Sunday`,
+      heading: `This Sunday stays as-is, ${name}`,
+      intro: `This Sunday, ${sundayDatePart(sunday)}, stays on your ${planWeek}. The ${nextPlan} starts the following week.`,
+    },
+  }[kind] || {
+    subject: 'Your weekly plan',
+    heading: `Update, ${name}`,
+    intro: 'Your weekly plan was updated.',
+  };
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(copy.heading)}
+      ${intro(copy.intro)}
+      ${ctaLink(manageHref, "My Subscriptions →")}
+  `, {
+    preheader: copy.subject,
+    replyOk: true,
+    title: copy.subject,
+  });
+
+  const text = `${copy.heading}
+
+${copy.intro}
+
+My Subscriptions: ${manageHref}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject: copy.subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
@@ -1234,5 +1318,6 @@ module.exports = {
   renderSubscriptionWelcomeEmail,
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
+  renderSubscriptionManageEmail,
   getEmailLogoUrl,
 };

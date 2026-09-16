@@ -19,7 +19,15 @@ const {
 const {
   createSubscriptionCheckout,
   getSignupBySessionId,
+  createCardSetupCheckout,
+  getCardSetupBySessionId,
 } = require('../queries/subscriptionCheckout');
+const {
+  pauseSubscription,
+  resumeSubscription,
+  cancelSubscription,
+  changeSubscriptionPlan,
+} = require('../queries/subscriptionManage');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -89,6 +97,24 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+router.post('/:id/card-setup', async (req, res) => {
+  try {
+    const result = await createCardSetupCheckout(req.body?.userId, req.params.id);
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[POST /subscriptions/:id/card-setup]');
+  }
+});
+
+router.get('/card-setup/:sessionId', async (req, res) => {
+  try {
+    const result = await getCardSetupBySessionId(req.params.sessionId);
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/card-setup/:sessionId]');
+  }
+});
+
 router.patch('/:id/items', async (req, res) => {
   try {
     const result = await replaceOpenCyclePlanAndAddons(
@@ -113,6 +139,37 @@ router.patch('/:id/fulfillment', async (req, res) => {
     res.json(result);
   } catch (err) {
     handleError(res, err, '[PATCH /subscriptions/:id/fulfillment]');
+  }
+});
+
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const action = String(req.body?.action || '').trim();
+    const userId = req.body?.userId;
+    const id = req.params.id;
+    let result;
+    if (action === 'pause') result = await pauseSubscription(userId, id);
+    else if (action === 'resume') result = await resumeSubscription(userId, id);
+    else if (action === 'cancel') result = await cancelSubscription(userId, id);
+    else {
+      return res.status(400).json({ error: 'Use pause, resume, or cancel.' });
+    }
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/status]');
+  }
+});
+
+router.patch('/:id/plan', async (req, res) => {
+  try {
+    const result = await changeSubscriptionPlan(
+      req.body?.userId,
+      req.params.id,
+      req.body?.planId
+    );
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/plan]');
   }
 });
 

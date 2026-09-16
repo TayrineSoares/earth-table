@@ -1,12 +1,51 @@
-.my-sub-actions {
-  display: flex;
+.my-subscriptions-page .order-card-header {
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
 }
 
-.my-sub-actions .order-history-button {
+.my-sub-heading-actions {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.my-sub-heading-actions .order-history-button {
   text-decoration: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.my-sub-chip-active {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.my-sub-chip-paused {
+  color: #6b7280;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.my-sub-edit-link {
+  display: inline;
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #BE7200;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.my-sub-edit-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .my-sub-week-note {
@@ -33,6 +72,20 @@
   border-top: 2px solid #D8C7B0;
 }
 
+.my-sub-plan-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.my-sub-plan-list .order-history-button {
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
 .my-sub-locked {
   font-family: var(--body-font);
   font-weight: 400;
@@ -48,7 +101,7 @@
 }
 
 .my-sub-fulfillment .order-history-button,
-.my-sub-actions .order-history-button {
+.my-sub-heading-actions .order-history-button {
   -webkit-appearance: none;
   appearance: none;
   color: #000;
@@ -62,13 +115,15 @@
 }
 
 @media (max-width: 1024px) {
-  .my-sub-actions .order-history-button {
+  .my-sub-heading-actions .order-history-button,
+  .my-sub-plan-list .order-history-button {
     width: 100%;
   }
 }
 
 @media (max-width: 768px) {
-  .my-sub-actions,
+  .my-sub-heading-actions,
+  .my-sub-plan-list,
   .my-sub-fulfillment,
   .my-sub-fulfillment .special-note-input,
   .my-sub-fulfillment .order-history-button,

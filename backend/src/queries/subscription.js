@@ -7,7 +7,7 @@
 const supabase = require('../../supabase/db');
 const { getAllCategories } = require('./category');
 const { getAllProducts } = require('./product');
-const { getSignupDates, getEditWeek, torontoYmd } = require('./subscriptionWeek');
+const { getSignupDates, getEditWeek, getChargeDeadline, torontoYmd } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
   constructor(status, message) {
@@ -188,6 +188,27 @@ const CYCLE_SELECT = `
   subscription_cycle_items ( ${CYCLE_ITEM_SELECT} )
 `;
 
+async function cardsByPaymentMethodId(ids) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  const map = {};
+  if (!unique.length) return map;
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
+  await Promise.all(unique.map(async (id) => {
+    try {
+      const pm = await stripe.paymentMethods.retrieve(id);
+      const last4 = pm.card?.last4;
+      if (!last4) return;
+      map[id] = {
+        brand: String(pm.card.brand || 'card'),
+        last4,
+      };
+    } catch (err) {
+      console.warn('[subscriptions] card lookup failed:', err.message);
+    }
+  }));
+  return map;
+}
+
 async function listMine(userId) {
   if (!userId) throw new SubscriptionError(400, 'User id is required.');
   const settings = await getSettings();
@@ -196,8 +217,9 @@ async function listMine(userId) {
     .from('subscriptions')
     .select(`
       id, status, plan_id, label, delivery, delivery_postal_code, pickup_time_slot, special_note,
-      created_at,
-      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
+      pending_plan_id, pending_status, pause_reason, paused_at, created_at, stripe_payment_method_id,
+      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents ),
+      pending_plan:subscription_plans!subscriptions_pending_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .eq('user_id', userId)
     .in('status', ['active', 'paused'])
@@ -214,6 +236,8 @@ async function listMine(userId) {
     .in('subscription_id', ids);
   if (cycleErr) throw cycleErr;
 
+  const cardMap = await cardsByPaymentMethodId(subs.map((row) => row.stripe_payment_method_id));
+
   const bySub = {};
   for (const cycle of cycles || []) {
     if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
@@ -225,12 +249,22 @@ async function listMine(userId) {
     const display = pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, display);
     const editCycle = list.find((row) => row.delivery_date === week.delivery_date) || null;
+    const charge = getChargeDeadline(now, settings || {}, week.delivery_date);
+    const planMeals = ((editCycle || display || {}).subscription_cycle_items || [])
+      .filter((item) => item.kind === 'plan')
+      .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
+    const { stripe_payment_method_id: _pm, ...publicSub } = sub;
+    void _pm;
     return {
-      ...sub,
+      ...publicSub,
+      card: cardMap[sub.stripe_payment_method_id] || null,
       cycle: display,
       edit_cycle: editCycle,
       week,
+      charge,
       can_edit: sub.status === 'active',
+      meals_need_update: sub.status === 'active' && mealCount > 0 && planMeals !== mealCount,
     };
   });
 }
@@ -243,7 +277,9 @@ async function listAll() {
     .select(`
       id, user_id, status, plan_id, label, delivery, delivery_postal_code,
       pickup_time_slot, special_note, created_at, paused_at, cancelled_at, pause_reason,
-      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
+      pending_plan_id, pending_status,
+      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents ),
+      pending_plan:subscription_plans!subscriptions_pending_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -281,6 +317,7 @@ async function listAll() {
       customer: byUser[sub.user_id] || null,
       cycle: display,
       week,
+      charge: getChargeDeadline(now, settings || {}, week.delivery_date),
     };
   });
 }
@@ -740,4 +777,5 @@ module.exports = {
   getPublicSignupInfo,
   replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
+  getOwnedSubscription,
 };

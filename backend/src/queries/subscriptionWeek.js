@@ -28,6 +28,7 @@ const WEEKDAY_NUM = {
   Sat: 6,
 };
 
+const CHARGE_WEEKDAY = 3; // Wednesday
 const LOCK_WEEKDAY = 4; // Thursday
 const LOCK_HOUR = 17;
 const LOCK_MINUTE = 0;
@@ -100,6 +101,44 @@ function thisWeekLockAt(now) {
   const p = torontoParts(now);
   const shifted = addCalendarDays(p.year, p.month, p.day, LOCK_WEEKDAY - p.weekday);
   return torontoDate(shifted.year, shifted.month, shifted.day, LOCK_HOUR, LOCK_MINUTE);
+}
+
+/** Wednesday 5pm before a Sunday delivery (same calendar week). */
+function chargeAtForSunday(ymdStr) {
+  const sunday = parseYmdToronto(ymdStr);
+  if (!sunday) {
+    const p = torontoParts(new Date());
+    const shifted = addCalendarDays(p.year, p.month, p.day, CHARGE_WEEKDAY - p.weekday);
+    return torontoDate(shifted.year, shifted.month, shifted.day, LOCK_HOUR, LOCK_MINUTE);
+  }
+  const p = torontoParts(sunday);
+  const wed = addCalendarDays(p.year, p.month, p.day, CHARGE_WEEKDAY - p.weekday);
+  return torontoDate(wed.year, wed.month, wed.day, LOCK_HOUR, LOCK_MINUTE);
+}
+
+/**
+ * Pause / cancel / plan-change deadline for the Sunday currently being edited.
+ * After Thursday lock, that Sunday is next week, so the deadline is next Wednesday.
+ * test_charge_at stands in for Wednesday when set.
+ */
+function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = null) {
+  const testRaw = settings && settings.test_charge_at;
+  const testAt = testRaw ? new Date(testRaw) : null;
+  const testValid = testAt && Number.isFinite(testAt.getTime());
+  const chargeAt = testValid ? testAt : chargeAtForSunday(deliveryDateYmd);
+  return {
+    before_wednesday: now.getTime() < chargeAt.getTime(),
+    charge_at: chargeAt.toISOString(),
+    charge_label: formatCutoffLabel(chargeAt),
+  };
+}
+
+function isBeforeWednesdayCharge(now = new Date(), settings = {}, deliveryDateYmd = null) {
+  return getChargeDeadline(now, settings, deliveryDateYmd).before_wednesday;
+}
+
+function isBeforeThursdayLock(now = new Date(), settings = {}) {
+  return !getSignupDates(now, settings).cutoff_passed;
 }
 
 function nextLiveLockAt(now) {
@@ -312,6 +351,9 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
 module.exports = {
   getSignupDates,
   getEditWeek,
+  getChargeDeadline,
+  isBeforeWednesdayCharge,
+  isBeforeThursdayLock,
   formatFulfillmentLine,
   mealsAWeek,
   mealPlanPhrase,

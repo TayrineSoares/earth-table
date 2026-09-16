@@ -16,6 +16,7 @@ const {
   renderSubscriptionWelcomeEmail,
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
+  renderSubscriptionManageEmail,
 } = require('../src/utils/emailTemplates');
 
 const outDir = path.join(__dirname, '../email-previews');
@@ -164,6 +165,11 @@ const subMail = {
 write('09-subscription-welcome.html', renderSubscriptionWelcomeEmail(subMail).html);
 write('10-subscription-owner.html', renderOwnerSubscriptionEmail(subMail).html);
 write('11-subscription-updated.html', renderSubscriptionUpdatedEmail(subMail).html);
+write('12-subscription-paused.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'pause_now',
+  chargeLabel: 'Wednesday, September 16 at 5:00 PM ET',
+}).html);
 
 const labels = {
   '01-customer-order.html': 'Customer order confirmation',
@@ -177,6 +183,7 @@ const labels = {
   '09-subscription-welcome.html': 'Subscription welcome',
   '10-subscription-owner.html': 'Owner: new subscription',
   '11-subscription-updated.html': 'Subscription updated',
+  '12-subscription-paused.html': 'Subscription paused',
 };
 
 const confirmSignupPreview = '08-confirm-signup.html';

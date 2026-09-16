@@ -103,6 +103,38 @@ const updateSubscriptionItems = async (userId, subscriptionId, meals, addons) =>
   return parseJson(res);
 };
 
+const updateSubscriptionStatus = async (userId, subscriptionId, action) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, action }),
+  });
+  return parseJson(res);
+};
+
+const changeSubscriptionPlan = async (userId, subscriptionId, planId) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/plan`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, planId }),
+  });
+  return parseJson(res);
+};
+
+const startCardSetup = async (userId, subscriptionId) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/card-setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  return parseJson(res);
+};
+
+const fetchCardSetup = async (sessionId) => {
+  const res = await fetch(`/api/subscriptions/card-setup/${encodeURIComponent(sessionId)}`);
+  return parseJson(res);
+};
+
 const mealsAWeek = (count) => {
   const n = Number(count) || 0;
   return n === 1 ? '1 meal a week' : `${n} meals a week`;
@@ -209,6 +241,10 @@ export {
   fetchSubscriptionSignup,
   updateSubscriptionFulfillment,
   updateSubscriptionItems,
+  updateSubscriptionStatus,
+  changeSubscriptionPlan,
+  startCardSetup,
+  fetchCardSetup,
   mealsAWeek,
   formatPickupSlot,
   formatCutoffShort,
