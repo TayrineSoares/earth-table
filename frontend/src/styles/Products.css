@@ -76,7 +76,7 @@
 .products-container {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 28px 20px;
+  gap: 56px 20px;
 }
 
 .products {
