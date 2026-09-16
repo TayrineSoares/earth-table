@@ -1,7 +1,5 @@
 import '../styles/Home.css';
 import { useState, useEffect } from 'react';
-import loadingAnimation from '../assets/loading.json';
-import Lottie from 'lottie-react';
 import { Link } from "react-router-dom";
 import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
@@ -10,7 +8,6 @@ import { sizedImageUrl } from "../helpers/imageHelpers";
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -22,7 +19,6 @@ const Home = () => {
       }) 
       .then(data => {
         setCategories(data);
-        setIsLoading(false);
       })
       .catch((err) => console.error(err));
   }, []);
@@ -39,12 +35,7 @@ const Home = () => {
       </div>
 
       <div className="page-wrapper">
-        {isLoading ? (
-          <div className="loading-container">
-            <Lottie animationData={loadingAnimation} loop={true} />
-          </div>
-        ) : (
-          homepageCategories.map((category, index) => (
+        {homepageCategories.map((category, index) => (
             <section className="zigzag-section" key={category.id}>
               <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
                 <div className="zigzag-text">
@@ -68,10 +59,9 @@ const Home = () => {
                 </div>
               </div>
             </section>
-          ))
-        )}
+          ))}
 
-        {!isLoading && (
+        {categories.length > 0 && (
           <div className='homepage-footer'>
             <p className='footer-starter-text'>There's plenty more to discover!</p>
             <p className='footer-secondary-text'>Shop our other services such as...</p>
