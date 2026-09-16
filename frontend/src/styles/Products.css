@@ -461,7 +461,27 @@
 }
 
 .modal-actions {
-  margin-top: 16px;
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.modal-actions .product-add-button {
+  width: auto;
+  min-width: 260px;
+  height: 58px;
+  padding: 0 36px;
+  border: none;
+  background-color: #EDA413;
+  letter-spacing: 0.6px;
+  color: #000;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-fill-color: #000;
+}
+
+.modal-actions .product-add-button:hover:not(:disabled) {
+  background-color: #d49410;
 }
 
 
@@ -568,6 +588,12 @@
 
   .product-add-button-text {
     font-size: 14px;
+  }
+
+  .modal-actions .product-add-button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 20px;
   }
 
   .custom-meals-container .cm-title {
