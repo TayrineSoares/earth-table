@@ -152,7 +152,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
             <p className="subscribe-confirm-kicker">Your plan</p>
             <p className="subscribe-confirm-plan">{mealsAWeek(plan.meal_count)}</p>
             <p className="subscribe-confirm-meta">
-              {formatPlanPrice(plan.price_cents)}/week · first week paid
+              {formatPlanPrice(plan.price_cents)}/week · plan paid today
             </p>
             <p className="subscribe-confirm-meta">Renews every Thursday</p>
 
@@ -195,7 +195,9 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 <div className="checkout-item-details">
                   <p className="checkout-item-title">{item.products?.slug || 'Add-on'}</p>
                   <p className="checkout-item-price">
-                    {item.quantity > 1 ? `Add-on · qty ${item.quantity}` : 'Add-on'}
+                    {item.quantity > 1
+                      ? `Add-on · qty ${item.quantity} · billed Thursday`
+                      : 'Add-on · billed Thursday'}
                   </p>
                 </div>
               </div>

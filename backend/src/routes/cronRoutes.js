@@ -8,6 +8,7 @@ const {
   markInvoicesEmailed,
 } = require('../queries/partner');
 const { sendPauseReminders } = require('../queries/subscriptionManage');
+const { chargeThursdayAddons } = require('../queries/subscriptionCharge');
 const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
   renderPartnerMonthlyInvoiceEmail,
@@ -162,5 +163,25 @@ function handlePauseReminder(req, res) {
 
 router.get('/pause-reminder', handlePauseReminder);
 router.post('/pause-reminder', handlePauseReminder);
+
+function handleThursdayLock(req, res) {
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron/thursday-lock] CRON_SECRET is not set');
+    return res.status(500).json({ error: 'Cron is not configured.' });
+  }
+  if (!cronAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  chargeThursdayAddons()
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('[cron/thursday-lock]', err);
+      return res.status(500).json({ error: err.message || 'Server error' });
+    });
+}
+
+router.get('/thursday-lock', handleThursdayLock);
+router.post('/thursday-lock', handleThursdayLock);
 
 module.exports = router;

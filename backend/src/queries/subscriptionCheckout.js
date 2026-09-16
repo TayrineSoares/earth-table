@@ -3,7 +3,8 @@
  *
  * We use Checkout mode "payment" (not Stripe Subscriptions) and ask Stripe
  * to save the card with setup_future_usage. Later weeks (Phase 5/6) charge
- * that saved payment method off-session.
+ * that saved payment method off-session. First Checkout is plan + delivery + tax;
+ * add-ons stay on the cycle and are billed Thursday.
  */
 
 const supabase = require('../../supabase/db');
@@ -213,11 +214,8 @@ async function createSubscriptionCheckout(body = {}) {
     }
   }
 
-  const addonCents = addonItems.reduce(
-    (sum, item) => sum + item.unit_price_cents * item.quantity,
-    0
-  );
-  const discountableCents = (Number(plan.price_cents) || 0) + addonCents;
+  // Promo/referral at signup is plan-only. Add-ons get that discount on Thursday.
+  const discountableCents = Number(plan.price_cents) || 0;
 
   let discountFactor = 1;
   let discountMeta = null;
@@ -265,23 +263,6 @@ async function createSubscriptionCheckout(body = {}) {
     },
   ];
 
-  let addonPaidCents = 0;
-  for (const item of addonItems) {
-    const unitDiscounted = Math.floor(item.unit_price_cents * discountFactor);
-    addonPaidCents += unitDiscounted * item.quantity;
-    lineItems.push({
-      price_data: {
-        currency: 'cad',
-        product_data: {
-          name: `${item.slug} (includes tax)`,
-          ...(item.image_url ? { images: [item.image_url] } : {}),
-        },
-        unit_amount: Math.max(0, Math.round(unitDiscounted * HST)),
-      },
-      quantity: item.quantity,
-    });
-  }
-
   if (delivery && deliveryFeeCents > 0) {
     lineItems.push({
       price_data: {
@@ -313,7 +294,7 @@ async function createSubscriptionCheckout(body = {}) {
         first_delivery_label: dates.first_delivery_label,
         discount: discountMeta,
         plan_paid_cents: planDiscounted,
-        addon_paid_cents: addonPaidCents,
+        addon_paid_cents: 0,
       },
       special_note: specialNote,
       delivery,
@@ -335,6 +316,11 @@ async function createSubscriptionCheckout(body = {}) {
     customer: customerId,
     payment_method_types: ['card'],
     line_items: lineItems,
+    custom_text: {
+      submit: {
+        message: 'Today you pay the weekly plan and delivery. Add-ons are charged Thursday if they are still on this Sunday\'s box.',
+      },
+    },
     success_url: `${frontendUrl()}/subscribe/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${frontendUrl()}/subscribe/cart`,
     phone_number_collection: { enabled: true },

@@ -141,7 +141,7 @@ const SubscribeCart = ({ user, subCart }) => {
 
   const planCents = Number(subCart.priceCents) || 0
   const addonCents = addonSubtotalCents(subCart)
-  const discountableCents = planCents + addonCents
+  const discountableCents = planCents
   const savedCents = Math.max(0, mealALaCarteCents(subCart) - planCents)
 
   let promoDiscountCents = 0
@@ -153,11 +153,16 @@ const SubscribeCart = ({ user, subCart }) => {
     )
   }
 
-  const itemsAfterPromo = Math.max(0, discountableCents - promoDiscountCents)
+  const planAfterPromo = Math.max(0, planCents - promoDiscountCents)
   const deliveryCents = fulfillment === 'delivery' ? deliveryFeeCents : 0
-  const totalBeforeTaxCents = itemsAfterPromo + deliveryCents
-  const taxCents = Math.round(totalBeforeTaxCents * HST_RATE)
-  const grandTotalCents = totalBeforeTaxCents + taxCents
+  const planDueCents = Math.round(planAfterPromo * (1 + HST_RATE))
+  const deliveryDueCents = deliveryCents > 0 ? Math.round(deliveryCents * (1 + HST_RATE)) : 0
+  const dueTodayCents = planDueCents + deliveryDueCents
+  const taxCents = Math.max(0, dueTodayCents - planAfterPromo - deliveryCents)
+  const addonPromoCents = promoResult?.valid && promoResult.discountPercentage != null
+    ? Math.min(Math.round(addonCents * (promoResult.discountPercentage / 100)), addonCents)
+    : 0
+  const addonThursdayCents = Math.round(Math.max(0, addonCents - addonPromoCents) * (1 + HST_RATE))
   const lockedDate = dates?.first_delivery_date || ''
 
   const handleApplyPromo = async () => {
@@ -342,6 +347,9 @@ const SubscribeCart = ({ user, subCart }) => {
                 </div>
               ))
             )}
+            {addonCents > 0 ? (
+              <p className="subscribe-summary-empty">Billed Thursday, with tax.</p>
+            ) : null}
             {promoResult?.valid ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
@@ -382,9 +390,15 @@ const SubscribeCart = ({ user, subCart }) => {
               <p className="tax">${(taxCents / 100).toFixed(2)}</p>
             </div>
             <div className="checkout-total">
-              <p className="total">Total for this week</p>
-              <p className="total">${(grandTotalCents / 100).toFixed(2)}</p>
+              <p className="total">Due today</p>
+              <p className="total">${(dueTodayCents / 100).toFixed(2)}</p>
             </div>
+            {addonThursdayCents > 0 ? (
+              <div className="checkout-summary-subtotal">
+                <p className="subtotal">Add-ons billed Thursday</p>
+                <p className="subtotal">${(addonThursdayCents / 100).toFixed(2)}</p>
+              </div>
+            ) : null}
 
             {fulfillment === 'pickup' ? (
               <PickupSelector
@@ -438,6 +452,7 @@ const SubscribeCart = ({ user, subCart }) => {
                   <p>You can change this week&apos;s meals until {dates.cutoff_label}.</p>
                 )}
                 <p>First delivery: {dates.first_delivery_label}</p>
+                <p>Today you pay the plan and delivery. Add-ons are charged Thursday if they are still on the box.</p>
                 <p>Your plan renews automatically every week.</p>
                 <p>
                   You can change your meals, manage, or cancel anytime before Thursday at 5:00 PM from My Subscriptions.
@@ -507,7 +522,7 @@ const SubscribeCart = ({ user, subCart }) => {
                   <div className="checkout-item-details">
                     <p className="checkout-item-title">{item.slug}</p>
                     <p className="checkout-item-price">
-                      ${((item.price_cents * item.quantity) / 100).toFixed(2)} · qty {item.quantity}
+                      ${((item.price_cents * item.quantity) / 100).toFixed(2)} · qty {item.quantity} · billed Thursday
                     </p>
                   </div>
                 </div>

@@ -1047,7 +1047,7 @@ function renderSubscriptionWelcomeEmail({
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`You're all set, ${name}`)}
-      ${intro(`Your ${planPhrase} is confirmed and this week is paid.`)}
+      ${intro(`Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed Thursday if they are still on the box.`)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
@@ -1064,7 +1064,7 @@ function renderSubscriptionWelcomeEmail({
 
   const text = `You're all set, ${name}
 
-Your ${planPhrase} is confirmed and this week is paid.
+Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed Thursday if they are still on the box.
 
 Plan: ${planWeek}
 This Sunday: ${fulfillment}

@@ -230,13 +230,15 @@ function getSignupDates(now = new Date(), settings = {}) {
   }
 
   let firstDeliveryAt = sundayOnOrAfter(cutoffAt);
+  let lockedDeliveryDate = null;
   // If the Sunday after the next lock is the same Sunday they just missed
   // (common when a test lock fires before this week's Thursday), skip ahead.
   if (missedLockAt) {
     const missedSunday = sundayOnOrAfter(missedLockAt);
-    const firstParts = torontoParts(firstDeliveryAt);
     const missedParts = torontoParts(missedSunday);
-    if (ymd(firstParts.year, firstParts.month, firstParts.day) === ymd(missedParts.year, missedParts.month, missedParts.day)) {
+    lockedDeliveryDate = ymd(missedParts.year, missedParts.month, missedParts.day);
+    const firstParts = torontoParts(firstDeliveryAt);
+    if (ymd(firstParts.year, firstParts.month, firstParts.day) === lockedDeliveryDate) {
       firstDeliveryAt = plusDays(firstDeliveryAt, 7);
     }
   }
@@ -249,6 +251,7 @@ function getSignupDates(now = new Date(), settings = {}) {
     cutoff_label: formatCutoffLabel(cutoffAt),
     first_delivery_date: ymd(deliveryParts.year, deliveryParts.month, deliveryParts.day),
     first_delivery_label: formatDeliveryLabel(firstDeliveryAt),
+    locked_delivery_date: lockedDeliveryDate,
   };
 }
 
