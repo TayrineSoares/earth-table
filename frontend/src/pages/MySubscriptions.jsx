@@ -12,6 +12,7 @@ import {
   formatPlanPrice,
   mealsAWeek,
   updateSubscriptionFulfillment,
+  sundayDatePart,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import { formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
@@ -241,7 +242,7 @@ const MySubscriptions = ({ user }) => {
             const canEdit = Boolean(row.can_edit)
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const weekNote = row.week?.applies_to === 'next_week'
-              ? `This week's cutoff has passed. Edits now apply to next Sunday, ${row.week.delivery_label}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
+              ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
               : `You can change meals, add extras, or switch pickup/delivery until ${row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}.`
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
 
@@ -355,11 +356,8 @@ const MySubscriptions = ({ user }) => {
 
                 {canEdit ? (
                   <div className="my-sub-actions">
-                    <Link to={`/my-subscriptions/${row.id}/meals`} className="order-history-button">
-                      Edit meals
-                    </Link>
-                    <Link to={`/my-subscriptions/${row.id}/addons`} className="order-history-button">
-                      Add extras
+                    <Link to={`/my-subscriptions/${row.id}/meals?fresh=1`} className="order-history-button">
+                      Edit plan
                     </Link>
                     <button
                       type="button"

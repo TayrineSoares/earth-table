@@ -34,19 +34,9 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const PLAN_BLURBS = {
-  10: 'Best for one person eating two meals a day, most days.',
-  15: 'Lunch and dinner sorted all week, with a few left for the weekend.',
-  20: 'For two, or for a week you\'d rather not think about cooking at all.',
-}
-
 function formatPerMeal(priceCents, mealCount) {
   if (!mealCount) return null
   return formatPlanPrice(Math.round(Number(priceCents) / mealCount))
-}
-
-function planBlurb(plan) {
-  return PLAN_BLURBS[plan.meal_count] || plan.display_description
 }
 
 const SubscribeAndSave = () => {
@@ -196,7 +186,7 @@ const SubscribeAndSave = () => {
                         {perMeal ? (
                           <p className="subscribe-plan-unit">{perMeal} per meal</p>
                         ) : null}
-                        <p className="subscribe-plan-desc">{planBlurb(plan)}</p>
+                        <p className="subscribe-plan-desc">{plan.display_description || plan.description}</p>
                         {cutoffPassed ? (
                           <button
                             type="button"

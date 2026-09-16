@@ -6,6 +6,7 @@ const {
   listPlans,
   getPlanById,
   listMine,
+  listAll,
   createPlan,
   updatePlan,
   deletePlan,
@@ -14,6 +15,7 @@ const {
   getPublicSignupInfo,
   replaceOpenCyclePlanItems,
   replaceOpenCycleAddonItems,
+  replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
 } = require('../queries/subscription');
 const {
@@ -62,6 +64,15 @@ router.get('/mine/:userId', async (req, res) => {
   }
 });
 
+router.get('/admin', async (req, res) => {
+  try {
+    const rows = await listAll();
+    res.json(rows);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/admin]');
+  }
+});
+
 router.get('/signup/:sessionId', async (req, res) => {
   try {
     const result = await getSignupBySessionId(req.params.sessionId);
@@ -103,6 +114,20 @@ router.patch('/:id/addons', async (req, res) => {
     res.json(result);
   } catch (err) {
     handleError(res, err, '[PATCH /subscriptions/:id/addons]');
+  }
+});
+
+router.patch('/:id/items', async (req, res) => {
+  try {
+    const result = await replaceOpenCyclePlanAndAddons(
+      req.body?.userId,
+      req.params.id,
+      req.body?.meals,
+      req.body?.addons
+    );
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/items]');
   }
 });
 

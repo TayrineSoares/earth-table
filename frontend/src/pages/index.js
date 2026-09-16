@@ -10,6 +10,7 @@ export { default as SubscribeConfirmation } from './SubscribeConfirmation';
 export { default as MySubscriptions } from './MySubscriptions';
 export { default as SubscribeEditMeals } from './SubscribeEditMeals';
 export { default as SubscribeEditAddons } from './SubscribeEditAddons';
+export { default as SubscribeEditCart } from './SubscribeEditCart';
 export { default as Cart } from './Cart';
 export { default as Confirmation } from './Confirmation';
 export { default as Admin } from './Admin';

@@ -12,6 +12,7 @@ import {
   MySubscriptions,
   SubscribeEditMeals,
   SubscribeEditAddons,
+  SubscribeEditCart,
   Cart,
   Confirmation,
   Admin,
@@ -98,6 +99,10 @@ const AppRoutes = ({
           <Route
             path="/my-subscriptions/:subscriptionId/addons"
             element={<SubscribeEditAddons user={user} />}
+          />
+          <Route
+            path="/my-subscriptions/:subscriptionId/cart"
+            element={<SubscribeEditCart user={user} />}
           />
           <Route
             path="/products/category/:categoryId?"

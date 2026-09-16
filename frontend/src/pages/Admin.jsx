@@ -10,6 +10,7 @@ import UserAdmin from '../components/UserAdmin';
 import PromoAdmin from '../components/PromoAdmin';
 import PartnerAdmin from '../components/PartnerAdmin';
 import SubscriptionAdmin from '../components/SubscriptionAdmin';
+import SubscriberAdmin from '../components/SubscriberAdmin';
 
 
 const Admin = () => {
@@ -64,6 +65,12 @@ const Admin = () => {
         >
           Categories
         </button>
+        <button
+          className={activeTab === 'weekly-plans' ? 'active' : ''}
+          onClick={() => setActiveTab('weekly-plans')}
+        >
+          Weekly Plans
+        </button>
         <button 
           className={activeTab === 'products' ? 'active' : ''}
           onClick={() => setActiveTab('products')}
@@ -104,12 +111,13 @@ const Admin = () => {
 
       {/* Active tab section */}
       {activeTab === 'categories' && <CategoryAdmin />}
+      {activeTab === 'weekly-plans' && <SubscriptionAdmin />}
       {activeTab === 'products' && <ProductAdmin />}
       {activeTab === 'orders' && <OrderAdmin />}
       {activeTab === 'users' && <UserAdmin currentUserId={user.auth_user_id} />}
       {activeTab === 'promos' && <PromoAdmin />}
       {activeTab === 'partners' && <PartnerAdmin />}
-      {activeTab === 'subscriptions' && <SubscriptionAdmin />}
+      {activeTab === 'subscriptions' && <SubscriberAdmin />}
     </div>
   );
 };

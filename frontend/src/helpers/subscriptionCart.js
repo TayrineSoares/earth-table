@@ -78,6 +78,77 @@ function toLine(product) {
   };
 }
 
+function seedLinesFromCycle(cycle, kind) {
+  return (cycle?.subscription_cycle_items || [])
+    .filter((item) => item.kind === kind)
+    .map((item) => ({
+      id: item.product_id,
+      slug: item.products?.slug || '',
+      image_url: item.products?.image_url || '',
+      price_cents: item.unit_price_cents,
+      quantity: item.quantity,
+    }));
+}
+
+function emptyEditCart() {
+  return {
+    subscriptionId: null,
+    planId: null,
+    planName: '',
+    mealCount: 0,
+    priceCents: 0,
+    meals: [],
+    addons: [],
+  };
+}
+
+function editCartKey(userId, subscriptionId) {
+  return `subscription_edit_${userId}_${subscriptionId}`;
+}
+
+function readEditCart(userId, subscriptionId) {
+  if (!userId || !subscriptionId) return emptyEditCart();
+  try {
+    const raw = localStorage.getItem(editCartKey(userId, subscriptionId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || parsed.subscriptionId !== subscriptionId) return emptyEditCart();
+    return {
+      ...emptyEditCart(),
+      ...parsed,
+      meals: Array.isArray(parsed.meals) ? parsed.meals : [],
+      addons: Array.isArray(parsed.addons) ? parsed.addons : [],
+    };
+  } catch {
+    return emptyEditCart();
+  }
+}
+
+function writeEditCart(userId, subscriptionId, cart) {
+  if (!userId || !subscriptionId) return cart;
+  const next = cart && typeof cart === 'object' ? cart : emptyEditCart();
+  localStorage.setItem(editCartKey(userId, subscriptionId), JSON.stringify(next));
+  return next;
+}
+
+function clearEditCart(userId, subscriptionId) {
+  if (!userId || !subscriptionId) return;
+  localStorage.removeItem(editCartKey(userId, subscriptionId));
+}
+
+/** Start an edit draft from the cycle they can still change. */
+function seedEditCart(sub, cycle) {
+  const plan = sub?.subscription_plans || {};
+  return {
+    subscriptionId: sub.id,
+    planId: sub.plan_id,
+    planName: plan.name || '',
+    mealCount: Number(plan.meal_count) || 0,
+    priceCents: Number(plan.price_cents) || 0,
+    meals: seedLinesFromCycle(cycle, 'plan'),
+    addons: seedLinesFromCycle(cycle, 'addon'),
+  };
+}
+
 function totalQty(lines) {
   return (lines || []).reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
 }
@@ -195,6 +266,11 @@ export {
   writeSubCart,
   adoptGuestSubCart,
   applyPlanToCart,
+  seedEditCart,
+  emptyEditCart,
+  readEditCart,
+  writeEditCart,
+  clearEditCart,
   totalQty,
   lineQty,
   bumpMeal,

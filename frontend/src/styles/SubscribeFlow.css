@@ -283,6 +283,22 @@
   -webkit-text-fill-color: #000 !important;
 }
 
+.subscribe-cart-page .checkout-button,
+.subscribe-cart-page .checkout-button * {
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
+.subscribe-cart-page .checkout-button:focus,
+.subscribe-cart-page .checkout-button:hover,
+.subscribe-cart-page .checkout-button:active,
+.subscribe-cart-page .checkout-button:disabled {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
 @media (max-width: 1366px) {
   .subscribe-list-heading {
     font-size: 32px;

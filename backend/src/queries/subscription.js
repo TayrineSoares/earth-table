@@ -239,6 +239,56 @@ async function listMine(userId) {
   });
 }
 
+async function listAll() {
+  const settings = await getSettings();
+  const now = new Date();
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select(`
+      id, user_id, status, plan_id, label, delivery, delivery_postal_code,
+      pickup_time_slot, special_note, created_at, paused_at, cancelled_at, pause_reason,
+      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
+    `)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const subs = data || [];
+  if (!subs.length) return [];
+
+  const userIds = [...new Set(subs.map((row) => row.user_id).filter(Boolean))];
+  const { data: users, error: userErr } = await supabase
+    .from('users')
+    .select('auth_user_id, first_name, last_name, email, phone_number')
+    .in('auth_user_id', userIds);
+  if (userErr) throw userErr;
+  const byUser = Object.fromEntries((users || []).map((row) => [row.auth_user_id, row]));
+
+  const ids = subs.map((row) => row.id);
+  const { data: cycles, error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .select(CYCLE_SELECT)
+    .in('subscription_id', ids);
+  if (cycleErr) throw cycleErr;
+
+  const bySub = {};
+  for (const cycle of cycles || []) {
+    if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
+    bySub[cycle.subscription_id].push(cycle);
+  }
+
+  return subs.map((sub) => {
+    const list = bySub[sub.id] || [];
+    const display = pickDisplayCycle(list, now);
+    const week = getEditWeek(now, settings || {}, display);
+    return {
+      ...sub,
+      customer: byUser[sub.user_id] || null,
+      cycle: display,
+      week,
+    };
+  });
+}
+
 async function getOwnedSubscription(userId, subscriptionId) {
   if (!userId) throw new SubscriptionError(400, 'Sign in to manage subscriptions.');
   if (!subscriptionId) throw new SubscriptionError(400, 'Subscription id is required.');
@@ -438,6 +488,49 @@ async function replaceOpenCycleAddonItems(userId, subscriptionId, addons) {
   const lines = qtyLines(addons);
   const resolved = lines.length ? await resolveLines(lines, { kind: 'addon' }) : [];
   await replaceCycleKindItems(cycle.id, 'addon', resolved);
+
+  try {
+    await notifyCustomerUpdate(userId, sub, cycle, week);
+  } catch (err) {
+    console.warn('[subscriptions] update email failed:', err.message);
+  }
+
+  return { ok: true, week };
+}
+
+/** Save meals and add-ons together so the customer gets one update email. */
+async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addons) {
+  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
+  const sub = await getOwnedSubscription(userId, subscriptionId);
+  if (sub.status !== 'active') {
+    throw new SubscriptionError(400, 'This subscription is not active.');
+  }
+  const { cycle, week } = await getOrCreateEditableCycle(sub);
+  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+
+  const mealLines = qtyLines(meals);
+  const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
+  if (mealQty !== Number(plan.meal_count)) {
+    throw new SubscriptionError(
+      400,
+      `Pick exactly ${plan.meal_count} meal${plan.meal_count === 1 ? '' : 's'} for this plan.`
+    );
+  }
+
+  const { data: existingPlan, error: existingErr } = await supabase
+    .from('subscription_cycle_items')
+    .select('product_id')
+    .eq('cycle_id', cycle.id)
+    .eq('kind', 'plan');
+  if (existingErr) throw existingErr;
+
+  const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
+  const resolvedMeals = await resolveLines(mealLines, { kind: 'plan', allowUnavailableIds });
+  await replaceCycleKindItems(cycle.id, 'plan', resolvedMeals);
+
+  const addonLines = qtyLines(addons);
+  const resolvedAddons = addonLines.length ? await resolveLines(addonLines, { kind: 'addon' }) : [];
+  await replaceCycleKindItems(cycle.id, 'addon', resolvedAddons);
 
   try {
     await notifyCustomerUpdate(userId, sub, cycle, week);
@@ -716,6 +809,7 @@ module.exports = {
   listPlans,
   getPlanById,
   listMine,
+  listAll,
   createPlan,
   updatePlan,
   deletePlan,
@@ -725,5 +819,6 @@ module.exports = {
   getPublicSignupInfo,
   replaceOpenCyclePlanItems,
   replaceOpenCycleAddonItems,
+  replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
 };

@@ -152,16 +152,28 @@ on conflict (id) do nothing;
 -- Seed catalog (skip a name if it already exists so this file is re-runnable)
 -- ---------------------------------------------------------------------------
 insert into public.subscription_plans (name, meal_count, price_cents, description, is_active)
-select '10 meals', 10, 18000, null, true
+select '10 meals', 10, 18000, 'Best for one person eating two meals a day, most days.', true
 where not exists (select 1 from public.subscription_plans where name = '10 meals');
 
 insert into public.subscription_plans (name, meal_count, price_cents, description, is_active)
-select '15 meals', 15, 27000, null, true
+select '15 meals', 15, 27000, 'Lunch and dinner sorted all week, with a few left for the weekend.', true
 where not exists (select 1 from public.subscription_plans where name = '15 meals');
 
 insert into public.subscription_plans (name, meal_count, price_cents, description, is_active)
-select '20 meals', 20, 36000, null, true
+select '20 meals', 20, 36000, 'For two, or for a week you''d rather not think about cooking at all.', true
 where not exists (select 1 from public.subscription_plans where name = '20 meals');
+
+update public.subscription_plans
+set description = 'Best for one person eating two meals a day, most days.'
+where name = '10 meals' and (description is null or btrim(description) = '');
+
+update public.subscription_plans
+set description = 'Lunch and dinner sorted all week, with a few left for the weekend.'
+where name = '15 meals' and (description is null or btrim(description) = '');
+
+update public.subscription_plans
+set description = 'For two, or for a week you''d rather not think about cooking at all.'
+where name = '20 meals' and (description is null or btrim(description) = '');
 
 -- Cheap plan for Stripe/card testing. Use pickup so delivery is not added.
 -- Deactivate before launch.

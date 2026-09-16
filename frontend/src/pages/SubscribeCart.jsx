@@ -253,7 +253,7 @@ const SubscribeCart = ({ user, subCart }) => {
       <div className="page-wrapper">
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
-            <p className="checkout-summary-text">Your box</p>
+            <p className="checkout-summary-text">Your weekly plan</p>
             {savedCents > 0 ? (
               <p className="subscribe-savings-line">
                 You saved ${(savedCents / 100).toFixed(2)} by ordering through a subscription plan.

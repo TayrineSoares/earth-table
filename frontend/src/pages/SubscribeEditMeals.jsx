@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
@@ -11,15 +11,17 @@ import SubscribeCatalog from '../components/SubscribeCatalog'
 import {
   fetchMySubscriptions,
   formatPlanPrice,
-  updateSubscriptionMeals,
-  weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import {
   bumpMeal,
+  emptyEditCart,
   lineQty,
   mealsExact,
+  readEditCart,
+  seedEditCart,
   sortPlanMealCategories,
   totalQty,
+  writeEditCart,
 } from '../helpers/subscriptionCart'
 
 const TAG_ICONS = {
@@ -31,28 +33,17 @@ const TAG_ICONS = {
   'gluten free': <WheatOff size={16} />,
 }
 
-function seedLines(cycle, kind) {
-  return (cycle?.subscription_cycle_items || [])
-    .filter((item) => item.kind === kind)
-    .map((item) => ({
-      id: item.product_id,
-      slug: item.products?.slug || '',
-      image_url: item.products?.image_url || '',
-      price_cents: item.unit_price_cents,
-      quantity: item.quantity,
-    }))
-}
-
 const SubscribeEditMeals = ({ user }) => {
   const { subscriptionId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const startFresh = searchParams.get('fresh') === '1'
   const [row, setRow] = useState(null)
+  const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [allTags, setAllTags] = useState([])
-  const [meals, setMeals] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [dialog, setDialog] = useState(null)
 
   useEffect(() => {
@@ -103,12 +94,22 @@ const SubscribeEditMeals = ({ user }) => {
           setIsLoading(false)
           return
         }
+        const stored = readEditCart(user.id, subscriptionId)
         const source = found.edit_cycle || found.cycle
+        const nextCart = startFresh || stored.subscriptionId !== subscriptionId
+          ? seedEditCart(found, source)
+          : stored
+        writeEditCart(user.id, subscriptionId, nextCart)
         setRow(found)
+        setEditCart(nextCart)
         setProducts(nextProducts || [])
         setCategories(sortPlanMealCategories(nextCategories || []))
         setAllTags(nextTags || [])
-        setMeals(seedLines(source, 'plan'))
+        if (startFresh) {
+          const nextParams = new URLSearchParams(searchParams)
+          nextParams.delete('fresh')
+          setSearchParams(nextParams, { replace: true })
+        }
         setIsLoading(false)
       })
       .catch((err) => {
@@ -127,15 +128,12 @@ const SubscribeEditMeals = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [user, subscriptionId])
+  }, [user, subscriptionId, startFresh, searchParams, setSearchParams])
 
   const plan = row?.subscription_plans || {}
-  const mealCount = Number(plan.meal_count) || 0
-  const cart = { mealCount, meals }
-  const picked = totalQty(meals)
-  const exact = mealsExact(cart)
-  const atCap = mealCount > 0 && picked >= mealCount
-  const copy = weekSaveCopy(row?.week)
+  const picked = totalQty(editCart.meals)
+  const exact = mealsExact(editCart)
+  const atCap = Number(editCart.mealCount) > 0 && picked >= Number(editCart.mealCount)
 
   const getTagNames = (tagIds) =>
     (tagIds || [])
@@ -143,38 +141,17 @@ const SubscribeEditMeals = ({ user }) => {
       .filter(Boolean)
       .map((tag) => tag.name)
 
-  const saveMeals = async () => {
-    setSaving(true)
-    setDialog(null)
-    try {
-      await updateSubscriptionMeals(
-        user.id,
-        subscriptionId,
-        meals.map((item) => ({ id: item.id, quantity: item.quantity }))
-      )
-      navigate('/my-subscriptions')
-    } catch (err) {
-      console.error(err)
-      setSaving(false)
-      setDialog({
-        icon: 'alert',
-        title: 'Could not save meals',
-        body: err.message || 'Try again in a moment.',
-        primaryLabel: 'OK',
-      })
-    }
+  const bump = (product, delta) => {
+    setEditCart((prev) => {
+      const next = bumpMeal(prev, product, delta)
+      writeEditCart(user.id, subscriptionId, next)
+      return next
+    })
   }
 
-  const onSave = () => {
-    if (!exact || saving) return
-    setDialog({
-      icon: 'mail',
-      title: copy.title,
-      body: copy.body,
-      primaryLabel: 'Save meals',
-      secondaryLabel: 'Cancel',
-      onPrimary: saveMeals,
-    })
+  const onContinue = () => {
+    if (!exact) return
+    navigate(`/my-subscriptions/${subscriptionId}/addons`)
   }
 
   if (isLoading) {
@@ -198,8 +175,10 @@ const SubscribeEditMeals = ({ user }) => {
               <p className="subscribe-eyebrow">
                 {plan.meal_count} meals — {formatPlanPrice(plan.price_cents)}/week
               </p>
-              <h1 className="subscribe-h1">Edit meals</h1>
-              <p className="subscribe-subhead">{copy.body}</p>
+              <h1 className="subscribe-h1">Choose your meals</h1>
+              <p className="subscribe-subhead">
+                Pick any combination of bowls, salads, and mains, up to your plan&apos;s total.
+              </p>
               <p className="subscribe-helper">
                 <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
               </p>
@@ -209,23 +188,23 @@ const SubscribeEditMeals = ({ user }) => {
                 products={products}
                 getTagNames={getTagNames}
                 tagIcons={TAG_ICONS}
-                quantityFor={(product) => lineQty(meals, product.id)}
-                onIncrement={(product) => setMeals((prev) => bumpMeal({ mealCount, meals: prev }, product, 1).meals)}
-                onDecrement={(product) => setMeals((prev) => bumpMeal({ mealCount, meals: prev }, product, -1).meals)}
+                quantityFor={(product) => lineQty(editCart.meals, product.id)}
+                onIncrement={(product) => bump(product, 1)}
+                onDecrement={(product) => bump(product, -1)}
                 incrementDisabledFor={(product) => atCap || !product.is_available}
               />
 
               <div className="subscribe-flow-bar">
                 <p className="subscribe-progress" aria-live="polite">
-                  {picked} of {mealCount} meals selected
+                  {picked} of {editCart.mealCount} meals selected
                 </p>
                 <button
                   type="button"
                   className="subscribe-select-button"
-                  disabled={!exact || saving}
-                  onClick={onSave}
+                  disabled={!exact}
+                  onClick={onContinue}
                 >
-                  {saving ? 'Saving…' : 'Save meals'}
+                  Continue
                 </button>
               </div>
             </>

@@ -61,6 +61,11 @@ const fetchMySubscriptions = async (userId) => {
   return parseJson(res);
 };
 
+const fetchAdminSubscriptions = async () => {
+  const res = await fetch('/api/subscriptions/admin');
+  return parseJson(res);
+};
+
 const fetchSubscriptionDates = async () => {
   const res = await fetch('/api/subscriptions/dates');
   return parseJson(res);
@@ -107,6 +112,15 @@ const updateSubscriptionAddons = async (userId, subscriptionId, addons) => {
   return parseJson(res);
 };
 
+const updateSubscriptionItems = async (userId, subscriptionId, meals, addons) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/items`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, meals, addons }),
+  });
+  return parseJson(res);
+};
+
 const mealsAWeek = (count) => {
   const n = Number(count) || 0;
   return n === 1 ? '1 meal a week' : `${n} meals a week`;
@@ -143,8 +157,16 @@ const formatCutoffShort = (iso) => {
   return `${label.replace(/, (\d)/, ' · $1')} ET`;
 };
 
+/** "Sunday, September 20" -> "September 20" when the sentence already says Sunday. */
+const sundayDatePart = (label) => {
+  const raw = String(label || '').trim();
+  const stripped = raw.replace(/^Sunday,\s*/i, '').trim();
+  return stripped || raw || 'this week';
+};
+
 const weekSaveCopy = (week, { deliveryFeeCents = 0, switchingToDelivery = false } = {}) => {
   const sunday = week?.delivery_label || 'Sunday';
+  const sundayDate = sundayDatePart(sunday);
   const cutoff = week?.cutoff_label || 'Thursday at 5:00 PM ET';
   const nextWeek = week?.applies_to === 'next_week' || week?.cutoff_passed;
   const fee = Number(deliveryFeeCents) || 0;
@@ -156,12 +178,12 @@ const weekSaveCopy = (week, { deliveryFeeCents = 0, switchingToDelivery = false 
   if (nextWeek) {
     return {
       title: 'These changes are for next week',
-      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sunday} only. This Sunday's box is already locked.${feeLine} If you need a delivery change for this Sunday, email hello@earthtableco.ca.`,
+      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sundayDate} only. This Sunday's box is already locked.${feeLine} If you need a delivery change for this Sunday, email hello@earthtableco.ca.`,
     };
   }
   return {
     title: 'These changes are for this Sunday',
-    body: `These changes apply to this Sunday, ${sunday}. You can keep editing until ${cutoff}.${feeLine}`,
+    body: `These changes apply to this Sunday, ${sundayDate}. You can keep editing until ${cutoff}.${feeLine}`,
   };
 };
 
@@ -199,16 +221,19 @@ export {
   updateSubscriptionSettings,
   fetchSubscriptionPlan,
   fetchMySubscriptions,
+  fetchAdminSubscriptions,
   fetchSubscriptionDates,
   startSubscriptionCheckout,
   fetchSubscriptionSignup,
   updateSubscriptionMeals,
   updateSubscriptionFulfillment,
   updateSubscriptionAddons,
+  updateSubscriptionItems,
   mealsAWeek,
   formatPickupSlot,
   formatCutoffShort,
   weekSaveCopy,
+  sundayDatePart,
   formatPlanPrice,
   dollarsToCents,
   centsToDollarInput,

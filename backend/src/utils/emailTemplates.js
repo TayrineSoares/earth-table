@@ -24,6 +24,12 @@ function ctaLink(href, label) {
   return `<p style="margin:0 0 24px; font-family:${FONT};"><a href="${href}" style="color:${C_AMBER}; font-weight:700; font-size:15px; line-height:1.55; text-decoration:underline;">${label}</a></p>`;
 }
 
+function sundayDatePart(label) {
+  const raw = String(label || '').trim();
+  const stripped = raw.replace(/^Sunday,\s*/i, '').trim();
+  return stripped || raw || 'this week';
+}
+
 function formatPhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
@@ -1159,12 +1165,13 @@ function renderSubscriptionUpdatedEmail({
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
+  const sundayDate = sundayDatePart(sunday);
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
   const thisSunday = appliesTo !== 'next_week';
   const timing = thisSunday
-    ? `These changes apply to this Sunday, ${sunday}.`
-    : `This week's cutoff has passed, so these changes apply to next Sunday, ${sunday} only. This Sunday's box is already locked.`;
+    ? `These changes apply to this Sunday, ${sundayDate}.`
+    : `This week's cutoff has passed, so these changes apply to next Sunday, ${sundayDate} only. This Sunday's box is already locked.`;
   const mealHtml = itemLinesHtml(meals) || '—';
   const addonHtml = itemLinesHtml(addons);
   const mealText = itemLinesText(meals) || '—';

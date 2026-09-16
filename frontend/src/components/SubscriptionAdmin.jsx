@@ -275,7 +275,7 @@ const SubscriptionAdmin = () => {
   if (loading) {
     return (
       <div className="promo-admin-container">
-        <h1 className="promo-admin-title">Subscriptions</h1>
+        <h1 className="promo-admin-title">Weekly Plans</h1>
         <AdminTabLoading message="Loading plans…" />
       </div>
     );
@@ -283,10 +283,10 @@ const SubscriptionAdmin = () => {
 
   return (
     <div className="promo-admin-container">
-      <h1 className="promo-admin-title">Subscriptions</h1>
+      <h1 className="promo-admin-title">Weekly Plans</h1>
       <p className="sub-admin-lead">
-        Plans for Subscribe &amp; Save. Name and meal count cannot change after create.
-        Price emails to existing subscribers will send in a later phase — the confirm still warns you now.
+        Catalog for Subscribe &amp; Save. The description on each plan is the copy on the public cards.
+        Name and meal count cannot change after create. Price emails to existing subscribers will send in a later phase — the confirm still warns you now.
       </p>
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
@@ -370,7 +370,7 @@ const SubscriptionAdmin = () => {
             />
           </label>
           <label className="promo-field sub-admin-desc-field">
-            <span>Description (optional)</span>
+            <span>Description (Subscribe &amp; Save card)</span>
             <input
               type="text"
               className="promo-input"
