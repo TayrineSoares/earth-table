@@ -4,6 +4,9 @@
  */
 
 const supabase = require('../../supabase/db');
+const { getAllCategories } = require('./category');
+const { getAllProducts } = require('./product');
+const { getSignupDates } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
   constructor(status, message) {
@@ -249,6 +252,59 @@ function parseTimestampOrNull(value) {
   return new Date(ms).toISOString();
 }
 
+/** Trimmed category names that count as plan meals (not add-ons). */
+const PLAN_MEAL_CATEGORY_NAMES = new Set(['bowls', 'salads', 'main plates']);
+
+/** Ignore the $1 test plan so "Save up to 99%" does not leak onto the marketing page. */
+const MIN_PLAN_CENTS_FOR_SAVINGS = 1000;
+
+async function getMaxEligibleMealPriceCents() {
+  const [categories, products] = await Promise.all([getAllCategories(), getAllProducts()]);
+  const categoryIds = new Set(
+    (categories || [])
+      .filter((cat) => PLAN_MEAL_CATEGORY_NAMES.has(String(cat.name || '').trim().toLowerCase()))
+      .map((cat) => cat.id)
+  );
+
+  let maxCents = 0;
+  for (const product of products || []) {
+    if (!categoryIds.has(product.category_id)) continue;
+    if (product.is_active === false) continue;
+    if (product.is_available === false) continue;
+    const cents = Number(product.price_cents) || 0;
+    if (cents > maxCents) maxCents = cents;
+  }
+  return maxCents;
+}
+
+/**
+ * Best % off vs buying the same number of the priciest Bowl/Salad/Main Plate.
+ * Returns null when nothing is actually cheaper (hide "Save up to").
+ */
+function saveUpToPercent(plans, maxItemCents) {
+  if (!maxItemCents) return null;
+  let best = 0;
+  for (const plan of plans || []) {
+    if (!plan || plan.price_cents < MIN_PLAN_CENTS_FOR_SAVINGS) continue;
+    const aLaCarte = maxItemCents * plan.meal_count;
+    if (aLaCarte <= 0) continue;
+    const pct = Math.floor(((aLaCarte - plan.price_cents) / aLaCarte) * 100);
+    if (pct > best) best = pct;
+  }
+  return best > 0 ? best : null;
+}
+
+async function getPublicSignupInfo() {
+  const settings = await getSettings();
+  const dates = getSignupDates(new Date(), settings || {});
+  const plans = await listPlans({ activeOnly: true });
+  const maxItemCents = await getMaxEligibleMealPriceCents();
+  return {
+    ...dates,
+    save_up_to_percent: saveUpToPercent(plans, maxItemCents),
+  };
+}
+
 module.exports = {
   DEFAULT_PLAN_DESCRIPTION,
   SubscriptionError,
@@ -260,4 +316,5 @@ module.exports = {
   countActiveSubscribers,
   getSettings,
   updateSettings,
+  getPublicSignupInfo,
 };

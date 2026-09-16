@@ -9,6 +9,7 @@ const {
   deletePlan,
   getSettings,
   updateSettings,
+  getPublicSignupInfo,
 } = require('../queries/subscription');
 
 function handleError(res, err, label) {
@@ -55,6 +56,16 @@ router.delete('/plans/:id', async (req, res) => {
     res.json(result);
   } catch (err) {
     handleError(res, err, '[DELETE /subscriptions/plans/:id]');
+  }
+});
+
+// Public: next Thursday 5pm (or test_lock_at), first delivery Sunday, save-up-to %
+router.get('/dates', async (req, res) => {
+  try {
+    const info = await getPublicSignupInfo();
+    res.json(info);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/dates]');
   }
 });
 

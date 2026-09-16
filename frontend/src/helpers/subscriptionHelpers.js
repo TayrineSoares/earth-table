@@ -51,6 +51,11 @@ const updateSubscriptionSettings = async (body) => {
   return parseJson(res);
 };
 
+const fetchSubscriptionDates = async () => {
+  const res = await fetch('/api/subscriptions/dates');
+  return parseJson(res);
+};
+
 const formatPlanPrice = (cents) => {
   const n = Number(cents) || 0;
   return `$${(n / 100).toFixed(2)}`;
@@ -83,6 +88,7 @@ export {
   deleteSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
+  fetchSubscriptionDates,
   formatPlanPrice,
   dollarsToCents,
   centsToDollarInput,

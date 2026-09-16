@@ -5,6 +5,7 @@ import {
   Contact,
   Products,
   SubscribeAndSave,
+  SubscribeMeals,
   Cart,
   Confirmation,
   Admin,
@@ -32,6 +33,7 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/subscribe-and-save" element={<SubscribeAndSave />} />
+          <Route path="/subscribe/:planId/meals" element={<SubscribeMeals />} />
           <Route
             path="/products/category/:categoryId?"
             element={<Products 
