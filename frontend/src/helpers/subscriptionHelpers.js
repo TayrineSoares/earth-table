@@ -98,6 +98,73 @@ const updateSubscriptionFulfillment = async (userId, subscriptionId, body) => {
   return parseJson(res);
 };
 
+const updateSubscriptionAddons = async (userId, subscriptionId, addons) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/addons`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, addons }),
+  });
+  return parseJson(res);
+};
+
+const mealsAWeek = (count) => {
+  const n = Number(count) || 0;
+  return n === 1 ? '1 meal a week' : `${n} meals a week`;
+};
+
+/** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
+const formatPickupSlot = (slot) => {
+  const parts = String(slot || '').split('-');
+  if (parts.length !== 2 || String(slot).includes('AM') || String(slot).includes('PM')) {
+    return String(slot || '').trim();
+  }
+  const fmt = (hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    if (!Number.isFinite(h)) return hhmm;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = ((h + 11) % 12) + 1;
+    const min = Number.isFinite(m) ? String(m).padStart(2, '0') : '00';
+    return `${hour12}:${min} ${period}`;
+  };
+  return `${fmt(parts[0].trim())} – ${fmt(parts[1].trim())}`;
+};
+
+const formatCutoffShort = (iso) => {
+  if (!iso) return 'Thu · 5:00 PM ET';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Thu · 5:00 PM ET';
+  const label = d.toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `${label.replace(/, (\d)/, ' · $1')} ET`;
+};
+
+const weekSaveCopy = (week, { deliveryFeeCents = 0, switchingToDelivery = false } = {}) => {
+  const sunday = week?.delivery_label || 'Sunday';
+  const cutoff = week?.cutoff_label || 'Thursday at 5:00 PM ET';
+  const nextWeek = week?.applies_to === 'next_week' || week?.cutoff_passed;
+  const fee = Number(deliveryFeeCents) || 0;
+  const feeLine = switchingToDelivery && fee > 0
+    ? nextWeek
+      ? ` Delivery (${formatPlanPrice(fee)} plus 13% HST) will be added to next week's total.`
+      : ` Delivery for this Sunday is ${formatPlanPrice(fee)} plus 13% HST and will be charged to your card on file.`
+    : '';
+  if (nextWeek) {
+    return {
+      title: 'These changes are for next week',
+      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sunday} only. This Sunday's box is already locked.${feeLine} If you need a delivery change for this Sunday, email hello@earthtableco.ca.`,
+    };
+  }
+  return {
+    title: 'These changes are for this Sunday',
+    body: `These changes apply to this Sunday, ${sunday}. You can keep editing until ${cutoff}.${feeLine}`,
+  };
+};
+
 const formatPlanPrice = (cents) => {
   const n = Number(cents) || 0;
   return `$${(n / 100).toFixed(2)}`;
@@ -137,6 +204,11 @@ export {
   fetchSubscriptionSignup,
   updateSubscriptionMeals,
   updateSubscriptionFulfillment,
+  updateSubscriptionAddons,
+  mealsAWeek,
+  formatPickupSlot,
+  formatCutoffShort,
+  weekSaveCopy,
   formatPlanPrice,
   dollarsToCents,
   centsToDollarInput,

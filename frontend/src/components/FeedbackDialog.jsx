@@ -67,7 +67,13 @@ const FeedbackDialog = ({ dialog, onClose }) => {
           <DialogAction
             className="feedback-dialog-primary"
             to={dialog.primaryTo}
-            onClick={onClose}
+            onClick={() => {
+              if (typeof dialog.onPrimary === 'function') {
+                dialog.onPrimary();
+                return;
+              }
+              onClose();
+            }}
           >
             {dialog.primaryLabel}
           </DialogAction>

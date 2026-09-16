@@ -11,15 +11,13 @@ import SubscribeCatalog from '../components/SubscribeCatalog'
 import {
   fetchMySubscriptions,
   formatPlanPrice,
-  updateSubscriptionMeals,
+  updateSubscriptionAddons,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import {
-  bumpMeal,
+  addonCategories,
+  bumpAddon,
   lineQty,
-  mealsExact,
-  sortPlanMealCategories,
-  totalQty,
 } from '../helpers/subscriptionCart'
 
 const TAG_ICONS = {
@@ -31,9 +29,9 @@ const TAG_ICONS = {
   'gluten free': <WheatOff size={16} />,
 }
 
-function seedLines(cycle, kind) {
+function seedAddons(cycle) {
   return (cycle?.subscription_cycle_items || [])
-    .filter((item) => item.kind === kind)
+    .filter((item) => item.kind === 'addon')
     .map((item) => ({
       id: item.product_id,
       slug: item.products?.slug || '',
@@ -43,21 +41,21 @@ function seedLines(cycle, kind) {
     }))
 }
 
-const SubscribeEditMeals = ({ user }) => {
+const SubscribeEditAddons = ({ user }) => {
   const { subscriptionId } = useParams()
   const navigate = useNavigate()
   const [row, setRow] = useState(null)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [allTags, setAllTags] = useState([])
-  const [meals, setMeals] = useState([])
+  const [addons, setAddons] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dialog, setDialog] = useState(null)
 
   useEffect(() => {
     if (!user?.id) {
-      navigate(`/login?next=${encodeURIComponent(`/my-subscriptions/${subscriptionId}/meals`)}`, { replace: true })
+      navigate(`/login?next=${encodeURIComponent(`/my-subscriptions/${subscriptionId}/addons`)}`, { replace: true })
     }
   }, [user, navigate, subscriptionId])
 
@@ -81,34 +79,24 @@ const SubscribeEditMeals = ({ user }) => {
       .then(([subs, nextProducts, nextCategories, nextTags]) => {
         if (cancelled) return
         const found = (subs || []).find((item) => item.id === subscriptionId)
-        if (!found) {
+        if (!found || !found.can_edit) {
           setDialog({
             icon: 'alert',
-            title: 'Subscription not found',
-            body: 'That plan is not on this account.',
+            title: found ? 'This plan is paused' : 'Subscription not found',
+            body: found
+              ? 'Active plans can add extras from My Subscriptions.'
+              : 'That plan is not on this account.',
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',
           })
           setIsLoading(false)
           return
         }
-        if (!found.can_edit) {
-          setDialog({
-            icon: 'alert',
-            title: 'This plan is paused',
-            body: 'Active plans can change meals from My Subscriptions.',
-            primaryLabel: 'My Subscriptions',
-            primaryTo: '/my-subscriptions',
-          })
-          setIsLoading(false)
-          return
-        }
-        const source = found.edit_cycle || found.cycle
         setRow(found)
         setProducts(nextProducts || [])
-        setCategories(sortPlanMealCategories(nextCategories || []))
+        setCategories(addonCategories(nextCategories || []))
         setAllTags(nextTags || [])
-        setMeals(seedLines(source, 'plan'))
+        setAddons(seedAddons(found.edit_cycle || found.cycle))
         setIsLoading(false)
       })
       .catch((err) => {
@@ -116,7 +104,7 @@ const SubscribeEditMeals = ({ user }) => {
         if (cancelled) return
         setDialog({
           icon: 'alert',
-          title: 'Could not load meals',
+          title: 'Could not load add-ons',
           body: err.message || 'Try again from My Subscriptions.',
           primaryLabel: 'My Subscriptions',
           primaryTo: '/my-subscriptions',
@@ -130,12 +118,11 @@ const SubscribeEditMeals = ({ user }) => {
   }, [user, subscriptionId])
 
   const plan = row?.subscription_plans || {}
-  const mealCount = Number(plan.meal_count) || 0
-  const cart = { mealCount, meals }
-  const picked = totalQty(meals)
-  const exact = mealsExact(cart)
-  const atCap = mealCount > 0 && picked >= mealCount
   const copy = weekSaveCopy(row?.week)
+  const addonCents = addons.reduce(
+    (sum, line) => sum + (Number(line.price_cents) || 0) * (Number(line.quantity) || 0),
+    0
+  )
 
   const getTagNames = (tagIds) =>
     (tagIds || [])
@@ -143,14 +130,14 @@ const SubscribeEditMeals = ({ user }) => {
       .filter(Boolean)
       .map((tag) => tag.name)
 
-  const saveMeals = async () => {
+  const saveAddons = async () => {
     setSaving(true)
     setDialog(null)
     try {
-      await updateSubscriptionMeals(
+      await updateSubscriptionAddons(
         user.id,
         subscriptionId,
-        meals.map((item) => ({ id: item.id, quantity: item.quantity }))
+        addons.map((item) => ({ id: item.id, quantity: item.quantity }))
       )
       navigate('/my-subscriptions')
     } catch (err) {
@@ -158,7 +145,7 @@ const SubscribeEditMeals = ({ user }) => {
       setSaving(false)
       setDialog({
         icon: 'alert',
-        title: 'Could not save meals',
+        title: 'Could not save add-ons',
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
@@ -166,14 +153,14 @@ const SubscribeEditMeals = ({ user }) => {
   }
 
   const onSave = () => {
-    if (!exact || saving) return
+    if (saving) return
     setDialog({
       icon: 'mail',
       title: copy.title,
-      body: copy.body,
-      primaryLabel: 'Save meals',
+      body: `${copy.body} Add-ons are a one-time extra for that Sunday and will not repeat the following week.`,
+      primaryLabel: 'Save add-ons',
       secondaryLabel: 'Cancel',
-      onPrimary: saveMeals,
+      onPrimary: saveAddons,
     })
   }
 
@@ -196,9 +183,9 @@ const SubscribeEditMeals = ({ user }) => {
           {row ? (
             <>
               <p className="subscribe-eyebrow">
-                {plan.meal_count} meals — {formatPlanPrice(plan.price_cents)}/week
+                {plan.name || 'Your plan'} — {formatPlanPrice(plan.price_cents)}/week
               </p>
-              <h1 className="subscribe-h1">Edit meals</h1>
+              <h1 className="subscribe-h1">Add extras this week</h1>
               <p className="subscribe-subhead">{copy.body}</p>
               <p className="subscribe-helper">
                 <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
@@ -209,23 +196,23 @@ const SubscribeEditMeals = ({ user }) => {
                 products={products}
                 getTagNames={getTagNames}
                 tagIcons={TAG_ICONS}
-                quantityFor={(product) => lineQty(meals, product.id)}
-                onIncrement={(product) => setMeals((prev) => bumpMeal({ mealCount, meals: prev }, product, 1).meals)}
-                onDecrement={(product) => setMeals((prev) => bumpMeal({ mealCount, meals: prev }, product, -1).meals)}
-                incrementDisabledFor={(product) => atCap || !product.is_available}
+                quantityFor={(product) => lineQty(addons, product.id)}
+                onIncrement={(product) => setAddons((prev) => bumpAddon({ addons: prev }, product, 1).addons)}
+                onDecrement={(product) => setAddons((prev) => bumpAddon({ addons: prev }, product, -1).addons)}
+                incrementDisabledFor={(product) => !product.is_available}
               />
 
               <div className="subscribe-flow-bar">
                 <p className="subscribe-progress" aria-live="polite">
-                  {picked} of {mealCount} meals selected
+                  Add-on subtotal: ${(addonCents / 100).toFixed(2)}
                 </p>
                 <button
                   type="button"
                   className="subscribe-select-button"
-                  disabled={!exact || saving}
+                  disabled={saving}
                   onClick={onSave}
                 >
-                  {saving ? 'Saving…' : 'Save meals'}
+                  {saving ? 'Saving…' : 'Save add-ons'}
                 </button>
               </div>
             </>
@@ -237,4 +224,4 @@ const SubscribeEditMeals = ({ user }) => {
   )
 }
 
-export default SubscribeEditMeals
+export default SubscribeEditAddons

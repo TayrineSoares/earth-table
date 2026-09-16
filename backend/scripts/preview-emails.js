@@ -13,6 +13,9 @@ const {
   renderPartnerCodeUsedEmail,
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
+  renderSubscriptionWelcomeEmail,
+  renderOwnerSubscriptionEmail,
+  renderSubscriptionUpdatedEmail,
 } = require('../src/utils/emailTemplates');
 
 const outDir = path.join(__dirname, '../email-previews');
@@ -134,6 +137,34 @@ write('07-admin-monthly.html', renderAdminMonthlyInvoiceEmail({
   orders: referredOrders,
 }).html);
 
+const subMail = {
+  firstName: 'Tayrine',
+  lastName: 'Soares',
+  mealCount: 10,
+  planPriceCents: 18000,
+  delivery: false,
+  deliveryLabel: 'Sunday, September 20',
+  pickupSlot: '10:00-13:00',
+  cutoffLabel: 'Thursday, September 17 at 5:00 PM ET',
+  subscriptionId: 'preview',
+  subscribedAtLabel: 'September 16, 2026 at 2:14 PM',
+  paidCents: 18000,
+  chargeId: 'ch_3Q8xY2preview',
+  meals: [
+    { slug: 'Harvest Bowl', quantity: 4 },
+    { slug: 'Citrus Salad', quantity: 3 },
+    { slug: 'Herb Chicken Plate', quantity: 3 },
+  ],
+  addons: [{ slug: 'Green Smoothie', quantity: 2 }],
+  email: 'tayrine.a@email.com',
+  phone: '6475550148',
+  notes: 'No nut allergy flagged · Dairy: OK',
+  appliesTo: 'this_sunday',
+};
+write('09-subscription-welcome.html', renderSubscriptionWelcomeEmail(subMail).html);
+write('10-subscription-owner.html', renderOwnerSubscriptionEmail(subMail).html);
+write('11-subscription-updated.html', renderSubscriptionUpdatedEmail(subMail).html);
+
 const labels = {
   '01-customer-order.html': 'Customer order confirmation',
   '02-owner-order.html': 'Owner new order',
@@ -143,6 +174,9 @@ const labels = {
   '06-partner-monthly.html': 'Partner monthly statement',
   '07-admin-monthly.html': 'Admin monthly invoice',
   '08-confirm-signup.html': 'Confirm signup (Supabase Auth)',
+  '09-subscription-welcome.html': 'Subscription welcome',
+  '10-subscription-owner.html': 'Owner: new subscription',
+  '11-subscription-updated.html': 'Subscription updated',
 };
 
 const confirmSignupPreview = '08-confirm-signup.html';

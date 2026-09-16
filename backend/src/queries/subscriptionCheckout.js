@@ -12,14 +12,14 @@ const { getUserByAuthId, updateUserByAuthId } = require('./user');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./promo_code');
 const { getActiveReferralByCode } = require('./partner');
 const { getServerDeliveryQuote } = require('../lib/deliveryQuote');
-const { sendEmail } = require('../utils/email');
-const { renderSubscriptionWelcomeEmail } = require('../utils/emailTemplates');
+const { sendEmail, ownerNotificationEmails } = require('../utils/email');
+const { renderSubscriptionWelcomeEmail, renderOwnerSubscriptionEmail } = require('../utils/emailTemplates');
 const {
   SubscriptionError,
   getPlanById,
   getSettings,
 } = require('./subscription');
-const { getSignupDates } = require('./subscriptionWeek');
+const { getSignupDates, formatTorontoStamp } = require('./subscriptionWeek');
 
 const HST = 1.13;
 const PICKUP_SLOTS = new Set(['10:00-13:00', '14:00-16:30']);
@@ -368,7 +368,7 @@ async function loadSignupPayload(subscriptionId) {
   const { data: sub, error } = await supabase
     .from('subscriptions')
     .select(`
-      id, status, plan_id, label, delivery, delivery_postal_code, pickup_time_slot, special_note,
+      id, status, plan_id, label, user_id, delivery, delivery_postal_code, pickup_time_slot, special_note,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .eq('id', subscriptionId)
@@ -381,7 +381,7 @@ async function loadSignupPayload(subscriptionId) {
     .select(`
       id, status, cutoff_at, delivery_date, pickup_date, delivery, delivery_postal_code,
       pickup_time_slot, special_note, delivery_fee_cents, plan_paid_cents, addon_paid_cents,
-      promo_percent, plan_price_cents,
+      promo_percent, plan_price_cents, stripe_payment_intent_id,
       subscription_cycle_items (
         id, product_id, quantity, unit_price_cents, kind,
         products ( id, slug, image_url )
@@ -393,7 +393,28 @@ async function loadSignupPayload(subscriptionId) {
     .maybeSingle();
   if (cycleErr) throw cycleErr;
 
-  return { ready: true, subscription: sub, cycle: cycle || null };
+  let customer = null;
+  if (sub.user_id) {
+    try {
+      customer = await getUserByAuthId(sub.user_id);
+    } catch (err) {
+      console.warn('[subscriptions] signup payload user lookup failed:', err.message);
+    }
+  }
+
+  return {
+    ready: true,
+    subscription: sub,
+    cycle: cycle || null,
+    customer: customer
+      ? {
+          first_name: customer.first_name,
+          last_name: customer.last_name,
+          email: customer.email,
+          phone_number: customer.phone_number,
+        }
+      : null,
+  };
 }
 
 /**
@@ -434,14 +455,19 @@ async function completeSubscriptionSignup(session) {
     ? paidSession.customer
     : paidSession.customer?.id || null;
   let paymentMethodId = null;
+  let chargeId = null;
+  let paidCents = Number(paidSession.amount_total) || 0;
 
   if (piId) {
-    const pi = await stripe.paymentIntents.retrieve(piId);
+    const pi = await stripe.paymentIntents.retrieve(piId, { expand: ['latest_charge'] });
     const pm = pi.payment_method;
     paymentMethodId = typeof pm === 'string' ? pm : pm?.id || null;
     if (!customerId) {
       customerId = typeof pi.customer === 'string' ? pi.customer : pi.customer?.id || null;
     }
+    const charge = pi.latest_charge;
+    chargeId = typeof charge === 'string' ? charge : charge?.id || null;
+    if (!paidCents && Number(pi.amount_received)) paidCents = Number(pi.amount_received);
   }
 
   if (customerId && paymentMethodId) {
@@ -547,13 +573,12 @@ async function completeSubscriptionSignup(session) {
     try {
       const msg = renderSubscriptionWelcomeEmail({
         firstName: user?.first_name || '',
-        planName: cart.plan_name,
         mealCount: cart.meal_count,
         delivery,
         deliveryLabel: cart.first_delivery_label,
         pickupSlot: cart.pickup_time_slot,
         cutoffLabel: cart.cutoff_label,
-        email,
+        subscriptionId: sub.id,
       });
       await sendEmail({
         to: email,
@@ -564,6 +589,38 @@ async function completeSubscriptionSignup(session) {
       });
     } catch (err) {
       console.warn('[subscriptions] welcome email failed:', err.message);
+    }
+  }
+
+  const ownerTo = ownerNotificationEmails();
+  if (ownerTo.length) {
+    try {
+      const ownerMsg = renderOwnerSubscriptionEmail({
+        firstName: user?.first_name || '',
+        lastName: user?.last_name || '',
+        mealCount: cart.meal_count,
+        planPriceCents: cart.plan_price_cents,
+        delivery,
+        deliveryLabel: cart.first_delivery_label,
+        pickupSlot: cart.pickup_time_slot,
+        subscribedAtLabel: formatTorontoStamp(new Date()),
+        paidCents,
+        chargeId,
+        meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
+        cutoffLabel: cart.cutoff_label,
+        email,
+        phone: paidSession.customer_details?.phone || user?.phone_number,
+        notes: draft.special_note,
+      });
+      await sendEmail({
+        to: ownerTo,
+        subject: ownerMsg.subject,
+        html: ownerMsg.html,
+        text: ownerMsg.text,
+        replyTo: 'hello@earthtableco.ca',
+      });
+    } catch (err) {
+      console.warn('[subscriptions] owner subscribe email failed:', err.message);
     }
   }
 

@@ -8,26 +8,18 @@ import DeliverySelector from '../components/DeliverySelector'
 import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
+  formatPickupSlot,
   formatPlanPrice,
+  mealsAWeek,
   updateSubscriptionFulfillment,
+  weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import { formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
 
-const formatCutoff = (iso) => {
-  if (!iso) return 'Thursday at 5:00 PM'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'Thursday at 5:00 PM'
-  return d.toLocaleString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
+const HST_RATE = 0.13
 
 const MySubscriptions = ({ user }) => {
   const [rows, setRows] = useState([])
@@ -102,8 +94,10 @@ const MySubscriptions = ({ user }) => {
 
   useEffect(() => {
     if (fulfillment !== 'delivery' || !postalValid) {
-      setQuoteStatus('idle')
-      setDeliveryFeeCents(0)
+      if (fulfillment !== 'delivery') {
+        setQuoteStatus('idle')
+        setDeliveryFeeCents(0)
+      }
       return undefined
     }
     let cancelled = false
@@ -141,13 +135,14 @@ const MySubscriptions = ({ user }) => {
   }, [fulfillment, postalCode, postalValid])
 
   const startEdit = (row) => {
-    const cycle = row.cycle || {}
+    const cycle = row.edit_cycle || row.cycle || {}
     const isDelivery = !!cycle.delivery
+    const locked = row.week?.delivery_date || cycle.delivery_date || ''
     setEditingId(row.id)
     setFulfillment(isDelivery ? 'delivery' : 'pickup')
-    setPickupDate(cycle.pickup_date || cycle.delivery_date || '')
+    setPickupDate(locked)
     setPickupTime(cycle.pickup_time_slot || '')
-    setDeliveryDate(cycle.delivery_date || '')
+    setDeliveryDate(locked)
     setPostalCode(cycle.delivery_postal_code || '')
     setSpecialNote(cycle.special_note || row.special_note || '')
   }
@@ -160,9 +155,9 @@ const MySubscriptions = ({ user }) => {
         deliveryFeeCents > 0 &&
         specialNote.trim().length >= 8
 
-  const saveFulfillment = async (row) => {
-    if (!fulfillmentReady || savingId) return
+  const persistFulfillment = async (row) => {
     setSavingId(row.id)
+    setDialog(null)
     try {
       await updateSubscriptionFulfillment(user.id, row.id, {
         delivery: fulfillment === 'delivery',
@@ -183,6 +178,23 @@ const MySubscriptions = ({ user }) => {
     } finally {
       setSavingId(null)
     }
+  }
+
+  const saveFulfillment = (row) => {
+    if (!fulfillmentReady || savingId) return
+    const wasDelivery = !!(row.edit_cycle || row.cycle || {}).delivery
+    const copy = weekSaveCopy(row.week, {
+      deliveryFeeCents,
+      switchingToDelivery: fulfillment === 'delivery' && !wasDelivery,
+    })
+    setDialog({
+      icon: 'mail',
+      title: copy.title,
+      body: copy.body,
+      primaryLabel: 'Save',
+      secondaryLabel: 'Cancel',
+      onPrimary: () => persistFulfillment(row),
+    })
   }
 
   if (isLoading) {
@@ -227,13 +239,17 @@ const MySubscriptions = ({ user }) => {
             const isDelivery = !!cycle.delivery
             const sunday = formatYmdLong(cycle.delivery_date || cycle.pickup_date)
             const canEdit = Boolean(row.can_edit)
-            const lockedDate = cycle.delivery_date || cycle.pickup_date || ''
+            const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
+            const weekNote = row.week?.applies_to === 'next_week'
+              ? `This week's cutoff has passed. Edits now apply to next Sunday, ${row.week.delivery_label}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
+              : `You can change meals, add extras, or switch pickup/delivery until ${row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}.`
+            const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
 
             return (
               <article key={row.id} className="order-card">
                 <header className="order-card-header">
                   <div className="order-card-header-main">
-                    <p className="order-card-id">{plan.name || 'Weekly plan'}</p>
+                    <p className="order-card-id">{mealsAWeek(plan.meal_count)}</p>
                     <div className="order-card-chips">
                       <span className="order-chip">{row.status}</span>
                       <span className="order-chip">{isDelivery ? 'Delivery' : 'Pickup'}</span>
@@ -241,6 +257,8 @@ const MySubscriptions = ({ user }) => {
                   </div>
                   <p className="order-card-placed">{formatPlanPrice(plan.price_cents)}/week</p>
                 </header>
+
+                <p className="my-sub-week-note">{weekNote}</p>
 
                 <div className="order-meta-grid">
                   {isDelivery ? (
@@ -268,7 +286,7 @@ const MySubscriptions = ({ user }) => {
                       </div>
                       <div className="order-meta-field">
                         <p className="order-meta-label">Time</p>
-                        <p className="order-meta-value">{cycle.pickup_time_slot || '—'}</p>
+                        <p className="order-meta-value">{formatPickupSlot(cycle.pickup_time_slot) || '—'}</p>
                       </div>
                       <div className="order-meta-field order-meta-field--wide">
                         <p className="order-meta-label">Address</p>
@@ -277,10 +295,8 @@ const MySubscriptions = ({ user }) => {
                     </>
                   )}
                   <div className="order-meta-field order-meta-field--wide">
-                    <p className="order-meta-label">Change meals until</p>
-                    <p className="order-meta-value">
-                      {canEdit ? formatCutoff(cycle.cutoff_at) : 'This week is locked'}
-                    </p>
+                    <p className="order-meta-label">Change meals by</p>
+                    <p className="order-meta-value">{row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}</p>
                   </div>
                 </div>
 
@@ -303,7 +319,9 @@ const MySubscriptions = ({ user }) => {
                         )}
                         <div className="order-item-details">
                           <p className="order-item-name">{item.products?.slug || 'Meal'}</p>
-                          <p className="order-item-price">Included · qty {item.quantity}</p>
+                          {item.quantity > 1 ? (
+                            <p className="order-item-price">qty {item.quantity}</p>
+                          ) : null}
                         </div>
                       </div>
                     </li>
@@ -324,7 +342,9 @@ const MySubscriptions = ({ user }) => {
                             )}
                             <div className="order-item-details">
                               <p className="order-item-name">{item.products?.slug || 'Add-on'}</p>
-                              <p className="order-item-price">qty {item.quantity}</p>
+                              <p className="order-item-price">
+                                {item.quantity > 1 ? `Add-on · qty ${item.quantity}` : 'Add-on'}
+                              </p>
                             </div>
                           </div>
                         </li>
@@ -333,18 +353,14 @@ const MySubscriptions = ({ user }) => {
                   </>
                 ) : null}
 
-                <div className="my-sub-actions">
-                  {canEdit ? (
-                    <Link
-                      to={`/my-subscriptions/${row.id}/meals`}
-                      className="order-history-button"
-                    >
+                {canEdit ? (
+                  <div className="my-sub-actions">
+                    <Link to={`/my-subscriptions/${row.id}/meals`} className="order-history-button">
                       Edit meals
                     </Link>
-                  ) : (
-                    <span className="my-sub-locked">Meals are locked for this week.</span>
-                  )}
-                  {canEdit ? (
+                    <Link to={`/my-subscriptions/${row.id}/addons`} className="order-history-button">
+                      Add extras
+                    </Link>
                     <button
                       type="button"
                       className="order-history-button"
@@ -352,11 +368,14 @@ const MySubscriptions = ({ user }) => {
                     >
                       {editingId === row.id ? 'Close' : 'Edit pickup / delivery'}
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : (
+                  <p className="my-sub-locked">This plan is paused.</p>
+                )}
 
                 {editingId === row.id && canEdit ? (
                   <div className="my-sub-fulfillment">
+                    <p className="my-sub-week-note">{weekNote}</p>
                     <div className="general-text" style={{ margin: '0 0 16px' }}>
                       <label style={{ marginRight: 16 }}>
                         <input
@@ -390,15 +409,22 @@ const MySubscriptions = ({ user }) => {
                         showReviewNotes={false}
                       />
                     ) : (
-                      <DeliverySelector
-                        postalCode={postalCode}
-                        onPostalCodeChange={setPostalCode}
-                        feeCents={deliveryFeeCents}
-                        onValidate={({ valid }) => setPostalValid(valid)}
-                        deliveryDate={deliveryDate}
-                        onDeliveryDateChange={setDeliveryDate}
-                        lockedDate={lockedDate}
-                      />
+                      <>
+                        <DeliverySelector
+                          postalCode={postalCode}
+                          onPostalCodeChange={setPostalCode}
+                          feeCents={deliveryFeeCents}
+                          onValidate={({ valid }) => setPostalValid(valid)}
+                          deliveryDate={deliveryDate}
+                          onDeliveryDateChange={setDeliveryDate}
+                          lockedDate={lockedDate}
+                        />
+                        {quoteStatus === 'ok' && deliveryFeeCents > 0 ? (
+                          <p className="my-sub-fee-line">
+                            Delivery {formatPlanPrice(deliveryFeeCents)} + HST {formatPlanPrice(deliveryWithTax - deliveryFeeCents)} = {formatPlanPrice(deliveryWithTax)}
+                          </p>
+                        ) : null}
+                      </>
                     )}
 
                     <div className="special-note-container">

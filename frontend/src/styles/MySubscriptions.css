@@ -9,12 +9,22 @@
   text-decoration: none;
 }
 
-.my-sub-locked {
+.my-sub-week-note {
   font-family: var(--body-font);
+  font-weight: 400;
   font-size: 15px;
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
-  color: #757575;
+  line-height: 1.45;
+  color: #BE7200;
+  margin: 0 0 16px;
+}
+
+.my-sub-fee-line {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #BE7200;
+  margin: 8px 0 16px;
 }
 
 .my-sub-fulfillment {
@@ -52,7 +62,9 @@
   .my-sub-actions,
   .my-sub-fulfillment,
   .my-sub-fulfillment .special-note-input,
-  .my-sub-fulfillment .order-history-button {
+  .my-sub-fulfillment .order-history-button,
+  .my-sub-week-note,
+  .my-sub-fee-line {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -66,5 +78,12 @@
 @media (max-width: 480px) {
   .my-subscriptions-page .order-history-title {
     font-size: 26px;
+  }
+
+  .my-sub-week-note,
+  .my-sub-fee-line {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }

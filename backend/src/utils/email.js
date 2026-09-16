@@ -14,8 +14,9 @@ function logoAttachment() {
     return {
       filename: 'high-logo-2.png',
       content: fs.readFileSync(LOGO_PATH),
-      contentId: 'earth-table-logo',
       contentType: 'image/png',
+      content_id: 'earth-table-logo',
+      contentId: 'earth-table-logo',
     };
   } catch (error) {
     console.warn('[email] could not attach header logo:', error.message);

@@ -55,3 +55,152 @@
   margin-top: 12px;
   white-space: pre-wrap;
 }
+
+.subscribe-confirm-page .checkout-page-container {
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.subscribe-confirm-page .checkout-order-summary {
+  text-align: left;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.subscribe-confirm-copy .checkout-summary-text {
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.subscribe-confirm-lead {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.3;
+  margin: 0 0 16px;
+  color: #000;
+}
+
+.subscribe-confirm-body,
+.subscribe-confirm-email,
+.subscribe-confirm-signoff {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  margin: 0 0 16px;
+  max-width: 46ch;
+}
+
+.subscribe-confirm-copy .checkout-button {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.subscribe-confirm-signoff {
+  font-style: italic;
+}
+
+.subscribe-confirm-kicker {
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  color: #BE7200;
+  margin: 20px 0 4px;
+}
+
+.subscribe-confirm-plan {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  color: #000;
+}
+
+.subscribe-confirm-meta {
+  font-family: var(--body-font);
+  font-size: 15px;
+  line-height: 1.4;
+  color: #333;
+  margin: 0 0 4px;
+}
+
+.subscribe-confirm-page .subscribe-confirm-side {
+  flex: 0 1 340px;
+  max-width: 360px;
+  margin-top: 0;
+  margin-left: 0;
+  margin-bottom: 80px;
+  padding-top: 28px;
+  box-sizing: border-box;
+}
+
+.subscribe-confirm-side > .subscribe-confirm-kicker:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 1366px) {
+  .subscribe-confirm-page .checkout-page-container {
+    gap: 32px;
+  }
+
+  .subscribe-confirm-lead {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .subscribe-confirm-page .checkout-page-container {
+    gap: 24px;
+  }
+
+  .subscribe-confirm-copy .checkout-button,
+  .subscribe-confirm-body,
+  .subscribe-confirm-email,
+  .subscribe-confirm-signoff {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .subscribe-confirm-page .checkout-order-summary,
+  .subscribe-confirm-page .subscribe-confirm-side {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .subscribe-confirm-copy .checkout-summary-text {
+    font-size: 36px;
+  }
+
+  .subscribe-confirm-lead {
+    font-size: 20px;
+  }
+
+  .subscribe-confirm-body,
+  .subscribe-confirm-email,
+  .subscribe-confirm-signoff {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subscribe-confirm-copy .checkout-summary-text {
+    font-size: 28px;
+  }
+
+  .subscribe-confirm-plan {
+    font-size: 20px;
+  }
+}

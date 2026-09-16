@@ -485,9 +485,9 @@ const SubscribeCart = ({ user, subCart }) => {
                 <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                 <div className="checkout-item-details">
                   <p className="checkout-item-title">{item.slug}</p>
-                  <p className="checkout-item-price">
-                    Included · qty {item.quantity}
-                  </p>
+                  {item.quantity > 1 ? (
+                    <p className="checkout-item-price">qty {item.quantity}</p>
+                  ) : null}
                 </div>
               </div>
             ))}

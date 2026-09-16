@@ -148,7 +148,7 @@ function formatCutoffLabel(date) {
     if (part.type !== 'literal') map[part.type] = part.value;
   }
   const dayPeriod = map.dayPeriod || '';
-  return `${map.weekday}, ${map.month} ${map.day} at ${map.hour}:${map.minute} ${dayPeriod}`.replace(/\s+/g, ' ').trim();
+  return `${map.weekday}, ${map.month} ${map.day} at ${map.hour}:${map.minute} ${dayPeriod} ET`.replace(/\s+/g, ' ').trim();
 }
 
 function formatDeliveryLabel(date) {
@@ -213,6 +213,111 @@ function getSignupDates(now = new Date(), settings = {}) {
   };
 }
 
+function torontoYmd(date = new Date()) {
+  const p = torontoParts(date);
+  return ymd(p.year, p.month, p.day);
+}
+
+function parseYmdToronto(ymdStr) {
+  const [year, month, day] = String(ymdStr || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return torontoDate(year, month, day, 12, 0);
+}
+
+/** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
+function formatPickupSlot(slot) {
+  const parts = String(slot || '').split('-');
+  if (parts.length !== 2) return String(slot || '').trim();
+  const fmt = (hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    if (!Number.isFinite(h)) return hhmm;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = ((h + 11) % 12) + 1;
+    const min = Number.isFinite(m) ? String(m).padStart(2, '0') : '00';
+    return `${hour12}:${min} ${period}`;
+  };
+  return `${fmt(parts[0].trim())} – ${fmt(parts[1].trim())}`;
+}
+
+function mealsAWeek(count) {
+  const n = Number(count) || 0;
+  return n === 1 ? '1 meal a week' : `${n} meals a week`;
+}
+
+function mealPlanPhrase(count) {
+  const n = Number(count) || 0;
+  return n === 1 ? '1-meal plan' : `${n}-meal plan`;
+}
+
+function formatFulfillmentLine({ delivery, deliveryLabel, pickupSlot }) {
+  const sunday = deliveryLabel || 'Sunday';
+  if (delivery) return `Delivery — ${sunday}, 11:00 AM – 6:00 PM`;
+  const slot = formatPickupSlot(pickupSlot);
+  return slot ? `Pickup — ${sunday}, ${slot}` : `Pickup — ${sunday}`;
+}
+
+function formatTorontoStamp(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return fmt.format(date).replace(/, (\d+:)/, ' at $1');
+}
+
+/**
+ * Which Sunday a My Subscriptions edit should hit.
+ * Before Thursday 5pm: this Sunday's open cycle.
+ * After cutoff: next week's cycle (created on save if needed).
+ */
+function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
+  const signup = getSignupDates(now, settings);
+  const cycleCutoff = currentCycle?.cutoff_at ? new Date(currentCycle.cutoff_at) : null;
+  const stillThisWeek = Boolean(
+    currentCycle &&
+    currentCycle.status !== 'locked' &&
+    currentCycle.status !== 'skipped' &&
+    cycleCutoff &&
+    Number.isFinite(cycleCutoff.getTime()) &&
+    now.getTime() < cycleCutoff.getTime()
+  );
+
+  if (stillThisWeek) {
+    const sunday = currentCycle.delivery_date;
+    const sundayDate = parseYmdToronto(sunday);
+    return {
+      applies_to: 'this_sunday',
+      cutoff_passed: false,
+      cutoff_at: currentCycle.cutoff_at,
+      cutoff_label: formatCutoffLabel(cycleCutoff),
+      delivery_date: sunday,
+      delivery_label: sundayDate ? formatDeliveryLabel(sundayDate) : signup.first_delivery_label,
+    };
+  }
+
+  return {
+    applies_to: 'next_week',
+    cutoff_passed: true,
+    cutoff_at: signup.cutoff_at,
+    cutoff_label: signup.cutoff_label,
+    delivery_date: signup.first_delivery_date,
+    delivery_label: signup.first_delivery_label,
+  };
+}
+
 module.exports = {
   getSignupDates,
+  getEditWeek,
+  formatPickupSlot,
+  formatFulfillmentLine,
+  mealsAWeek,
+  mealPlanPhrase,
+  formatTorontoStamp,
+  formatCutoffLabel,
+  formatDeliveryLabel,
+  torontoYmd,
 };

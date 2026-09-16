@@ -6,7 +6,7 @@
 const supabase = require('../../supabase/db');
 const { getAllCategories } = require('./category');
 const { getAllProducts } = require('./product');
-const { getSignupDates } = require('./subscriptionWeek');
+const { getSignupDates, getEditWeek, torontoYmd } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
   constructor(status, message) {
@@ -170,15 +170,32 @@ function canEditCycle(cycle) {
   return Date.now() < new Date(cycle.cutoff_at).getTime();
 }
 
-function pickCurrentCycle(cycles) {
-  const rows = cycles || [];
-  const open = rows.filter((row) => row.status === 'open');
-  const pool = open.length ? open : rows;
-  return pool.sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
+function pickDisplayCycle(cycles, now = new Date()) {
+  const today = torontoYmd(now);
+  const rows = [...(cycles || [])];
+  const upcoming = rows
+    .filter((row) => row.delivery_date && String(row.delivery_date) >= today)
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)));
+  if (upcoming.length) return upcoming[0];
+  return rows.sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
 }
+
+const CYCLE_ITEM_SELECT = `
+  id, product_id, quantity, unit_price_cents, kind,
+  products ( id, slug, image_url, is_available )
+`;
+
+const CYCLE_SELECT = `
+  id, subscription_id, status, cutoff_at, delivery_date, pickup_date, delivery,
+  delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
+  plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
+  subscription_cycle_items ( ${CYCLE_ITEM_SELECT} )
+`;
 
 async function listMine(userId) {
   if (!userId) throw new SubscriptionError(400, 'User id is required.');
+  const settings = await getSettings();
+  const now = new Date();
   const { data, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -197,15 +214,7 @@ async function listMine(userId) {
   const ids = subs.map((row) => row.id);
   const { data: cycles, error: cycleErr } = await supabase
     .from('subscription_cycles')
-    .select(`
-      id, subscription_id, status, cutoff_at, delivery_date, pickup_date, delivery,
-      delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
-      plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
-      subscription_cycle_items (
-        id, product_id, quantity, unit_price_cents, kind,
-        products ( id, slug, image_url, is_available )
-      )
-    `)
+    .select(CYCLE_SELECT)
     .in('subscription_id', ids);
   if (cycleErr) throw cycleErr;
 
@@ -216,11 +225,16 @@ async function listMine(userId) {
   }
 
   return subs.map((sub) => {
-    const cycle = pickCurrentCycle(bySub[sub.id] || []);
+    const list = bySub[sub.id] || [];
+    const display = pickDisplayCycle(list, now);
+    const week = getEditWeek(now, settings || {}, display);
+    const editCycle = list.find((row) => row.delivery_date === week.delivery_date) || null;
     return {
       ...sub,
-      cycle,
-      can_edit: canEditCycle(cycle),
+      cycle: display,
+      edit_cycle: editCycle,
+      week,
+      can_edit: sub.status === 'active',
     };
   });
 }
@@ -239,12 +253,11 @@ async function getOwnedSubscription(userId, subscriptionId) {
   return data;
 }
 
-async function getOpenCycle(subscriptionId) {
+async function latestCycle(subscriptionId) {
   const { data, error } = await supabase
     .from('subscription_cycles')
     .select('*')
     .eq('subscription_id', subscriptionId)
-    .eq('status', 'open')
     .order('delivery_date', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -252,20 +265,138 @@ async function getOpenCycle(subscriptionId) {
   return data || null;
 }
 
-function assertCycleEditable(cycle) {
-  if (!cycle) {
-    throw new SubscriptionError(400, "This week's box is not open for edits.");
+async function getOrCreateEditableCycle(sub) {
+  const settings = await getSettings();
+  const latest = await latestCycle(sub.id);
+  const display = pickDisplayCycle(latest ? [latest] : [], new Date()) || latest;
+  // latestCycle only returns one row — load all for display pick
+  const { data: allCycles, error: allErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', sub.id);
+  if (allErr) throw allErr;
+  const current = pickDisplayCycle(allCycles || [], new Date());
+  const week = getEditWeek(new Date(), settings || {}, current);
+
+  const existing = (allCycles || []).find((row) => row.delivery_date === week.delivery_date);
+  if (existing) return { cycle: existing, week, previous: current };
+
+  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const src = current || latest;
+  const { data: cycle, error } = await supabase
+    .from('subscription_cycles')
+    .insert({
+      subscription_id: sub.id,
+      plan_id: sub.plan_id,
+      plan_price_cents: Number(plan?.price_cents) || 0,
+      cutoff_at: week.cutoff_at,
+      delivery_date: week.delivery_date,
+      pickup_date: src?.delivery ? null : week.delivery_date,
+      status: 'open',
+      delivery: src ? !!src.delivery : !!sub.delivery,
+      delivery_postal_code: src?.delivery_postal_code || sub.delivery_postal_code,
+      pickup_time_slot: src?.pickup_time_slot || sub.pickup_time_slot,
+      special_note: src?.special_note || sub.special_note,
+      delivery_fee_cents: src?.delivery ? (Number(src.delivery_fee_cents) || 0) : 0,
+      plan_paid_cents: 0,
+      addon_paid_cents: 0,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  // Next week starts from last week's meals (add-ons never carry).
+  if (src) {
+    const { data: items } = await supabase
+      .from('subscription_cycle_items')
+      .select('product_id, quantity, unit_price_cents, kind')
+      .eq('cycle_id', src.id)
+      .eq('kind', 'plan');
+    if (items && items.length) {
+      const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
+        items.map((item) => ({ ...item, cycle_id: cycle.id }))
+      );
+      if (copyErr) throw copyErr;
+    }
   }
-  if (!canEditCycle(cycle)) {
-    throw new SubscriptionError(400, 'The Thursday 5:00 PM cutoff has passed for this week.');
-  }
+
+  return { cycle, week, previous: current };
+}
+
+async function loadCycleItems(cycleId) {
+  const { data, error } = await supabase
+    .from('subscription_cycle_items')
+    .select('id, product_id, quantity, unit_price_cents, kind, products ( slug )')
+    .eq('cycle_id', cycleId);
+  if (error) throw error;
+  return data || [];
+}
+
+async function notifyCustomerUpdate(userId, sub, cycle, week) {
+  const { getUserByAuthId } = require('./user');
+  const { sendEmail } = require('../utils/email');
+  const { renderSubscriptionUpdatedEmail } = require('../utils/emailTemplates');
+  const user = await getUserByAuthId(userId);
+  const email = user?.email;
+  if (!email) return;
+
+  const items = await loadCycleItems(cycle.id);
+  const meals = items.filter((item) => item.kind === 'plan').map((item) => ({
+    slug: item.products?.slug,
+    quantity: item.quantity,
+  }));
+  const addons = items.filter((item) => item.kind === 'addon').map((item) => ({
+    slug: item.products?.slug,
+    quantity: item.quantity,
+  }));
+  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const msg = renderSubscriptionUpdatedEmail({
+    firstName: user.first_name,
+    mealCount: plan?.meal_count,
+    delivery: cycle.delivery,
+    deliveryLabel: week.delivery_label,
+    pickupSlot: cycle.pickup_time_slot,
+    cutoffLabel: week.cutoff_label,
+    appliesTo: week.applies_to,
+    meals,
+    addons,
+  });
+  await sendEmail({
+    to: email,
+    subject: msg.subject,
+    html: msg.html,
+    text: msg.text,
+    replyTo: 'hello@earthtableco.ca',
+  });
+}
+
+async function replaceCycleKindItems(cycleId, kind, resolved) {
+  const { error: delErr } = await supabase
+    .from('subscription_cycle_items')
+    .delete()
+    .eq('cycle_id', cycleId)
+    .eq('kind', kind);
+  if (delErr) throw delErr;
+
+  const rows = resolved.map((item) => ({
+    cycle_id: cycleId,
+    product_id: item.product_id,
+    quantity: item.quantity,
+    unit_price_cents: item.unit_price_cents,
+    kind,
+  }));
+  if (!rows.length) return;
+  const { error: insErr } = await supabase.from('subscription_cycle_items').insert(rows);
+  if (insErr) throw insErr;
 }
 
 async function replaceOpenCyclePlanItems(userId, subscriptionId, meals) {
   const { qtyLines, resolveLines } = require('./subscriptionCheckout');
   const sub = await getOwnedSubscription(userId, subscriptionId);
-  const cycle = await getOpenCycle(sub.id);
-  assertCycleEditable(cycle);
+  if (sub.status !== 'active') {
+    throw new SubscriptionError(400, 'This subscription is not active.');
+  }
+  const { cycle, week } = await getOrCreateEditableCycle(sub);
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const lines = qtyLines(meals);
@@ -286,39 +417,83 @@ async function replaceOpenCyclePlanItems(userId, subscriptionId, meals) {
 
   const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
   const resolved = await resolveLines(lines, { kind: 'plan', allowUnavailableIds });
+  await replaceCycleKindItems(cycle.id, 'plan', resolved);
 
-  const { error: delErr } = await supabase
-    .from('subscription_cycle_items')
-    .delete()
-    .eq('cycle_id', cycle.id)
-    .eq('kind', 'plan');
-  if (delErr) throw delErr;
-
-  const rows = resolved.map((item) => ({
-    cycle_id: cycle.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    unit_price_cents: item.unit_price_cents,
-    kind: 'plan',
-  }));
-  if (rows.length) {
-    const { error: insErr } = await supabase.from('subscription_cycle_items').insert(rows);
-    if (insErr) throw insErr;
+  try {
+    await notifyCustomerUpdate(userId, sub, cycle, week);
+  } catch (err) {
+    console.warn('[subscriptions] update email failed:', err.message);
   }
 
-  return { ok: true };
+  return { ok: true, week };
+}
+
+async function replaceOpenCycleAddonItems(userId, subscriptionId, addons) {
+  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
+  const sub = await getOwnedSubscription(userId, subscriptionId);
+  if (sub.status !== 'active') {
+    throw new SubscriptionError(400, 'This subscription is not active.');
+  }
+  const { cycle, week } = await getOrCreateEditableCycle(sub);
+  const lines = qtyLines(addons);
+  const resolved = lines.length ? await resolveLines(lines, { kind: 'addon' }) : [];
+  await replaceCycleKindItems(cycle.id, 'addon', resolved);
+
+  try {
+    await notifyCustomerUpdate(userId, sub, cycle, week);
+  } catch (err) {
+    console.warn('[subscriptions] update email failed:', err.message);
+  }
+
+  return { ok: true, week };
+}
+
+async function chargeDeliveryFee(sub, cycle, feeCents) {
+  const amount = Math.round(Number(feeCents) * 1.13);
+  if (amount < 50) {
+    throw new SubscriptionError(400, 'Delivery fee is too small to charge.');
+  }
+  if (!sub.stripe_customer_id || !sub.stripe_payment_method_id) {
+    throw new SubscriptionError(400, 'No card on file for the delivery fee. Email hello@earthtableco.ca.');
+  }
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
+  try {
+    return await stripe.paymentIntents.create({
+      amount,
+      currency: 'cad',
+      customer: sub.stripe_customer_id,
+      payment_method: sub.stripe_payment_method_id,
+      off_session: true,
+      confirm: true,
+      description: 'Subscription delivery fee',
+      metadata: {
+        kind: 'subscription_delivery',
+        subscription_id: sub.id,
+        cycle_id: cycle.id,
+      },
+    });
+  } catch (err) {
+    console.error('[subscriptions] delivery fee charge failed', err.message);
+    throw new SubscriptionError(
+      402,
+      'We could not charge the delivery fee to your card. Try again or email hello@earthtableco.ca.'
+    );
+  }
 }
 
 async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
   const { PICKUP_SLOTS } = require('./subscriptionCheckout');
   const { getServerDeliveryQuote } = require('../lib/deliveryQuote');
   const sub = await getOwnedSubscription(userId, subscriptionId);
-  const cycle = await getOpenCycle(sub.id);
-  assertCycleEditable(cycle);
+  if (sub.status !== 'active') {
+    throw new SubscriptionError(400, 'This subscription is not active.');
+  }
+  const { cycle, week } = await getOrCreateEditableCycle(sub);
 
   const delivery = !!body.delivery;
   const specialNote = String(body.special_note || '').trim() || null;
   const pickupSlot = String(body.pickup_time_slot || '').trim();
+  const wasPickup = !cycle.delivery;
 
   const patch = {
     delivery,
@@ -343,13 +518,18 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     patch.delivery_postal_code = postal;
     patch.pickup_time_slot = null;
     patch.delivery_fee_cents = quote.fee_cents;
+
+    const chargeNow = week.applies_to === 'this_sunday' && wasPickup && Number(cycle.plan_paid_cents) > 0;
+    if (chargeNow) {
+      await chargeDeliveryFee(sub, cycle, quote.fee_cents);
+    }
   } else {
     if (!PICKUP_SLOTS.has(pickupSlot)) {
       throw new SubscriptionError(400, 'Choose a pickup time.');
     }
     patch.delivery_postal_code = null;
     patch.pickup_time_slot = pickupSlot;
-    patch.delivery_fee_cents = 0;
+    if (wasPickup) patch.delivery_fee_cents = 0;
   }
 
   const { error: subErr } = await supabase
@@ -363,20 +543,31 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     .eq('id', sub.id);
   if (subErr) throw subErr;
 
-  const cyclePatch = {
-    delivery: patch.delivery,
-    delivery_postal_code: patch.delivery_postal_code,
-    pickup_time_slot: patch.pickup_time_slot,
-    special_note: patch.special_note,
-    delivery_fee_cents: patch.delivery_fee_cents,
-  };
   const { error: cycleErr } = await supabase
     .from('subscription_cycles')
-    .update(cyclePatch)
+    .update({
+      delivery: patch.delivery,
+      delivery_postal_code: patch.delivery_postal_code,
+      pickup_time_slot: patch.pickup_time_slot,
+      special_note: patch.special_note,
+      delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
+      pickup_date: delivery ? null : week.delivery_date,
+    })
     .eq('id', cycle.id);
   if (cycleErr) throw cycleErr;
 
-  return { ok: true };
+  const updated = { ...cycle, ...patch };
+  try {
+    await notifyCustomerUpdate(userId, sub, updated, week);
+  } catch (err) {
+    console.warn('[subscriptions] update email failed:', err.message);
+  }
+
+  return {
+    ok: true,
+    week,
+    delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
+  };
 }
 
 async function countActiveSubscribers(planId) {
@@ -533,5 +724,6 @@ module.exports = {
   updateSettings,
   getPublicSignupInfo,
   replaceOpenCyclePlanItems,
+  replaceOpenCycleAddonItems,
   updateOpenCycleFulfillment,
 };

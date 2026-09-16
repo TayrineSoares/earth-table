@@ -5,6 +5,52 @@ function formatMoney(cents) {
   return `$${dollars} CAD`;
 }
 
+const {
+  mealsAWeek,
+  mealPlanPhrase,
+  formatFulfillmentLine,
+} = require('../queries/subscriptionWeek');
+
+function formatDollars(cents) {
+  return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
+}
+
+function appUrl(path) {
+  const base = String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function ctaLink(href, label) {
+  return `<p style="margin:0 0 24px; font-family:${FONT};"><a href="${href}" style="color:${C_AMBER}; font-weight:700; font-size:15px; line-height:1.55; text-decoration:underline;">${label}</a></p>`;
+}
+
+function formatPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return String(phone || '').trim() || '—';
+}
+
+function itemLinesHtml(items) {
+  return (items || [])
+    .map((item) => {
+      const name = item.slug || item.products?.slug || 'Item';
+      const qty = Number(item.quantity) || 1;
+      return qty > 1 ? `${name} × ${qty}` : name;
+    })
+    .join('<br/>');
+}
+
+function itemLinesText(items) {
+  return (items || [])
+    .map((item) => {
+      const name = item.slug || item.products?.slug || 'Item';
+      const qty = Number(item.quantity) || 1;
+      return qty > 1 ? `${name} × ${qty}` : name;
+    })
+    .join('\n');
+}
+
 // helper so multi-line notes render nicely in HTML
 const nl2br = (s = "") => String(s).replace(/\n/g, "<br/>");
 
@@ -80,7 +126,7 @@ function spacer(px = 24) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td style="height:${px}px; line-height:${px}px; font-size:1px;">&nbsp;</td></tr></table>`;
 }
 
-function wrapEmail(inner, { preheader, replyOk } = {}) {
+function wrapEmail(inner, { preheader, replyOk, title } = {}) {
   const footerCopy = replyOk
     ? `Questions? Reply to this email or write to <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>.`
     : `Questions? Email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>. Please do not reply to this email.`;
@@ -91,7 +137,7 @@ function wrapEmail(inner, { preheader, replyOk } = {}) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Earth Table</title>
+  <title>${title || "Earth Table"}</title>
   <!--[if mso]>
   <style type="text/css">
     table { border-collapse: collapse; }
@@ -971,53 +1017,200 @@ ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
 }
 
 /**
- * First-week subscription welcome. Keep it short — meals can still change until cutoff.
+ * First-week subscription welcome.
  */
 function renderSubscriptionWelcomeEmail({
   firstName,
-  planName,
   mealCount,
   delivery,
   deliveryLabel,
   pickupSlot,
   cutoffLabel,
+  subscriptionId,
 } = {}) {
   const name = firstName || 'there';
-  const plan = planName || 'weekly plan';
-  const meals = Number(mealCount) || 0;
-  const mealCopy = meals ? `${meals} ${meals === 1 ? 'meal' : 'meals'}` : 'meals';
-  const fulfillment = delivery
-    ? `Delivery on ${deliveryLabel || 'Sunday'}`
-    : `Pickup on ${deliveryLabel || 'Sunday'}${pickupSlot ? `, ${pickupSlot}` : ''}`;
+  const planWeek = mealsAWeek(mealCount);
+  const planPhrase = mealPlanPhrase(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
+  const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
+  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
 
-  const subject = `You're subscribed — ${plan}`;
+  const subject = `Welcome to weekly plans — your first box is ${sunday}`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
-      ${h1("You're subscribed")}
-      ${intro(`Hi ${name}, your ${plan} is confirmed. This week is already paid.`)}
+      ${h1(`You're all set, ${name}`)}
+      ${intro(`Your ${planPhrase} is confirmed and this week is paid.`)}
       ${card(kvTable(`
-        ${kvRow("Plan", `${plan} · ${mealCopy}`)}
+        ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
-        ${kvRow("Change meals until", cutoffLabel || "Thursday at 5:00 PM", { last: true })}
+        ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews automatically every week. Manage meals and pickup or delivery from My Subscriptions before Thursday at 5:00 PM.</p>
+      ${ctaLink(mealsHref, "Choose this week's meals →")}
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before the Thursday cutoff.</p>
   `, {
-    preheader: `Your ${plan} subscription is confirmed.`,
+    preheader: `Your first box is ${sunday}.`,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `You're all set, ${name}
+
+Your ${planPhrase} is confirmed and this week is paid.
+
+Plan: ${planWeek}
+This Sunday: ${fulfillment}
+Change your meals by: ${cutoff}
+
+Choose this week's meals: ${mealsHref}
+
+Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
+
+Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before the Thursday cutoff.
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject, html, text };
+}
+
+function renderOwnerSubscriptionEmail({
+  firstName,
+  lastName,
+  mealCount,
+  planPriceCents,
+  delivery,
+  deliveryLabel,
+  pickupSlot,
+  subscribedAtLabel,
+  paidCents,
+  chargeId,
+  meals,
+  cutoffLabel,
+  email,
+  phone,
+  notes,
+} = {}) {
+  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Customer';
+  const planWeek = mealsAWeek(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
+  const mealHtml = itemLinesHtml(meals) || '—';
+  const mealText = itemLinesText(meals) || '—';
+  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const paid = formatDollars(paidCents);
+  const stripeRef = chargeId || '—';
+  const note = String(notes || '').trim() || '—';
+
+  const subject = `New subscription — ${fullName} — ${planWeek}`;
+
+  const html = wrapEmail(`
+      ${eyebrow("New subscription")}
+      ${h1(`${fullName} — ${planWeek}`)}
+      ${intro(`Subscribed ${subscribedAtLabel || 'just now'}. First box: ${sunday}.`)}
+      ${card(kvTable(`
+        ${kvRow("Plan", `${planWeek} — ${formatDollars(planPriceCents)}/week`)}
+        ${kvRow("Fulfillment", fulfillment)}
+        ${kvRow("First payment", `${paid} paid · Stripe ${stripeRef}`, { last: true })}
+      `))}
+      ${h2("Meals selected")}
+      <p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${mealHtml}</p>
+      <p style="margin:0 0 24px; font-size:13px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};">Maybe change by ${cutoff}</p>
+      ${card(kvTable(`
+        ${kvRow("Customer", `${email || '—'} · ${formatPhone(phone)}`)}
+        ${kvRow("Notes", note, { last: true })}
+      `))}
+  `, {
+    preheader: `${fullName} subscribed — first box ${sunday}.`,
     replyOk: true,
   });
 
-  const text = `You're subscribed
+  const text = `New subscription
+${fullName} — ${planWeek}
+Subscribed ${subscribedAtLabel || 'just now'}.
+First box: ${sunday}.
 
-Hi ${name}, your ${plan} is confirmed. This week is already paid.
+Plan: ${planWeek} — ${formatDollars(planPriceCents)}/week
+Fulfillment: ${fulfillment}
+First payment: ${paid} paid · Stripe ${stripeRef}
 
-Plan: ${plan} · ${mealCopy}
-This Sunday: ${fulfillment}
-Change meals until: ${cutoffLabel || 'Thursday at 5:00 PM'}
+Meals selected
+${mealText}
+Maybe change by ${cutoff}
 
-Your plan renews automatically every week. Manage meals from My Subscriptions before Thursday at 5:00 PM.
+Customer: ${email || '—'} · ${formatPhone(phone)}
+Notes: ${note}`;
 
-Questions? Email hello@earthtableco.ca`;
+  return { subject, html, text };
+}
+
+function renderSubscriptionUpdatedEmail({
+  firstName,
+  mealCount,
+  delivery,
+  deliveryLabel,
+  pickupSlot,
+  cutoffLabel,
+  appliesTo,
+  meals,
+  addons,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
+  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const thisSunday = appliesTo !== 'next_week';
+  const timing = thisSunday
+    ? `These changes apply to this Sunday, ${sunday}.`
+    : `This week's cutoff has passed, so these changes apply to next Sunday, ${sunday} only. This Sunday's box is already locked.`;
+  const mealHtml = itemLinesHtml(meals) || '—';
+  const addonHtml = itemLinesHtml(addons);
+  const mealText = itemLinesText(meals) || '—';
+  const addonText = itemLinesText(addons);
+
+  const subject = thisSunday
+    ? `You've updated this Sunday's box — ${sunday}`
+    : `You've updated next week's box — ${sunday}`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(`You've updated your plan, ${name}`)}
+      ${intro(timing)}
+      ${card(kvTable(`
+        ${kvRow("Plan", planWeek)}
+        ${kvRow("That Sunday", fulfillment)}
+        ${kvRow("Change meals by", cutoff, { last: true })}
+      `))}
+      ${h2("Meals")}
+      <p style="margin:0 0 24px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${mealHtml}</p>
+      ${h2("Add-ons")}
+      <p style="margin:0 0 24px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${addonHtml || 'None this week.'}</p>
+      ${thisSunday
+        ? ''
+        : `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">If you need a delivery change for this Sunday, email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER};">hello@earthtableco.ca</a>.</p>`}
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Manage anything else in My Subscriptions before the Thursday cutoff.</p>
+  `, {
+    preheader: timing,
+    replyOk: true,
+  });
+
+  const text = `You've updated your plan, ${name}
+
+${timing}
+
+Plan: ${planWeek}
+That Sunday: ${fulfillment}
+Change meals by: ${cutoff}
+
+Meals
+${mealText}
+
+Add-ons
+${addonText || 'None this week.'}
+
+${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@earthtableco.ca.\n\n'}Manage anything else in My Subscriptions before the Thursday cutoff.`;
 
   return { subject, html, text };
 }
@@ -1032,5 +1225,7 @@ module.exports = {
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
   renderSubscriptionWelcomeEmail,
+  renderOwnerSubscriptionEmail,
+  renderSubscriptionUpdatedEmail,
   getEmailLogoUrl,
 };

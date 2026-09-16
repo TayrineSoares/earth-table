@@ -13,6 +13,7 @@ const {
   updateSettings,
   getPublicSignupInfo,
   replaceOpenCyclePlanItems,
+  replaceOpenCycleAddonItems,
   updateOpenCycleFulfillment,
 } = require('../queries/subscription');
 const {
@@ -89,6 +90,19 @@ router.patch('/:id/meals', async (req, res) => {
     res.json(result);
   } catch (err) {
     handleError(res, err, '[PATCH /subscriptions/:id/meals]');
+  }
+});
+
+router.patch('/:id/addons', async (req, res) => {
+  try {
+    const result = await replaceOpenCycleAddonItems(
+      req.body?.userId,
+      req.params.id,
+      req.body?.addons
+    );
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/addons]');
   }
 });
 
