@@ -223,13 +223,14 @@ const Products = ({ addToCart }) => {
 
       <div className='products-container'>
    
-        {productsToShow.map((product) => (
+        {productsToShow.map((product, index) => (
           <ProductCard
             key={product.id}
             product={product}
             addToCart={addToCart}
             tagIcons={tagIcons}
             getTagNames={getTagNames}
+            eager={index < 4}
           />
         ))}
       

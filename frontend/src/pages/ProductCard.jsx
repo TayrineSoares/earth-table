@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { sizedImageUrl } from "../helpers/imageHelpers";
 
-const ProductCard = ({ product, addToCart, tagIcons, getTagNames }) => {
+const ProductCard = ({ product, addToCart, tagIcons, getTagNames, eager = false }) => {
   const descriptionRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +26,8 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames }) => {
   }, [isOpen]);
 
   const tagNames = product.tags?.length ? getTagNames(product.tags) : [];
+  const cardImage = sizedImageUrl(product.image_url, 400);
+  const cardImage2x = sizedImageUrl(product.image_url, 800);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -52,7 +55,13 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames }) => {
         </div>
       )}
 
-      <img className="product-image" src={product.image_url} alt={product.slug} />
+      <img
+        className="product-image"
+        src={cardImage}
+        srcSet={`${cardImage} 1x, ${cardImage2x} 2x`}
+        alt={product.slug}
+        loading={eager ? "eager" : "lazy"}
+      />
 
       <div className="product-header-info-container">
         <p className="product-header-price">${(product.price_cents / 100).toFixed(2)}</p>
