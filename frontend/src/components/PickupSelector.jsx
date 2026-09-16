@@ -8,6 +8,7 @@ const PickupSelector = ({
   onDateChange,
   onTimeChange,
   lockedDate,
+  showReviewNotes = true,
 }) => {
   const [dateError, setDateError] = useState('');
   const [timeError, setTimeError] = useState('');
@@ -26,6 +27,25 @@ const PickupSelector = ({
     const [y, m, d] = yyyyMmDd.split('-').map(Number);
     return new Date(y, m - 1, d);
   };
+
+  const ordinal = (n) => {
+    const v = n % 100;
+    if (v >= 11 && v <= 13) return `${n}th`;
+    if (n % 10 === 1) return `${n}st`;
+    if (n % 10 === 2) return `${n}nd`;
+    if (n % 10 === 3) return `${n}rd`;
+    return `${n}th`;
+  };
+
+  const formatLongDate = (yyyyMmDd) => {
+    if (!yyyyMmDd) return '';
+    const date = parseLocal(yyyyMmDd);
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    return `${weekday}, ${month} ${ordinal(date.getDate())}`;
+  };
+
+  const lockedDateLabel = locked ? formatLongDate(lockedDate) : '';
 
   // --- 24h cutoff ---
   const minDateTime = useMemo(() => {
@@ -135,6 +155,9 @@ const PickupSelector = ({
         <div className="pickup-field">
           <label htmlFor="pickup-date" className="pickup-label">
             Pickup Date
+            {locked && lockedDateLabel ? (
+              <span className="pickup-label-date"> - {lockedDateLabel}</span>
+            ) : null}
           </label>
 
           <input
@@ -149,11 +172,11 @@ const PickupSelector = ({
             onBlur={handleDateBlur}
           />
 
-          <p className="pickup-hint">
-            {locked
-              ? 'Sunday box date is set for your subscription.'
-              : 'Pickups require at least 24 hours\u0027 notice.'}
-          </p>
+          {!locked ? (
+            <p className="pickup-hint">
+              Pickups require at least 24 hours&apos; notice.
+            </p>
+          ) : null}
 
           {dateError && (
             <p className="pickup-error">{dateError}</p>
@@ -198,10 +221,12 @@ const PickupSelector = ({
         </div>
       </div>
 
-      <div className="general-text">
-        <p>Please review your order details and pickup time before continuing.</p>
-        <p>Once payment is processed, orders cannot be modified or cancelled.</p>
-      </div>
+      {showReviewNotes ? (
+        <div className="general-text">
+          <p>Please review your order details and pickup time before continuing.</p>
+          <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+        </div>
+      ) : null}
     </section>
   );
 };

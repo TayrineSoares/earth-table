@@ -155,7 +155,7 @@ export default function DeliverySelector({
 
           <p className="pickup-hint">
             {locked
-              ? 'Sunday box date is set for your subscription. Delivery window is 11:00 AM – 6:00 PM.'
+              ? 'Subscription delivery is on Sundays. Delivery window is 11:00 AM – 6:00 PM.'
               : 'Deliveries require at least 24 hours\u0027 notice. Delivery window is 11:00 AM – 6:00 PM.'}
           </p>
 

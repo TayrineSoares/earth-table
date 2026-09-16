@@ -6,6 +6,12 @@
   display: block;
   margin-bottom: 8px;
 }
+
+.pickup-label-date {
+  font-variant: normal;
+  font-weight: 400;
+  color: #000;
+}
 .pickup-grid {
   margin-top: px;
   padding-top: 15px;

@@ -145,6 +145,114 @@
   display: inline-block;
 }
 
+.subscribe-summary-heading {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 24px;
+  color: #000;
+  margin: 16px 0 8px;
+  border-bottom: 2px solid #EDA413;
+  display: inline-block;
+}
+
+.subscribe-summary-empty {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  font-variant: small-caps;
+  color: #757575;
+  margin: 0 0 8px;
+}
+
+.subscribe-cart-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+}
+
+.subscribe-cart-heading-row .subscribe-list-heading {
+  margin: 0;
+}
+
+.subscribe-cart-heading-row .subscribe-inline-link {
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.subscribe-savings-line {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.3;
+  color: #BE7200;
+  margin: 0 0 20px;
+  max-width: 42ch;
+}
+
+.subscribe-cart-page .checkout-summary-text {
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal .subtotal,
+.subscribe-cart-page .checkout-summary-tax .tax {
+  height: auto;
+  line-height: 1.3;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal {
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.subscribe-cart-items {
+  margin-top: 12px;
+  margin-bottom: 80px;
+  margin-left: 48px;
+}
+
+.subscribe-cart-items .subscribe-list-heading {
+  font-size: 24px;
+}
+
+.subscribe-cart-items .checkout-items-container {
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.subscribe-cart-items .checkout-product-image {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.subscribe-cart-items .checkout-item-title {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.subscribe-cart-items .checkout-item-price {
+  font-size: 15px;
+  margin-top: 0;
+}
+
+.subscribe-dates-block {
+  margin: 16px 0 8px;
+}
+
 .subscribe-dates-block p,
 .subscribe-recurring {
   margin: 8px 0;
@@ -209,6 +317,15 @@
   .subscribe-flow-bar-actions {
     width: 100%;
   }
+
+  .subscribe-cart-items {
+    margin-left: 0;
+  }
+
+  .subscribe-cart-items .checkout-items-container {
+    flex-direction: row;
+    width: 100%;
+  }
 }
 
 @media (max-width: 768px) {
@@ -219,6 +336,16 @@
 
   .subscribe-list-heading {
     font-size: 28px;
+  }
+
+  .subscribe-summary-heading {
+    font-size: 20px;
+  }
+
+  .subscribe-cart-heading-row {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .subscribe-flow-page .subscribe-catalog-grid {
@@ -243,6 +370,15 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+  }
+
+  .subscribe-cart-items {
+    margin-left: 0;
+    margin-bottom: 40px;
+  }
+
+  .subscribe-savings-line {
+    max-width: 100%;
   }
 }
 

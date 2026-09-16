@@ -13,7 +13,7 @@ import {
   fetchSubscriptionDates,
   formatPlanPrice,
 } from '../helpers/subscriptionHelpers'
-import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
+import { addonSubtotalCents, mealALaCarteCents, mealsExact } from '../helpers/subscriptionCart'
 
 const HST_RATE = 0.13
 
@@ -221,7 +221,7 @@ const SubscribeCart = ({ user, subCart }) => {
   }
 
   return (
-    <div className="checkout-page">
+    <div className="checkout-page subscribe-cart-page">
       <div className="checkout-page-header-image">
         <img src={checkoutImage} className="checkout-image" alt="" />
       </div>
@@ -230,9 +230,11 @@ const SubscribeCart = ({ user, subCart }) => {
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
             <p className="checkout-summary-text">Your box</p>
-            <p className="number-of-items">
-              {subCart.planName} · {subCart.mealCount} meals
-            </p>
+            {savedCents > 0 ? (
+              <p className="subscribe-savings-line">
+                You saved ${(savedCents / 100).toFixed(2)} by ordering through a subscription plan.
+              </p>
+            ) : null}
 
             <div className="general-text" style={{ margin: '10px 0 16px' }}>
               <label style={{ marginRight: 16 }}>
@@ -293,14 +295,29 @@ const SubscribeCart = ({ user, subCart }) => {
               ) : null}
             </div>
 
+            <p className="subscribe-summary-heading">Weekly Plan</p>
             <div className="checkout-summary-subtotal">
-              <p className="subtotal">Plan</p>
+              <p className="subtotal">
+                {subCart.mealCount} {Number(subCart.mealCount) === 1 ? 'meal' : 'meals'} plan
+              </p>
               <p className="subtotal">{formatPlanPrice(planCents)}</p>
             </div>
-            <div className="checkout-summary-subtotal">
-              <p className="subtotal">Add-ons</p>
-              <p className="subtotal">${(addonCents / 100).toFixed(2)}</p>
-            </div>
+            <p className="subscribe-summary-heading">Add-ons</p>
+            {subCart.addons.length === 0 ? (
+              <p className="subscribe-summary-empty">None this week.</p>
+            ) : (
+              subCart.addons.map((item) => (
+                <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
+                  <p className="subtotal">
+                    {item.slug}
+                    {item.quantity > 1 ? ` × ${item.quantity}` : ''}
+                  </p>
+                  <p className="subtotal">
+                    ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                  </p>
+                </div>
+              ))
+            )}
             {promoResult?.valid ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
@@ -308,11 +325,6 @@ const SubscribeCart = ({ user, subCart }) => {
                 </p>
                 <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
               </div>
-            ) : null}
-            {savedCents > 0 ? (
-              <p className="subscribe-helper">
-                You saved ${(savedCents / 100).toFixed(2)} by ordering a subscription plan.
-              </p>
             ) : null}
 
             {fulfillment === 'delivery' ? (
@@ -350,20 +362,6 @@ const SubscribeCart = ({ user, subCart }) => {
               <p className="total">${(grandTotalCents / 100).toFixed(2)}</p>
             </div>
 
-            {dates ? (
-              <div className="subscribe-dates-block general-text">
-                <p>Next cutoff: {dates.cutoff_label}</p>
-                <p>First delivery: {dates.first_delivery_label}</p>
-                {dates.cutoff_passed ? (
-                  <p>This week&apos;s cutoff has passed. This Sunday is not available.</p>
-                ) : null}
-              </div>
-            ) : null}
-
-            <p className="subscribe-recurring general-text">
-              Your plan renews automatically every week. You can change your meals anytime before Thursday at 5:00 PM, manage or cancel anytime from My Subscriptions.
-            </p>
-
             {fulfillment === 'pickup' ? (
               <PickupSelector
                 pickupDate={pickupDate}
@@ -371,6 +369,7 @@ const SubscribeCart = ({ user, subCart }) => {
                 onDateChange={setPickupDate}
                 onTimeChange={setPickupTime}
                 lockedDate={lockedDate}
+                showReviewNotes={false}
               />
             ) : (
               <DeliverySelector
@@ -400,6 +399,28 @@ const SubscribeCart = ({ user, subCart }) => {
               />
             </div>
 
+            {fulfillment === 'pickup' ? (
+              <div className="general-text">
+                <p>Please review your order details and pickup time before continuing.</p>
+                <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+              </div>
+            ) : null}
+
+            {dates ? (
+              <div className="subscribe-dates-block general-text">
+                {dates.cutoff_passed ? (
+                  <p>This week&apos;s cutoff has passed. This Sunday is not available.</p>
+                ) : (
+                  <p>You can change this week&apos;s meals until {dates.cutoff_label}.</p>
+                )}
+                <p>First delivery: {dates.first_delivery_label}</p>
+                <p>Your plan renews automatically every week.</p>
+                <p>
+                  You can change your meals, manage, or cancel anytime before Thursday at 5:00 PM from My Subscriptions.
+                </p>
+              </div>
+            ) : null}
+
             <div className="general-text">
               <input
                 type="checkbox"
@@ -428,13 +449,13 @@ const SubscribeCart = ({ user, subCart }) => {
             </button>
           </div>
 
-          <div className="checkout-items">
-            <p className="subscribe-list-heading">Meals</p>
-            <p className="subscribe-helper">
+          <div className="checkout-items subscribe-cart-items">
+            <div className="subscribe-cart-heading-row">
+              <p className="subscribe-list-heading">Your Weekly Plan</p>
               <Link className="subscribe-inline-link" to={`/subscribe/${subCart.planId}/meals`}>
                 Edit meals
               </Link>
-            </p>
+            </div>
             {subCart.meals.map((item) => (
               <div className="checkout-items-container" key={`meal-${item.id}`}>
                 <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
@@ -447,12 +468,12 @@ const SubscribeCart = ({ user, subCart }) => {
               </div>
             ))}
 
-            <p className="subscribe-list-heading">Add-ons</p>
-            <p className="subscribe-helper">
+            <div className="subscribe-cart-heading-row">
+              <p className="subscribe-list-heading">This Week Add-ons</p>
               <Link className="subscribe-inline-link" to={`/subscribe/${subCart.planId}/addons`}>
                 Edit add-ons
               </Link>
-            </p>
+            </div>
             {subCart.addons.length === 0 ? (
               <p className="general-text">No add-ons this week.</p>
             ) : (
