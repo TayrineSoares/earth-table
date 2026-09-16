@@ -11,6 +11,7 @@ const {
   renderOwnerOrderEmail,
   renderPartnerCodeUsedEmail,
 } = require('./src/utils/emailTemplates');
+const { completeSubscriptionSignup } = require('./src/queries/subscriptionCheckout');
 
 const categoriesRouter = require('./src/routes/categoriesRoutes');
 const productsRouter = require('./src/routes/productsRoutes');
@@ -96,6 +97,12 @@ const stripeWebhookHandler = async (request, response) => {
     console.log('[webhook] checkout.session.completed received');
     const session = event.data.object;
     const md = session.metadata || {};
+
+    // Subscription signups must not create a kitchen order (those wait until Thursday lock).
+    if (String(md.kind || '') === 'subscription') {
+      await completeSubscriptionSignup(session);
+      return response.status(200).send('ok');
+    }
 
     // Idempotency guard: bail if we already created an order for this session
     const existing = await getOrderByStripeSessionId(session.id);

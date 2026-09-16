@@ -12,6 +12,7 @@ import {
   fetchMySubscriptions,
   fetchSubscriptionDates,
   formatPlanPrice,
+  startSubscriptionCheckout,
 } from '../helpers/subscriptionHelpers'
 import { addonSubtotalCents, mealALaCarteCents, mealsExact } from '../helpers/subscriptionCart'
 
@@ -38,6 +39,7 @@ const SubscribeCart = ({ user, subCart }) => {
   const [promoResult, setPromoResult] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
   const [lastValidatedCode, setLastValidatedCode] = useState('')
+  const [isPaying, setIsPaying] = useState(false)
 
   useEffect(() => {
     if (!subCart.planId) {
@@ -195,18 +197,40 @@ const SubscribeCart = ({ user, subCart }) => {
         Boolean(deliveryDate) &&
         specialNote.trim().length >= 8
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!user) {
       navigate(`/login?next=${encodeURIComponent('/subscribe/cart')}`)
       return
     }
-    if (!agreedToPrivacy || !fulfillmentReady) return
-    setDialog({
-      icon: 'mail',
-      title: 'Payment is next',
-      body: 'Your box is ready. Charging the card is the next step — nothing has been billed yet.',
-      primaryLabel: 'Got it',
-    })
+    if (!agreedToPrivacy || !fulfillmentReady || isPaying) return
+    setIsPaying(true)
+    try {
+      const data = await startSubscriptionCheckout({
+        userId: user.id,
+        email: user.email,
+        planId: subCart.planId,
+        meals: subCart.meals.map((item) => ({ id: item.id, quantity: item.quantity })),
+        addons: subCart.addons.map((item) => ({ id: item.id, quantity: item.quantity })),
+        delivery: fulfillment === 'delivery',
+        delivery_postal_code: postalCode,
+        pickup_time_slot: pickupTime,
+        special_note: specialNote,
+        promoCode: promoResult?.valid ? lastValidatedCode : '',
+      })
+      if (!data?.url) {
+        throw new Error('Checkout did not return a payment link.')
+      }
+      window.location.href = data.url
+    } catch (err) {
+      console.error(err)
+      setIsPaying(false)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not start payment',
+        body: err.message || 'Try again in a moment.',
+        primaryLabel: 'OK',
+      })
+    }
   }
 
   if (isLoading) {
@@ -442,10 +466,10 @@ const SubscribeCart = ({ user, subCart }) => {
             <button
               type="button"
               className="checkout-button"
-              disabled={user ? (!agreedToPrivacy || !fulfillmentReady) : false}
+              disabled={user ? (!agreedToPrivacy || !fulfillmentReady || isPaying) : false}
               onClick={handleConfirm}
             >
-              {user ? 'Confirm & Subscribe' : 'Sign in to subscribe'}
+              {user ? (isPaying ? 'Redirecting…' : 'Confirm & Subscribe') : 'Sign in to subscribe'}
             </button>
           </div>
 

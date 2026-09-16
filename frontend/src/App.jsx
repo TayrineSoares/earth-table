@@ -9,6 +9,7 @@ import {
   adoptGuestSubCart,
   bumpAddon,
   bumpMeal,
+  emptySubCart,
   readSubCart,
   totalQty,
   writeSubCart,
@@ -72,8 +73,27 @@ const App = () => {
     setShowSubCartPopup(count > 0);
   };
 
+  const wipeSubCart = (currentUser) => {
+    const empty = emptySubCart();
+    setSubCart(empty);
+    setShowSubCartPopup(false);
+    writeSubCart(null, empty);
+    if (currentUser) writeSubCart(currentUser.id, empty);
+  };
+
+  const isALaCarteSuccess = () =>
+    sessionStorage.getItem('clear_cart_after_order') ||
+    (window.location.pathname.startsWith('/confirmation')
+      && !window.location.pathname.startsWith('/subscribe'));
+
+  const isSubSuccess = () =>
+    sessionStorage.getItem('clear_sub_cart_after_subscribe') ||
+    window.location.pathname.startsWith('/subscribe/confirmation');
+
   useEffect(() => {
-    const fromCheckout = window.location.pathname.startsWith('/confirmation');
+    const fromCheckout = window.location.pathname.startsWith('/confirmation')
+      && !window.location.pathname.startsWith('/subscribe');
+    const fromSubCheckout = window.location.pathname.startsWith('/subscribe/confirmation');
     if (fromCheckout) {
       sessionStorage.setItem('clear_cart_after_order', '1');
       setCart([]);
@@ -83,20 +103,26 @@ const App = () => {
       const guestCart = readStoredCart('cart_guest');
       setCart(guestCart);
       setShowCartPopup(guestCart.length > 0);
-      const guestSub = readSubCart(null);
-      setSubCart(guestSub);
-      setShowSubCartPopup(totalQty(guestSub.meals) + totalQty(guestSub.addons) > 0);
+      if (!fromSubCheckout && !sessionStorage.getItem('clear_sub_cart_after_subscribe')) {
+        const guestSub = readSubCart(null);
+        setSubCart(guestSub);
+        setShowSubCartPopup(totalQty(guestSub.meals) + totalQty(guestSub.addons) > 0);
+      }
+    }
+
+    if (fromSubCheckout) {
+      sessionStorage.setItem('clear_sub_cart_after_subscribe', '1');
+      setSubCart(emptySubCart());
+      setShowSubCartPopup(false);
+      writeSubCart(null, emptySubCart());
     }
   
     // 2. Then get user session asynchronously and load user cart if logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
-  
-      if (
-        sessionStorage.getItem('clear_cart_after_order') ||
-        window.location.pathname.startsWith('/confirmation')
-      ) {
+
+      if (isALaCarteSuccess()) {
         setCart([]);
         setShowCartPopup(false);
         localStorage.setItem('cart_guest', JSON.stringify([]));
@@ -104,6 +130,15 @@ const App = () => {
           localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify([]));
         }
         sessionStorage.removeItem('clear_cart_after_order');
+        if (isSubSuccess()) wipeSubCart(currentUser);
+        sessionStorage.removeItem('clear_sub_cart_after_subscribe');
+        return;
+      }
+
+      if (isSubSuccess()) {
+        wipeSubCart(currentUser);
+        sessionStorage.removeItem('clear_sub_cart_after_subscribe');
+        if (currentUser) adoptCartForUser(currentUser);
         return;
       }
 
@@ -118,10 +153,7 @@ const App = () => {
       const currentUser = session?.user || null;
       setUser(currentUser);
 
-      if (
-        sessionStorage.getItem('clear_cart_after_order') ||
-        window.location.pathname.startsWith('/confirmation')
-      ) {
+      if (isALaCarteSuccess()) {
         setCart([]);
         setShowCartPopup(false);
         localStorage.setItem('cart_guest', JSON.stringify([]));
@@ -129,6 +161,15 @@ const App = () => {
           localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify([]));
         }
         sessionStorage.removeItem('clear_cart_after_order');
+        if (isSubSuccess()) wipeSubCart(currentUser);
+        sessionStorage.removeItem('clear_sub_cart_after_subscribe');
+        return;
+      }
+
+      if (isSubSuccess()) {
+        wipeSubCart(currentUser);
+        sessionStorage.removeItem('clear_sub_cart_after_subscribe');
+        if (currentUser) adoptCartForUser(currentUser);
         return;
       }
   
@@ -230,6 +271,11 @@ const App = () => {
     setShowSubCartPopup(true);
   };
 
+  const clearSubCart = () => {
+    wipeSubCart(user);
+    sessionStorage.setItem('clear_sub_cart_after_subscribe', '1');
+  };
+
   const clearCart = () => {
     setCart([]);
     setShowCartPopup(false);
@@ -258,6 +304,7 @@ const App = () => {
         showCartPopup={showCartPopup}
         setShowCartPopup={setShowCartPopup}
         clearCart={clearCart}
+        clearSubCart={clearSubCart}
         subCart={subCart}
         setSubCart={setSubCart}
         bumpSubMeal={bumpSubMeal}

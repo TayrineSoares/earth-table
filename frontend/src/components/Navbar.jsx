@@ -133,6 +133,15 @@ const Navbar = ({ user, onLogout, cart }) => {
                         ORDER HISTORY
                       </NavLink>
                     </li>
+                    <li>
+                      <NavLink
+                        to="/my-subscriptions"
+                        className="dropdown-link"
+                        onClick={() => handleNavClick()}
+                      >
+                        MY SUBSCRIPTIONS
+                      </NavLink>
+                    </li>
                     {isAdmin && (
                       <li>
                         <NavLink

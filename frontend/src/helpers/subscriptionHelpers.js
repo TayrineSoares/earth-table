@@ -66,6 +66,38 @@ const fetchSubscriptionDates = async () => {
   return parseJson(res);
 };
 
+const startSubscriptionCheckout = async (body) => {
+  const res = await fetch('/api/subscriptions/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return parseJson(res);
+};
+
+const fetchSubscriptionSignup = async (sessionId) => {
+  const res = await fetch(`/api/subscriptions/signup/${encodeURIComponent(sessionId)}`);
+  return parseJson(res);
+};
+
+const updateSubscriptionMeals = async (userId, subscriptionId, meals) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/meals`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, meals }),
+  });
+  return parseJson(res);
+};
+
+const updateSubscriptionFulfillment = async (userId, subscriptionId, body) => {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/fulfillment`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, ...body }),
+  });
+  return parseJson(res);
+};
+
 const formatPlanPrice = (cents) => {
   const n = Number(cents) || 0;
   return `$${(n / 100).toFixed(2)}`;
@@ -101,6 +133,10 @@ export {
   fetchSubscriptionPlan,
   fetchMySubscriptions,
   fetchSubscriptionDates,
+  startSubscriptionCheckout,
+  fetchSubscriptionSignup,
+  updateSubscriptionMeals,
+  updateSubscriptionFulfillment,
   formatPlanPrice,
   dollarsToCents,
   centsToDollarInput,

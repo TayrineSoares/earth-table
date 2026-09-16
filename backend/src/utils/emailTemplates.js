@@ -970,6 +970,58 @@ ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
   return { subject, html, text };
 }
 
+/**
+ * First-week subscription welcome. Keep it short — meals can still change until cutoff.
+ */
+function renderSubscriptionWelcomeEmail({
+  firstName,
+  planName,
+  mealCount,
+  delivery,
+  deliveryLabel,
+  pickupSlot,
+  cutoffLabel,
+} = {}) {
+  const name = firstName || 'there';
+  const plan = planName || 'weekly plan';
+  const meals = Number(mealCount) || 0;
+  const mealCopy = meals ? `${meals} ${meals === 1 ? 'meal' : 'meals'}` : 'meals';
+  const fulfillment = delivery
+    ? `Delivery on ${deliveryLabel || 'Sunday'}`
+    : `Pickup on ${deliveryLabel || 'Sunday'}${pickupSlot ? `, ${pickupSlot}` : ''}`;
+
+  const subject = `You're subscribed — ${plan}`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1("You're subscribed")}
+      ${intro(`Hi ${name}, your ${plan} is confirmed. This week is already paid.`)}
+      ${card(kvTable(`
+        ${kvRow("Plan", `${plan} · ${mealCopy}`)}
+        ${kvRow("This Sunday", fulfillment)}
+        ${kvRow("Change meals until", cutoffLabel || "Thursday at 5:00 PM", { last: true })}
+      `))}
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews automatically every week. Manage meals and pickup or delivery from My Subscriptions before Thursday at 5:00 PM.</p>
+  `, {
+    preheader: `Your ${plan} subscription is confirmed.`,
+    replyOk: true,
+  });
+
+  const text = `You're subscribed
+
+Hi ${name}, your ${plan} is confirmed. This week is already paid.
+
+Plan: ${plan} · ${mealCopy}
+This Sunday: ${fulfillment}
+Change meals until: ${cutoffLabel || 'Thursday at 5:00 PM'}
+
+Your plan renews automatically every week. Manage meals from My Subscriptions before Thursday at 5:00 PM.
+
+Questions? Email hello@earthtableco.ca`;
+
+  return { subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
@@ -979,5 +1031,6 @@ module.exports = {
   renderPartnerCodeUsedEmail,
   renderPartnerMonthlyInvoiceEmail,
   renderAdminMonthlyInvoiceEmail,
+  renderSubscriptionWelcomeEmail,
   getEmailLogoUrl,
 };

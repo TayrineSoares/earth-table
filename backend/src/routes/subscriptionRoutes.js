@@ -12,7 +12,13 @@ const {
   getSettings,
   updateSettings,
   getPublicSignupInfo,
+  replaceOpenCyclePlanItems,
+  updateOpenCycleFulfillment,
 } = require('../queries/subscription');
+const {
+  createSubscriptionCheckout,
+  getSignupBySessionId,
+} = require('../queries/subscriptionCheckout');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -52,6 +58,50 @@ router.get('/mine/:userId', async (req, res) => {
     res.json(rows);
   } catch (err) {
     handleError(res, err, '[GET /subscriptions/mine/:userId]');
+  }
+});
+
+router.get('/signup/:sessionId', async (req, res) => {
+  try {
+    const result = await getSignupBySessionId(req.params.sessionId);
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/signup/:sessionId]');
+  }
+});
+
+router.post('/checkout', async (req, res) => {
+  try {
+    const result = await createSubscriptionCheckout(req.body || {});
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[POST /subscriptions/checkout]');
+  }
+});
+
+router.patch('/:id/meals', async (req, res) => {
+  try {
+    const result = await replaceOpenCyclePlanItems(
+      req.body?.userId,
+      req.params.id,
+      req.body?.meals
+    );
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/meals]');
+  }
+});
+
+router.patch('/:id/fulfillment', async (req, res) => {
+  try {
+    const result = await updateOpenCycleFulfillment(
+      req.body?.userId,
+      req.params.id,
+      req.body || {}
+    );
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[PATCH /subscriptions/:id/fulfillment]');
   }
 });
 

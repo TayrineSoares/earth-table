@@ -165,15 +165,218 @@ async function subscriberCountsByPlan() {
   return counts;
 }
 
+function canEditCycle(cycle) {
+  if (!cycle || cycle.status !== 'open' || !cycle.cutoff_at) return false;
+  return Date.now() < new Date(cycle.cutoff_at).getTime();
+}
+
+function pickCurrentCycle(cycles) {
+  const rows = cycles || [];
+  const open = rows.filter((row) => row.status === 'open');
+  const pool = open.length ? open : rows;
+  return pool.sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
+}
+
 async function listMine(userId) {
   if (!userId) throw new SubscriptionError(400, 'User id is required.');
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('id, status, plan_id, label')
+    .select(`
+      id, status, plan_id, label, delivery, delivery_postal_code, pickup_time_slot, special_note,
+      created_at,
+      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
+    `)
     .eq('user_id', userId)
-    .in('status', ['active', 'paused']);
+    .in('status', ['active', 'paused'])
+    .order('created_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+
+  const subs = data || [];
+  if (!subs.length) return [];
+
+  const ids = subs.map((row) => row.id);
+  const { data: cycles, error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .select(`
+      id, subscription_id, status, cutoff_at, delivery_date, pickup_date, delivery,
+      delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
+      plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
+      subscription_cycle_items (
+        id, product_id, quantity, unit_price_cents, kind,
+        products ( id, slug, image_url, is_available )
+      )
+    `)
+    .in('subscription_id', ids);
+  if (cycleErr) throw cycleErr;
+
+  const bySub = {};
+  for (const cycle of cycles || []) {
+    if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
+    bySub[cycle.subscription_id].push(cycle);
+  }
+
+  return subs.map((sub) => {
+    const cycle = pickCurrentCycle(bySub[sub.id] || []);
+    return {
+      ...sub,
+      cycle,
+      can_edit: canEditCycle(cycle),
+    };
+  });
+}
+
+async function getOwnedSubscription(userId, subscriptionId) {
+  if (!userId) throw new SubscriptionError(400, 'Sign in to manage subscriptions.');
+  if (!subscriptionId) throw new SubscriptionError(400, 'Subscription id is required.');
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*, subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )')
+    .eq('id', subscriptionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new SubscriptionError(404, 'Subscription not found.');
+  return data;
+}
+
+async function getOpenCycle(subscriptionId) {
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .eq('status', 'open')
+    .order('delivery_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+function assertCycleEditable(cycle) {
+  if (!cycle) {
+    throw new SubscriptionError(400, "This week's box is not open for edits.");
+  }
+  if (!canEditCycle(cycle)) {
+    throw new SubscriptionError(400, 'The Thursday 5:00 PM cutoff has passed for this week.');
+  }
+}
+
+async function replaceOpenCyclePlanItems(userId, subscriptionId, meals) {
+  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
+  const sub = await getOwnedSubscription(userId, subscriptionId);
+  const cycle = await getOpenCycle(sub.id);
+  assertCycleEditable(cycle);
+
+  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const lines = qtyLines(meals);
+  const mealQty = lines.reduce((sum, line) => sum + line.quantity, 0);
+  if (mealQty !== Number(plan.meal_count)) {
+    throw new SubscriptionError(
+      400,
+      `Pick exactly ${plan.meal_count} meal${plan.meal_count === 1 ? '' : 's'} for this plan.`
+    );
+  }
+
+  const { data: existingPlan, error: existingErr } = await supabase
+    .from('subscription_cycle_items')
+    .select('product_id')
+    .eq('cycle_id', cycle.id)
+    .eq('kind', 'plan');
+  if (existingErr) throw existingErr;
+
+  const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
+  const resolved = await resolveLines(lines, { kind: 'plan', allowUnavailableIds });
+
+  const { error: delErr } = await supabase
+    .from('subscription_cycle_items')
+    .delete()
+    .eq('cycle_id', cycle.id)
+    .eq('kind', 'plan');
+  if (delErr) throw delErr;
+
+  const rows = resolved.map((item) => ({
+    cycle_id: cycle.id,
+    product_id: item.product_id,
+    quantity: item.quantity,
+    unit_price_cents: item.unit_price_cents,
+    kind: 'plan',
+  }));
+  if (rows.length) {
+    const { error: insErr } = await supabase.from('subscription_cycle_items').insert(rows);
+    if (insErr) throw insErr;
+  }
+
+  return { ok: true };
+}
+
+async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
+  const { PICKUP_SLOTS } = require('./subscriptionCheckout');
+  const { getServerDeliveryQuote } = require('../lib/deliveryQuote');
+  const sub = await getOwnedSubscription(userId, subscriptionId);
+  const cycle = await getOpenCycle(sub.id);
+  assertCycleEditable(cycle);
+
+  const delivery = !!body.delivery;
+  const specialNote = String(body.special_note || '').trim() || null;
+  const pickupSlot = String(body.pickup_time_slot || '').trim();
+
+  const patch = {
+    delivery,
+    special_note: specialNote,
+  };
+
+  if (delivery) {
+    if (!specialNote || specialNote.length < 8) {
+      throw new SubscriptionError(400, 'Please enter your full delivery address.');
+    }
+    const quote = await getServerDeliveryQuote(body.delivery_postal_code);
+    if (!quote.ok) {
+      throw new SubscriptionError(
+        400,
+        quote.reason === 'OUT_OF_ZONE'
+          ? 'Delivery not available for this address.'
+          : 'Invalid delivery postal code.'
+      );
+    }
+    let postal = String(body.delivery_postal_code || '').toUpperCase().replace(/\s+/g, '');
+    if (postal.length === 6) postal = `${postal.slice(0, 3)} ${postal.slice(3)}`;
+    patch.delivery_postal_code = postal;
+    patch.pickup_time_slot = null;
+    patch.delivery_fee_cents = quote.fee_cents;
+  } else {
+    if (!PICKUP_SLOTS.has(pickupSlot)) {
+      throw new SubscriptionError(400, 'Choose a pickup time.');
+    }
+    patch.delivery_postal_code = null;
+    patch.pickup_time_slot = pickupSlot;
+    patch.delivery_fee_cents = 0;
+  }
+
+  const { error: subErr } = await supabase
+    .from('subscriptions')
+    .update({
+      delivery: patch.delivery,
+      delivery_postal_code: patch.delivery_postal_code,
+      pickup_time_slot: patch.pickup_time_slot,
+      special_note: patch.special_note,
+    })
+    .eq('id', sub.id);
+  if (subErr) throw subErr;
+
+  const cyclePatch = {
+    delivery: patch.delivery,
+    delivery_postal_code: patch.delivery_postal_code,
+    pickup_time_slot: patch.pickup_time_slot,
+    special_note: patch.special_note,
+    delivery_fee_cents: patch.delivery_fee_cents,
+  };
+  const { error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .update(cyclePatch)
+    .eq('id', cycle.id);
+  if (cycleErr) throw cycleErr;
+
+  return { ok: true };
 }
 
 async function countActiveSubscribers(planId) {
@@ -329,4 +532,6 @@ module.exports = {
   getSettings,
   updateSettings,
   getPublicSignupInfo,
+  replaceOpenCyclePlanItems,
+  updateOpenCycleFulfillment,
 };

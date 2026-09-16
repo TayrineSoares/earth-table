@@ -8,6 +8,9 @@ import {
   SubscribeMeals,
   SubscribeAddons,
   SubscribeCart,
+  SubscribeConfirmation,
+  MySubscriptions,
+  SubscribeEditMeals,
   Cart,
   Confirmation,
   Admin,
@@ -36,6 +39,7 @@ const AppRoutes = ({
   removeAll,
   user,
   clearCart,
+  clearSubCart,
   subCart,
   setSubCart,
   bumpSubMeal,
@@ -43,7 +47,8 @@ const AppRoutes = ({
   showSubCartPopup,
 }) => {
   const location = useLocation();
-  const onSubscribeSignup = location.pathname.startsWith('/subscribe/');
+  const onSubscribeSignup = location.pathname.startsWith('/subscribe/')
+    && location.pathname !== '/subscribe/confirmation';
   const onSubscribeCart = location.pathname === '/subscribe/cart';
 
   return (
@@ -76,6 +81,18 @@ const AppRoutes = ({
           <Route
             path="/subscribe/cart"
             element={<SubscribeCart user={user} subCart={subCart} />}
+          />
+          <Route
+            path="/subscribe/confirmation"
+            element={<SubscribeConfirmation clearSubCart={clearSubCart} />}
+          />
+          <Route
+            path="/my-subscriptions"
+            element={<MySubscriptions user={user} />}
+          />
+          <Route
+            path="/my-subscriptions/:subscriptionId/meals"
+            element={<SubscribeEditMeals user={user} />}
           />
           <Route
             path="/products/category/:categoryId?"

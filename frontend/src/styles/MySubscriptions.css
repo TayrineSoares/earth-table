@@ -1,0 +1,70 @@
+.my-sub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.my-sub-actions .order-history-button {
+  text-decoration: none;
+}
+
+.my-sub-locked {
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: #757575;
+}
+
+.my-sub-fulfillment {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid #D8C7B0;
+}
+
+.my-sub-fulfillment .order-history-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.my-sub-fulfillment .order-history-button,
+.my-sub-actions .order-history-button {
+  -webkit-appearance: none;
+  appearance: none;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+@media (max-width: 1366px) {
+  .my-subscriptions-page .order-history-title {
+    font-size: 44px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .my-sub-actions .order-history-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .my-sub-actions,
+  .my-sub-fulfillment,
+  .my-sub-fulfillment .special-note-input,
+  .my-sub-fulfillment .order-history-button {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .my-subscriptions-page .order-history-title {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-subscriptions-page .order-history-title {
+    font-size: 26px;
+  }
+}
