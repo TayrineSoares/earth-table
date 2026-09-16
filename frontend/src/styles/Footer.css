@@ -55,6 +55,14 @@
 
 .social-icons {
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.social-icons a {
+  color: inherit;
+  display: inline-flex;
 }
 
 

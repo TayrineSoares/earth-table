@@ -1,4 +1,4 @@
-import { Instagram } from 'lucide-react';
+import { Facebook, Instagram } from 'lucide-react';
 import { Link } from "react-router-dom";
 import '../styles/Footer.css';
 import logoNoBackground from "../assets/images/logoNoBackground.png";
@@ -27,13 +27,21 @@ const Footer = () => {
         <p className="footer-number">(647) 802-9248</p>
         <p className="footer-address">77 Woodstream Blvd, Vaughan, ON</p>
         <div className="social-icons">
-          <a 
+          <a
             href="https://www.instagram.com/earthtable_co/"
-            target="_blank" 
+            target="_blank"
             rel="noopener noreferrer"
             aria-label="Visit Earth Table on Instagram"
           >
             <Instagram size={25} />
+          </a>
+          <a
+            href="https://www.facebook.com/share/1cGrw7myiF/?mibextid=wwXIfr"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit Earth Table on Facebook"
+          >
+            <Facebook size={25} />
           </a>
         </div>
       </div>
