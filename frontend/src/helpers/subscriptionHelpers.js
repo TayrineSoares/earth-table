@@ -85,29 +85,11 @@ const fetchSubscriptionSignup = async (sessionId) => {
   return parseJson(res);
 };
 
-const updateSubscriptionMeals = async (userId, subscriptionId, meals) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/meals`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, meals }),
-  });
-  return parseJson(res);
-};
-
 const updateSubscriptionFulfillment = async (userId, subscriptionId, body) => {
   const res = await fetch(`/api/subscriptions/${subscriptionId}/fulfillment`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, ...body }),
-  });
-  return parseJson(res);
-};
-
-const updateSubscriptionAddons = async (userId, subscriptionId, addons) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/addons`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, addons }),
   });
   return parseJson(res);
 };
@@ -225,9 +207,7 @@ export {
   fetchSubscriptionDates,
   startSubscriptionCheckout,
   fetchSubscriptionSignup,
-  updateSubscriptionMeals,
   updateSubscriptionFulfillment,
-  updateSubscriptionAddons,
   updateSubscriptionItems,
   mealsAWeek,
   formatPickupSlot,

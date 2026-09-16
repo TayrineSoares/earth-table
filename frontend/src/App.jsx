@@ -310,7 +310,6 @@ const App = () => {
         bumpSubMeal={bumpSubMeal}
         bumpSubAddon={bumpSubAddon}
         showSubCartPopup={showSubCartPopup}
-        setShowSubCartPopup={setShowSubCartPopup}
       />
       <Footer />
     </div>

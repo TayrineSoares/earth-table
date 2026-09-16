@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react'
+import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import ProductCard from '../pages/ProductCard'
 import '../styles/Products.css'
+
+const SUBSCRIBE_TAG_ICONS = {
+  vegan: <Vegan size={16} />,
+  vegetarian: <LeafyGreen size={16} />,
+  keto: <Ham size={16} />,
+  'dairy free': <MilkOff size={16} />,
+  paleo: <BeanOff size={16} />,
+  'gluten free': <WheatOff size={16} />,
+}
+
+function tagNamesFrom(allTags, tagIds) {
+  return (tagIds || [])
+    .map((id) => (allTags || []).find((tag) => tag.id === id))
+    .filter(Boolean)
+    .map((tag) => tag.name)
+}
 
 /** Menu chips + cards with quantity steppers (meals and add-ons). */
 const SubscribeCatalog = ({
   categories,
   products,
-  getTagNames,
-  tagIcons,
+  allTags,
   quantityFor,
   onIncrement,
   onDecrement,
@@ -58,8 +74,8 @@ const SubscribeCatalog = ({
           <ProductCard
             key={product.id}
             product={product}
-            tagIcons={tagIcons}
-            getTagNames={getTagNames}
+            tagIcons={SUBSCRIBE_TAG_ICONS}
+            getTagNames={(tagIds) => tagNamesFrom(allTags, tagIds)}
             eager={index < 4}
             quantity={quantityFor(product)}
             onIncrement={onIncrement}

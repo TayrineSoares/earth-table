@@ -33,6 +33,15 @@
   border-top: 2px solid #D8C7B0;
 }
 
+.my-sub-locked {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #BE7200;
+  margin: 12px 0 0;
+}
+
 .my-sub-fulfillment .order-history-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;

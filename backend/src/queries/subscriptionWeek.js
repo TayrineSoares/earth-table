@@ -312,12 +312,9 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
 module.exports = {
   getSignupDates,
   getEditWeek,
-  formatPickupSlot,
   formatFulfillmentLine,
   mealsAWeek,
   mealPlanPhrase,
   formatTorontoStamp,
-  formatCutoffLabel,
-  formatDeliveryLabel,
   torontoYmd,
 };

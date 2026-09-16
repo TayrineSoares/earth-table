@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
-import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
 import '../styles/Products.css'
 import '../styles/SubscribeFlow.css'
@@ -20,15 +19,6 @@ import {
   mealsExact,
   sortPlanMealCategories,
 } from '../helpers/subscriptionCart'
-
-const TAG_ICONS = {
-  vegan: <Vegan size={16} />,
-  vegetarian: <LeafyGreen size={16} />,
-  keto: <Ham size={16} />,
-  'dairy free': <MilkOff size={16} />,
-  paleo: <BeanOff size={16} />,
-  'gluten free': <WheatOff size={16} />,
-}
 
 const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
   const { planId } = useParams()
@@ -97,12 +87,6 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
     }
   }, [planId, setSubCart])
 
-  const getTagNames = (tagIds) =>
-    (tagIds || [])
-      .map((id) => allTags.find((tag) => tag.id === id))
-      .filter(Boolean)
-      .map((tag) => tag.name)
-
   const picked = totalQty(subCart.meals)
   const need = Number(subCart.mealCount) || 0
   const exact = mealsExact(subCart)
@@ -152,8 +136,7 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
               <SubscribeCatalog
                 categories={categories}
                 products={products}
-                getTagNames={getTagNames}
-                tagIcons={TAG_ICONS}
+                allTags={allTags}
                 quantityFor={(product) => lineQty(subCart.meals, product.id)}
                 onIncrement={(product) => bumpSubMeal(product, 1)}
                 onDecrement={(product) => bumpSubMeal(product, -1)}

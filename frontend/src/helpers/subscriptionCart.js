@@ -260,7 +260,6 @@ function addonCategories(categories) {
 }
 
 export {
-  GUEST_KEY,
   emptySubCart,
   readSubCart,
   writeSubCart,
@@ -280,8 +279,6 @@ export {
   mealsExact,
   safeNextPath,
   withNextQuery,
-  isPlanMealCategory,
-  isAddonCategory,
   sortPlanMealCategories,
   addonCategories,
 };

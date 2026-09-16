@@ -1,6 +1,7 @@
 /**
- * Subscription catalog + settings (Phase 1).
- * Later phases add subscriptions / cycles / billing in this same file.
+ * Subscription plans, customer subscriptions, and open-cycle edits.
+ * First-week payment lives in subscriptionCheckout.js.
+ * Recurring Wednesday charge / Thursday lock is not built yet.
  */
 
 const supabase = require('../../supabase/db');
@@ -165,11 +166,6 @@ async function subscriberCountsByPlan() {
   return counts;
 }
 
-function canEditCycle(cycle) {
-  if (!cycle || cycle.status !== 'open' || !cycle.cutoff_at) return false;
-  return Date.now() < new Date(cycle.cutoff_at).getTime();
-}
-
 function pickDisplayCycle(cycles, now = new Date()) {
   const today = torontoYmd(now);
   const rows = [...(cycles || [])];
@@ -303,23 +299,8 @@ async function getOwnedSubscription(userId, subscriptionId) {
   return data;
 }
 
-async function latestCycle(subscriptionId) {
-  const { data, error } = await supabase
-    .from('subscription_cycles')
-    .select('*')
-    .eq('subscription_id', subscriptionId)
-    .order('delivery_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data || null;
-}
-
 async function getOrCreateEditableCycle(sub) {
   const settings = await getSettings();
-  const latest = await latestCycle(sub.id);
-  const display = pickDisplayCycle(latest ? [latest] : [], new Date()) || latest;
-  // latestCycle only returns one row — load all for display pick
   const { data: allCycles, error: allErr } = await supabase
     .from('subscription_cycles')
     .select('*')
@@ -329,10 +310,10 @@ async function getOrCreateEditableCycle(sub) {
   const week = getEditWeek(new Date(), settings || {}, current);
 
   const existing = (allCycles || []).find((row) => row.delivery_date === week.delivery_date);
-  if (existing) return { cycle: existing, week, previous: current };
+  if (existing) return { cycle: existing, week };
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
-  const src = current || latest;
+  const src = current;
   const { data: cycle, error } = await supabase
     .from('subscription_cycles')
     .insert({
@@ -370,7 +351,7 @@ async function getOrCreateEditableCycle(sub) {
     }
   }
 
-  return { cycle, week, previous: current };
+  return { cycle, week };
 }
 
 async function loadCycleItems(cycleId) {
@@ -438,64 +419,6 @@ async function replaceCycleKindItems(cycleId, kind, resolved) {
   if (!rows.length) return;
   const { error: insErr } = await supabase.from('subscription_cycle_items').insert(rows);
   if (insErr) throw insErr;
-}
-
-async function replaceOpenCyclePlanItems(userId, subscriptionId, meals) {
-  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
-  const sub = await getOwnedSubscription(userId, subscriptionId);
-  if (sub.status !== 'active') {
-    throw new SubscriptionError(400, 'This subscription is not active.');
-  }
-  const { cycle, week } = await getOrCreateEditableCycle(sub);
-
-  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
-  const lines = qtyLines(meals);
-  const mealQty = lines.reduce((sum, line) => sum + line.quantity, 0);
-  if (mealQty !== Number(plan.meal_count)) {
-    throw new SubscriptionError(
-      400,
-      `Pick exactly ${plan.meal_count} meal${plan.meal_count === 1 ? '' : 's'} for this plan.`
-    );
-  }
-
-  const { data: existingPlan, error: existingErr } = await supabase
-    .from('subscription_cycle_items')
-    .select('product_id')
-    .eq('cycle_id', cycle.id)
-    .eq('kind', 'plan');
-  if (existingErr) throw existingErr;
-
-  const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
-  const resolved = await resolveLines(lines, { kind: 'plan', allowUnavailableIds });
-  await replaceCycleKindItems(cycle.id, 'plan', resolved);
-
-  try {
-    await notifyCustomerUpdate(userId, sub, cycle, week);
-  } catch (err) {
-    console.warn('[subscriptions] update email failed:', err.message);
-  }
-
-  return { ok: true, week };
-}
-
-async function replaceOpenCycleAddonItems(userId, subscriptionId, addons) {
-  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
-  const sub = await getOwnedSubscription(userId, subscriptionId);
-  if (sub.status !== 'active') {
-    throw new SubscriptionError(400, 'This subscription is not active.');
-  }
-  const { cycle, week } = await getOrCreateEditableCycle(sub);
-  const lines = qtyLines(addons);
-  const resolved = lines.length ? await resolveLines(lines, { kind: 'addon' }) : [];
-  await replaceCycleKindItems(cycle.id, 'addon', resolved);
-
-  try {
-    await notifyCustomerUpdate(userId, sub, cycle, week);
-  } catch (err) {
-    console.warn('[subscriptions] update email failed:', err.message);
-  }
-
-  return { ok: true, week };
 }
 
 /** Save meals and add-ons together so the customer gets one update email. */
@@ -713,8 +636,8 @@ async function getSettings() {
 }
 
 /**
- * Only test_charge_at / test_lock_at are editable from admin in Phase 1.
- * Pass null (or '') to clear and go back to live Wednesday/Thursday 5pm.
+ * Test charge/lock timestamps. Pass null (or '') to clear and use live
+ * Wednesday/Thursday 5:00 PM America/Toronto.
  */
 async function updateSettings(body) {
   const patch = {};
@@ -804,7 +727,6 @@ async function getPublicSignupInfo() {
 }
 
 module.exports = {
-  DEFAULT_PLAN_DESCRIPTION,
   SubscriptionError,
   listPlans,
   getPlanById,
@@ -813,12 +735,9 @@ module.exports = {
   createPlan,
   updatePlan,
   deletePlan,
-  countActiveSubscribers,
   getSettings,
   updateSettings,
   getPublicSignupInfo,
-  replaceOpenCyclePlanItems,
-  replaceOpenCycleAddonItems,
   replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
 };

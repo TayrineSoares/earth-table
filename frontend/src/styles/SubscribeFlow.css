@@ -200,6 +200,7 @@
 }
 
 .subscribe-cart-page .checkout-summary-text {
+  width: auto;
   height: auto;
   margin-bottom: 12px;
 }
