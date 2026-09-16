@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
-import '../styles/SubscribeFlow.css'
 import '../styles/Products.css'
+import '../styles/SubscribeFlow.css'
 import loadingAnimation from '../assets/loading.json'
 import FeedbackDialog from '../components/FeedbackDialog'
 import SubscribeCatalog from '../components/SubscribeCatalog'
@@ -149,10 +149,6 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
                 </p>
               ) : null}
 
-              <p className="subscribe-progress" aria-live="polite">
-                {picked} of {need} meals selected
-              </p>
-
               <SubscribeCatalog
                 categories={categories}
                 products={products}
@@ -165,7 +161,9 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
               />
 
               <div className="subscribe-flow-bar">
-                <p className="subscribe-progress">{picked} of {need} meals selected</p>
+                <p className="subscribe-progress" aria-live="polite">
+                  {picked} of {need} meals selected
+                </p>
                 <button
                   type="button"
                   className="subscribe-select-button"

@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
-import '../styles/SubscribeFlow.css'
 import '../styles/Products.css'
+import '../styles/SubscribeFlow.css'
 import loadingAnimation from '../assets/loading.json'
 import SubscribeCatalog from '../components/SubscribeCatalog'
 import { formatPlanPrice } from '../helpers/subscriptionHelpers'
@@ -106,10 +106,6 @@ const SubscribeAddons = ({ subCart, bumpSubAddon }) => {
             </Link>
           </p>
 
-          <p className="subscribe-progress" aria-live="polite">
-            Add-on subtotal: ${(addonCents / 100).toFixed(2)}
-          </p>
-
           <SubscribeCatalog
             categories={categories}
             products={products}
@@ -122,7 +118,7 @@ const SubscribeAddons = ({ subCart, bumpSubAddon }) => {
           />
 
           <div className="subscribe-flow-bar">
-            <p className="subscribe-progress">
+            <p className="subscribe-progress" aria-live="polite">
               Add-on subtotal: ${(addonCents / 100).toFixed(2)}
             </p>
             <div className="subscribe-flow-bar-actions">

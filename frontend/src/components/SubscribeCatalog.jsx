@@ -53,14 +53,14 @@ const SubscribeCatalog = ({
         ) : null}
       </div>
 
-      <div className="products-container">
+      <div className="products-container subscribe-catalog-grid">
         {visible.map((product, index) => (
           <ProductCard
             key={product.id}
             product={product}
             tagIcons={tagIcons}
             getTagNames={getTagNames}
-            eager={index < 3}
+            eager={index < 4}
             quantity={quantityFor(product)}
             onIncrement={onIncrement}
             onDecrement={onDecrement}
