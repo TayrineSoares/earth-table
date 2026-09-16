@@ -9,6 +9,7 @@ import ProductAdmin from '../components/ProductAdmin';
 import UserAdmin from '../components/UserAdmin';
 import PromoAdmin from '../components/PromoAdmin';
 import PartnerAdmin from '../components/PartnerAdmin';
+import SubscriptionAdmin from '../components/SubscriptionAdmin';
 
 
 const Admin = () => {
@@ -93,6 +94,12 @@ const Admin = () => {
         >
           Partners
         </button>
+        <button 
+          className={activeTab === 'subscriptions' ? 'active' : ''}
+          onClick={() => setActiveTab('subscriptions')}
+        >
+          Subscriptions
+        </button>
       </div>
 
       {/* Active tab section */}
@@ -102,6 +109,7 @@ const Admin = () => {
       {activeTab === 'users' && <UserAdmin currentUserId={user.auth_user_id} />}
       {activeTab === 'promos' && <PromoAdmin />}
       {activeTab === 'partners' && <PartnerAdmin />}
+      {activeTab === 'subscriptions' && <SubscriptionAdmin />}
     </div>
   );
 };

@@ -1,0 +1,101 @@
+.sub-admin-lead,
+.sub-admin-hint {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #000;
+  max-width: 720px;
+  margin: 0 0 1rem;
+  line-height: 1.4;
+}
+
+.sub-admin-hint {
+  color: #757575;
+}
+
+.sub-admin-error {
+  font-family: var(--body-font);
+  color: #9b1c1c;
+  margin: 0 0 1rem;
+}
+
+.sub-admin-h2 {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: 24px;
+  color: #000;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.sub-admin-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sub-admin-price-input {
+  min-width: 90px;
+  width: 100px;
+}
+
+.sub-admin-desc-field,
+.sub-admin-desc-edit {
+  flex: 1 1 220px;
+}
+
+.sub-admin-desc-edit .promo-input {
+  min-width: 160px;
+  flex: 1;
+}
+
+.sub-admin-muted {
+  color: #757575;
+}
+
+.sub-admin-pencil,
+.sub-admin-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #BE7200;
+  font-family: var(--body-font);
+  font-size: 12px;
+}
+
+.sub-admin-pencil {
+  display: inline-flex;
+  align-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+}
+
+.sub-admin-text-btn {
+  text-decoration: underline;
+  font-weight: 500;
+  color: #000;
+}
+
+.sub-admin-text-btn-cancel {
+  font-weight: 400;
+  color: #BE7200;
+}
+
+.sub-admin-pencil:hover,
+.sub-admin-text-btn:hover {
+  color: #EDA413;
+}
+
+@media (max-width: 768px) {
+  .sub-admin-desc-edit {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sub-admin-desc-edit .promo-input,
+  .sub-admin-price-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
