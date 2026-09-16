@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Lottie from 'lottie-react'
+import { PlusCircle, RefreshCw, ShoppingBag, Truck } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
 import subscriptionMeals from '../assets/images/subscription meals.png'
 import loadingAnimation from '../assets/loading.json'
@@ -13,31 +14,26 @@ import {
 
 const HOW_IT_WORKS = [
   {
-    number: '01',
-    title: 'Pick your plan',
+    icon: ShoppingBag,
+    title: 'Choose your plan',
     body: '10, 15, or 20 meals a week. Mix bowls, salads, and main plates in any combination.',
   },
   {
-    number: '02',
-    title: 'Add items',
+    icon: PlusCircle,
+    title: 'Add extra items',
     body: 'Top off any week with snacks, smoothies, or anything else on the menu.',
   },
   {
-    number: '03',
+    icon: Truck,
     title: 'Delivery or pickup',
-    body: 'Your box arrives Sunday at your door, or waits for you at the shop, ready for the week.',
+    body: 'Every Sunday: Delivered to your door, or ready for pickup at our location.',
   },
   {
-    number: '04',
+    icon: RefreshCw,
     title: 'Change it up',
-    body: 'Swap meals, add extras, skip a week, or pause before the 5:00 PM cutoff. No long-term commitment.',
+    body: 'Update your meals and add-ons up to Thursday at 5:00 PM. Need to pause or skip a week? Just let us know by Wednesday. No long-term commitment.',
   },
 ]
-
-function formatPerMeal(priceCents, mealCount) {
-  if (!mealCount) return null
-  return formatPlanPrice(Math.round(Number(priceCents) / mealCount))
-}
 
 const SubscribeAndSave = () => {
   const [plans, setPlans] = useState([])
@@ -113,11 +109,11 @@ const SubscribeAndSave = () => {
                 <p className="subscribe-eyebrow">Weekly subscription</p>
                 <h1 className="subscribe-h1">
                   {savePercent
-                    ? `Eat well all week. Save up to ${savePercent}%.`
-                    : 'Eat well all week.'}
+                    ? `Eat well all week & Save up to ${savePercent}%.`
+                    : 'Eat well all week & Save.'}
                 </h1>
                 <p className="subscribe-subhead">
-                  Choose 10, 15, or 20 chef-made meals a week — bowls, salads, and main plates, mixed however you like. Delivered every Sunday, or ready for pickup.
+                  Choose 10, 15, or 20 meals a week — organic, seed oil free, gluten free, with grass-fed and pasture-raised meat and dairy. Cooked by Chef Selena, delivered every Sunday or ready for pickup.
                 </p>
                 <div className="subscribe-hero-cta-row">
                   <a className="subscribe-select-button" href="#subscribe-plans">
@@ -138,13 +134,16 @@ const SubscribeAndSave = () => {
                 <h2 id="subscribe-how-heading">How it works</h2>
               </div>
               <div className="subscribe-how-steps">
-                {HOW_IT_WORKS.map((step) => (
-                  <article className="subscribe-how-step" key={step.number}>
-                    <p className="subscribe-how-number">{step.number}</p>
-                    <h3 className="subscribe-how-step-title">{step.title}</h3>
-                    <p className="subscribe-how-step-body">{step.body}</p>
-                  </article>
-                ))}
+                {HOW_IT_WORKS.map((step) => {
+                  const Icon = step.icon
+                  return (
+                    <article className="subscribe-how-step" key={step.title}>
+                      <Icon className="subscribe-how-icon" aria-hidden="true" size={40} strokeWidth={1.5} />
+                      <h3 className="subscribe-how-step-title">{step.title}</h3>
+                      <p className="subscribe-how-step-body">{step.body}</p>
+                    </article>
+                  )
+                })}
               </div>
             </section>
 
@@ -168,7 +167,9 @@ const SubscribeAndSave = () => {
                   {sortedPlans.map((plan) => {
                     const mealsPath = `/subscribe/${plan.id}/meals`
                     const popular = plan.meal_count === 15
-                    const perMeal = formatPerMeal(plan.price_cents, plan.meal_count)
+                    const selectClass = popular
+                      ? 'subscribe-select-button'
+                      : 'subscribe-select-button is-ghost'
                     return (
                       <article
                         className={`subscribe-plan-card${popular ? ' is-popular' : ''}`}
@@ -183,20 +184,17 @@ const SubscribeAndSave = () => {
                         <p className="subscribe-plan-price">
                           {formatPlanPrice(plan.price_cents)}/week
                         </p>
-                        {perMeal ? (
-                          <p className="subscribe-plan-unit">{perMeal} per meal</p>
-                        ) : null}
                         <p className="subscribe-plan-desc">{plan.display_description || plan.description}</p>
                         {cutoffPassed ? (
                           <button
                             type="button"
-                            className="subscribe-select-button"
+                            className={selectClass}
                             onClick={() => onSelectPlan(plan)}
                           >
                             Select
                           </button>
                         ) : (
-                          <Link className="subscribe-select-button" to={mealsPath}>
+                          <Link className={selectClass} to={mealsPath}>
                             Select
                           </Link>
                         )}
@@ -206,12 +204,15 @@ const SubscribeAndSave = () => {
                 </div>
               )}
 
-              <p className="subscribe-fine-print">
-                Every plan lets you choose any combination of bowls, salads, and main plates. Make your picks by Thursday at 5:00 PM EST for that Sunday&apos;s box, miss it and we&apos;ll send your previous week&apos;s selections, or you can skip. Cancel by the same cutoff time, no fees.
-                {dates && dates.first_delivery_label
-                  ? ` Next delivery if you subscribe now: ${dates.first_delivery_label}.`
-                  : ''}
-              </p>
+              <div className="subscribe-fine-print">
+                <p>Every plan lets you choose any combination of bowls, salads, and main plates.</p>
+                <p>Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week&apos;s box.</p>
+                <p>If you don&apos;t make changes on time, we&apos;ll send your previous week&apos;s selections.</p>
+                <p>Pause or cancel by Wednesday, no fees.</p>
+                {dates && dates.first_delivery_label ? (
+                  <p>Next delivery if you subscribe now: {dates.first_delivery_label}.</p>
+                ) : null}
+              </div>
             </section>
           </div>
         )}

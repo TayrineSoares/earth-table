@@ -24,20 +24,20 @@
 
 .subscribe-hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
+  grid-template-columns: 1.2fr 0.85fr;
+  gap: 24px;
   align-items: center;
   width: 100%;
 }
 
 .subscribe-hero-copy {
-  max-width: 46ch;
+  max-width: none;
 }
 
 .subscribe-eyebrow {
   font-family: var(--body-font);
   font-weight: 500;
-  font-size: 15px;
+  font-size: 20px;
   font-variant: small-caps;
   letter-spacing: 0.6px;
   color: #BE7200;
@@ -82,14 +82,14 @@
 
 .subscribe-hero-photo {
   width: 100%;
-  min-height: 360px;
+  min-height: 300px;
   height: 100%;
 }
 
 .subscribe-hero-photo img {
   width: 100%;
   height: 100%;
-  min-height: 360px;
+  min-height: 300px;
   object-fit: cover;
   border-radius: 15px;
   display: block;
@@ -134,7 +134,7 @@
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 24px;
   width: 100%;
-  margin-top: 32px;
+  margin-top: 40px;
 }
 
 .subscribe-how-step {
@@ -142,13 +142,11 @@
   text-align: left;
 }
 
-.subscribe-how-number {
-  font-family: var(--heading-font);
-  font-weight: 400;
-  font-size: 38px;
-  line-height: 1;
+.subscribe-how-icon {
+  display: block;
+  width: 40px;
+  height: 40px;
   color: #EDA413;
-  margin: 0;
 }
 
 .subscribe-how-step-title {
@@ -199,6 +197,7 @@
 }
 
 .subscribe-plan-card {
+  position: relative;
   min-width: 0;
   box-sizing: border-box;
   display: flex;
@@ -214,20 +213,26 @@
 .subscribe-plan-card.is-popular {
   background: #FEE8D4;
   border-width: 2px;
+  padding-top: 36px;
 }
 
 .subscribe-popular-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: inline-block;
   font-family: var(--body-font);
   font-weight: 500;
-  font-size: 15px;
-  font-variant: small-caps;
-  letter-spacing: 0.6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: #000;
   background: #EDA413;
   border-radius: 999px;
-  padding: 6px 10px;
-  margin: 0 0 12px;
+  padding: 4px 12px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .subscribe-plan-count {
@@ -245,14 +250,6 @@
   font-size: 20px;
   color: #BE7200;
   margin: 12px 0 0;
-}
-
-.subscribe-plan-unit {
-  font-family: var(--body-font);
-  font-weight: 400;
-  font-size: 15px;
-  color: #BE7200;
-  margin: 4px 0 0;
 }
 
 .subscribe-plan-desc {
@@ -298,13 +295,9 @@
   margin-top: 24px;
 }
 
-.subscribe-select-button:hover {
-  background: #FFFBF3;
-  color: #000 !important;
-  -webkit-text-fill-color: #000 !important;
-}
-
+.subscribe-select-button:hover,
 .subscribe-select-button:focus {
+  background: #EDA413;
   color: #000 !important;
   -webkit-text-fill-color: #000 !important;
 }
@@ -314,6 +307,20 @@
   -webkit-text-fill-color: #000 !important;
   transform: scale(0.98);
   background: #EDA413;
+}
+
+.subscribe-select-button.is-ghost {
+  background: transparent;
+  color: #EDA413;
+  -webkit-text-fill-color: #EDA413 !important;
+}
+
+.subscribe-select-button.is-ghost:hover,
+.subscribe-select-button.is-ghost:focus,
+.subscribe-select-button.is-ghost:active {
+  background: #EDA413;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
 }
 
 .subscribe-fine-print {
@@ -327,6 +334,14 @@
   text-align: left;
 }
 
+.subscribe-fine-print p {
+  margin: 0 0 10px;
+}
+
+.subscribe-fine-print p:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 1366px) {
   .subscribe-h1 {
     font-size: 54px;
@@ -336,9 +351,12 @@
     font-size: 18px;
   }
 
-  .subscribe-plan-count,
-  .subscribe-how-number {
+  .subscribe-plan-count {
     font-size: 32px;
+  }
+
+  .subscribe-eyebrow {
+    font-size: 18px;
   }
 
   .subscribe-how-step-title {
@@ -352,7 +370,7 @@
   }
 
   .subscribe-hero {
-    gap: 32px;
+    gap: 20px;
   }
 
   .subscribe-h1 {
@@ -369,7 +387,7 @@
 
   .subscribe-hero-photo,
   .subscribe-hero-photo img {
-    min-height: 280px;
+    min-height: 240px;
   }
 
   .subscribe-select-button {
@@ -395,8 +413,7 @@
     font-size: 16px;
   }
 
-  .subscribe-plan-count,
-  .subscribe-how-number {
+  .subscribe-plan-count {
     font-size: 28px;
   }
 
@@ -436,7 +453,7 @@
 
   .subscribe-hero-photo,
   .subscribe-hero-photo img {
-    min-height: 240px;
+    min-height: 210px;
   }
 }
 
@@ -462,9 +479,17 @@
     font-size: 14px;
   }
 
-  .subscribe-plan-count,
-  .subscribe-how-number {
+  .subscribe-plan-count {
     font-size: 24px;
+  }
+
+  .subscribe-eyebrow {
+    font-size: 16px;
+  }
+
+  .subscribe-how-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .subscribe-plan-price {
@@ -489,6 +514,6 @@
 
   .subscribe-hero-photo,
   .subscribe-hero-photo img {
-    min-height: 200px;
+    min-height: 180px;
   }
 }
