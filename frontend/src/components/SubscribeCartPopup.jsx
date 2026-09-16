@@ -158,18 +158,20 @@ function SubscribeCartPopup({
             <p className="cart-total-text">
               {mealCount} / {subCart.mealCount} meals
             </p>
-            {addonTotalLabel ? (
-              <p className="cart-total">{addonTotalLabel}</p>
-            ) : null}
-            <div className="go-to-chekout-button-container">
-              <button
-                type="button"
-                className="go-to-chekout-button"
-                onClick={goNext}
-                disabled={!onAddons && !exact}
-              >
-                {onAddons ? 'Review order' : 'Continue'}
-              </button>
+            <div className="subscribe-cart-popup-footer-end">
+              {addonTotalLabel ? (
+                <p className="cart-total">Add-ons {addonTotalLabel}</p>
+              ) : null}
+              <div className="go-to-chekout-button-container">
+                <button
+                  type="button"
+                  className="go-to-chekout-button"
+                  onClick={goNext}
+                  disabled={!onAddons && !exact}
+                >
+                  {onAddons ? 'Review order' : 'Continue'}
+                </button>
+              </div>
             </div>
           </div>
         </>

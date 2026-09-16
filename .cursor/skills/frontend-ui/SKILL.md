@@ -77,7 +77,7 @@ Copy the header class from Contact (`contact-header-image-container`, 234px) unl
 - **Typography:** `var(--heading-font)` (Forum) for titles; `var(--body-font)` (Encode Sans) for body, buttons, nav, chips. Buttons and chips use `font-variant: small-caps`.
 - **Color:** page bg `#FFFBF3`, accent `#EDA413`, peach chips `#FEE8D4`, labels/prices `#BE7200`. Full palette in [design-tokens.md](design-tokens.md).
 - **Width:** do not invent a new max-width. Public pages use `.page-wrapper` from `frontend/src/index.css`.
-- **Radius:** 15px on primary buttons and text fields; 8–10px on compact controls.
+- **Radius:** 15px on primary buttons, text fields, and **product cards**; 8–10px on compact controls. Card border: taupe unselected, tangerine selected — [components.md](components.md).
 - **Primary CTA:** 58px tall, 15px radius, Encode Sans 15px / 500 / small-caps. Filled `#EDA413` or outline `#EDA413` on `#FFFBF3`.
 - **iOS/Android is required**, not optional. Follow [responsive.md](responsive.md) on every new or edited screen.
 - **No `alert()`** for user feedback. Use `FeedbackDialog`.
@@ -116,5 +116,5 @@ If browser tools are unavailable, say so and use the closest substitute (existin
 
 - Tokens, type scale, buttons: [design-tokens.md](design-tokens.md)
 - Page shells and which file to copy: [page-patterns.md](page-patterns.md)
-- Navbar, forms, dialogs, cards: [components.md](components.md)
+- Navbar, forms, dialogs, **product cards**: [components.md](components.md)
 - Breakpoints, iOS Safari, Android Chrome: [responsive.md](responsive.md)

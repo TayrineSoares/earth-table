@@ -16,6 +16,7 @@ import {
   lineQty,
   mealsExact,
   readEditCart,
+  totalQty,
   writeEditCart,
 } from '../helpers/subscriptionCart'
 
@@ -91,6 +92,12 @@ const SubscribeEditAddons = ({ user }) => {
 
   const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`)
   const addonCents = addonSubtotalCents(editCart)
+  const extraCount = totalQty(editCart.addons)
+  const extraLine = addonCents > 0
+    ? `Add-on subtotal: $${(addonCents / 100).toFixed(2)}`
+    : extraCount > 0
+      ? `${extraCount} extra${extraCount === 1 ? '' : 's'}`
+      : 'No extras yet'
 
   if (isLoading) {
     return (
@@ -108,17 +115,18 @@ const SubscribeEditAddons = ({ user }) => {
     <div className="subscribe-page subscribe-flow-page">
       <div className="page-wrapper">
         <div className="subscribe-content">
-          <p className="subscribe-eyebrow">
-            {editCart.planName || 'Your plan'} — {formatPlanPrice(editCart.priceCents)}/week
-          </p>
-          <h1 className="subscribe-h1">Add anything extra to this week&apos;s order</h1>
-          <p className="subscribe-subhead">
-            Add-ons are a one-time addition and won&apos;t repeat next week.
-          </p>
-          <p className="subscribe-helper">
+          <h1 className="subscribe-h1 subscribe-choose-title">Add extras</h1>
+          <p className="subscribe-plan-line">
+            {editCart.mealCount} meals · {formatPlanPrice(editCart.priceCents)}/week ·{' '}
             <Link className="subscribe-inline-link" to={`/my-subscriptions/${subscriptionId}/meals`}>
               Back to meals
             </Link>
+          </p>
+          <p className="subscribe-subhead">
+            Top off this week with snacks, smoothies, or anything else on the menu.
+          </p>
+          <p className="subscribe-helper">
+            Extras won&apos;t repeat next week.
           </p>
 
           <SubscribeCatalog
@@ -134,7 +142,7 @@ const SubscribeEditAddons = ({ user }) => {
 
           <div className="subscribe-flow-bar">
             <p className="subscribe-progress" aria-live="polite">
-              Add-on subtotal: ${(addonCents / 100).toFixed(2)}
+              {extraLine}
             </p>
             <div className="subscribe-flow-bar-actions">
               <button type="button" className="subscribe-text-button" onClick={goToCart}>

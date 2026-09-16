@@ -52,13 +52,6 @@ Behavior to copy for any new overlay:
 - Primary: full-width max 280px, 52px, filled tangerine, black text
 - Secondary: underline tangerine, no background
 
-**Product detail modal** — in `pages/ProductCard.jsx` + `Products.css`
-
-- Overlay `overscroll-behavior: contain`
-- Card `max-height: calc(100vh - 36px)`, column flex
-- Body `overflow-y: auto; -webkit-overflow-scrolling: touch`
-- Image `clamp(200px, 35vh, 320px)`
-
 Cart checkout also has a blocking overlay pattern (`.checkout` modal in `Cart.css`): cream, `4px solid #EDA413`. Copy that for cart-adjacent confirms.
 
 ## Forms
@@ -92,15 +85,67 @@ Checkbox + Privacy Policy: Register pattern — required boolean, error via dial
 
 ## Catalog
 
-**ProductCard** — `pages/ProductCard.jsx` (styles in `Products.css`)
+**ProductCard** — `pages/ProductCard.jsx` (shared Menu + subscribe). Live reference: Choose your meals (`SubscribeCatalog` + `SubscribeFlow.css`). Bring **Menu** in line with this chrome; do not copy the old borderless Menu card.
 
-- Peach tag chips + lucide icons over the image
-- Price then name
-- Clamp description; “View details” only if overflowing (resize listener)
-- Add to cart / Sold out
-- Modal for full description
+Markup (keep these classes; do not invent a second card):
 
-If you add a card grid, keep `.products` + `.products-container` rather than a new card system.
+```
+.products
+  tags (absolute, top-left) + selected check (absolute, top-right)
+  image
+  header (name, then optional price)
+  description
+  .product-card-actions
+    .view-details-slot
+    .product-add-button-container   /* Add, compact stepper, or Add to cart */
+```
+
+### Chrome
+
+- Cream fill, `border-radius: 15px`, `overflow: hidden`, `box-sizing: border-box`
+- Unselected: `2px solid #D9C7B0` (taupe — subtle, not gray invented)
+- Selected (`quantity > 0`): `2px solid #EDA413`, peach fill `#FEE8D4`, Lucide `Check` in a 28px tangerine circle, top-right
+- Keep 2px on both states so the card does not jump
+- Image `object-fit: cover`; tags over the photo (smaller chips on dense grids: ~11px / 12px icons)
+
+### Type and clamp
+
+- Name: Forum 30px small-caps, **2-line** `-webkit-line-clamp`
+- Description: Encode Sans 20px, **2-line** clamp on catalog grids (Menu may still show 3 until restyled — target is 2)
+- Clamp on **lines**, not characters. `overflow-wrap: break-word`; `word-break: normal`; `hyphens: none` (never `hyphens: auto` / `overflow-wrap: anywhere` — that hyphen-breaks “co-conut”)
+- Equal-height rows: reserve 2-line min-heights; `.product-card-actions { margin-top: auto }`
+
+### Footer row
+
+- **View details** (only if description overflows) and **Add** share one row: details left, Add/stepper right
+- At qty 0: compact outlined **Add** (not a full-width gold stepper)
+- Qty > 0: compact stepper (`is-compact`), still on the right
+- Sold out: same outline button, `disabled`
+- Compact Add/stepper ~44px tall, `min-width` not `width: 100%`. iOS `-webkit-text-fill-color: #000`
+
+### Price
+
+- **Name first, then price** (Forum name, brown `#BE7200` price under it)
+- A-la-carte / add-ons keep the price. Plan meals: `hidePrice`
+- Popup/cart can show a-la-carte price and savings later. **If cents === 0, do not render a price**
+
+### Props (do not split into two card components)
+
+| Prop | Menu | Plan meals | Add-ons |
+| --- | --- | --- | --- |
+| `addToCart` | yes | no | no |
+| `onIncrement` / qty | no | yes | yes |
+| `hidePrice` | false | true | false |
+| `compactAdd` | false (full ADD TO CART) | true | true |
+
+Grid: `.products-container`. Subscribe meals is 4-col with `gap: 36px 40px` (more column gap than row). Category chips stay peach; drop filler category descriptions under the section title (they push food below the fold).
+
+**Product detail modal** — same file + `Products.css`
+
+- Overlay `overscroll-behavior: contain`
+- Card `max-height: calc(100vh - 36px)`, column flex
+- Body `overflow-y: auto; -webkit-overflow-scrolling: touch`
+- Image `clamp(200px, 35vh, 320px)`
 
 ## Cart widgets
 
@@ -108,6 +153,14 @@ If you add a card grid, keep `.products` + `.products-container` rather than a n
 
 - Fixed right, 375px; keep `max-width: 100vw` in mind if you restyle it
 - Sage header, cream body, tangerine checkout chip
+
+**SubscribeCartPopup** — `components/SubscribeCartPopup.jsx` (signup flow only)
+
+- Title **Your weekly plan** (minimized bar too)
+- Rows use full popup width. Name expands; no “Meal” label
+- QTY stepper and Lucide `Trash2` on one row; trash far right (`aria-label` Remove)
+- Continue on the **right** of the footer; meal count on the left
+- Hide `$0.00`. When extras add a charge, label it **Add-ons $X.XX**
 
 **PickupSelector** / **DeliverySelector** — `styles/PickupSelector.css`
 

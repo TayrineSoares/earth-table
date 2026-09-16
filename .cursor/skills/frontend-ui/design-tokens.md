@@ -22,9 +22,9 @@ Copy these sizes. Shrink them in media queries; do not invent a parallel scale.
 | Display / page title | Forum | 62px | line-height 100% | `.account-text`, `.contact-text`, `.product-title-text`, `.checkout-summary-text`, `.admin-header h1` |
 | Section title | Forum | 38px | underline `2px solid #EDA413`, `display: inline-block` | `.category-title`, `.about-title`, `.subscribe-title`, `.category-title-2`, `.confirmation-title` |
 | Field label | Forum | 30px | `small-caps`, color `#BE7200` | `.login-detail-header-text`, `.your-name-header`, `.register-text` |
-| Product name | Forum | 30px | `small-caps`, 2-line clamp | `.product-header-name` |
+| Product name | Forum | 30px | `small-caps`, 2-line clamp, **above** price | `.product-header-name` |
 | Body / description | Encode Sans 400 | 20px | line-height ~1.3 | `.category-description`, `.about-description`, `.subscribe-body` |
-| Price | Encode Sans 400 | 20px | color `#BE7200` | `.product-header-price`, `.checkout-item-price` |
+| Price | Encode Sans 400 | 20px | color `#BE7200`, **under** the product name | `.product-header-price`, `.checkout-item-price` |
 | UI / button / chip / nav | Encode Sans 500 | 15px | `small-caps`, letter-spacing 0.6px or 4% | `.shop-button`, `.categories`, `.nav-link` |
 | Muted helper | Encode Sans 400 | 15px | `small-caps`, `#525448` or `#757575` | `.forgot-password-text`, `.pickup-label`, `.general-text` |
 | Dialog title | Forum | 32px | | `.feedback-dialog-title` |
@@ -42,7 +42,7 @@ At 768px drop display to ~36px, section to ~28px, body to 16px. At 480px display
 | Tangerine | `#EDA413` | Primary accent: underlines, borders, filled CTAs, focus rings, active chips |
 | Peach | `#FEE8D4` | Category chips, tags, inactive admin tabs, banners |
 | Brown | `#BE7200` | Field labels, prices, links-in-copy, admin welcome text |
-| Taupe | `#D9C7B0` / `#D8C7B0` | Footer bg, cart dividers, pickup input borders, mobile nav separators |
+| Taupe | `#D9C7B0` / `#D8C7B0` | Footer bg, cart dividers, pickup input borders, **unselected product-card border**, mobile nav separators |
 | Sage | `#ABC586` | Cart popup header / qty buttons |
 | Leaf underline | `#709E30` | Home “plenty more to discover” underline only |
 | Dark olive | `#202211` | About page sub-footer bar |
@@ -81,6 +81,7 @@ Images inside heroes: `width/height 100%`, `object-fit: cover`.
 ## Shape and controls
 
 - Primary buttons and text fields: `border-radius: 15px`
+- **Product cards:** 15px radius + `2px solid #D9C7B0`; selected `2px solid #EDA413` + peach fill (see [components.md](components.md))
 - Compact search / load-more: `8px`
 - Pickup/select: `10px`
 - Pills (subscribe subhead, modal tags): `999px`
@@ -105,7 +106,8 @@ Images inside heroes: `width/height 100%`, `object-fit: cover`.
 - Zigzag / about bottom padding ~76–118px
 - Form field label → input: 15px
 - Input padding: `19px 51px` desktop → `20px` @768 → `12px 16px` @480
-- Flex gaps: 1–2rem content, 10px chips, 36px product grid
+- Flex gaps: 1–2rem content, 10px chips, product grid `36px` rows / **`40px` columns** on the 4-col meals catalog
+- In-copy secondary actions (Change plan): muted `#757575`, 15px — do not compete with brown prices
 
 ## Links and icons
 

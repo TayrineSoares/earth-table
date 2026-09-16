@@ -54,8 +54,8 @@ Reuse `.contact-header-image-container` from `Contact.css` (Subscribe already im
 **Subscribe & Save** — `pages/SubscribeAndSave.jsx` + `styles/SubscribeAndSave.css`
 
 - Same Contact hero classes
-- Centered column, tangerine-underlined 38px title
-- Peach pill subhead, 20px body, peach/tangerine meal counts
+- Forum 62 marketing title; plan picker is a later section (38px)
+- Peach how-it-works / plan cards; see Subscribe flow under Menu below
 
 **About** — `pages/About.jsx` + `styles/About.css`
 
@@ -84,18 +84,41 @@ Profile phone fields: `type="tel"`, `inputMode="numeric"`, store digits only, di
 
 **Products** — `pages/Products.jsx` + `ProductCard.jsx` + `styles/Products.css`
 
+When restyling Menu, match the **item card chrome** in [components.md](components.md) (Choose your meals is the live example). Do not keep the old borderless card.
+
 - No top hero
 - Forum 62 “Menu”
 - Peach `.categories` chips (wrap, `white-space: normal`)
-- Section title 38px + description
+- Section title 38px; **no filler category description** under the header
 - Search input 16px font, tangerine border, `#fff8f0`
-- Grid `.products-container` `gap: 36px`; card 372px → 47% @1024 → 100% @768
-- Card image `object-fit: cover` (477px desktop, 372 @768)
-- Name 2-line clamp, description 3-line clamp (`-webkit-box`)
-- Outline add-to-cart; sold out uses same button `disabled`
+- Grid `.products-container`; prefer 4-col on wide screens with extra **column** gap
+- Cards: taupe unselected border, 15px radius, 2-line name + 2-line description, no hyphen-break
+- Footer: View details + Add to cart on **one row**
+- A-la-carte **keeps the price under the name**; sold out uses the same outline button `disabled`
 - Load 6 at a time; `.load-more-button` is the brown exception
 - Custom-meals category uses in-page 234px hero + prose, not the grid
 - Loading: Lottie, `minHeight: 80vh`
+
+## Subscribe flow (meals)
+
+**SubscribeMeals** / **SubscribeEditMeals** — `SubscribeFlow.css` + `SubscribeCatalog`
+
+- Flow pages use Forum **38px** section title (`.subscribe-choose-title`), not 62px marketing display
+- Order: title → plan line (`10 meals · $180.00/week · Change plan`) → mix/cutoff helper → live tracker + muted count
+- Plan meals: `hidePrice` + `compactAdd`. Selected gold border / peach tint / check
+- Sticky bar at the bottom: `X of Y meals selected` + Continue
+
+**SubscribeAddons** / **SubscribeEditAddons** — same catalog chrome as meals
+
+- 38px title (`.subscribe-choose-title`): **Add extras**
+- Plan line then selling helper (“Top off this week…”). Muted line: extras won’t repeat. Back to meals is the muted plan-line link
+- Cards: `compactAdd`, **keep price under the name**. Selected marker same as meals
+- Sticky: hide `$0.00`; show subtotal only when extras add a charge
+
+**SubscribeAndSave** — `pages/SubscribeAndSave.jsx` + `styles/SubscribeAndSave.css`
+
+- Contact-style hero classes; Forum 62 marketing title
+- Plan cards: number + `meals / week`; filled Select only on Most Popular; others ghost with black text
 
 ## Checkout / orders
 
@@ -139,6 +162,6 @@ Do not add `alert()` (Reset Password still has it — that is legacy; new work u
 
 ## Routing extras
 
-- Cart popup (`CartPopup`) is rendered by `AppRoutes`, hidden on `/cart`. Do not mount another one.
+- Cart popup (`CartPopup`) is rendered by `AppRoutes`, hidden on `/cart`. Subscribe signup uses `SubscribeCartPopup` instead. Do not mount another one.
 - `Link` / `NavLink` for in-app navigation. External: `target="_blank"` + `rel="noopener noreferrer"` (Footer Instagram).
 - Keep `fetch('/api/...')` relative; Vite proxies to the backend.

@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { sizedImageUrl } from "../helpers/imageHelpers";
 
+/** Hide $0.00; show a price only when cents are above zero. */
+function moneyLabel(cents) {
+  const n = Number(cents) || 0;
+  if (n === 0) return null;
+  return `$${(n / 100).toFixed(2)}`;
+}
+
 function QtyStepper({
   product,
   quantity,
@@ -87,6 +94,7 @@ const ProductCard = ({
   }, [isOpen]);
 
   const selected = Number(quantity) > 0;
+  const priceLabel = hidePrice ? null : moneyLabel(product.price_cents);
   const cardClass = [
     "products",
     selected ? "is-selected" : "",
@@ -106,7 +114,7 @@ const ProductCard = ({
           {tagNames.map((tagName) => (
             <div key={tagName} className="tag-icon">
               {tagIcons[tagName.toLowerCase()] || null}
-              <span style={{ marginLeft: "4px" }}>{tagName}</span>
+              <span>{tagName}</span>
             </div>
           ))}
         </div>
@@ -121,10 +129,10 @@ const ProductCard = ({
       />
 
       <div className="product-header-info-container">
-        {hidePrice ? null : (
-          <p className="product-header-price">${(product.price_cents / 100).toFixed(2)}</p>
-        )}
         <p className="product-header-name">{product.slug}</p>
+        {priceLabel ? (
+          <p className="product-header-price">{priceLabel}</p>
+        ) : null}
       </div>
 
       <div className="product-description-container">
@@ -209,9 +217,9 @@ const ProductCard = ({
             <div className="modal-content">
               <div className="modal-header">
                 <h3 className="modal-title">{product.slug}</h3>
-                {hidePrice ? null : (
-                  <p className="modal-price">${(product.price_cents / 100).toFixed(2)}</p>
-                )}
+                {priceLabel ? (
+                  <p className="modal-price">{priceLabel}</p>
+                ) : null}
               </div>
 
               {tagNames.length > 0 && (

@@ -101,7 +101,7 @@ Pattern from `PickupSelector.jsx` / `DeliverySelector.jsx`:
 
 ### 5. Text clamp
 
-Use the existing `-webkit-box` / `-webkit-line-clamp` / `-webkit-box-orient: vertical` pattern for product titles and descriptions.
+Use `-webkit-box` / `-webkit-line-clamp` / `-webkit-box-orient: vertical` for product titles and descriptions. Clamp **lines**, not characters. `hyphens: none`; `overflow-wrap: break-word`; never `hyphens: auto` or `overflow-wrap: anywhere`.
 
 ### 6. Hover-only UI
 
