@@ -6,7 +6,7 @@ const PrivacyPolicy = () => {
       <section className="et-terms__card">
         <h1 className="et-terms__h1">Terms &amp; Conditions and Privacy Policy</h1>
 
-        <p className="et-terms__p"><strong>Effective Date:</strong> August 13, 2025</p>
+        <p className="et-terms__p"><strong>Effective Date:</strong> September 16, 2026</p>
         <p className="et-terms__p">
           Earth Table values your privacy and transparency. Below you will find our Terms &amp; Conditions,
           followed by our Privacy Policy explaining what personal information we collect, how we use it,
@@ -24,6 +24,11 @@ const PrivacyPolicy = () => {
           <li><strong>Product availability:</strong> While we do our best to keep our menu accurate, all items are subject to availability. If a product is unavailable, we will notify you as soon as possible and suggest alternatives.</li>
           <li><strong>Allergies and notes:</strong> Customers are responsible for clearly indicating allergies or dietary restrictions in the “Special Instructions” field. Earth Table cannot guarantee against cross-contamination.</li>
           <li><strong>Agreement:</strong> By placing an order, you acknowledge and agree to these Terms &amp; Conditions.</li>
+          <li><strong>Subscription plans:</strong> Customers may subscribe to a recurring weekly meal plan (10, 15, or 20 meals/week). Subscribers select their meals each cycle by the Thursday 5pm cutoff. Add-ons do not carry over automatically to the following week. Cancelling or pausing a subscription requires 7 days' notice.</li>
+          <li><strong>Auto-renewal:</strong> Subscription plans automatically renew and rebill each week on your selected schedule unless cancelled or paused with at least 7 days' notice. You will be charged automatically for each upcoming cycle unless you cancel before the applicable cutoff.</li>
+          <li><strong>Failed payments:</strong> If a recurring subscription charge fails, Stripe will automatically retry the payment according to its retry schedule. We will notify you by email so you can update your payment method on file. If the charge still cannot be completed after retry attempts, your subscription may be paused until a valid payment method is provided. Fulfillment of the affected cycle may be delayed or withheld until payment succeeds.</li>
+          <li><strong>Price changes:</strong> Earth Table may change subscription pricing from time to time. If we do, we will give subscribers advance notice (for example, by email) before the new price applies to their next billing cycle. If you do not accept the new price, you may cancel or pause your subscription before the new price takes effect.</li>
+          <li><strong>Subscription refunds:</strong> Subscription orders are non-refundable once a cycle's cutoff has passed. Customers who wish to avoid a charge for an upcoming week must cancel or pause before the Thursday 5pm cutoff for that cycle.</li>
         </ul>
 
         {/* Privacy Policy */}
@@ -33,7 +38,8 @@ const PrivacyPolicy = () => {
         <ul className="et-terms__list">
           <li><strong>Personal details:</strong> Name, email address, and phone number when you sign up or place an order.</li>
           <li><strong>Delivery details (when selected):</strong> Your <strong>postal code</strong> (to calculate distance and delivery fee) and the <strong>full delivery address</strong> you provide in the “Special Instructions” box so we can fulfill delivery.</li>
-          <li><strong>Payment information:</strong> All payments are processed securely via Stripe. We do not store credit card information on our servers.</li>
+          <li><strong>Subscription details:</strong> If you subscribe to a recurring meal plan, we collect your selected plan tier, weekly meal selections, and subscription status (active, paused, cancelled).</li>
+          <li><strong>Payment information:</strong> All payments, including recurring subscription charges, are processed securely via Stripe. We do not store credit card information on our servers; Stripe securely stores your payment method on file to process recurring charges.</li>
           <li><strong>Cookies &amp; tracking:</strong> We use cookies and similar technologies to improve site functionality and track analytics.</li>
         </ul>
 
@@ -43,12 +49,17 @@ const PrivacyPolicy = () => {
           <li>For delivery requests: to estimate distance/fee based on your postal code and to dispatch to the address you provide.</li>
           <li>To communicate with you regarding your account, purchases, or promotions (with your consent).</li>
           <li>To improve our website and user experience via analytics.</li>
+          <li>To process and bill recurring subscription orders on your selected schedule.</li>
+          <li>To send weekly reminder and cutoff notification emails for subscription meal selections.</li>
+          <li>To manage subscription changes, pauses, and cancellations you request.</li>
+          <li>To manage failed or incomplete recurring charges using payment status from Stripe, including retrying payment, pausing a subscription when a charge cannot be completed, and emailing you to update your payment method.</li>
+          <li>To apply our subscription refund policy, including using cutoff timing and payment status to determine whether a cycle charge is eligible for a refund.</li>
         </ul>
 
         <h3 className="et-terms__h3">Sharing Your Information</h3>
         <ul className="et-terms__list">
           <li>We do not sell your personal information.</li>
-          <li>Stripe handles payment processing and may require some data to complete the transaction.</li>
+          <li>Stripe handles payment processing, including recurring subscription billing, and may require some data to complete transactions and store your payment method for recurring charges.</li>
           <li><strong>Geocoding for delivery:</strong> When you enter a postal code for delivery, we may send the postal code to a third-party geocoding provider (e.g., Geoapify) to estimate distance and calculate the delivery fee.</li>
           <li><strong>Delivery partners (when applicable):</strong> If delivery is confirmed, we may share your name, phone, and delivery address with a courier (e.g., Uber Courier) solely to fulfill your delivery.</li>
           <li>Third-party analytics providers may receive anonymized or aggregated data.</li>
@@ -63,6 +74,7 @@ const PrivacyPolicy = () => {
           <li>Request correction or deletion of your personal information.</li>
           <li>Withdraw consent for us to use your personal information at any time.</li>
           <li>Opt out of marketing communications (emails, newsletters) in accordance with CASL.</li>
+          <li>Cancel or pause your subscription at any time by contacting us at least 7 days before your next billing cycle.</li>
         </ul>
         <p className="et-terms__p">
           To exercise these rights, contact us at:{" "}
