@@ -179,7 +179,10 @@ const SubscribeAndSave = () => {
                           <p className="subscribe-popular-badge">Most popular</p>
                         ) : null}
                         <p className="subscribe-plan-count">
-                          {plan.meal_count} {plan.meal_count === 1 ? 'meal' : 'meals'}/week
+                          <span className="subscribe-plan-number">{plan.meal_count}</span>
+                          <span className="subscribe-plan-unit-label">
+                            {plan.meal_count === 1 ? 'meal / week' : 'meals / week'}
+                          </span>
                         </p>
                         <p className="subscribe-plan-price">
                           {formatPlanPrice(plan.price_cents)}/week
@@ -204,15 +207,11 @@ const SubscribeAndSave = () => {
                 </div>
               )}
 
-              <div className="subscribe-fine-print">
-                <p>Every plan lets you choose any combination of bowls, salads, and main plates.</p>
-                <p>Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week&apos;s box.</p>
-                <p>If you don&apos;t make changes on time, we&apos;ll send your previous week&apos;s selections.</p>
-                <p>Pause or cancel by Wednesday, no fees.</p>
-                {dates && dates.first_delivery_label ? (
-                  <p>Next delivery if you subscribe now: {dates.first_delivery_label}.</p>
-                ) : null}
-              </div>
+              {dates && dates.first_delivery_label ? (
+                <p className="subscribe-cutoff-pill">
+                  Next delivery if you subscribe now: {dates.first_delivery_label}.
+                </p>
+              ) : null}
             </section>
           </div>
         )}

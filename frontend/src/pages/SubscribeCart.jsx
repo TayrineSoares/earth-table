@@ -448,15 +448,14 @@ const SubscribeCart = ({ user, subCart }) => {
               <div className="subscribe-dates-block general-text">
                 {dates.cutoff_passed ? (
                   <p>This week&apos;s cutoff has passed. This Sunday is not available.</p>
-                ) : (
-                  <p>You can change this week&apos;s meals until {dates.cutoff_label}.</p>
-                )}
-                <p>First delivery: {dates.first_delivery_label}</p>
-                <p>Today you pay the plan and delivery. Add-ons are charged Thursday if they are still on the box.</p>
-                <p>Your plan renews automatically every week.</p>
+                ) : null}
+                <p>Every plan lets you choose any combination of bowls, salads, and main plates.</p>
                 <p>
-                  You can change your meals, manage, or cancel anytime before Thursday at 5:00 PM from My Subscriptions.
+                  Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week&apos;s box.
                 </p>
+                <p>If you don&apos;t make changes on time, we&apos;ll send your previous week&apos;s selections.</p>
+                <p>Pause or cancel by Wednesday, no fees.</p>
+                <p>First delivery: {dates.first_delivery_label}</p>
               </div>
             ) : null}
 
