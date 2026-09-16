@@ -6,6 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
 import ProductCard from './ProductCard';
 
+const PRODUCTS_PER_PAGE = 8;
 
 const Products = ({ addToCart }) => {
 
@@ -14,7 +15,7 @@ const Products = ({ addToCart }) => {
   const [allProducts, setAllProducts] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [allTags, setAllTags] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE);
 
   const [searchTerm, setSearchTerm] = useState("");
     
@@ -44,7 +45,7 @@ const Products = ({ addToCart }) => {
 
   // reset pagination when category or search changes
   useEffect(() => {
-    setVisibleCount(6);
+    setVisibleCount(PRODUCTS_PER_PAGE);
   }, [categoryId, searchTerm]); 
 
 
@@ -59,12 +60,12 @@ const Products = ({ addToCart }) => {
   
 
   const tagIcons = {
-    vegan: <Vegan size={16} />,
-    vegetarian: <LeafyGreen size={16} />,
-    keto: <Ham size={16} />,
-    'dairy free': <MilkOff size={16} />,
-    paleo: <BeanOff size={16} />,
-    'gluten free': <WheatOff size={16}/>
+    vegan: <Vegan size={13} />,
+    vegetarian: <LeafyGreen size={13} />,
+    keto: <Ham size={13} />,
+    'dairy free': <MilkOff size={13} />,
+    paleo: <BeanOff size={13} />,
+    'gluten free': <WheatOff size={13}/>
   };
 
   
@@ -239,7 +240,7 @@ const Products = ({ addToCart }) => {
           <button 
             className="load-more-button" 
             onClick={() => {
-              setVisibleCount(prev => prev + 6);
+              setVisibleCount(prev => prev + PRODUCTS_PER_PAGE);
             }}
           >
             Load More
