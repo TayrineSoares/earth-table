@@ -214,6 +214,5 @@ function getSignupDates(now = new Date(), settings = {}) {
 }
 
 module.exports = {
-  TZ,
   getSignupDates,
 };
