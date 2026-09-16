@@ -91,6 +91,9 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
   const need = Number(subCart.mealCount) || 0
   const exact = mealsExact(subCart)
   const atCap = need > 0 && picked >= need
+  const sundayLabel = dates?.first_delivery_label || ''
+  const cutoffLabel = dates?.cutoff_label || 'Thursday at 5:00 PM'
+  const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
 
   const onContinue = () => {
     if (!exact) return
@@ -115,23 +118,29 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
         <div className="subscribe-content">
           {plan ? (
             <>
-              <p className="subscribe-eyebrow">
-                {plan.meal_count} meals — {formatPlanPrice(plan.price_cents)}/week
+              <h1 className="subscribe-h1 subscribe-choose-title">Choose your meals</h1>
+              <p className={dates?.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
+                {dates?.cutoff_passed
+                  ? `This week's cutoff has passed. Mix bowls, salads, and main plates however you like for ${sundayLabel}.`
+                  : `Mix bowls, salads, and main plates however you like — change anything until ${cutoffLabel}.`}
               </p>
-              <h1 className="subscribe-h1">Choose your meals</h1>
-              <p className="subscribe-subhead">
-                Pick any combination of bowls, salads, and mains, up to your plan&apos;s total.
+              <div
+                className="subscribe-meal-track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={need}
+                aria-valuenow={picked}
+                aria-label={`${picked} of ${need} meals chosen`}
+              >
+                <span className="subscribe-meal-track-fill" style={{ width: `${trackPct}%` }} />
+              </div>
+              <p className="subscribe-meal-count" aria-live="polite">
+                {picked} of {need} chosen{sundayLabel ? ` for ${sundayLabel}` : ''}
               </p>
-              <p className="subscribe-helper">
+              <p className="subscribe-plan-line">
+                {plan.meal_count} meals · {formatPlanPrice(plan.price_cents)}/week ·{' '}
                 <Link className="subscribe-inline-link" to="/subscribe-and-save">Change plan</Link>
               </p>
-              {dates ? (
-                <p className={dates.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-helper'}>
-                  {dates.cutoff_passed
-                    ? `This week's cutoff has passed. First delivery: ${dates.first_delivery_label}.`
-                    : `First delivery: ${dates.first_delivery_label}.`}
-                </p>
-              ) : null}
 
               <SubscribeCatalog
                 categories={categories}
@@ -141,6 +150,8 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
                 onIncrement={(product) => bumpSubMeal(product, 1)}
                 onDecrement={(product) => bumpSubMeal(product, -1)}
                 incrementDisabledFor={(product) => atCap || !product.is_available}
+                hidePrice
+                compactAdd
               />
 
               <div className="subscribe-flow-bar">

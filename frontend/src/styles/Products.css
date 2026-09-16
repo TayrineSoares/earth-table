@@ -245,6 +245,21 @@
   margin: auto;
 }
 
+.product-selected-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #EDA413;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .product-tags {
   position: absolute;
   top: 12px;

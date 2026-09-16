@@ -118,8 +118,12 @@ const SubscribeEditMeals = ({ user }) => {
 
   const plan = row?.subscription_plans || {}
   const picked = totalQty(editCart.meals)
+  const need = Number(editCart.mealCount) || 0
   const exact = mealsExact(editCart)
-  const atCap = Number(editCart.mealCount) > 0 && picked >= Number(editCart.mealCount)
+  const atCap = need > 0 && picked >= need
+  const sundayLabel = row?.week?.delivery_label || ''
+  const cutoffLabel = row?.week?.cutoff_label || 'Thursday at 5:00 PM'
+  const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
 
   const bump = (product, delta) => {
     setEditCart((prev) => {
@@ -152,14 +156,27 @@ const SubscribeEditMeals = ({ user }) => {
         <div className="subscribe-content">
           {row ? (
             <>
-              <p className="subscribe-eyebrow">
-                {plan.meal_count} meals — {formatPlanPrice(plan.price_cents)}/week
+              <h1 className="subscribe-h1 subscribe-choose-title">Choose your meals</h1>
+              <p className={row.week?.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
+                {row.week?.cutoff_passed
+                  ? `This week's cutoff has passed. Mix bowls, salads, and main plates however you like for ${sundayLabel}.`
+                  : `Mix bowls, salads, and main plates however you like — change anything until ${cutoffLabel}.`}
               </p>
-              <h1 className="subscribe-h1">Choose your meals</h1>
-              <p className="subscribe-subhead">
-                Pick any combination of bowls, salads, and mains, up to your plan&apos;s total.
+              <div
+                className="subscribe-meal-track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={need}
+                aria-valuenow={picked}
+                aria-label={`${picked} of ${need} meals chosen`}
+              >
+                <span className="subscribe-meal-track-fill" style={{ width: `${trackPct}%` }} />
+              </div>
+              <p className="subscribe-meal-count" aria-live="polite">
+                {picked} of {need} chosen{sundayLabel ? ` for ${sundayLabel}` : ''}
               </p>
-              <p className="subscribe-helper">
+              <p className="subscribe-plan-line">
+                {plan.meal_count} meals · {formatPlanPrice(plan.price_cents)}/week ·{' '}
                 <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
               </p>
 
@@ -171,11 +188,13 @@ const SubscribeEditMeals = ({ user }) => {
                 onIncrement={(product) => bump(product, 1)}
                 onDecrement={(product) => bump(product, -1)}
                 incrementDisabledFor={(product) => atCap || !product.is_available}
+                hidePrice
+                compactAdd
               />
 
               <div className="subscribe-flow-bar">
                 <p className="subscribe-progress" aria-live="polite">
-                  {picked} of {editCart.mealCount} meals selected
+                  {picked} of {need} meals selected
                 </p>
                 <button
                   type="button"

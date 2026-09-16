@@ -4,12 +4,12 @@ import ProductCard from '../pages/ProductCard'
 import '../styles/Products.css'
 
 const SUBSCRIBE_TAG_ICONS = {
-  vegan: <Vegan size={16} />,
-  vegetarian: <LeafyGreen size={16} />,
-  keto: <Ham size={16} />,
-  'dairy free': <MilkOff size={16} />,
-  paleo: <BeanOff size={16} />,
-  'gluten free': <WheatOff size={16} />,
+  vegan: <Vegan size={12} />,
+  vegetarian: <LeafyGreen size={12} />,
+  keto: <Ham size={12} />,
+  'dairy free': <MilkOff size={12} />,
+  paleo: <BeanOff size={12} />,
+  'gluten free': <WheatOff size={12} />,
 }
 
 function tagNamesFrom(allTags, tagIds) {
@@ -28,6 +28,8 @@ const SubscribeCatalog = ({
   onIncrement,
   onDecrement,
   incrementDisabledFor,
+  hidePrice = false,
+  compactAdd = false,
 }) => {
   const [selectedId, setSelectedId] = useState(null)
 
@@ -64,9 +66,6 @@ const SubscribeCatalog = ({
 
       <div className="category-title-container-2">
         <p className="category-title-2">{selected ? selected.name : 'Menu'}</p>
-        {selected?.description?.trim() ? (
-          <p className="category-description">{selected.description.trim()}</p>
-        ) : null}
       </div>
 
       <div className="products-container subscribe-catalog-grid">
@@ -81,6 +80,8 @@ const SubscribeCatalog = ({
             onIncrement={onIncrement}
             onDecrement={onDecrement}
             incrementDisabled={incrementDisabledFor(product)}
+            hidePrice={hidePrice}
+            compactAdd={compactAdd}
           />
         ))}
       </div>

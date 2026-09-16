@@ -1,5 +1,39 @@
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { sizedImageUrl } from "../helpers/imageHelpers";
+
+function QtyStepper({
+  product,
+  quantity,
+  onIncrement,
+  onDecrement,
+  incrementDisabled,
+  compact = false,
+}) {
+  return (
+    <div className={`product-qty-stepper${compact ? " is-compact" : ""}`}>
+      <button
+        type="button"
+        className="product-qty-btn"
+        onClick={() => onDecrement(product)}
+        disabled={!quantity}
+        aria-label={`Decrease ${product.slug}`}
+      >
+        -
+      </button>
+      <span className="product-qty-value">{quantity || 0}</span>
+      <button
+        type="button"
+        className="product-qty-btn"
+        onClick={() => onIncrement(product)}
+        disabled={incrementDisabled}
+        aria-label={`Increase ${product.slug}`}
+      >
+        +
+      </button>
+    </div>
+  );
+}
 
 const ProductCard = ({
   product,
@@ -11,6 +45,8 @@ const ProductCard = ({
   onIncrement,
   onDecrement,
   incrementDisabled = false,
+  hidePrice = false,
+  compactAdd = false,
 }) => {
   const descriptionRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -50,10 +86,21 @@ const ProductCard = ({
     };
   }, [isOpen]);
 
-  
+  const selected = Number(quantity) > 0;
+  const cardClass = [
+    "products",
+    selected ? "is-selected" : "",
+    hidePrice ? "is-plan-meal" : "",
+    compactAdd ? "is-compact-add" : "",
+  ].filter(Boolean).join(" ");
 
   return (
-    <div className="products">
+    <div className={cardClass}>
+      {selected ? (
+        <span className="product-selected-check" aria-hidden="true">
+          <Check size={16} strokeWidth={2.5} />
+        </span>
+      ) : null}
       {tagNames.length > 0 && (
         <div className="product-tags">
           {tagNames.map((tagName) => (
@@ -74,7 +121,9 @@ const ProductCard = ({
       />
 
       <div className="product-header-info-container">
-        <p className="product-header-price">${(product.price_cents / 100).toFixed(2)}</p>
+        {hidePrice ? null : (
+          <p className="product-header-price">${(product.price_cents / 100).toFixed(2)}</p>
+        )}
         <p className="product-header-name">{product.slug}</p>
       </div>
 
@@ -84,40 +133,40 @@ const ProductCard = ({
         </p>
       </div>
 
-      {isOverflowing && (
-        <button
-          className="view-details-inline"
-          type="button"
-          onClick={() => setIsOpen(true)}
-        >
-          View details
-        </button>
-      )}
+      <div className="view-details-slot">
+        {isOverflowing ? (
+          <button
+            className="view-details-inline"
+            type="button"
+            onClick={() => setIsOpen(true)}
+          >
+            View details
+          </button>
+        ) : null}
+      </div>
 
       <div className="product-add-button-container">
         {onIncrement ? (
           product.is_available ? (
-            <div className="product-qty-stepper">
+            compactAdd && !quantity ? (
               <button
+                className="product-add-button"
                 type="button"
-                className="product-qty-btn"
-                onClick={() => onDecrement(product)}
-                disabled={!quantity}
-                aria-label={`Decrease ${product.slug}`}
-              >
-                -
-              </button>
-              <span className="product-qty-value">{quantity || 0}</span>
-              <button
-                type="button"
-                className="product-qty-btn"
                 onClick={() => onIncrement(product)}
                 disabled={incrementDisabled}
-                aria-label={`Increase ${product.slug}`}
               >
-                +
+                <p className="product-add-button-text">Add</p>
               </button>
-            </div>
+            ) : (
+              <QtyStepper
+                product={product}
+                quantity={quantity}
+                onIncrement={onIncrement}
+                onDecrement={onDecrement}
+                incrementDisabled={incrementDisabled}
+                compact={compactAdd}
+              />
+            )
           ) : (
             <button className="product-add-button" type="button" disabled style={{ cursor: "not-allowed" }}>
               <p className="product-add-button-text">SOLD OUT!</p>
@@ -158,7 +207,9 @@ const ProductCard = ({
             <div className="modal-content">
               <div className="modal-header">
                 <h3 className="modal-title">{product.slug}</h3>
-                <p className="modal-price">${(product.price_cents / 100).toFixed(2)}</p>
+                {hidePrice ? null : (
+                  <p className="modal-price">${(product.price_cents / 100).toFixed(2)}</p>
+                )}
               </div>
 
               {tagNames.length > 0 && (
@@ -176,27 +227,25 @@ const ProductCard = ({
               <div className="modal-actions">
                 {onIncrement ? (
                   product.is_available ? (
-                    <div className="product-qty-stepper">
+                    compactAdd && !quantity ? (
                       <button
+                        className="product-add-button"
                         type="button"
-                        className="product-qty-btn"
-                        onClick={() => onDecrement(product)}
-                        disabled={!quantity}
-                        aria-label={`Decrease ${product.slug}`}
-                      >
-                        -
-                      </button>
-                      <span className="product-qty-value">{quantity || 0}</span>
-                      <button
-                        type="button"
-                        className="product-qty-btn"
                         onClick={() => onIncrement(product)}
                         disabled={incrementDisabled}
-                        aria-label={`Increase ${product.slug}`}
                       >
-                        +
+                        <p className="product-add-button-text">Add</p>
                       </button>
-                    </div>
+                    ) : (
+                      <QtyStepper
+                        product={product}
+                        quantity={quantity}
+                        onIncrement={onIncrement}
+                        onDecrement={onDecrement}
+                        incrementDisabled={incrementDisabled}
+                        compact={compactAdd}
+                      />
+                    )
                   ) : (
                     <button className="product-add-button" type="button" disabled>
                       <p className="product-add-button-text">SOLD OUT!</p>

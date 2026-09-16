@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Minus, ShoppingCart } from 'lucide-react'
+import { Minus, ShoppingCart, Trash2 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import '../styles/Products.css'
 import '../styles/CartPopup.css'
@@ -9,6 +9,49 @@ import {
   mealsExact,
   totalQty,
 } from '../helpers/subscriptionCart'
+
+/** Hide $0.00 in the popup; show a price only when add-ons add a charge. */
+function moneyLabel(cents) {
+  const n = Number(cents) || 0
+  if (n === 0) return null
+  return `$${(n / 100).toFixed(2)}`
+}
+
+function QtyAndTrash({ quantity, onMinus, onPlus, plusDisabled = false, onRemove, name }) {
+  return (
+    <span className="cart-popup-item-quantity">
+      QTY:
+      <div className="quantity-button-container">
+        <button
+          type="button"
+          onClick={onMinus}
+          className="cart-popup-add-remove-button"
+          aria-label={`Decrease ${name}`}
+        >
+          -
+        </button>
+        {quantity}
+        <button
+          type="button"
+          onClick={onPlus}
+          className="cart-popup-add-remove-button"
+          disabled={plusDisabled}
+          aria-label={`Increase ${name}`}
+        >
+          +
+        </button>
+      </div>
+      <button
+        type="button"
+        className="cart-popup-remove-button"
+        onClick={onRemove}
+        aria-label={`Remove ${name}`}
+      >
+        <Trash2 size={16} strokeWidth={2} />
+      </button>
+    </span>
+  )
+}
 
 function SubscribeCartPopup({
   subCart,
@@ -24,6 +67,7 @@ function SubscribeCartPopup({
   const addonCount = totalQty(subCart.addons)
   const itemCount = mealCount + addonCount
   const addonCents = addonSubtotalCents(subCart)
+  const addonTotalLabel = moneyLabel(addonCents)
   const exact = mealsExact(subCart)
   const onAddons = location.pathname.includes('/addons')
 
@@ -49,14 +93,14 @@ function SubscribeCartPopup({
 
   return (
     <div
-      className={`cart-popup ${
+      className={`cart-popup subscribe-cart-popup ${
         isMinimized ? (isMobile ? 'minimized-circle' : 'minimized') : ''
       }`}
     >
       {!isMinimized ? (
         <>
           <h3 className="cart-popup-header">
-            <span className="popup-nav-text">Your box</span>
+            <span className="popup-nav-text">Your weekly plan</span>
             <button type="button" onClick={() => setIsMinimized(true)} aria-label="Minimize">
               <Minus />
             </button>
@@ -72,85 +116,51 @@ function SubscribeCartPopup({
                     <img className="cart-popup-image" src={item.image_url} alt={item.slug} />
                     <div className="cart-popup-item-details-1">
                       <span className="cart-popup-item-name">{item.slug}</span>
-                      <span className="cart-popup-item-quantity">
-                        QTY:
-                        <div className="quantity-button-container">
-                          <button
-                            type="button"
-                            onClick={() => bumpSubMeal(item, -1)}
-                            className="cart-popup-add-remove-button"
-                          >
-                            -
-                          </button>
-                          {item.quantity}
-                          <button
-                            type="button"
-                            onClick={() => bumpSubMeal(item, 1)}
-                            className="cart-popup-add-remove-button"
-                            disabled={mealCount >= subCart.mealCount}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </span>
-                    </div>
-                    <div className="cart-popup-item-details-2">
-                      <span className="cart-popup-item-total-price">Meal</span>
-                      <button
-                        type="button"
-                        className="cart-popup-remove-button"
-                        onClick={() => bumpSubMeal(item, -lineQty(subCart.meals, item.id))}
-                      >
-                        REMOVE
-                      </button>
+                      <QtyAndTrash
+                        name={item.slug}
+                        quantity={item.quantity}
+                        onMinus={() => bumpSubMeal(item, -1)}
+                        onPlus={() => bumpSubMeal(item, 1)}
+                        plusDisabled={mealCount >= subCart.mealCount}
+                        onRemove={() => bumpSubMeal(item, -lineQty(subCart.meals, item.id))}
+                      />
                     </div>
                   </li>
                 ))}
-                {subCart.addons.map((item) => (
+                {subCart.addons.map((item) => {
+                  const addonLineLabel = moneyLabel(item.price_cents * item.quantity)
+                  return (
                   <li key={`addon-${item.id}`} className="cart-popup-item">
                     <img className="cart-popup-image" src={item.image_url} alt={item.slug} />
                     <div className="cart-popup-item-details-1">
-                      <span className="cart-popup-item-name">{item.slug}</span>
-                      <span className="cart-popup-item-quantity">
-                        QTY:
-                        <div className="quantity-button-container">
-                          <button
-                            type="button"
-                            onClick={() => bumpSubAddon(item, -1)}
-                            className="cart-popup-add-remove-button"
-                          >
-                            -
-                          </button>
-                          {item.quantity}
-                          <button
-                            type="button"
-                            onClick={() => bumpSubAddon(item, 1)}
-                            className="cart-popup-add-remove-button"
-                          >
-                            +
-                          </button>
-                        </div>
+                      <span className="cart-popup-item-top">
+                        <span className="cart-popup-item-name">{item.slug}</span>
+                        {addonLineLabel ? (
+                          <span className="cart-popup-item-total-price">{addonLineLabel}</span>
+                        ) : null}
                       </span>
-                    </div>
-                    <div className="cart-popup-item-details-2">
-                      <span className="cart-popup-item-total-price">
-                        ${((item.price_cents * item.quantity) / 100).toFixed(2)}
-                      </span>
-                      <button
-                        type="button"
-                        className="cart-popup-remove-button"
-                        onClick={() => bumpSubAddon(item, -lineQty(subCart.addons, item.id))}
-                      >
-                        REMOVE
-                      </button>
+                      <QtyAndTrash
+                        name={item.slug}
+                        quantity={item.quantity}
+                        onMinus={() => bumpSubAddon(item, -1)}
+                        onPlus={() => bumpSubAddon(item, 1)}
+                        onRemove={() => bumpSubAddon(item, -lineQty(subCart.addons, item.id))}
+                      />
                     </div>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             </div>
           )}
 
           <div className="cart-popup-footer">
+            <p className="cart-total-text">
+              {mealCount} / {subCart.mealCount} meals
+            </p>
+            {addonTotalLabel ? (
+              <p className="cart-total">{addonTotalLabel}</p>
+            ) : null}
             <div className="go-to-chekout-button-container">
               <button
                 type="button"
@@ -161,10 +171,6 @@ function SubscribeCartPopup({
                 {onAddons ? 'Review order' : 'Continue'}
               </button>
             </div>
-            <p className="cart-total-text">
-              {mealCount} / {subCart.mealCount} meals
-            </p>
-            <p className="cart-total">${(addonCents / 100).toFixed(2)}</p>
           </div>
         </>
       ) : (
@@ -179,7 +185,7 @@ function SubscribeCartPopup({
             </div>
           ) : (
             <>
-              <span>Your box ({itemCount})</span>
+              <span>Your weekly plan ({itemCount})</span>
               <button type="button" className="expand-button" aria-label="Expand cart">
                 +
               </button>

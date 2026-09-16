@@ -98,6 +98,7 @@ const SubscribeAddons = ({ subCart, bumpSubAddon }) => {
             onIncrement={(product) => bumpSubAddon(product, 1)}
             onDecrement={(product) => bumpSubAddon(product, -1)}
             incrementDisabledFor={(product) => !product.is_available}
+            compactAdd
           />
 
           <div className="subscribe-flow-bar">

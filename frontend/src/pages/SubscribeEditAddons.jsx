@@ -129,6 +129,7 @@ const SubscribeEditAddons = ({ user }) => {
             onIncrement={(product) => bump(product, 1)}
             onDecrement={(product) => bump(product, -1)}
             incrementDisabledFor={(product) => !product.is_available}
+            compactAdd
           />
 
           <div className="subscribe-flow-bar">
