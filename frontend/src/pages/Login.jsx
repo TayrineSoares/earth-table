@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import FeedbackDialog from '../components/FeedbackDialog';
+import { safeNextPath, withNextQuery } from '../helpers/subscriptionCart';
 import "../styles/Login.css"
 import loginImage from "../assets/images/accountImage.png"
 
@@ -13,6 +14,9 @@ const Login = ({setUser}) => {
   const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = safeNextPath(location.search) || '/';
+  const registerTo = withNextQuery('/register', location.search);
   const closeDialog = useCallback(() => setDialog(null), []);
 
   const handleLoginSubmit = async (e) => {
@@ -53,7 +57,7 @@ const Login = ({setUser}) => {
     }
 
     setUser(data.user);
-    navigate(`/`);
+    navigate(nextPath);
   };
 
   return (
@@ -69,10 +73,10 @@ const Login = ({setUser}) => {
         <div className="login-header">
           <p className="account-text">Account</p>
           <div className="login-header-footer">
-            <Link to="/login" className="account-sign-in active">
+            <Link to={withNextQuery('/login', location.search)} className="account-sign-in active">
               Sign In
             </Link>
-            <Link className="account-register" to="/register">
+            <Link className="account-register" to={registerTo}>
               Create Account
             </Link>
           </div>
@@ -138,7 +142,7 @@ const Login = ({setUser}) => {
             to="/reset-password">FORGOT PASSWORD?</Link>
 
             <p className='dont-have-account'>DON'T HAVE AN ACCOUNT? {' '}
-              <Link className="footer-account-register" to="/register">
+              <Link className="footer-account-register" to={registerTo}>
               SIGN UP
               </Link>
             </p>

@@ -1,16 +1,17 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import loginImage from "../assets/images/accountImage.png"
 import FeedbackDialog from '../components/FeedbackDialog';
+import { safeNextPath, withNextQuery } from '../helpers/subscriptionCart';
 import "../styles/Register.css"
 
-const BANNER_COPY = {
+const bannerCopyFor = (loginTo) => ({
   confirmEmail: {
     title: 'Check your email to confirm your account.',
     text: (
       <>
         Don&apos;t see it? You may already be registered —{' '}
-        <Link className="footer-account-register" to="/login">try logging in</Link>.
+        <Link className="footer-account-register" to={loginTo}>try logging in</Link>.
       </>
     ),
   },
@@ -18,11 +19,11 @@ const BANNER_COPY = {
     title: 'This email is already registered.',
     text: (
       <>
-        <Link className="footer-account-register" to="/login">Log in</Link> to continue.
+        <Link className="footer-account-register" to={loginTo}>Log in</Link> to continue.
       </>
     ),
   },
-};
+});
 
 const Register = ({setUser}) => {
   const [email, setEmail] = useState("");
@@ -37,6 +38,9 @@ const Register = ({setUser}) => {
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = safeNextPath(location.search) || '/';
+  const loginTo = withNextQuery('/login', location.search);
   const passwordsMismatch = Boolean(confirmPassword) && password !== confirmPassword;
   const closeDialog = useCallback(() => setDialog(null), []);
   const openErrorDialog = (title, body) => setDialog({
@@ -107,7 +111,7 @@ const Register = ({setUser}) => {
             body: 'This email is already registered. Log in to continue.',
             hint: 'If you forgot your password, you can reset it from the sign-in page.',
             primaryLabel: 'Log in',
-            primaryTo: '/login',
+            primaryTo: loginTo,
             secondaryLabel: 'Got it',
           });
           return;
@@ -133,7 +137,7 @@ const Register = ({setUser}) => {
           hint: "Don't see it? Check spam, or you may already be registered — try logging in instead.",
           primaryLabel: 'Got it',
           secondaryLabel: 'Sign in',
-          secondaryTo: '/login',
+          secondaryTo: loginTo,
         });
         return;
       }
@@ -148,7 +152,7 @@ const Register = ({setUser}) => {
           body: `You have been registered as ${data.user.email}.`,
           primaryLabel: 'Continue',
         });
-        setTimeout(() => navigate('/'), 1500);
+        setTimeout(() => navigate(nextPath), 1500);
       }
     } catch (err) {
       setBanner(null);
@@ -156,7 +160,7 @@ const Register = ({setUser}) => {
     }
   };
 
-  const bannerCopy = banner && dialog?.type !== banner ? BANNER_COPY[banner] : null;
+  const bannerCopy = banner && dialog?.type !== banner ? bannerCopyFor(loginTo)[banner] : null;
 
   return (
     <div className="register page">
@@ -168,8 +172,8 @@ const Register = ({setUser}) => {
         <div className="login-header">
           <p className="account-text">Account</p>
           <div className="login-header-footer">
-            <Link to="/login" className="account-sign-in">Sign In</Link>
-            <Link className="account-register active" to="/register">Create Account</Link>
+            <Link to={loginTo} className="account-sign-in">Sign In</Link>
+            <Link className="account-register active" to={withNextQuery('/register', location.search)}>Create Account</Link>
           </div>
         </div>
 
@@ -293,7 +297,7 @@ const Register = ({setUser}) => {
 
           <p className="have-account-text">
             ALREADY HAVE AN ACCOUNT?{' '}
-            <Link className="footer-account-register" to="/login">SIGN IN</Link>
+            <Link className="footer-account-register" to={loginTo}>SIGN IN</Link>
           </p>
         </div>
       </div>

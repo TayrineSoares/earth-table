@@ -11,8 +11,10 @@ export default function DeliverySelector({
   onPostalCodeChange,
   feeCents,
   onValidate, // ({ valid, normalizedPostal })
+  lockedDate,
 }) {
   const [dateError, setDateError] = useState('');
+  const locked = Boolean(lockedDate);
 
   // Date -> "YYYY-MM-DD" LOCAL
   const formatAsInputDate = (date) => {
@@ -35,6 +37,12 @@ export default function DeliverySelector({
     return t;
   }, []);
   const minDateStr = formatAsInputDate(minDateTime);
+
+  useEffect(() => {
+    if (!locked) return;
+    if (deliveryDate !== lockedDate) onDeliveryDateChange(lockedDate);
+    setDateError('');
+  }, [locked, lockedDate, deliveryDate, onDeliveryDateChange]);
 
   // Delivery window (start/end minutes from midnight)
   const START_MIN = 11 * 60; // 11:00
@@ -76,6 +84,10 @@ export default function DeliverySelector({
   // Validate AFTER picker closes
   const handleDateBlur = () => {
     if (!deliveryDate) return;
+    if (locked) {
+      setDateError('');
+      return;
+    }
 
     // Block holidays (keep date visible; show error + prevent proceeding elsewhere)
     if (isBlockedHoliday(deliveryDate)) {
@@ -134,13 +146,17 @@ export default function DeliverySelector({
             className="pickup-input"
             type="date"
             value={deliveryDate}
-            min={minDateStr}
+            min={locked ? undefined : minDateStr}
+            disabled={locked}
+            readOnly={locked}
             onChange={handleDateChange}
             onBlur={handleDateBlur}
           />
 
           <p className="pickup-hint">
-            Deliveries require at least 24 hours&apos; notice. Delivery window is 11:00 AM – 6:00 PM.
+            {locked
+              ? 'Sunday box date is set for your subscription. Delivery window is 11:00 AM – 6:00 PM.'
+              : 'Deliveries require at least 24 hours\u0027 notice. Delivery window is 11:00 AM – 6:00 PM.'}
           </p>
 
           {dateError && (
@@ -150,7 +166,7 @@ export default function DeliverySelector({
           )}
 
           {/* Neutral helper if picking earliest date but 24h pushes past window end */}
-          {isMinDate && !hasAnyTimeLeftToday && (
+          {isMinDate && !hasAnyTimeLeftToday && !locked && (
             <div className="pickup-helper">
               <span>No slots left for this date.</span>
             </div>

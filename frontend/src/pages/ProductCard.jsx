@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { sizedImageUrl } from "../helpers/imageHelpers";
 
-const ProductCard = ({ product, addToCart, tagIcons, getTagNames, eager = false }) => {
+const ProductCard = ({
+  product,
+  addToCart,
+  tagIcons,
+  getTagNames,
+  eager = false,
+  quantity,
+  onIncrement,
+  onDecrement,
+  incrementDisabled = false,
+}) => {
   const descriptionRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -85,7 +95,35 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames, eager = false 
       )}
 
       <div className="product-add-button-container">
-        {product.is_available ? (
+        {onIncrement ? (
+          product.is_available ? (
+            <div className="product-qty-stepper">
+              <button
+                type="button"
+                className="product-qty-btn"
+                onClick={() => onDecrement(product)}
+                disabled={!quantity}
+                aria-label={`Decrease ${product.slug}`}
+              >
+                -
+              </button>
+              <span className="product-qty-value">{quantity || 0}</span>
+              <button
+                type="button"
+                className="product-qty-btn"
+                onClick={() => onIncrement(product)}
+                disabled={incrementDisabled}
+                aria-label={`Increase ${product.slug}`}
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button className="product-add-button" type="button" disabled style={{ cursor: "not-allowed" }}>
+              <p className="product-add-button-text">SOLD OUT!</p>
+            </button>
+          )
+        ) : product.is_available ? (
           <button className="product-add-button" onClick={() => addToCart(product)}>
             <p className="product-add-button-text">ADD TO CART</p>
           </button>
@@ -136,7 +174,35 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames, eager = false 
               <p className="modal-description">{product.description}</p>
 
               <div className="modal-actions">
-                {product.is_available ? (
+                {onIncrement ? (
+                  product.is_available ? (
+                    <div className="product-qty-stepper">
+                      <button
+                        type="button"
+                        className="product-qty-btn"
+                        onClick={() => onDecrement(product)}
+                        disabled={!quantity}
+                        aria-label={`Decrease ${product.slug}`}
+                      >
+                        -
+                      </button>
+                      <span className="product-qty-value">{quantity || 0}</span>
+                      <button
+                        type="button"
+                        className="product-qty-btn"
+                        onClick={() => onIncrement(product)}
+                        disabled={incrementDisabled}
+                        aria-label={`Increase ${product.slug}`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="product-add-button" type="button" disabled>
+                      <p className="product-add-button-text">SOLD OUT!</p>
+                    </button>
+                  )
+                ) : product.is_available ? (
                   <button
                     className="product-add-button"
                     type="button"

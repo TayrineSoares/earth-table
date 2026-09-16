@@ -165,6 +165,17 @@ async function subscriberCountsByPlan() {
   return counts;
 }
 
+async function listMine(userId) {
+  if (!userId) throw new SubscriptionError(400, 'User id is required.');
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, status, plan_id, label')
+    .eq('user_id', userId)
+    .in('status', ['active', 'paused']);
+  if (error) throw error;
+  return data || [];
+}
+
 async function countActiveSubscribers(planId) {
   const { count, error } = await supabase
     .from('subscriptions')
@@ -310,6 +321,7 @@ module.exports = {
   SubscriptionError,
   listPlans,
   getPlanById,
+  listMine,
   createPlan,
   updatePlan,
   deletePlan,

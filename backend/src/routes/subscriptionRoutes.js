@@ -4,6 +4,8 @@ const router = express.Router();
 const {
   SubscriptionError,
   listPlans,
+  getPlanById,
+  listMine,
   createPlan,
   updatePlan,
   deletePlan,
@@ -29,6 +31,27 @@ router.get('/plans', async (req, res) => {
     res.json(plans);
   } catch (err) {
     handleError(res, err, '[GET /subscriptions/plans]');
+  }
+});
+
+router.get('/plans/:id', async (req, res) => {
+  try {
+    const plan = await getPlanById(req.params.id);
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found.' });
+    }
+    res.json(plan);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/plans/:id]');
+  }
+});
+
+router.get('/mine/:userId', async (req, res) => {
+  try {
+    const rows = await listMine(req.params.userId);
+    res.json(rows);
+  } catch (err) {
+    handleError(res, err, '[GET /subscriptions/mine/:userId]');
   }
 });
 

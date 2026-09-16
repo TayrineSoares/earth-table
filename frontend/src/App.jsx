@@ -5,10 +5,20 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
 import { supabase } from './supabaseClient';
+import {
+  adoptGuestSubCart,
+  bumpAddon,
+  bumpMeal,
+  readSubCart,
+  totalQty,
+  writeSubCart,
+} from './helpers/subscriptionCart';
 
 const App = () => {
   const [cart, setCart] = useState([]);
   const [showCartPopup, setShowCartPopup] = useState(false);
+  const [subCart, setSubCart] = useState(() => readSubCart(null));
+  const [showSubCartPopup, setShowSubCartPopup] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
@@ -54,6 +64,14 @@ const App = () => {
     setShowCartPopup(merged.length > 0);
   };
 
+  const adoptSubCartForUser = (currentUser) => {
+    // Guest signup with a plan replaces the user box (two plans are not merged).
+    const next = adoptGuestSubCart(currentUser.id);
+    setSubCart(next);
+    const count = totalQty(next.meals) + totalQty(next.addons);
+    setShowSubCartPopup(count > 0);
+  };
+
   useEffect(() => {
     const fromCheckout = window.location.pathname.startsWith('/confirmation');
     if (fromCheckout) {
@@ -65,6 +83,9 @@ const App = () => {
       const guestCart = readStoredCart('cart_guest');
       setCart(guestCart);
       setShowCartPopup(guestCart.length > 0);
+      const guestSub = readSubCart(null);
+      setSubCart(guestSub);
+      setShowSubCartPopup(totalQty(guestSub.meals) + totalQty(guestSub.addons) > 0);
     }
   
     // 2. Then get user session asynchronously and load user cart if logged in
@@ -88,6 +109,7 @@ const App = () => {
 
       if (currentUser) {
         adoptCartForUser(currentUser);
+        adoptSubCartForUser(currentUser);
       }
     });
   
@@ -112,10 +134,14 @@ const App = () => {
   
       if (currentUser) {
         adoptCartForUser(currentUser);
+        adoptSubCartForUser(currentUser);
       } else {
         const parsedGuestCart = readStoredCart('cart_guest');
         setCart(parsedGuestCart);
         setShowCartPopup(parsedGuestCart.length > 0);
+        const guestSub = readSubCart(null);
+        setSubCart(guestSub);
+        setShowSubCartPopup(totalQty(guestSub.meals) + totalQty(guestSub.addons) > 0);
       }
     });
   
@@ -132,6 +158,10 @@ const App = () => {
       localStorage.setItem('cart_guest', JSON.stringify(cart));
     }
   }, [cart, user]);
+
+  useEffect(() => {
+    writeSubCart(user?.id || null, subCart);
+  }, [subCart, user]);
 
   const handleLogout = async () => {
     try {
@@ -190,6 +220,16 @@ const App = () => {
     });
   };
 
+  const bumpSubMeal = (product, delta) => {
+    setSubCart((prev) => bumpMeal(prev, product, delta));
+    setShowSubCartPopup(true);
+  };
+
+  const bumpSubAddon = (product, delta) => {
+    setSubCart((prev) => bumpAddon(prev, product, delta));
+    setShowSubCartPopup(true);
+  };
+
   const clearCart = () => {
     setCart([]);
     setShowCartPopup(false);
@@ -217,7 +257,13 @@ const App = () => {
         removeAll={removeAll}
         showCartPopup={showCartPopup}
         setShowCartPopup={setShowCartPopup}
-        clearCart={clearCart}  
+        clearCart={clearCart}
+        subCart={subCart}
+        setSubCart={setSubCart}
+        bumpSubMeal={bumpSubMeal}
+        bumpSubAddon={bumpSubAddon}
+        showSubCartPopup={showSubCartPopup}
+        setShowSubCartPopup={setShowSubCartPopup}
       />
       <Footer />
     </div>

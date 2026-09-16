@@ -51,6 +51,16 @@ const updateSubscriptionSettings = async (body) => {
   return parseJson(res);
 };
 
+const fetchSubscriptionPlan = async (planId) => {
+  const res = await fetch(`/api/subscriptions/plans/${planId}`);
+  return parseJson(res);
+};
+
+const fetchMySubscriptions = async (userId) => {
+  const res = await fetch(`/api/subscriptions/mine/${userId}`);
+  return parseJson(res);
+};
+
 const fetchSubscriptionDates = async () => {
   const res = await fetch('/api/subscriptions/dates');
   return parseJson(res);
@@ -88,6 +98,8 @@ export {
   deleteSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
+  fetchSubscriptionPlan,
+  fetchMySubscriptions,
   fetchSubscriptionDates,
   formatPlanPrice,
   dollarsToCents,

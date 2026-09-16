@@ -6,6 +6,8 @@ import {
   Products,
   SubscribeAndSave,
   SubscribeMeals,
+  SubscribeAddons,
+  SubscribeCart,
   Cart,
   Confirmation,
   Admin,
@@ -20,10 +22,29 @@ import {
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
+import SubscribeCartPopup from './components/SubscribeCartPopup.jsx';
 import PrivacyPolicy from './components/PrivacyPolicy.jsx';
 
-const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOneFromCart, addOneFromCart, setUser, removeAll, user, clearCart }) => {
+const AppRoutes = ({
+  cart,
+  addToCart,
+  showCartPopup,
+  setShowCartPopup,
+  removeOneFromCart,
+  addOneFromCart,
+  setUser,
+  removeAll,
+  user,
+  clearCart,
+  subCart,
+  setSubCart,
+  bumpSubMeal,
+  bumpSubAddon,
+  showSubCartPopup,
+}) => {
   const location = useLocation();
+  const onSubscribeSignup = location.pathname.startsWith('/subscribe/');
+  const onSubscribeCart = location.pathname === '/subscribe/cart';
 
   return (
     <>
@@ -33,7 +54,29 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/subscribe-and-save" element={<SubscribeAndSave />} />
-          <Route path="/subscribe/:planId/meals" element={<SubscribeMeals />} />
+          <Route
+            path="/subscribe/:planId/meals"
+            element={
+              <SubscribeMeals
+                subCart={subCart}
+                setSubCart={setSubCart}
+                bumpSubMeal={bumpSubMeal}
+              />
+            }
+          />
+          <Route
+            path="/subscribe/:planId/addons"
+            element={
+              <SubscribeAddons
+                subCart={subCart}
+                bumpSubAddon={bumpSubAddon}
+              />
+            }
+          />
+          <Route
+            path="/subscribe/cart"
+            element={<SubscribeCart user={user} subCart={subCart} />}
+          />
           <Route
             path="/products/category/:categoryId?"
             element={<Products 
@@ -68,13 +111,20 @@ const AppRoutes = ({ cart, addToCart, showCartPopup, setShowCartPopup, removeOne
     
       </div>
 
-      {showCartPopup && location.pathname !== '/cart' && (
+      {showCartPopup && location.pathname !== '/cart' && !onSubscribeSignup && (
         <CartPopup 
           cart={cart}
           removeOneFromCart={removeOneFromCart}
           addOneFromCart={addOneFromCart}
           removeAll={removeAll}
           onClose={() => setShowCartPopup(false)} 
+        />
+      )}
+      {showSubCartPopup && onSubscribeSignup && !onSubscribeCart && (
+        <SubscribeCartPopup
+          subCart={subCart}
+          bumpSubMeal={bumpSubMeal}
+          bumpSubAddon={bumpSubAddon}
         />
       )}
     </>

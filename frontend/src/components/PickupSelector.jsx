@@ -1,5 +1,5 @@
 import '../styles/PickupSelector.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates';
 
 const PickupSelector = ({
@@ -7,9 +7,11 @@ const PickupSelector = ({
   pickupTime,
   onDateChange,
   onTimeChange,
+  lockedDate,
 }) => {
   const [dateError, setDateError] = useState('');
   const [timeError, setTimeError] = useState('');
+  const locked = Boolean(lockedDate);
 
   // Format Date -> YYYY-MM-DD (local)
   const formatAsInputDate = (date) => {
@@ -33,6 +35,12 @@ const PickupSelector = ({
   }, []);
   const minDateStr = formatAsInputDate(minDateTime);
 
+  useEffect(() => {
+    if (!locked) return;
+    if (pickupDate !== lockedDate) onDateChange(lockedDate);
+    setDateError('');
+  }, [locked, lockedDate, pickupDate, onDateChange]);
+
   // Time helpers
   const timeToMinutes = (hhmm) => {
     const [h, m] = hhmm.split(':').map(Number);
@@ -48,7 +56,7 @@ const PickupSelector = ({
   const sameAsMinDate = pickupDate === minDateStr;
 
   const isSlotAllowed = (slot) =>
-    !sameAsMinDate || slotStartMinutes(slot) >= cutoffMinutes;
+    locked || !sameAsMinDate || slotStartMinutes(slot) >= cutoffMinutes;
 
   const allowedSlotsForSelected = useMemo(() => {
     if (!pickupDate) return SLOTS;
@@ -71,6 +79,10 @@ const PickupSelector = ({
   // Validate AFTER picker closes
   const handleDateBlur = () => {
     if (!pickupDate) return;
+    if (locked) {
+      setDateError('');
+      return;
+    }
 
     if (isBlockedHoliday(pickupDate)) {
       setDateError(
@@ -114,7 +126,7 @@ const PickupSelector = ({
   };
 
   const showNoSlotsToday =
-    pickupDate === minDateStr && allowedSlotsForSelected.length === 0;
+    !locked && pickupDate === minDateStr && allowedSlotsForSelected.length === 0;
 
   return (
     <section className="pickup-section">
@@ -130,13 +142,17 @@ const PickupSelector = ({
             type="date"
             className="pickup-input"
             value={pickupDate}
-            min={minDateStr}
+            min={locked ? undefined : minDateStr}
+            disabled={locked}
+            readOnly={locked}
             onChange={handleDateChange}
             onBlur={handleDateBlur}
           />
 
           <p className="pickup-hint">
-            Pickups require at least 24 hours&apos; notice.
+            {locked
+              ? 'Sunday box date is set for your subscription.'
+              : 'Pickups require at least 24 hours\u0027 notice.'}
           </p>
 
           {dateError && (

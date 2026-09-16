@@ -4,6 +4,8 @@ export { default as Contact } from './Contact';
 export { default as Products } from './Products';
 export { default as SubscribeAndSave } from './SubscribeAndSave';
 export { default as SubscribeMeals } from './SubscribeMeals';
+export { default as SubscribeAddons } from './SubscribeAddons';
+export { default as SubscribeCart } from './SubscribeCart';
 export { default as Cart } from './Cart';
 export { default as Confirmation } from './Confirmation';
 export { default as Admin } from './Admin';
