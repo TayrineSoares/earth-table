@@ -145,10 +145,10 @@
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .tag-icon {
-  padding: 4px 8px;
+  padding: 2px 7px;
   font-size: 11px;
-  margin: 3px;
-  border-radius: 12px;
+  margin: 0;
+  border-radius: 999px;
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-header-info-container {
@@ -210,7 +210,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 10px 10px;
+  padding: 20px 10px 10px;
   box-sizing: border-box;
 }
 
