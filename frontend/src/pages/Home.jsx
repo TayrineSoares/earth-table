@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import loadingAnimation from '../assets/loading.json';
 import Lottie from 'lottie-react';
 import { Link } from "react-router-dom";
-import headerImage from "../assets/images/headerImage.png";
+import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
 import arrow from  "../assets/images/arrow.png"
 
