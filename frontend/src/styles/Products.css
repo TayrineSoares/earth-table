@@ -153,12 +153,18 @@
   hyphens: auto;
 }
 
+.product-card-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: auto;
+}
+
 .product-add-button-container {
   display: flex;
   width: 100%;
   height: 58px;
-  margin-top: auto;
-  
+  margin-top: 0;
 }
 
 .product-add-button {

@@ -157,6 +157,10 @@ const SubscribeEditMeals = ({ user }) => {
           {row ? (
             <>
               <h1 className="subscribe-h1 subscribe-choose-title">Choose your meals</h1>
+              <p className="subscribe-plan-line">
+                {plan.meal_count} meals · {formatPlanPrice(plan.price_cents)}/week ·{' '}
+                <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
+              </p>
               <p className={row.week?.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
                 {row.week?.cutoff_passed
                   ? `This week's cutoff has passed. Mix bowls, salads, and main plates however you like for ${sundayLabel}.`
@@ -174,10 +178,6 @@ const SubscribeEditMeals = ({ user }) => {
               </div>
               <p className="subscribe-meal-count" aria-live="polite">
                 {picked} of {need} chosen{sundayLabel ? ` for ${sundayLabel}` : ''}
-              </p>
-              <p className="subscribe-plan-line">
-                {plan.meal_count} meals · {formatPlanPrice(plan.price_cents)}/week ·{' '}
-                <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
               </p>
 
               <SubscribeCatalog

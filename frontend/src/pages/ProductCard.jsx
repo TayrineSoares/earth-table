@@ -133,54 +133,56 @@ const ProductCard = ({
         </p>
       </div>
 
-      <div className="view-details-slot">
-        {isOverflowing ? (
-          <button
-            className="view-details-inline"
-            type="button"
-            onClick={() => setIsOpen(true)}
-          >
-            View details
-          </button>
-        ) : null}
-      </div>
+      <div className="product-card-actions">
+        <div className="view-details-slot">
+          {isOverflowing ? (
+            <button
+              className="view-details-inline"
+              type="button"
+              onClick={() => setIsOpen(true)}
+            >
+              View details
+            </button>
+          ) : null}
+        </div>
 
-      <div className="product-add-button-container">
-        {onIncrement ? (
-          product.is_available ? (
-            compactAdd && !quantity ? (
-              <button
-                className="product-add-button"
-                type="button"
-                onClick={() => onIncrement(product)}
-                disabled={incrementDisabled}
-              >
-                <p className="product-add-button-text">Add</p>
-              </button>
+        <div className="product-add-button-container">
+          {onIncrement ? (
+            product.is_available ? (
+              compactAdd && !quantity ? (
+                <button
+                  className="product-add-button"
+                  type="button"
+                  onClick={() => onIncrement(product)}
+                  disabled={incrementDisabled}
+                >
+                  <p className="product-add-button-text">Add</p>
+                </button>
+              ) : (
+                <QtyStepper
+                  product={product}
+                  quantity={quantity}
+                  onIncrement={onIncrement}
+                  onDecrement={onDecrement}
+                  incrementDisabled={incrementDisabled}
+                  compact={compactAdd}
+                />
+              )
             ) : (
-              <QtyStepper
-                product={product}
-                quantity={quantity}
-                onIncrement={onIncrement}
-                onDecrement={onDecrement}
-                incrementDisabled={incrementDisabled}
-                compact={compactAdd}
-              />
+              <button className="product-add-button" type="button" disabled style={{ cursor: "not-allowed" }}>
+                <p className="product-add-button-text">SOLD OUT!</p>
+              </button>
             )
+          ) : product.is_available ? (
+            <button className="product-add-button" onClick={() => addToCart(product)}>
+              <p className="product-add-button-text">ADD TO CART</p>
+            </button>
           ) : (
-            <button className="product-add-button" type="button" disabled style={{ cursor: "not-allowed" }}>
+            <button className="product-add-button" disabled style={{ cursor: "not-allowed" }}>
               <p className="product-add-button-text">SOLD OUT!</p>
             </button>
-          )
-        ) : product.is_available ? (
-          <button className="product-add-button" onClick={() => addToCart(product)}>
-            <p className="product-add-button-text">ADD TO CART</p>
-          </button>
-        ) : (
-          <button className="product-add-button" disabled style={{ cursor: "not-allowed" }}>
-            <p className="product-add-button-text">SOLD OUT!</p>
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modal */}

@@ -75,7 +75,13 @@
   font-size: 20px;
   line-height: 1.3;
   color: #BE7200;
-  margin: 24px 0 0;
+  margin: 12px 0 0;
+}
+
+.subscribe-plan-line .subscribe-inline-link {
+  color: #757575;
+  font-size: 15px;
+  text-decoration-color: #D9C7B0;
 }
 
 .subscribe-flow-page .categories-container {
@@ -124,7 +130,7 @@
   max-width: none;
   height: 100%;
   box-sizing: border-box;
-  border: 2px solid transparent;
+  border: 2px solid #D9C7B0;
   border-radius: 15px;
   overflow: hidden;
 }
@@ -178,8 +184,10 @@
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .view-details-slot {
-  min-height: 28px;
-  text-align: center;
+  min-height: 0;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .view-details-inline {
@@ -188,19 +196,27 @@
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-header-info-container,
-.subscribe-flow-page .subscribe-catalog-grid .product-description-container,
-.subscribe-flow-page .subscribe-catalog-grid .view-details-slot,
-.subscribe-flow-page .subscribe-catalog-grid .product-add-button-container {
+.subscribe-flow-page .subscribe-catalog-grid .product-description-container {
   padding-left: 10px;
   padding-right: 10px;
+}
+
+.subscribe-flow-page .subscribe-catalog-grid .product-card-actions {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 10px;
+  box-sizing: border-box;
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-add-button-container {
   height: auto;
   min-height: 44px;
   width: auto;
-  align-self: flex-end;
-  padding-bottom: 10px;
+  align-self: center;
+  padding-bottom: 0;
+  flex-shrink: 0;
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-add-button {
