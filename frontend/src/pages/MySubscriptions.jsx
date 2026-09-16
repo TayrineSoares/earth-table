@@ -356,7 +356,11 @@ const MySubscriptions = ({ user }) => {
 
                 {canEdit ? (
                   <div className="my-sub-actions">
-                    <Link to={`/my-subscriptions/${row.id}/meals?fresh=1`} className="order-history-button">
+                    <Link
+                      to={`/my-subscriptions/${row.id}/meals`}
+                      state={{ fresh: true }}
+                      className="order-history-button"
+                    >
                       Edit plan
                     </Link>
                     <button

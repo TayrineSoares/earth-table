@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
@@ -35,9 +35,11 @@ const TAG_ICONS = {
 
 const SubscribeEditMeals = ({ user }) => {
   const { subscriptionId } = useParams()
-  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const startFresh = searchParams.get('fresh') === '1'
+  const location = useLocation()
+  const userId = user?.id
+  // Snapshot on first mount so Edit plan can reseed without a URL change (and a second load).
+  const [startFresh] = useState(() => location.state?.fresh === true)
   const [row, setRow] = useState(null)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
@@ -47,18 +49,17 @@ const SubscribeEditMeals = ({ user }) => {
   const [dialog, setDialog] = useState(null)
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       navigate(`/login?next=${encodeURIComponent(`/my-subscriptions/${subscriptionId}/meals`)}`, { replace: true })
     }
-  }, [user, navigate, subscriptionId])
+  }, [userId, navigate, subscriptionId])
 
   useEffect(() => {
-    if (!user?.id) return undefined
+    if (!userId) return undefined
     let cancelled = false
-    setIsLoading(true)
 
     Promise.all([
-      fetchMySubscriptions(user.id),
+      fetchMySubscriptions(userId),
       fetch('/api/products').then((res) => {
         if (!res.ok) throw new Error('Could not load products')
         return res.json()
@@ -94,22 +95,17 @@ const SubscribeEditMeals = ({ user }) => {
           setIsLoading(false)
           return
         }
-        const stored = readEditCart(user.id, subscriptionId)
+        const stored = readEditCart(userId, subscriptionId)
         const source = found.edit_cycle || found.cycle
         const nextCart = startFresh || stored.subscriptionId !== subscriptionId
           ? seedEditCart(found, source)
           : stored
-        writeEditCart(user.id, subscriptionId, nextCart)
+        writeEditCart(userId, subscriptionId, nextCart)
         setRow(found)
         setEditCart(nextCart)
         setProducts(nextProducts || [])
         setCategories(sortPlanMealCategories(nextCategories || []))
         setAllTags(nextTags || [])
-        if (startFresh) {
-          const nextParams = new URLSearchParams(searchParams)
-          nextParams.delete('fresh')
-          setSearchParams(nextParams, { replace: true })
-        }
         setIsLoading(false)
       })
       .catch((err) => {
@@ -128,7 +124,7 @@ const SubscribeEditMeals = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [user, subscriptionId, startFresh, searchParams, setSearchParams])
+  }, [userId, subscriptionId, startFresh])
 
   const plan = row?.subscription_plans || {}
   const picked = totalQty(editCart.meals)
