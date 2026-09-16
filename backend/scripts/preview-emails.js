@@ -17,6 +17,8 @@ const {
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
   renderSubscriptionManageEmail,
+  renderSubscriptionWednesdayEmail,
+  renderSubscriptionThursdayEmail,
 } = require('../src/utils/emailTemplates');
 
 const outDir = path.join(__dirname, '../email-previews');
@@ -170,6 +172,22 @@ write('12-subscription-paused.html', renderSubscriptionManageEmail({
   kind: 'pause_now',
   chargeLabel: 'Wednesday, September 16 at 5:00 PM ET',
 }).html);
+write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
+  ...subMail,
+  charged: true,
+  planCents: 18000,
+  deliveryCents: 800,
+  chargedCents: 21234,
+}).html);
+write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
+  ...subMail,
+  delivery: true,
+  postalCode: 'M6G 1A1',
+  chargedAddons: true,
+  addonCents: 2400,
+  chargedCents: 2712,
+  addonItems: subMail.addons,
+}).html);
 
 const labels = {
   '01-customer-order.html': 'Customer order confirmation',
@@ -184,6 +202,8 @@ const labels = {
   '10-subscription-owner.html': 'Owner: new subscription',
   '11-subscription-updated.html': 'Subscription updated',
   '12-subscription-paused.html': 'Subscription paused',
+  '13-subscription-wednesday.html': 'Wednesday charge + reminder',
+  '14-subscription-thursday.html': 'Thursday lock + add-on receipt',
 };
 
 const confirmSignupPreview = '08-confirm-signup.html';

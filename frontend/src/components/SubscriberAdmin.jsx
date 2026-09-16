@@ -6,6 +6,7 @@ import {
   formatPlanPrice,
   mealsAWeek,
 } from '../helpers/subscriptionHelpers';
+import { setOrderPickedUp } from '../helpers/orderHelpers';
 import '../styles/PromoAdmin.css';
 import '../styles/UsersAdmin.css';
 import '../styles/SubscriptionAdmin.css';
@@ -39,6 +40,21 @@ const SubscriberAdmin = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+
+  const handlePickedUp = async (orderId, next) => {
+    setRows((prev) => prev.map((row) => (
+      row.kitchen?.id === orderId ? { ...row, kitchen: { ...row.kitchen, picked_up: next } } : row
+    )));
+    try {
+      await setOrderPickedUp(orderId, next);
+    } catch (err) {
+      console.error(err);
+      setRows((prev) => prev.map((row) => (
+        row.kitchen?.id === orderId ? { ...row, kitchen: { ...row.kitchen, picked_up: !next } } : row
+      )));
+      setError(err.message || 'Could not update picked up.');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +103,7 @@ const SubscriberAdmin = () => {
     <div className="promo-admin-container">
       <h1 className="promo-admin-title">Subscriptions</h1>
       <p className="sub-admin-lead">
-        People currently on a weekly plan. Expand a row for this Sunday&apos;s meals and add-ons.
+        People currently on a weekly plan. Expand a row for this Sunday&apos;s meals and add-ons. After Thursday lock, mark delivered here — weekly boxes do not appear on the Orders tab.
       </p>
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
@@ -202,6 +218,19 @@ const SubscriberAdmin = () => {
                             ) : (
                               <p className="sub-admin-muted">None this week.</p>
                             )}
+                            {row.kitchen?.id ? (
+                              <p>
+                                <button
+                                  type="button"
+                                  className="promo-delete-button"
+                                  onClick={() => handlePickedUp(row.kitchen.id, !row.kitchen.picked_up)}
+                                >
+                                  {row.kitchen.picked_up ? 'Delivered ✓' : 'Mark delivered'}
+                                </button>
+                              </p>
+                            ) : cycle.status === 'locked' ? (
+                              <p className="sub-admin-muted">Locked — kitchen order missing.</p>
+                            ) : null}
                           </div>
                         </td>
                       </tr>

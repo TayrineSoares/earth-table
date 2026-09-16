@@ -200,6 +200,11 @@ function formatDeliveryLabel(date) {
   return fmt.format(date);
 }
 
+function sundayLabelFromYmd(ymdStr) {
+  const d = parseYmdToronto(ymdStr);
+  return d ? formatDeliveryLabel(d) : (ymdStr || 'Sunday');
+}
+
 /**
  * @param {Date} [now]
  * @param {{ test_lock_at?: string | null }} [settings]
@@ -253,6 +258,19 @@ function getSignupDates(now = new Date(), settings = {}) {
     first_delivery_label: formatDeliveryLabel(firstDeliveryAt),
     locked_delivery_date: lockedDeliveryDate,
   };
+}
+
+/** Sunday the weekly jobs should act on: this Sunday until lock, then the Sunday that just locked. */
+function getTargetSundayYmd(now = new Date(), settings = {}) {
+  const dates = getSignupDates(now, settings);
+  if (dates.cutoff_passed && dates.locked_delivery_date) return dates.locked_delivery_date;
+  return dates.first_delivery_date;
+}
+
+function isYmdBlocked(ymdStr) {
+  const [year, month, day] = String(ymdStr || '').split('-').map(Number);
+  if (!year || !month || !day) return false;
+  return isBlockedHoliday(year, month, day);
 }
 
 function torontoYmd(date = new Date()) {
@@ -361,5 +379,8 @@ module.exports = {
   mealsAWeek,
   mealPlanPhrase,
   formatTorontoStamp,
+  sundayLabelFromYmd,
   torontoYmd,
+  getTargetSundayYmd,
+  isYmdBlocked,
 };

@@ -1,7 +1,6 @@
 /**
  * Pause / resume / cancel / change plan.
  * Wednesday 5pm is the deadline for this Sunday; after that the change waits.
- * Thursday lock and weekly charge jobs are still Phase 6.
  */
 
 const supabase = require('../../supabase/db');
@@ -185,6 +184,19 @@ async function resumeSubscription(userId, subscriptionId) {
   }
 
   const { week, charge } = await currentCycleFor(sub);
+
+  if (sub.status === 'paused' && sub.pause_reason === 'payment_failed') {
+    try {
+      const { retryFailedCharge } = require('./subscriptionCharge');
+      const retried = await retryFailedCharge(sub);
+      if (!retried?.ok) {
+        throw new SubscriptionError(402, 'We still could not charge this week. Update your card before Thursday 5:00 PM or email hello@earthtableco.ca.');
+      }
+    } catch (err) {
+      if (err instanceof SubscriptionError) throw err;
+      throw new SubscriptionError(402, 'We still could not charge this week. Try another card or email hello@earthtableco.ca.');
+    }
+  }
 
   if (sub.status === 'active' && sub.pending_status) {
     const { error } = await supabase

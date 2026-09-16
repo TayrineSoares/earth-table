@@ -1263,6 +1263,11 @@ function renderSubscriptionManageEmail({
       heading: `We saved your plan, ${name}`,
       intro: `Your ${planWeek} is still paused, with your meals and card on file. Resume in My Subscriptions by ${charge} if you want a box this Sunday. We'll keep inviting you back on Mondays until you resume or cancel.`,
     },
+    payment_failed: {
+      subject: `Update your card to keep this Sunday's box`,
+      heading: `We could not charge this week, ${name}`,
+      intro: `Your card was declined for this Sunday, ${sundayDatePart(sunday)}. Update it in My Subscriptions before Thursday 5:00 PM ET to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
+    },
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,
@@ -1306,6 +1311,270 @@ Questions? Reply to this email or write to hello@earthtableco.ca.`;
   return { subject: copy.subject, html, text };
 }
 
+function renderSubscriptionHolidaySkipEmail({
+  firstName,
+  skippedSunday,
+  nextSunday,
+  chargeLabel,
+  owner = false,
+} = {}) {
+  const name = firstName || 'there';
+  const skipped = skippedSunday || 'this Sunday';
+  const next = nextSunday || 'the next Sunday';
+  const charge = chargeLabel || 'Wednesday at 5:00 PM ET';
+  const subject = owner
+    ? `Holiday skip — no boxes ${skipped}`
+    : `No box this Sunday — next delivery is ${next}`;
+  const heading = owner ? `Holiday skip` : `No box this Sunday, ${name}`;
+  const bodyText = owner
+    ? `Sunday ${skipped} is a holiday. No weekly boxes go out and no one is charged. Next Sunday that runs is ${next}.`
+    : `Sunday ${skipped} is a holiday, so there is no box and no charge. Your next delivery is ${next}. Weekly billing stays on the usual ${charge} schedule.`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(heading)}
+      ${intro(bodyText)}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `${heading}\n\n${bodyText}\n`;
+  return { subject, html, text };
+}
+
+function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
+  const count = boxes.length;
+  const subject = `Weekly boxes locked — ${sunday || 'Sunday'} (${count})`;
+  const linesHtml = boxes.length
+    ? boxes.map((row) => `<p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${row.name} — ${row.plan} — ${row.fulfillment}</p>`).join('')
+    : `<p style="margin:0; font-size:14px; color:${C_MUTED}; font-family:${FONT};">None.</p>`;
+  const linesText = boxes.length
+    ? boxes.map((row) => `- ${row.name} — ${row.plan} — ${row.fulfillment}`).join('\n')
+    : '- None';
+  const html = wrapEmail(`
+      ${eyebrow("Kitchen")}
+      ${h1(`${count} weekly box${count === 1 ? '' : 'es'} for ${sunday || 'Sunday'}`)}
+      ${intro('Meals are locked. These rows are on the Subscriptions tab, not Orders.')}
+      ${card(linesHtml)}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `${subject}\n\n${linesText}\n`;
+  return { subject, html, text };
+}
+
+function moneyReceiptHtml(lines, totalLabel, totalCents) {
+  const rows = (lines || []).map((line, i, all) => {
+    const last = i === all.length - 1 && !totalLabel;
+    return kvRow(line.label, formatDollars(line.cents), { last });
+  });
+  if (totalLabel) {
+    rows.push(kvRow(totalLabel, formatDollars(totalCents), { last: true, highlight: true }));
+  }
+  return card(kvTable(rows.join('')));
+}
+
+function moneyReceiptText(lines, totalLabel, totalCents) {
+  const body = (lines || []).map((line) => `${line.label}: ${formatDollars(line.cents)}`).join('\n');
+  if (!totalLabel) return body;
+  return `${body}\n${totalLabel}: ${formatDollars(totalCents)}`;
+}
+
+function itemListHtml(items, emptyCopy) {
+  const html = itemLinesHtml(items);
+  return `<p style="margin:0 0 24px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${html || emptyCopy}</p>`;
+}
+
+function receiptLines({ planCents, deliveryCents, addonCents, chargedCents }) {
+  const lines = [];
+  if (planCents > 0) lines.push({ label: 'Plan', cents: planCents });
+  if (deliveryCents > 0) lines.push({ label: 'Delivery', cents: deliveryCents });
+  if (addonCents > 0) lines.push({ label: 'Add-ons', cents: addonCents });
+  const pretax = (Number(planCents) || 0) + (Number(deliveryCents) || 0) + (Number(addonCents) || 0);
+  const tax = Math.max(0, (Number(chargedCents) || 0) - pretax);
+  if (tax > 0) lines.push({ label: 'HST', cents: tax });
+  return lines;
+}
+
+/**
+ * Wednesday: plan+delivery receipt (if the card was billed) plus tomorrow's meal cutoff.
+ */
+function renderSubscriptionWednesdayEmail({
+  firstName,
+  mealCount,
+  delivery,
+  deliveryLabel,
+  pickupSlot,
+  cutoffLabel,
+  charged = false,
+  planCents = 0,
+  deliveryCents = 0,
+  chargedCents = 0,
+  meals,
+  addons,
+  subscriptionId,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
+  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const manageHref = appUrl('/my-subscriptions');
+  const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
+  const chargeLines = charged
+    ? receiptLines({ planCents, deliveryCents, chargedCents })
+    : [];
+
+  const introText = charged
+    ? `We charged your card for this week's plan and delivery. You have until tomorrow to change meals and add extras — cutoff is ${cutoff}. Add-ons still on the box then are billed at cutoff.`
+    : `Plan and delivery for this Sunday are already paid. You have until tomorrow to change meals and add extras — cutoff is ${cutoff}. Add-ons still on the box then are billed at cutoff.`;
+
+  const subject = charged
+    ? `Your card was charged — meals and extras until tomorrow`
+    : `This Sunday's box — meals and extras until tomorrow`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(`This week's box, ${name}`)}
+      ${intro(introText)}
+      ${card(kvTable(`
+        ${kvRow("Plan", planWeek)}
+        ${kvRow("This Sunday", fulfillment)}
+        ${kvRow("Change meals by", cutoff, { last: true })}
+      `))}
+      ${charged ? `${h2("Charged today")}${moneyReceiptHtml(chargeLines, "Charged to your card", chargedCents)}` : ''}
+      ${h2("Meals")}
+      ${itemListHtml(meals, 'None yet — pick them before cutoff and we will have them ready.')}
+      ${h2("Add-ons")}
+      ${itemListHtml(addons, 'None yet. Add extras before cutoff if you want them this week.')}
+      ${ctaLink(mealsHref, "Manage this week's meals →")}
+      ${ctaLink(manageHref, "My Subscriptions →")}
+  `, {
+    preheader: introText,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `This week's box, ${name}
+
+${introText}
+
+Plan: ${planWeek}
+This Sunday: ${fulfillment}
+Change meals by: ${cutoff}
+
+${charged ? `Charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
+${itemLinesText(meals) || 'None yet — pick them before cutoff.'}
+
+Add-ons
+${itemLinesText(addons) || 'None yet.'}
+
+Manage this week's meals: ${mealsHref}
+My Subscriptions: ${manageHref}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Thursday lock: box is placed. Add-on receipt only if extras were billed.
+ */
+function renderSubscriptionThursdayEmail({
+  firstName,
+  mealCount,
+  delivery,
+  deliveryLabel,
+  pickupSlot,
+  postalCode,
+  chargedAddons = false,
+  addonCents = 0,
+  chargedCents = 0,
+  addonItems,
+  meals,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const sunday = deliveryLabel || 'Sunday';
+  const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
+  const postal = String(postalCode || '').trim();
+  const chargeLines = chargedAddons
+    ? receiptLines({ addonCents, chargedCents })
+    : [];
+  const introText = `Your weekly box has been placed and cannot be modified. ${delivery
+    ? 'It will be delivered in the window below.'
+    : 'Pick it up in the window below.'}`;
+
+  const subject = `This Sunday's box is locked — ${sunday}`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(`This Sunday is locked, ${name}`)}
+      ${intro(introText)}
+      ${card(kvTable(`
+        ${kvRow("Plan", planWeek)}
+        ${kvRow(delivery ? "Delivery" : "Pickup", fulfillment, { last: !postal })}
+        ${postal ? kvRow("Postal code", postal, { last: true }) : ''}
+      `))}
+      ${chargedAddons ? `${h2("Add-ons charged today")}${moneyReceiptHtml(chargeLines, "Charged to your card", chargedCents)}` : ''}
+      ${h2("Meals")}
+      ${itemListHtml(meals, '—')}
+      ${h2("Add-ons")}
+      ${itemListHtml(addonItems, 'None this week.')}
+      ${ctaLink(appUrl('/my-subscriptions'), "My Subscriptions →")}
+  `, {
+    preheader: introText,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `This Sunday is locked, ${name}
+
+${introText}
+
+Plan: ${planWeek}
+${delivery ? 'Delivery' : 'Pickup'}: ${fulfillment}
+${postal ? `Postal code: ${postal}\n` : ''}
+${chargedAddons ? `Add-ons charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
+${itemLinesText(meals) || '—'}
+
+Add-ons
+${itemLinesText(addonItems) || 'None this week.'}
+
+My Subscriptions: ${appUrl('/my-subscriptions')}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject, html, text };
+}
+
+function renderSubscriptionPriceEmail({
+  firstName,
+  mealCount,
+  oldPriceCents,
+  newPriceCents,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const subject = `Your ${planWeek} is now ${formatDollars(newPriceCents)}/week`;
+  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next Wednesday charge — this Sunday stays at the amount already billed if you already paid.`;
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(`Price update, ${name}`)}
+      ${intro(introText)}
+      ${ctaLink(appUrl('/my-subscriptions'), "My Subscriptions →")}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `Price update, ${name}\n\n${introText}\n\nMy Subscriptions: ${appUrl('/my-subscriptions')}\n`;
+  return { subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
@@ -1319,5 +1588,10 @@ module.exports = {
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
   renderSubscriptionManageEmail,
+  renderSubscriptionHolidaySkipEmail,
+  renderOwnerThursdayLockEmail,
+  renderSubscriptionWednesdayEmail,
+  renderSubscriptionThursdayEmail,
+  renderSubscriptionPriceEmail,
   getEmailLogoUrl,
 };

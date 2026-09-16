@@ -8,6 +8,8 @@ import {
   deleteSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
+  runSubscriptionCharge,
+  runSubscriptionLock,
   formatPlanPrice,
   dollarsToCents,
   centsToDollarInput,
@@ -38,6 +40,8 @@ const SubscriptionAdmin = () => {
   const [testCharge, setTestCharge] = useState('');
   const [testLock, setTestLock] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
+  const [jobBusy, setJobBusy] = useState('');
+  const [jobNote, setJobNote] = useState('');
 
   const load = async () => {
     const [planRows, settingsRow] = await Promise.all([
@@ -272,6 +276,37 @@ const SubscriptionAdmin = () => {
     }
   };
 
+  const handleRunJob = async (kind) => {
+    const charge = kind === 'charge';
+    const confirmed = window.confirm(
+      charge
+        ? 'Run Wednesday charge now? Unpaid active plans for this Sunday will be charged plan + delivery. Already-paid first weeks are skipped.'
+        : 'Run Thursday lock now? Unpaid add-ons are charged, this Sunday is locked, and kitchen orders are created on the Subscriptions tab.'
+    );
+    if (!confirmed) return;
+    setJobBusy(kind);
+    setJobNote('');
+    setError('');
+    try {
+      const result = charge ? await runSubscriptionCharge() : await runSubscriptionLock();
+      const parts = [
+        result.skipped ? result.reason || 'skipped' : null,
+        result.sunday ? `Sunday ${result.sunday}` : null,
+        result.charged != null ? `${result.charged} charged` : null,
+        result.already != null ? `${result.already} already paid` : null,
+        result.locked != null ? `${result.locked} locked` : null,
+        result.addonsCharged != null ? `${result.addonsCharged} add-on charges` : null,
+        result.emailed != null ? `${result.emailed} emailed` : null,
+        result.failed != null ? `${result.failed} failed` : null,
+      ].filter(Boolean);
+      setJobNote(parts.join(' · ') || 'Done.');
+    } catch (err) {
+      setError(err.message || 'Job failed.');
+    } finally {
+      setJobBusy('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="promo-admin-container">
@@ -329,6 +364,28 @@ const SubscriptionAdmin = () => {
           </button>
         </div>
       </form>
+      <p className="sub-admin-hint">
+        Run charge / lock yourself while testing. Live cron is Wednesday 5pm and Thursday 5pm America/Toronto (21:00 / 22:00 UTC).
+      </p>
+      <div className="sub-admin-inline" style={{ marginBottom: '1rem' }}>
+        <button
+          className="promo-submit-button"
+          type="button"
+          disabled={!!jobBusy}
+          onClick={() => handleRunJob('charge')}
+        >
+          {jobBusy === 'charge' ? 'Running…' : 'Run Wednesday charge'}
+        </button>
+        <button
+          className="promo-submit-button"
+          type="button"
+          disabled={!!jobBusy}
+          onClick={() => handleRunJob('lock')}
+        >
+          {jobBusy === 'lock' ? 'Running…' : 'Run Thursday lock'}
+        </button>
+      </div>
+      {jobNote ? <p className="sub-admin-hint">{jobNote}</p> : null}
 
       <h2 className="sub-admin-h2">Create a plan</h2>
       <form className="promo-admin-form" onSubmit={handleCreate}>

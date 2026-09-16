@@ -51,6 +51,16 @@ const updateSubscriptionSettings = async (body) => {
   return parseJson(res);
 };
 
+const runSubscriptionCharge = async () => {
+  const res = await fetch('/api/subscriptions/admin/run-charge', { method: 'POST' });
+  return parseJson(res);
+};
+
+const runSubscriptionLock = async () => {
+  const res = await fetch('/api/subscriptions/admin/run-lock', { method: 'POST' });
+  return parseJson(res);
+};
+
 const fetchSubscriptionPlan = async (planId) => {
   const res = await fetch(`/api/subscriptions/plans/${planId}`);
   return parseJson(res);
@@ -233,6 +243,8 @@ export {
   deleteSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
+  runSubscriptionCharge,
+  runSubscriptionLock,
   fetchSubscriptionPlan,
   fetchMySubscriptions,
   fetchAdminSubscriptions,

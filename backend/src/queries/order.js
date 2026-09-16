@@ -16,6 +16,7 @@ async function getAllOrders() {
   const { data, error } = await supabase
     .from('orders')
     .select('*')
+    .is('subscription_cycle_id', null)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false });
 
@@ -114,6 +115,7 @@ async function createOrderWithProducts({
   referral_code = null,
   credit_applied_cents = 0,
   item_subtotal_cents = null,
+  subscription_cycle_id = null,
   
 }) {
 
@@ -144,6 +146,7 @@ async function createOrderWithProducts({
       referral_code: referral_code || null,
       credit_applied_cents: Number(credit_applied_cents) || 0,
       item_subtotal_cents: item_subtotal_cents == null ? null : Number(item_subtotal_cents),
+      subscription_cycle_id: subscription_cycle_id || null,
     }])
     .select()
     .single();

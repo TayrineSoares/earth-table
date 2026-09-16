@@ -712,6 +712,16 @@ async function completeCardSetup(session) {
     }
   }
 
+  try {
+    const sub = await getOwnedSubscription(userId, subId);
+    if (sub.pause_reason === 'payment_failed') {
+      const { retryFailedCharge } = require('./subscriptionCharge');
+      await retryFailedCharge({ ...sub, stripe_payment_method_id: pmId, stripe_customer_id: customerId || sub.stripe_customer_id });
+    }
+  } catch (err) {
+    console.warn('[subscriptions] retry after card update failed:', err.message);
+  }
+
   return { ok: true };
 }
 

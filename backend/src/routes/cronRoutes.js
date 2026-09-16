@@ -8,7 +8,7 @@ const {
   markInvoicesEmailed,
 } = require('../queries/partner');
 const { sendPauseReminders } = require('../queries/subscriptionManage');
-const { chargeThursdayAddons } = require('../queries/subscriptionCharge');
+const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
 const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
   renderPartnerMonthlyInvoiceEmail,
@@ -164,24 +164,45 @@ function handlePauseReminder(req, res) {
 router.get('/pause-reminder', handlePauseReminder);
 router.post('/pause-reminder', handlePauseReminder);
 
-function handleThursdayLock(req, res) {
+function handleSubscriptionCharge(req, res) {
   if (!process.env.CRON_SECRET) {
-    console.error('[cron/thursday-lock] CRON_SECRET is not set');
+    console.error('[cron/subscription-charge] CRON_SECRET is not set');
     return res.status(500).json({ error: 'Cron is not configured.' });
   }
   if (!cronAuthorized(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  chargeThursdayAddons()
+  runWednesdayCharge()
     .then((result) => res.json(result))
     .catch((err) => {
-      console.error('[cron/thursday-lock]', err);
+      console.error('[cron/subscription-charge]', err);
       return res.status(500).json({ error: err.message || 'Server error' });
     });
 }
 
-router.get('/thursday-lock', handleThursdayLock);
-router.post('/thursday-lock', handleThursdayLock);
+function handleSubscriptionLock(req, res) {
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron/subscription-lock] CRON_SECRET is not set');
+    return res.status(500).json({ error: 'Cron is not configured.' });
+  }
+  if (!cronAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  runThursdayLock()
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('[cron/subscription-lock]', err);
+      return res.status(500).json({ error: err.message || 'Server error' });
+    });
+}
+
+router.get('/subscription-charge', handleSubscriptionCharge);
+router.post('/subscription-charge', handleSubscriptionCharge);
+router.get('/subscription-lock', handleSubscriptionLock);
+router.post('/subscription-lock', handleSubscriptionLock);
+router.get('/thursday-lock', handleSubscriptionLock);
+router.post('/thursday-lock', handleSubscriptionLock);
 
 module.exports = router;

@@ -139,15 +139,54 @@ async function updatePlan(id, body) {
     .single();
 
   if (error) throw error;
+  const priceChanged =
+    Object.prototype.hasOwnProperty.call(patch, 'price_cents') &&
+    patch.price_cents !== existing.price_cents;
+  if (priceChanged) {
+    notifyPlanPriceChange(existing, data).catch((err) => {
+      console.warn('[subscriptions] price-change email failed:', err.message);
+    });
+  }
   return {
     plan: planPublicFields({
       ...data,
       subscriber_count: existing.subscriber_count || 0,
     }),
-    priceChanged:
-      Object.prototype.hasOwnProperty.call(patch, 'price_cents') &&
-      patch.price_cents !== existing.price_cents,
+    priceChanged,
   };
+}
+
+async function notifyPlanPriceChange(oldPlan, newPlan) {
+  const { sendEmail } = require('../utils/email');
+  const { renderSubscriptionPriceEmail } = require('../utils/emailTemplates');
+  const { data: subs, error } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('plan_id', newPlan.id)
+    .in('status', ['active', 'paused']);
+  if (error) throw error;
+  for (const row of subs || []) {
+    try {
+      const { getUserByAuthId } = require('./user');
+      const user = await getUserByAuthId(row.user_id);
+      if (!user?.email) continue;
+      const msg = renderSubscriptionPriceEmail({
+        firstName: user.first_name,
+        mealCount: newPlan.meal_count,
+        oldPriceCents: oldPlan.price_cents,
+        newPriceCents: newPlan.price_cents,
+      });
+      await sendEmail({
+        to: user.email,
+        subject: msg.subject,
+        html: msg.html,
+        text: msg.text,
+        replyTo: 'hello@earthtableco.ca',
+      });
+    } catch (err) {
+      console.warn('[subscriptions] price email failed:', err.message);
+    }
+  }
 }
 
 /** Current people on the plan (active or paused). Cancelled do not count. */
@@ -182,7 +221,7 @@ const CYCLE_ITEM_SELECT = `
 `;
 
 const CYCLE_SELECT = `
-  id, subscription_id, status, cutoff_at, delivery_date, pickup_date, delivery,
+  id, subscription_id, status, order_id, cutoff_at, delivery_date, pickup_date, delivery,
   delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
   plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
   subscription_cycle_items ( ${CYCLE_ITEM_SELECT} )
@@ -302,6 +341,17 @@ async function listAll() {
     .in('subscription_id', ids);
   if (cycleErr) throw cycleErr;
 
+  const orderIds = [...new Set((cycles || []).map((row) => row.order_id).filter(Boolean))];
+  let byOrder = {};
+  if (orderIds.length) {
+    const { data: kitchen, error: kitchenErr } = await supabase
+      .from('orders')
+      .select('id, picked_up, status')
+      .in('id', orderIds);
+    if (kitchenErr) throw kitchenErr;
+    byOrder = Object.fromEntries((kitchen || []).map((row) => [row.id, row]));
+  }
+
   const bySub = {};
   for (const cycle of cycles || []) {
     if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
@@ -312,10 +362,12 @@ async function listAll() {
     const list = bySub[sub.id] || [];
     const display = pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, display);
+    const kitchen = display?.order_id ? byOrder[display.order_id] || null : null;
     return {
       ...sub,
       customer: byUser[sub.user_id] || null,
       cycle: display,
+      kitchen,
       week,
       charge: getChargeDeadline(now, settings || {}, week.delivery_date),
     };

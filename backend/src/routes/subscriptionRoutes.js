@@ -28,6 +28,7 @@ const {
   cancelSubscription,
   changeSubscriptionPlan,
 } = require('../queries/subscriptionManage');
+const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -76,6 +77,24 @@ router.get('/admin', async (req, res) => {
     res.json(rows);
   } catch (err) {
     handleError(res, err, '[GET /subscriptions/admin]');
+  }
+});
+
+router.post('/admin/run-charge', async (req, res) => {
+  try {
+    const result = await runWednesdayCharge({ force: true });
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[POST /subscriptions/admin/run-charge]');
+  }
+});
+
+router.post('/admin/run-lock', async (req, res) => {
+  try {
+    const result = await runThursdayLock({ force: true });
+    res.json(result);
+  } catch (err) {
+    handleError(res, err, '[POST /subscriptions/admin/run-lock]');
   }
 });
 

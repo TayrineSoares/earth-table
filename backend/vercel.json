@@ -9,7 +9,8 @@
   "crons": [
     { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" },
     { "path": "/api/cron/pause-reminder", "schedule": "0 13 * * 1" },
-    { "path": "/api/cron/thursday-lock", "schedule": "5 21 * * 4" }
+    { "path": "/api/cron/subscription-charge", "schedule": "0 21 * * 3" },
+    { "path": "/api/cron/subscription-lock", "schedule": "0 22 * * 4" }
   ],
   "rewrites": [
     { "source": "/api/webhook", "destination": "/webhook" },
