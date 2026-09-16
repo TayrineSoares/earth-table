@@ -6,7 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
 import ProductCard from './ProductCard';
 
-const PRODUCTS_PER_PAGE = 8;
+const PRODUCTS_PER_PAGE = 6;
 
 const Products = ({ addToCart }) => {
 
@@ -60,12 +60,12 @@ const Products = ({ addToCart }) => {
   
 
   const tagIcons = {
-    vegan: <Vegan size={13} />,
-    vegetarian: <LeafyGreen size={13} />,
-    keto: <Ham size={13} />,
-    'dairy free': <MilkOff size={13} />,
-    paleo: <BeanOff size={13} />,
-    'gluten free': <WheatOff size={13}/>
+    vegan: <Vegan size={16} />,
+    vegetarian: <LeafyGreen size={16} />,
+    keto: <Ham size={16} />,
+    'dairy free': <MilkOff size={16} />,
+    paleo: <BeanOff size={16} />,
+    'gluten free': <WheatOff size={16}/>
   };
 
   
@@ -230,7 +230,7 @@ const Products = ({ addToCart }) => {
             addToCart={addToCart}
             tagIcons={tagIcons}
             getTagNames={getTagNames}
-            eager={index < 4}
+            eager={index < 3}
           />
         ))}
       

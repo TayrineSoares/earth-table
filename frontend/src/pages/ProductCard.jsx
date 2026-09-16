@@ -26,8 +26,8 @@ const ProductCard = ({ product, addToCart, tagIcons, getTagNames, eager = false 
   }, [isOpen]);
 
   const tagNames = product.tags?.length ? getTagNames(product.tags) : [];
-  const cardImage = sizedImageUrl(product.image_url, 400);
-  const cardImage2x = sizedImageUrl(product.image_url, 800);
+  const cardImage = sizedImageUrl(product.image_url, 480);
+  const cardImage2x = sizedImageUrl(product.image_url, 960);
 
   useEffect(() => {
     if (!isOpen) return;
