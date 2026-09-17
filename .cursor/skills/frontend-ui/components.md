@@ -93,7 +93,7 @@ Markup (keep these classes; do not invent a second card):
 .products
   tags (absolute, top-left) + selected check (absolute, top-right)
   image
-  header (name, then optional price)
+  header (.product-header-info-container: name left, optional price right)
   description
   .product-card-actions
     .view-details-slot
@@ -110,23 +110,45 @@ Markup (keep these classes; do not invent a second card):
 
 ### Type and clamp
 
-- Name: Forum 30px small-caps, **2-line** `-webkit-line-clamp`
-- Description: Encode Sans 20px, **2-line** clamp on catalog grids (Menu may still show 3 until restyled — target is 2)
+- Name: Forum 30px small-caps, **2-line** `-webkit-line-clamp`, `flex: 1; min-width: 0; min-height: 2.4em` (2 × title line-height so one- and two-line titles share a row height)
+- Description: Encode Sans 20px, **2-line** clamp on catalog grids
 - Clamp on **lines**, not characters. `overflow-wrap: break-word`; `word-break: normal`; `hyphens: none` (never `hyphens: auto` / `overflow-wrap: anywhere` — that hyphen-breaks “co-conut”)
-- Equal-height rows: reserve 2-line min-heights; `.product-card-actions { margin-top: auto }`
+- Equal-height rows: title `min-height: 2.4em`; description 2-line min-height; card is `display: flex; flex-direction: column`; `.product-card-actions { margin-top: auto }` so Add buttons line up across a grid row
 
 ### Footer row
 
-- **View details** (only if description overflows) and **Add** share one row: details left, Add/stepper right
+- **View details** (only if description overflows) and **Add** share one row: details left, Add/stepper right (`justify-content: space-between`)
 - At qty 0: compact outlined **Add** (not a full-width gold stepper)
 - Qty > 0: compact stepper (`is-compact`), still on the right
 - Sold out: same outline button, `disabled`
 - Compact Add/stepper ~44px tall, `min-width` not `width: 100%`. iOS `-webkit-text-fill-color: #000`
 
-### Price
+### Price (catalog cards)
 
-- **Name first, then price** (Forum name, brown `#BE7200` price under it)
-- A-la-carte / add-ons keep the price. Plan meals: `hidePrice`
+Name and price sit on **one row**, not stacked. Live CSS is `.product-header-info-container` in `Products.css` (Menu). Copy this onto add-ons / any catalog grid that still stacks them:
+
+```css
+.product-header-info-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.product-header-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.4em;
+}
+.product-header-price {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 24px; /* Encode Sans, brown #BE7200; smaller than the 30px Forum name */
+}
+```
+
+- Title may wrap to two lines; price stays on the **first-line baseline**, right edge, and must not wrap or shrink
+- Do not put a min-height on the header that assumes a stacked name+price (the old 69px / 93px subscribe overrides)
+- A-la-carte / add-ons **keep the price**. Plan meals: `hidePrice` (name still uses the same row; it just expands)
 - Popup/cart can show a-la-carte price and savings later. **If cents === 0, do not render a price**
 
 ### Props (do not split into two card components)

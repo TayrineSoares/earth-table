@@ -22,9 +22,10 @@ Copy these sizes. Shrink them in media queries; do not invent a parallel scale.
 | Display / page title | Forum | 62px | line-height 100% | `.account-text`, `.contact-text`, `.product-title-text`, `.checkout-summary-text`, `.admin-header h1` |
 | Section title | Forum | 38px | underline `2px solid #EDA413`, `display: inline-block` | `.category-title`, `.about-title`, `.subscribe-title`, `.category-title-2`, `.confirmation-title` |
 | Field label | Forum | 30px | `small-caps`, color `#BE7200` | `.login-detail-header-text`, `.your-name-header`, `.register-text` |
-| Product name | Forum | 30px | `small-caps`, 2-line clamp, **above** price | `.product-header-name` |
+| Product name | Forum | 30px | `small-caps`, 2-line clamp, **left** of price on catalog cards | `.product-header-name` |
 | Body / description | Encode Sans 400 | 20px | line-height ~1.3 | `.category-description`, `.about-description`, `.subscribe-body` |
-| Price | Encode Sans 400 | 20px | color `#BE7200`, **under** the product name | `.product-header-price`, `.checkout-item-price` |
+| Catalog price | Encode Sans 400 | 24px | color `#BE7200`, **same row** as the name (right, nowrap) | `.product-header-price` |
+| Cart / checkout price | Encode Sans 400 | 20px | color `#BE7200` | `.checkout-item-price` |
 | UI / button / chip / nav | Encode Sans 500 | 15px | `small-caps`, letter-spacing 0.6px or 4% | `.shop-button`, `.categories`, `.nav-link` |
 | Muted helper | Encode Sans 400 | 15px | `small-caps`, `#525448` or `#757575` | `.forgot-password-text`, `.pickup-label`, `.general-text` |
 | Dialog title | Forum | 32px | | `.feedback-dialog-title` |

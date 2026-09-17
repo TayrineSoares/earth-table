@@ -1,6 +1,7 @@
 .cart-popup {
   position: fixed;
-  top: 50%;
+  top: auto;
+  bottom: max(24px, env(safe-area-inset-bottom));
   right: 0px;
   width: 375px;
   max-height: 300px;
@@ -237,7 +238,6 @@
   font-weight: 600;
   font-size: 16px;
   color: black;
-  top: 50%;
 }
 
 .subscribe-cart-popup .cart-popup-container,

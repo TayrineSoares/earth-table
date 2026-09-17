@@ -152,12 +152,7 @@
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-header-info-container {
-  min-height: 69px;
   padding-top: 10px;
-}
-
-.subscribe-flow-page .subscribe-catalog-grid .products:not(.is-plan-meal) .product-header-info-container {
-  min-height: 93px;
 }
 
 .subscribe-flow-page .subscribe-catalog-grid .product-description-container {
@@ -219,6 +214,7 @@
   min-height: 44px;
   width: auto;
   align-self: center;
+  margin-top: auto;
   padding-bottom: 0;
   flex-shrink: 0;
 }

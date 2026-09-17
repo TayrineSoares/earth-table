@@ -93,8 +93,8 @@ When restyling Menu, match the **item card chrome** in [components.md](component
 - Search input 16px font, tangerine border, `#fff8f0`
 - Grid `.products-container`; prefer 4-col on wide screens with extra **column** gap
 - Cards: taupe unselected border, 15px radius, 2-line name + 2-line description, no hyphen-break
-- Footer: View details + Add to cart on **one row**
-- A-la-carte **keeps the price under the name**; sold out uses the same outline button `disabled`
+- Footer: View details + Add to cart on **one row** (details left, Add right)
+- A-la-carte **keeps the price on the same row as the name** (right, 24px); sold out uses the same outline button `disabled`
 - Load 6 at a time; `.load-more-button` is the brown exception
 - Custom-meals category uses in-page 234px hero + prose, not the grid
 - Loading: Lottie, `minHeight: 80vh`
@@ -112,7 +112,7 @@ When restyling Menu, match the **item card chrome** in [components.md](component
 
 - 38px title (`.subscribe-choose-title`): **Add extras**
 - Plan line then selling helper (“Top off this week…”). Muted line: extras won’t repeat. Back to meals is the muted plan-line link
-- Cards: `compactAdd`, **keep price under the name**. Selected marker same as meals
+- Cards: `compactAdd`, **price on the same row as the name** (right, 24px Encode Sans). Selected marker same as meals
 - Sticky: hide `$0.00`; show subtotal only when extras add a charge
 
 **SubscribeAndSave** — `pages/SubscribeAndSave.jsx` + `styles/SubscribeAndSave.css`
