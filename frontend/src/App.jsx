@@ -219,9 +219,38 @@ const App = () => {
     }
   };
 
+  const persistEmptyAlaCarte = (currentUser = user) => {
+    setCart([]);
+    setShowCartPopup(false);
+    localStorage.setItem('cart_guest', JSON.stringify([]));
+    if (currentUser) {
+      localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify([]));
+    }
+  };
+
+  const subCartIsActive = (box = subCart) =>
+    !!(box?.planId || totalQty(box?.meals) || totalQty(box?.addons));
+
+  /** Signup and à-la-carte cannot run at the same time. */
+  const dropAlaCarteForSub = () => {
+    if (cart.length === 0) return;
+    persistEmptyAlaCarte();
+  };
+
+  const dropSubForAlaCarte = () => {
+    if (!subCartIsActive()) return;
+    wipeSubCart(user);
+  };
+
+  const beginSubCart = (nextOrFn) => {
+    dropAlaCarteForSub();
+    setSubCart(nextOrFn);
+  };
+
   const addItemsToCart = (products = []) => {
     const list = Array.isArray(products) ? products.filter((item) => item?.id) : [];
     if (!list.length) return;
+    dropSubForAlaCarte();
     setCart((prevCart) => mergeIntoCart(prevCart, list));
     setShowCartPopup(true);
   };
@@ -250,6 +279,7 @@ const App = () => {
   };
 
   const addOneFromCart = (product) => {
+    dropSubForAlaCarte();
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex((item) => item.id === product.id);
       const updatedCart = [...prevCart];
@@ -262,11 +292,13 @@ const App = () => {
   };
 
   const bumpSubMeal = (product, delta) => {
+    dropAlaCarteForSub();
     setSubCart((prev) => bumpMeal(prev, product, delta));
     setShowSubCartPopup(true);
   };
 
   const bumpSubAddon = (product, delta) => {
+    dropAlaCarteForSub();
     setSubCart((prev) => bumpAddon(prev, product, delta));
     setShowSubCartPopup(true);
   };
@@ -277,12 +309,7 @@ const App = () => {
   };
 
   const clearCart = () => {
-    setCart([]);
-    setShowCartPopup(false);
-    localStorage.setItem('cart_guest', JSON.stringify([]));
-    if (user) {
-      localStorage.setItem(`cart_${user.id}`, JSON.stringify([]));
-    }
+    persistEmptyAlaCarte();
     sessionStorage.setItem('clear_cart_after_order', '1');
   };
 
@@ -306,7 +333,7 @@ const App = () => {
         clearCart={clearCart}
         clearSubCart={clearSubCart}
         subCart={subCart}
-        setSubCart={setSubCart}
+        setSubCart={beginSubCart}
         bumpSubMeal={bumpSubMeal}
         bumpSubAddon={bumpSubAddon}
         showSubCartPopup={showSubCartPopup}
