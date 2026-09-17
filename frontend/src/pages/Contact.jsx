@@ -1,5 +1,5 @@
 import ContactForm from "../components/ContactForm";
-import contactHeaderImage from "../assets/images/contactHeader.png"
+import contactHeaderImage from "../assets/images/checkoutImage.png"
 import "../styles/Contact.css"
 
 const Contact = () => {

@@ -1,14 +1,16 @@
 import Lottie from 'lottie-react';
 import { useEffect, useState } from "react";
+import '../styles/Contact.css'
 import '../styles/Products.css'
 import loadingAnimation from '../assets/loading.json'
+import menuBanner from '../assets/images/contactHeader.png'
 import { useParams, Link } from "react-router-dom";
 import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react';
 import ProductCard from './ProductCard';
 
 const PRODUCTS_PER_PAGE = 6;
 
-const Products = ({ addToCart }) => {
+const Products = ({ addToCart, cart = [], removeOneFromCart }) => {
 
   const { categoryId } = useParams();
 
@@ -53,19 +55,17 @@ const Products = ({ addToCart }) => {
   ? allCategories.find(cat => cat.id === Number(categoryId))
   : null;
 
-  const categoryHelperText = selectedCategory
-    ? selectedCategory.description?.trim()
-    : 'Browse every meal we offer, from weekly bowls to desserts and custom plans.';
+  const categoryHelperText = selectedCategory?.description?.trim() || '';
 
   
 
   const tagIcons = {
-    vegan: <Vegan size={16} />,
-    vegetarian: <LeafyGreen size={16} />,
-    keto: <Ham size={16} />,
-    'dairy free': <MilkOff size={16} />,
-    paleo: <BeanOff size={16} />,
-    'gluten free': <WheatOff size={16}/>
+    vegan: <Vegan size={12} />,
+    vegetarian: <LeafyGreen size={12} />,
+    keto: <Ham size={12} />,
+    'dairy free': <MilkOff size={12} />,
+    paleo: <BeanOff size={12} />,
+    'gluten free': <WheatOff size={12} />,
   };
 
   
@@ -118,33 +118,55 @@ const Products = ({ addToCart }) => {
 
 
 
+  const banner = (
+    <div className="contact-header-image-container">
+      <img
+        src={menuBanner}
+        className="contact-header-image"
+        alt=""
+      />
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div 
-        className="loading-container" 
-        style={{
-          minHeight: "80vh", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center"
-        }}
-      >
-        <Lottie animationData={loadingAnimation} loop={true} />
+      <div className="products-page">
+        {banner}
+        <div
+          className="loading-container"
+          style={{
+            minHeight: "80vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          <Lottie animationData={loadingAnimation} loop={true} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className='page-wrapper'>
+    <div className="products-page">
+      {banner}
+      <div className='page-wrapper'>
       
       <div className='product-title'>
         <p className='product-title-text'>Menu</p>
+        <p className='product-menu-intro'>
+          Everything we make, fresh each week — plus pantry staples and retail picks from the shop.
+          <br />
+          Order à la carte, or put it on a{' '}
+          <Link to="/subscribe-and-save" className="product-menu-intro-link">weekly plan</Link>
+          {' '}and save up to 30%.
+        </p>
       </div>
 
       <div className='categories-container'>
 
         <Link to="/products/category/">
-          <button className="categories">All</button>
+          <button type="button" className={`categories${!categoryId ? ' is-selected' : ''}`}>All</button>
         </Link>
        
         {allCategories.map((category) => (
@@ -152,7 +174,10 @@ const Products = ({ addToCart }) => {
             key={category.id}
             to={`/products/category/${category.id}`}
           >
-            <button className="categories">
+            <button
+              type="button"
+              className={`categories${Number(categoryId) === category.id ? ' is-selected' : ''}`}
+            >
               {category.name}
             </button>
           </Link>
@@ -223,16 +248,27 @@ const Products = ({ addToCart }) => {
 
       <div className='products-container'>
    
-        {productsToShow.map((product, index) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            addToCart={addToCart}
-            tagIcons={tagIcons}
-            getTagNames={getTagNames}
-            eager={index < 3}
-          />
-        ))}
+        {productsToShow.map((product, index) => {
+          const quantity = Number(
+            cart.find((item) => item.id === product.id)?.quantity
+          ) || 0;
+          const inCart = quantity > 0;
+
+          return (
+            <ProductCard
+              key={product.id}
+              product={product}
+              addToCart={addToCart}
+              tagIcons={tagIcons}
+              getTagNames={getTagNames}
+              eager={index < 3}
+              quantity={quantity}
+              onIncrement={inCart ? addToCart : undefined}
+              onDecrement={inCart ? removeOneFromCart : undefined}
+              compactAdd={inCart}
+            />
+          );
+        })}
       
       </div>
 
@@ -251,6 +287,7 @@ const Products = ({ addToCart }) => {
       )}
       </>
       )}
+    </div>
     </div>
   
   )

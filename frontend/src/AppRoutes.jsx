@@ -106,9 +106,10 @@ const AppRoutes = ({
           />
           <Route
             path="/products/category/:categoryId?"
-            element={<Products 
-              addToCart={addToCart} 
-              cart={cart} 
+            element={<Products
+              addToCart={addToCart}
+              cart={cart}
+              removeOneFromCart={removeOneFromCart}
             />}
           />
           <Route path="/cart" element={<Cart 
