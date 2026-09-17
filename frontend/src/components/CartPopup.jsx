@@ -1,9 +1,8 @@
 import '../styles/Products.css'
 import '../styles/CartPopup.css'
 import React, { useState, useEffect } from 'react';
-import { Minus } from 'lucide-react';
+import { Minus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart } from "lucide-react"
 
 function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
   const [isMinimized, setIsMinimized] = useState(true);
@@ -57,33 +56,39 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
                       alt={item.slug}
                     />
                     <div className="cart-popup-item-details-1">
-                      <span className="cart-popup-item-name">{item.slug}</span>
+                      <span className="cart-popup-item-top">
+                        <span className="cart-popup-item-name">{item.slug}</span>
+                        <span className="cart-popup-item-total-price">
+                          ${(item.price_cents * item.quantity / 100).toFixed(2)}
+                        </span>
+                      </span>
                       <span className="cart-popup-item-quantity">QTY:
                         <div className='quantity-button-container'>
                           <button
+                            type="button"
                             onClick={() => removeOneFromCart(item)}
                             className='cart-popup-add-remove-button'
+                            aria-label={`Decrease ${item.slug}`}
                           >-
                           </button>
                           {item.quantity}
                           <button
+                            type="button"
                             onClick={() => addOneFromCart(item)}
                             className='cart-popup-add-remove-button'
+                            aria-label={`Increase ${item.slug}`}
                           >+
                           </button>
                         </div>
+                        <button
+                          type="button"
+                          className="cart-popup-remove-button"
+                          onClick={() => removeAll(item)}
+                          aria-label={`Remove ${item.slug}`}
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </button>
                       </span>
-                    </div>
-                    <div className="cart-popup-item-details-2">
-                      <span className="cart-popup-item-total-price">
-                        ${(item.price_cents * item.quantity / 100).toFixed(2)}
-                      </span>
-                      <button
-                        className="cart-popup-remove-button"
-                        onClick={() => removeAll(item)}
-                      >
-                        REMOVE
-                      </button>
                     </div>
                   </li>
                 ))}
