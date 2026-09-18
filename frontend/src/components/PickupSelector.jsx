@@ -1,6 +1,6 @@
 import '../styles/PickupSelector.css';
 import { useEffect, useMemo, useState } from 'react';
-import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates';
+import { isBlockedHoliday, blockedHolidaysLabel, formatLongDate, parseLocalYmd } from '../helpers/blockedDates';
 
 const PickupSelector = ({
   pickupDate,
@@ -8,6 +8,7 @@ const PickupSelector = ({
   onDateChange,
   onTimeChange,
   lockedDate,
+  dateLabel = 'Pickup Date',
   showReviewNotes = true,
 }) => {
   const [dateError, setDateError] = useState('');
@@ -23,28 +24,7 @@ const PickupSelector = ({
   };
 
   // Parse YYYY-MM-DD as LOCAL date (no timezone shift)
-  const parseLocal = (yyyyMmDd) => {
-    const [y, m, d] = yyyyMmDd.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  };
-
-  const ordinal = (n) => {
-    const v = n % 100;
-    if (v >= 11 && v <= 13) return `${n}th`;
-    if (n % 10 === 1) return `${n}st`;
-    if (n % 10 === 2) return `${n}nd`;
-    if (n % 10 === 3) return `${n}rd`;
-    return `${n}th`;
-  };
-
-  const formatLongDate = (yyyyMmDd) => {
-    if (!yyyyMmDd) return '';
-    const date = parseLocal(yyyyMmDd);
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const month = date.toLocaleDateString('en-US', { month: 'long' });
-    return `${weekday}, ${month} ${ordinal(date.getDate())}`;
-  };
-
+  const parseLocal = parseLocalYmd;
   const lockedDateLabel = locked ? formatLongDate(lockedDate) : '';
 
   // --- 24h cutoff ---
@@ -154,7 +134,7 @@ const PickupSelector = ({
         {locked ? (
           <div className="pickup-field pickup-field-datetime">
             <p className="pickup-label">
-              Pickup Date
+              {dateLabel}
               {lockedDateLabel ? (
                 <span className="pickup-label-date"> - {lockedDateLabel}</span>
               ) : null}

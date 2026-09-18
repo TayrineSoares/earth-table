@@ -220,12 +220,10 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     : 0
   const addonAfterPromo = Math.max(0, addonCents - addonPromoCents)
   const addonThursdayCents = addonAfterPromo > 0 ? withHst(addonAfterPromo) : 0
-  const taxCents = Math.max(
-    0,
-    planDueCents - planAfterPromo
-      + deliveryDueCents - deliveryCents
-      + addonThursdayCents - addonAfterPromo
-  )
+  const planHstCents = Math.max(0, planDueCents - planAfterPromo)
+  const deliveryHstCents = Math.max(0, deliveryDueCents - deliveryCents)
+  const weeklyHstCents = planHstCents + deliveryHstCents
+  const addonHstCents = Math.max(0, addonThursdayCents - addonAfterPromo)
   const totalCents = dueTodayCents + addonThursdayCents
   const lockedDate = dates?.first_delivery_date || ''
   const lockedDeliveryLabel = formatLockedDateLabel(lockedDate)
@@ -404,7 +402,6 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
               </p>
               <p className="subtotal">
                 {formatPlanPrice(planCents)}
-                <span className="subscribe-hst-hint"> + hst</span>
               </p>
             </div>
             {fulfillment === 'delivery' ? (
@@ -415,7 +412,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                     {quoteStatus === 'loading'
                       ? 'Calculating...'
                       : deliveryFeeCents > 0
-                        ? <>{formatPlanPrice(deliveryFeeCents)}<span className="subscribe-hst-hint"> + hst</span></>
+                        ? formatPlanPrice(deliveryFeeCents)
                         : '$0.00'}
                   </p>
                 </div>
@@ -432,6 +429,18 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 ) : null}
               </>
             ) : null}
+            {promoResult?.valid ? (
+              <div className="checkout-summary-subtotal">
+                <p className="subtotal">
+                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
+                </p>
+                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
+              </div>
+            ) : null}
+            <div className="checkout-summary-subtotal">
+              <p className="subtotal">hst</p>
+              <p className="subtotal">{formatPlanPrice(weeklyHstCents)}</p>
+            </div>
             {subCart.addons.length > 0 ? (
               <>
                 <p className="subscribe-summary-heading">Add-ons</p>
@@ -443,25 +452,16 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                     </p>
                     <p className="subtotal">
                       ${((item.price_cents * item.quantity) / 100).toFixed(2)}
-                      <span className="subscribe-hst-hint"> + hst</span>
                     </p>
                   </div>
                 ))}
+                <div className="checkout-summary-subtotal">
+                  <p className="subtotal">hst</p>
+                  <p className="subtotal">{formatPlanPrice(addonHstCents)}</p>
+                </div>
               </>
             ) : null}
-            {promoResult?.valid ? (
-              <div className="checkout-summary-subtotal">
-                <p className="subtotal">
-                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
-                </p>
-                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
-              </div>
-            ) : null}
 
-            <div className="checkout-summary-tax">
-              <p className="tax">HST</p>
-              <p className="tax">{formatPlanPrice(taxCents)}</p>
-            </div>
             <div className="checkout-total">
               <p className="total">Total</p>
               <p className="total">{formatPlanPrice(totalCents)}</p>
@@ -481,25 +481,25 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
 
             <div className="subscribe-fulfill-block">
               <p className="subscribe-summary-heading">How you&apos;ll get it</p>
-              <div className="general-text subscribe-fulfill-row">
-                <label style={{ marginRight: 16 }}>
+              <div className="subscribe-fulfill-row" role="radiogroup" aria-label="How you'll get it">
+                <label className="subscribe-fulfill-option">
                   <input
                     type="radio"
                     name="sub-fulfillment"
                     value="pickup"
                     checked={fulfillment === 'pickup'}
                     onChange={() => setFulfillment('pickup')}
-                  />{' '}
+                  />
                   Pickup
                 </label>
-                <label>
+                <label className="subscribe-fulfill-option">
                   <input
                     type="radio"
                     name="sub-fulfillment"
                     value="delivery"
                     checked={fulfillment === 'delivery'}
                     onChange={() => setFulfillment('delivery')}
-                  />{' '}
+                  />
                   Delivery
                 </label>
               </div>
@@ -511,6 +511,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   onDateChange={setPickupDate}
                   onTimeChange={setPickupTime}
                   lockedDate={lockedDate}
+                  dateLabel="First Pickup"
                   showReviewNotes={false}
                 />
               ) : (
@@ -547,10 +548,10 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
             </div>
             {fulfillment === 'delivery' && lockedDeliveryLabel ? (
               <p className="pickup-label subscribe-locked-date">
-                Delivery Date
+                First Delivery
                 <span className="pickup-label-date">
                   {' '}
-                  - {lockedDeliveryLabel}, between 11:00 AM and 6:00 PM
+                  - {lockedDeliveryLabel}, 11:00 AM- 6:00 PM
                 </span>
               </p>
             ) : null}

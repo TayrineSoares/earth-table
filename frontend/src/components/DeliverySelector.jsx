@@ -1,6 +1,9 @@
-import '../styles/PickupSelector.css';
-import { useMemo, useEffect, useState } from 'react';
-import { isBlockedHoliday, blockedHolidaysLabel } from '../helpers/blockedDates';
+import "../styles/PickupSelector.css";
+import { useMemo, useEffect, useState } from "react";
+import {
+  isBlockedHoliday,
+  blockedHolidaysLabel,
+} from "../helpers/blockedDates";
 
 const pcRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/; // Canadian postal code
 
@@ -17,20 +20,20 @@ export default function DeliverySelector({
   calculateLoading = false,
   showDateField = true,
 }) {
-  const [dateError, setDateError] = useState('');
+  const [dateError, setDateError] = useState("");
   const locked = Boolean(lockedDate);
 
   // Date -> "YYYY-MM-DD" LOCAL
   const formatAsInputDate = (date) => {
     const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
 
   // Parse "YYYY-MM-DD" as LOCAL (no TZ shift)
   const parseLocal = (yyyyMmDd) => {
-    const [y, m, d] = yyyyMmDd.split('-').map(Number);
+    const [y, m, d] = yyyyMmDd.split("-").map(Number);
     return new Date(y, m - 1, d); // local midnight
   };
 
@@ -52,19 +55,19 @@ export default function DeliverySelector({
   };
 
   const formatLongDate = (yyyyMmDd) => {
-    if (!yyyyMmDd) return '';
+    if (!yyyyMmDd) return "";
     const date = parseLocal(yyyyMmDd);
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+    const month = date.toLocaleDateString("en-US", { month: "long" });
     return `${weekday}, ${month} ${ordinal(date.getDate())}`;
   };
 
-  const lockedDateLabel = locked ? formatLongDate(lockedDate) : '';
+  const lockedDateLabel = locked ? formatLongDate(lockedDate) : "";
 
   useEffect(() => {
     if (!locked) return;
     if (deliveryDate !== lockedDate) onDeliveryDateChange(lockedDate);
-    setDateError('');
+    setDateError("");
   }, [locked, lockedDate, deliveryDate, onDeliveryDateChange]);
 
   // Delivery window (start/end minutes from midnight)
@@ -79,15 +82,15 @@ export default function DeliverySelector({
 
   // Normalize postal like "M5V3L9" → "M5V 3L9"
   const normalizePostal = (value) => {
-    if (!value) return '';
-    const v = value.toUpperCase().replace(/\s+/g, '');
+    if (!value) return "";
+    const v = value.toUpperCase().replace(/\s+/g, "");
     if (v.length >= 6) return `${v.slice(0, 3)} ${v.slice(3, 6)}`;
     return v;
   };
 
   // Validate postal on change
   useEffect(() => {
-    const valid = pcRegex.test(postalCode || '');
+    const valid = pcRegex.test(postalCode || "");
     onValidate?.({
       valid,
       normalizedPostal: valid ? normalizePostal(postalCode) : null,
@@ -100,7 +103,7 @@ export default function DeliverySelector({
     const selectedStr = e.target.value;
     if (!selectedStr) return;
 
-    setDateError('');
+    setDateError("");
     onDeliveryDateChange(selectedStr);
   };
 
@@ -108,14 +111,14 @@ export default function DeliverySelector({
   const handleDateBlur = () => {
     if (!deliveryDate) return;
     if (locked) {
-      setDateError('');
+      setDateError("");
       return;
     }
 
     // Block holidays (keep date visible; show error + prevent proceeding elsewhere)
     if (isBlockedHoliday(deliveryDate)) {
       setDateError(
-        `Delivery is unavailable on holidays (${blockedHolidaysLabel()}).`
+        `Delivery is unavailable on holidays (${blockedHolidaysLabel()}).`,
       );
       return;
     }
@@ -130,7 +133,7 @@ export default function DeliverySelector({
       return;
     }
 
-    setDateError('');
+    setDateError("");
   };
 
   return (
@@ -153,11 +156,11 @@ export default function DeliverySelector({
               />
               <button
                 type="button"
-                className={`checkout-button promo-apply-btn ${!pcRegex.test(postalCode || '') || calculateLoading ? 'is-disabled' : ''}`}
+                className={`checkout-button promo-apply-btn ${!pcRegex.test(postalCode || "") || calculateLoading ? "is-disabled" : ""}`}
                 onClick={onCalculate}
-                disabled={!pcRegex.test(postalCode || '') || calculateLoading}
+                disabled={!pcRegex.test(postalCode || "") || calculateLoading}
               >
-                {calculateLoading ? 'Calculating…' : 'Calculate'}
+                {calculateLoading ? "Calculating…" : "Calculate"}
               </button>
             </div>
           ) : (
@@ -178,54 +181,66 @@ export default function DeliverySelector({
         </div>
 
         <div className="general-text">
-          <p>Please include your full delivery address in the Special Instructions box below.</p>
+          <p>
+            Please include your full delivery address in the Special
+            Instructions box below.
+          </p>
         </div>
 
         {/* Delivery Date */}
         {showDateField ? (
-        <div className="pickup-field">
-          <label className="pickup-label" htmlFor={locked ? undefined : 'delivery-date'}>
-            Delivery Date
-            {locked && lockedDateLabel ? (
-              <span className="pickup-label-date"> - {lockedDateLabel}, between 11:00 AM and 6:00 PM</span>
+          <div className="pickup-field">
+            <label
+              className="pickup-label"
+              htmlFor={locked ? undefined : "delivery-date"}
+            >
+              Delivery Date
+              {locked && lockedDateLabel ? (
+                <span className="pickup-label-date">
+                  {" "}
+                  - {lockedDateLabel}, between 11:00 AM and 6:00 PM
+                </span>
+              ) : null}
+            </label>
+            {locked ? null : (
+              <input
+                id="delivery-date"
+                className="pickup-input"
+                type="date"
+                value={deliveryDate}
+                min={minDateStr}
+                onChange={handleDateChange}
+                onBlur={handleDateBlur}
+              />
+            )}
+
+            {!locked ? (
+              <p className="pickup-hint">
+                Deliveries require at least 24 hours&apos; notice. Delivery
+                window is 11:00 AM – 6:00 PM.
+              </p>
             ) : null}
-          </label>
-          {locked ? null : (
-            <input
-              id="delivery-date"
-              className="pickup-input"
-              type="date"
-              value={deliveryDate}
-              min={minDateStr}
-              onChange={handleDateChange}
-              onBlur={handleDateBlur}
-            />
-          )}
 
-          {!locked ? (
-            <p className="pickup-hint">
-              Deliveries require at least 24 hours&apos; notice. Delivery window is 11:00 AM – 6:00 PM.
-            </p>
-          ) : null}
+            {dateError && (
+              <p className="pickup-error" role="alert">
+                {dateError}
+              </p>
+            )}
 
-          {dateError && (
-            <p className="pickup-error" role="alert">
-              {dateError}
-            </p>
-          )}
-
-          {isMinDate && !hasAnyTimeLeftToday && !locked && (
-            <div className="pickup-helper">
-              <span>No slots left for this date.</span>
-            </div>
-          )}
-        </div>
+            {isMinDate && !hasAnyTimeLeftToday && !locked && (
+              <div className="pickup-helper">
+                <span>No slots left for this date.</span>
+              </div>
+            )}
+          </div>
         ) : null}
 
         {showReviewNotes ? (
           <div className="general-text">
             <p>Please review your order details before continuing.</p>
-            <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+            <p>
+              Once payment is processed, orders cannot be modified or cancelled.
+            </p>
           </div>
         ) : null}
       </div>
