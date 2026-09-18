@@ -12,6 +12,7 @@ export default function DeliverySelector({
   feeCents,
   onValidate, // ({ valid, normalizedPostal })
   lockedDate,
+  showReviewNotes = true,
 }) {
   const [dateError, setDateError] = useState('');
   const locked = Boolean(lockedDate);
@@ -37,6 +38,25 @@ export default function DeliverySelector({
     return t;
   }, []);
   const minDateStr = formatAsInputDate(minDateTime);
+
+  const ordinal = (n) => {
+    const v = n % 100;
+    if (v >= 11 && v <= 13) return `${n}th`;
+    if (n % 10 === 1) return `${n}st`;
+    if (n % 10 === 2) return `${n}nd`;
+    if (n % 10 === 3) return `${n}rd`;
+    return `${n}th`;
+  };
+
+  const formatLongDate = (yyyyMmDd) => {
+    if (!yyyyMmDd) return '';
+    const date = parseLocal(yyyyMmDd);
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    return `${weekday}, ${month} ${ordinal(date.getDate())}`;
+  };
+
+  const lockedDateLabel = locked ? formatLongDate(lockedDate) : '';
 
   useEffect(() => {
     if (!locked) return;
@@ -138,20 +158,23 @@ export default function DeliverySelector({
 
         {/* Delivery Date */}
         <div className="pickup-field">
-          <label className="pickup-label" htmlFor="delivery-date">
+          <label className="pickup-label" htmlFor={locked ? undefined : 'delivery-date'}>
             Delivery Date
+            {locked && lockedDateLabel ? (
+              <span className="pickup-label-date"> - {lockedDateLabel}</span>
+            ) : null}
           </label>
-          <input
-            id="delivery-date"
-            className="pickup-input"
-            type="date"
-            value={deliveryDate}
-            min={locked ? undefined : minDateStr}
-            disabled={locked}
-            readOnly={locked}
-            onChange={handleDateChange}
-            onBlur={handleDateBlur}
-          />
+          {locked ? null : (
+            <input
+              id="delivery-date"
+              className="pickup-input"
+              type="date"
+              value={deliveryDate}
+              min={minDateStr}
+              onChange={handleDateChange}
+              onBlur={handleDateBlur}
+            />
+          )}
 
           <p className="pickup-hint">
             {locked
@@ -173,10 +196,12 @@ export default function DeliverySelector({
           )}
         </div>
 
-        <div className="general-text">
-          <p>Please review your order details before continuing.</p>
-          <p>Once payment is processed, orders cannot be modified or cancelled.</p>
-        </div>
+        {showReviewNotes ? (
+          <div className="general-text">
+            <p>Please review your order details before continuing.</p>
+            <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+          </div>
+        ) : null}
       </div>
     </section>
   );

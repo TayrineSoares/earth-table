@@ -12,12 +12,34 @@
 .feedback-dialog {
   width: 100%;
   max-width: 460px;
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   background: #FFFBF3;
   border: 4px solid #EDA413;
   border-radius: 18px;
   padding: 32px 28px 28px;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+.feedback-dialog--stacked {
+  text-align: left;
+}
+
+.feedback-dialog--stacked .feedback-dialog-title,
+.feedback-dialog--stacked .feedback-dialog-icon,
+.feedback-dialog--stacked .feedback-dialog-actions {
+  text-align: center;
+}
+
+.feedback-dialog--stacked .feedback-dialog-icon {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .feedback-dialog-icon {
@@ -44,6 +66,18 @@
   line-height: 1.45;
   margin: 0 0 12px;
   color: #000;
+}
+
+.feedback-dialog-body-list {
+  margin: 0 0 12px;
+}
+
+.feedback-dialog-body-list .feedback-dialog-body {
+  margin: 0 0 10px;
+}
+
+.feedback-dialog-body-list .feedback-dialog-body:last-child {
+  margin-bottom: 0;
 }
 
 .feedback-dialog-hint {
@@ -76,6 +110,7 @@
   font-variant: small-caps;
   cursor: pointer;
   color: #000;
+  -webkit-text-fill-color: #000;
   text-decoration: none;
   box-sizing: border-box;
 }
@@ -98,4 +133,32 @@
   border: none;
   cursor: pointer;
   padding: 0;
+}
+
+@media (max-width: 768px) {
+  .feedback-dialog {
+    padding: 24px 20px 20px;
+  }
+
+  .feedback-dialog-title {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .feedback-dialog {
+    padding: 20px 16px 16px;
+  }
+
+  .feedback-dialog-title {
+    font-size: 24px;
+  }
+
+  .feedback-dialog-body {
+    font-size: 14px;
+  }
+
+  .feedback-dialog-primary {
+    max-width: 100%;
+  }
 }

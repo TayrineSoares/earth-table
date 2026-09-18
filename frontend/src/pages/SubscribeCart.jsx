@@ -86,6 +86,25 @@ const SubscribeCart = ({ user, subCart }) => {
   }, [user])
 
   useEffect(() => {
+    if (!hasExistingSub) return
+    setDialog((prev) => prev || {
+      icon: 'alert',
+      title: 'You are already subscribed to a weekly plan',
+      body: [
+        'Continuing will add this plan as a new subscription.',
+        <>
+          If you&apos;d like to change your existing plan, go to{' '}
+          <Link className="feedback-dialog-secondary" to="/my-subscriptions">
+            My Subscriptions
+          </Link>
+          .
+        </>,
+      ],
+      primaryLabel: 'Got it',
+    })
+  }, [hasExistingSub])
+
+  useEffect(() => {
     if (fulfillment === 'pickup') {
       setDeliveryDate('')
       setPostalCode('')
@@ -155,15 +174,40 @@ const SubscribeCart = ({ user, subCart }) => {
 
   const planAfterPromo = Math.max(0, planCents - promoDiscountCents)
   const deliveryCents = fulfillment === 'delivery' ? deliveryFeeCents : 0
-  const planDueCents = Math.round(planAfterPromo * (1 + HST_RATE))
-  const deliveryDueCents = deliveryCents > 0 ? Math.round(deliveryCents * (1 + HST_RATE)) : 0
+  const withHst = (cents) => Math.round((Number(cents) || 0) * (1 + HST_RATE))
+  const planDueCents = withHst(planAfterPromo)
+  const deliveryDueCents = deliveryCents > 0 ? withHst(deliveryCents) : 0
   const dueTodayCents = planDueCents + deliveryDueCents
-  const taxCents = Math.max(0, dueTodayCents - planAfterPromo - deliveryCents)
   const addonPromoCents = promoResult?.valid && promoResult.discountPercentage != null
     ? Math.min(Math.round(addonCents * (promoResult.discountPercentage / 100)), addonCents)
     : 0
-  const addonThursdayCents = Math.round(Math.max(0, addonCents - addonPromoCents) * (1 + HST_RATE))
+  const addonAfterPromo = Math.max(0, addonCents - addonPromoCents)
+  const addonThursdayCents = addonAfterPromo > 0 ? withHst(addonAfterPromo) : 0
+  const taxCents = Math.max(
+    0,
+    planDueCents - planAfterPromo
+      + deliveryDueCents - deliveryCents
+      + addonThursdayCents - addonAfterPromo
+  )
+  const totalCents = dueTodayCents + addonThursdayCents
   const lockedDate = dates?.first_delivery_date || ''
+
+  const openSubscriptionDetails = () => {
+    setDialog({
+      icon: 'alert',
+      title: 'Subscription details',
+      body: [
+        'Every plan lets you choose any combination of bowls, salads, and main plates.',
+        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
+        'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
+        'Pause or cancel by Wednesday, no fees.',
+        dates?.first_delivery_label ? `First delivery: ${dates.first_delivery_label}.` : null,
+        'Add-ons are for this week only. They do not repeat unless you add them again.',
+        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
+      ].filter(Boolean),
+      primaryLabel: 'Got it',
+    })
+  }
 
   const handleApplyPromo = async () => {
     const code = (promoInput || '').trim()
@@ -259,17 +303,14 @@ const SubscribeCart = ({ user, subCart }) => {
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
             <p className="checkout-summary-text">Your weekly plan</p>
-            {dates?.cutoff_passed ? (
-              <p className="subscribe-cutoff-note">
-                This week&apos;s cutoff has passed, so this Sunday is not available.
-                {dates.first_delivery_label
-                  ? ` If you subscribe now, your first delivery will be ${dates.first_delivery_label}.`
-                  : ''}
+            {dates?.first_delivery_label ? (
+              <p className="subscribe-first-delivery-note">
+                If you subscribe now, your first delivery will be {dates.first_delivery_label}.
               </p>
             ) : null}
             {savedCents > 0 ? (
-              <p className="subscribe-savings-line">
-                You saved ${(savedCents / 100).toFixed(2)} by ordering through a subscription plan.
+              <p className="subscribe-cart-savings-pill">
+                You are saving {formatPlanPrice(savedCents)} by ordering through a subscription plan.
               </p>
             ) : null}
 
@@ -337,7 +378,10 @@ const SubscribeCart = ({ user, subCart }) => {
               <p className="subtotal">
                 {subCart.mealCount} {Number(subCart.mealCount) === 1 ? 'meal' : 'meals'} plan
               </p>
-              <p className="subtotal">{formatPlanPrice(planCents)}</p>
+              <p className="subtotal">
+                {formatPlanPrice(planCents)}
+                <span className="subscribe-hst-hint"> + hst</span>
+              </p>
             </div>
             <p className="subscribe-summary-heading">Add-ons</p>
             {subCart.addons.length === 0 ? (
@@ -347,17 +391,15 @@ const SubscribeCart = ({ user, subCart }) => {
                 <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
                   <p className="subtotal">
                     {item.slug}
-                    {item.quantity > 1 ? ` × ${item.quantity}` : ''}
+                    {` × ${item.quantity}`}
                   </p>
                   <p className="subtotal">
                     ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                    <span className="subscribe-hst-hint"> + hst</span>
                   </p>
                 </div>
               ))
             )}
-            {addonCents > 0 ? (
-              <p className="subscribe-summary-empty">Billed Thursday, with tax.</p>
-            ) : null}
             {promoResult?.valid ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
@@ -370,12 +412,12 @@ const SubscribeCart = ({ user, subCart }) => {
             {fulfillment === 'delivery' ? (
               <>
                 <div className="checkout-summary-subtotal">
-                  <p className="subtotal">Delivery fee (pre-tax)</p>
+                  <p className="subtotal">Delivery fee</p>
                   <p className="subtotal">
                     {quoteStatus === 'loading'
                       ? 'Calculating...'
                       : deliveryFeeCents > 0
-                        ? `$${(deliveryFeeCents / 100).toFixed(2)}`
+                        ? <>{formatPlanPrice(deliveryFeeCents)}<span className="subscribe-hst-hint"> + hst</span></>
                         : '$0.00'}
                   </p>
                 </div>
@@ -394,17 +436,21 @@ const SubscribeCart = ({ user, subCart }) => {
             ) : null}
 
             <div className="checkout-summary-tax">
-              <p className="tax">HST (13%)</p>
-              <p className="tax">${(taxCents / 100).toFixed(2)}</p>
+              <p className="tax">HST</p>
+              <p className="tax">{formatPlanPrice(taxCents)}</p>
             </div>
             <div className="checkout-total">
-              <p className="total">Due today</p>
-              <p className="total">${(dueTodayCents / 100).toFixed(2)}</p>
+              <p className="total">Total</p>
+              <p className="total">{formatPlanPrice(totalCents)}</p>
+            </div>
+            <div className="checkout-summary-subtotal subscribe-due-row">
+              <p className="subtotal">Due today</p>
+              <p className="subtotal">{formatPlanPrice(dueTodayCents)}</p>
             </div>
             {addonThursdayCents > 0 ? (
               <div className="checkout-summary-subtotal">
-                <p className="subtotal">Add-ons billed Thursday</p>
-                <p className="subtotal">${(addonThursdayCents / 100).toFixed(2)}</p>
+                <p className="subtotal">Add-ons billed on cutoff date</p>
+                <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
               </div>
             ) : null}
 
@@ -426,6 +472,7 @@ const SubscribeCart = ({ user, subCart }) => {
                 deliveryDate={deliveryDate}
                 onDeliveryDateChange={setDeliveryDate}
                 lockedDate={lockedDate}
+                showReviewNotes={false}
               />
             )}
 
@@ -445,24 +492,24 @@ const SubscribeCart = ({ user, subCart }) => {
               />
             </div>
 
-            {fulfillment === 'pickup' ? (
-              <div className="general-text">
-                <p>Please review your order details and pickup time before continuing.</p>
-                <p>Once payment is processed, orders cannot be modified or cancelled.</p>
-              </div>
-            ) : null}
-
-            {dates ? (
-              <div className="subscribe-dates-block general-text">
-                <p>Every plan lets you choose any combination of bowls, salads, and main plates.</p>
-                <p>
-                  Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week&apos;s box.
-                </p>
-                <p>If you don&apos;t make changes on time, we&apos;ll send your previous week&apos;s selections.</p>
-                <p>Pause or cancel by Wednesday, no fees.</p>
-                <p>First delivery: {dates.first_delivery_label}</p>
-              </div>
-            ) : null}
+            <div className="general-text subscribe-cart-notes">
+              <p>
+                Please review your order details
+                {fulfillment === 'pickup' ? ' and pickup time' : ''} before continuing.
+              </p>
+              <p>
+                You can see subscription details{' '}
+                <button
+                  type="button"
+                  className="subscribe-inline-link subscribe-details-link"
+                  onClick={openSubscriptionDetails}
+                >
+                  here
+                </button>
+                .
+              </p>
+              <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+            </div>
 
             <div className="general-text">
               <input
@@ -475,12 +522,6 @@ const SubscribeCart = ({ user, subCart }) => {
                 I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
               </label>
             </div>
-
-            {user && hasExistingSub ? (
-              <p className="subscribe-existing-note">
-                This will be added as a new subscription. It will not change your existing plan.
-              </p>
-            ) : null}
 
             <button
               type="button"
@@ -503,10 +544,10 @@ const SubscribeCart = ({ user, subCart }) => {
               <div className="checkout-items-container" key={`meal-${item.id}`}>
                 <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                 <div className="checkout-item-details">
-                  <p className="checkout-item-title">{item.slug}</p>
-                  {item.quantity > 1 ? (
-                    <p className="checkout-item-price">qty {item.quantity}</p>
-                  ) : null}
+                  <p className="checkout-item-title">
+                    {item.slug}
+                    <span className="subscribe-item-qty">x {item.quantity}</span>
+                  </p>
                 </div>
               </div>
             ))}
@@ -524,9 +565,9 @@ const SubscribeCart = ({ user, subCart }) => {
                 <div className="checkout-items-container" key={`addon-${item.id}`}>
                   <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                   <div className="checkout-item-details">
-                    <p className="checkout-item-title">{item.slug}</p>
-                    <p className="checkout-item-price">
-                      ${((item.price_cents * item.quantity) / 100).toFixed(2)} · qty {item.quantity} · billed Thursday
+                    <p className="checkout-item-title">
+                      {item.slug}
+                      <span className="subscribe-item-qty">x {item.quantity}</span>
                     </p>
                   </div>
                 </div>

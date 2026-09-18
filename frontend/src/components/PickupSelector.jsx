@@ -153,24 +153,24 @@ const PickupSelector = ({
       <div className="pickup-grid">
         {/* Date */}
         <div className="pickup-field">
-          <label htmlFor="pickup-date" className="pickup-label">
+          <label htmlFor={locked ? undefined : 'pickup-date'} className="pickup-label">
             Pickup Date
             {locked && lockedDateLabel ? (
               <span className="pickup-label-date"> - {lockedDateLabel}</span>
             ) : null}
           </label>
 
-          <input
-            id="pickup-date"
-            type="date"
-            className="pickup-input"
-            value={pickupDate}
-            min={locked ? undefined : minDateStr}
-            disabled={locked}
-            readOnly={locked}
-            onChange={handleDateChange}
-            onBlur={handleDateBlur}
-          />
+          {locked ? null : (
+            <input
+              id="pickup-date"
+              type="date"
+              className="pickup-input"
+              value={pickupDate}
+              min={minDateStr}
+              onChange={handleDateChange}
+              onBlur={handleDateBlur}
+            />
+          )}
 
           {!locked ? (
             <p className="pickup-hint">
