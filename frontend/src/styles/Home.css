@@ -350,17 +350,23 @@
 }
 
 @media (max-width: 768px) {
+  .header-images {
+    height: 380px;
+  }
+
   .logo-no-background {
-    width: 200px;
-    height: 200px;
+    width: 180px;
+    height: 180px;
   }
 
   .logo-text {
-    font-size: 30px;
+    font-size: 36px;
     width: 90%;
     max-width: 100%;
     padding: 0 16px;
-    top: calc(50% + 90px);
+    top: auto;
+    bottom: 36px;
+    transform: translateX(-50%);
   }
 
   .category-title {
@@ -402,21 +408,23 @@
 
 @media (max-width: 480px) {
   .header-images {
-    height: 350px;
+    height: 260px;
   }
 
   .logo-no-background {
-    width: 150px;
-    height: 150px;
-    top: 28%;
+    width: 120px;
+    height: 120px;
+    top: 32%;
   }
 
   .logo-text {
-    font-size: 18px;
+    font-size: 24px;
     width: 100%;
     max-width: 100%;
     padding: 0 16px;
-    top: calc(50% + 70px);
+    top: auto;
+    bottom: 28px;
+    transform: translateX(-50%);
   }
 
   .category-title {
