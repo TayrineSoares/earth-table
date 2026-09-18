@@ -20,7 +20,7 @@ const HST_RATE = 0.13
 
 function CartQtyStepper({ name, quantity, onMinus, onPlus, plusDisabled = false }) {
   return (
-    <div className="checkout-quantity-button-container subscribe-cart-qty">
+    <div className="subscribe-cart-qty">
       <button
         type="button"
         className="checkout-cart-popup-remove-button"
