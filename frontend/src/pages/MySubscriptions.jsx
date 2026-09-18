@@ -9,9 +9,11 @@ import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
   fetchSubscriptionPlans,
+  formatCutoffShort,
   formatPickupSlot,
   formatPlanPrice,
   mealsAWeek,
+  titleCaseName,
   updateSubscriptionFulfillment,
   updateSubscriptionStatus,
   changeSubscriptionPlan,
@@ -20,7 +22,7 @@ import {
   sundayDatePart,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
-import { formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import { clearEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
@@ -33,6 +35,49 @@ const cardLabel = (card) => {
   const brand = String(card.brand || 'card')
   const nice = brand.charAt(0).toUpperCase() + brand.slice(1)
   return `${nice} •••• ${card.last4}`
+}
+
+/** "Sunday, September 27, 2026" -> "Sunday, September 27" */
+function sundayLabel(ymd) {
+  const full = formatYmdLong(ymd)
+  return full.replace(/, \d{4}$/, '') || 'Sunday'
+}
+
+function shortWeekdayDate(ymd) {
+  const [y, m, d] = String(ymd || '').split('-').map(Number)
+  if (!y || !m || !d) return '—'
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function LineItem({ item, fallbackName, priceCents }) {
+  const qty = Number(item.quantity) || 1
+  return (
+    <li className="my-sub-line">
+      {item.products?.image_url ? (
+        <img src={item.products.image_url} alt="" className="my-sub-line-image" />
+      ) : (
+        <div className="my-sub-line-image my-sub-line-image--placeholder" />
+      )}
+      <p className="my-sub-line-name">{titleCaseName(item.products?.slug || fallbackName)}</p>
+      <span className="my-sub-line-qty">× {qty}</span>
+      {priceCents != null ? (
+        <span className="my-sub-line-price">{formatPlanPrice(priceCents)}</span>
+      ) : null}
+    </li>
+  )
+}
+
+function DetailRow({ label, children }) {
+  return (
+    <div className="my-sub-row">
+      <span className="my-sub-row-label">{label}</span>
+      <span className="my-sub-row-value">{children}</span>
+    </div>
+  )
 }
 
 const MySubscriptions = ({ user }) => {
@@ -134,6 +179,16 @@ const MySubscriptions = ({ user }) => {
       cancelled = true
     }
   }, [searchParams, user])
+
+  useEffect(() => {
+    const unlock = () => setSavingId(null)
+    window.addEventListener('pageshow', unlock)
+    window.addEventListener('focus', unlock)
+    return () => {
+      window.removeEventListener('pageshow', unlock)
+      window.removeEventListener('focus', unlock)
+    }
+  }, [])
 
   useEffect(() => {
     if (fulfillment === 'pickup') {
@@ -271,7 +326,10 @@ const MySubscriptions = ({ user }) => {
       pause: beforeWed
         ? {
           title: 'Pause this plan?',
-          body: `This Sunday, ${sunday}, will be skipped. Your meals and card stay on file. We'll email you on Mondays in case you want to come back. Resume by Wednesday 5:00 PM for that week's box.`,
+          body: [
+            `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
+            'Resume by Wednesday 5:00 PM for that week\'s box.',
+          ],
         }
         : {
           title: 'Pause after this Sunday?',
@@ -366,6 +424,7 @@ const MySubscriptions = ({ user }) => {
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
+    } finally {
       setSavingId(null)
     }
   }
@@ -387,6 +446,32 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
+  const openPlanDetails = () => {
+    setDialog({
+      icon: 'alert',
+      title: 'Subscription details',
+      asList: true,
+      body: [
+        'Every plan lets you choose any combination of bowls, salads, and main plates.',
+        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
+        'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
+        'Pause or cancel by Wednesday, no fees.',
+        'Add-ons are for this week only. They do not repeat unless you add them again.',
+        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
+      ],
+      hint: (
+        <>
+          All subscription information, rules, and terms are in the{' '}
+          <Link className="feedback-dialog-secondary" to="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </>
+      ),
+      primaryLabel: 'Got it',
+    })
+  }
+
   if (isLoading) {
     return (
       <div
@@ -398,27 +483,47 @@ const MySubscriptions = ({ user }) => {
     )
   }
 
+  const nextBoxYmd = rows
+    .map((row) => row.cycle?.delivery_date || row.cycle?.pickup_date || row.week?.delivery_date)
+    .filter(Boolean)
+    .sort()[0]
+  const nextBoxLong = sundayLabel(nextBoxYmd)
+
   return (
     <div className="order-history-page my-subscriptions-page">
       <div className="checkout-page-header-image">
         <img src={checkoutImage} className="checkout-image" alt="" />
       </div>
 
-      <div className="page-wrapper">
-        <h1 className="order-history-title">My Subscriptions</h1>
-
+      <div className="page-wrapper my-sub-shell">
         {!user?.id ? (
-          <div className="order-history-empty">
-            <p className="order-history-empty-copy">Sign in to see your weekly plans.</p>
-            <Link to="/login?next=/my-subscriptions" className="order-history-button">Log in</Link>
-          </div>
+          <>
+            <h1 className="my-sub-h1">My plans</h1>
+            <div className="order-history-empty">
+              <p className="order-history-empty-copy">Sign in to see your weekly plans.</p>
+              <Link to="/login?next=/my-subscriptions" className="order-history-button">Log in</Link>
+            </div>
+          </>
         ) : !rows.length ? (
-          <div className="order-history-empty">
-            <p className="order-history-empty-copy">No current subscriptions available.</p>
-            <Link to="/subscribe-and-save" className="order-history-button">Subscribe &amp; Save</Link>
-          </div>
+          <>
+            <h1 className="my-sub-h1">My plans</h1>
+            <div className="order-history-empty">
+              <p className="order-history-empty-copy">No current subscriptions available.</p>
+              <Link to="/subscribe-and-save" className="order-history-button">Subscribe &amp; Save</Link>
+            </div>
+          </>
         ) : (
-          rows.map((row) => {
+          <>
+            <div className="my-sub-page-header">
+              <h1 className="my-sub-h1">My plans</h1>
+              {nextBoxYmd ? (
+                <p className="my-sub-next-box">
+                  Your next box is <strong>{nextBoxLong}</strong>
+                </p>
+              ) : null}
+            </div>
+
+            {rows.map((row) => {
             const plan = row.subscription_plans || {}
             const cycle = row.cycle || {}
             const items = Array.isArray(cycle.subscription_cycle_items)
@@ -426,339 +531,313 @@ const MySubscriptions = ({ user }) => {
               : []
             const meals = items.filter((item) => item.kind === 'plan')
             const addons = items.filter((item) => item.kind === 'addon')
+            const mealQty = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+            const mealCount = Number(plan.meal_count) || 0
+            const extrasCents = addons.reduce(
+              (sum, item) => sum + (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0),
+              0
+            )
             const isDelivery = !!cycle.delivery
-            const sunday = formatYmdLong(cycle.delivery_date || cycle.pickup_date)
+            const ymd = cycle.delivery_date || cycle.pickup_date || row.week?.delivery_date
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
             const pending = row.pending_status
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
-            const weekNote = isPaused || pending === 'paused'
-              ? 'This plan is paused. Your last meals and card stay on file. We email you on Mondays in case you want to come back. Resume by Wednesday 5:00 PM to get that Sunday\'s box, or cancel to remove everything.'
+            const statusNote = isPaused || pending === 'paused'
+              ? 'This plan is paused. Your last meals and card stay on file. Resume by Wednesday 5:00 PM to get that Sunday\'s box.'
               : pending === 'cancelled'
-                ? 'The payment cutoff for this week has passed. You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-              : row.week?.applies_to === 'next_week'
-                ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}. This Sunday's box is locked. If you need a delivery change for this Sunday, email hello@earthtableco.ca.`
-                : `You can change meals and extras until ${row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}. Pause, cancel, or change plan by ${row.charge?.charge_label || 'Wednesday at 5:00 PM ET'}.`
+                ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
+                : row.week?.applies_to === 'next_week'
+                  ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
+                  : row.meals_need_update
+                    ? `Pick exactly ${mealCount} meals for this Sunday before Thursday 5:00 PM.`
+                    : pendingPlan
+                      ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
+                      : ''
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
             const otherPlans = plans.filter((planRow) => planRow.id !== row.plan_id)
             const statusLabel = pending === 'paused'
               ? 'Pausing'
               : pending === 'cancelled'
                 ? 'Cancelling'
-              : isPaused
-                ? 'Paused'
-                : 'Active'
+                : isPaused
+                  ? 'Paused'
+                  : 'Active'
             const statusChipClass = isPaused || pending
-              ? 'order-chip my-sub-chip-paused'
-              : 'order-chip my-sub-chip-active'
+              ? 'my-sub-status my-sub-status--paused'
+              : 'my-sub-status my-sub-status--active'
+            const note = String(cycle.special_note || '').trim()
+            const location = isDelivery
+              ? (note || cycle.delivery_postal_code || '—')
+              : PICKUP_ADDRESS
+            const windowLabel = isDelivery
+              ? DELIVERY_WINDOW
+              : (formatPickupSlot(cycle.pickup_time_slot) || '—')
+            const mealsBy = formatCutoffShort(row.week?.cutoff_at || cycle.cutoff_at)
+            const pauseBy = formatCutoffShort(row.charge?.charge_at)
 
             return (
-              <article key={row.id} className="order-card">
-                <header className="order-card-header">
-                  <div className="order-card-header-main">
-                    <p className="order-card-id">{mealsAWeek(plan.meal_count)}</p>
-                    <div className="order-card-chips">
-                      <span className={statusChipClass}>{statusLabel}</span>
-                      <span className="order-chip">{isDelivery ? 'Delivery' : 'Pickup'}</span>
-                    </div>
+              <section key={row.id} className="my-sub-plan">
+                <div className="my-sub-meals">
+                  <div className="my-sub-section-head">
+                    <p className="my-sub-section-label">This week&apos;s meals</p>
+                    <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
                   </div>
-                  <p className="order-card-placed">{formatPlanPrice(plan.price_cents)}/week</p>
-                  <div className="my-sub-heading-actions">
+                  {meals.length ? (
+                    <ul className="my-sub-lines">
+                      {meals.map((item) => (
+                        <LineItem key={item.id} item={item} fallbackName="Meal" />
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="my-sub-empty-extras">No meals selected this week.</p>
+                  )}
+
+                  <div className="my-sub-section-head my-sub-section-head--extras">
+                    <p className="my-sub-section-label">This week&apos;s extras</p>
                     {canEdit ? (
-                      <>
+                      <Link className="my-sub-section-link" to={`/my-subscriptions/${row.id}/addons`}>
+                        Add extras
+                      </Link>
+                    ) : null}
+                  </div>
+                  {addons.length ? (
+                    <>
+                      <ul className="my-sub-lines">
+                        {addons.map((item) => (
+                          <LineItem
+                            key={item.id}
+                            item={item}
+                            fallbackName="Extra"
+                            priceCents={(Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 1)}
+                          />
+                        ))}
+                      </ul>
+                      <div className="my-sub-extras-summary">
+                        <span>Extras this week</span>
+                        <span>{formatPlanPrice(extrasCents)} · charged Thursday</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="my-sub-empty-extras">No extras this week.</p>
+                  )}
+                </div>
+
+                <aside className="my-sub-aside">
+                  <div className="my-sub-card">
+                    <div className="my-sub-card-top">
+                      <div className="my-sub-card-title-row">
+                        <h2 className="my-sub-card-title">{mealsAWeek(plan.meal_count)}</h2>
+                        <span className={statusChipClass}>{statusLabel}</span>
+                      </div>
+                      <p className="my-sub-card-price">
+                        {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
+                      </p>
+                      {statusNote ? <p className="my-sub-status-note">{statusNote}</p> : null}
+                    </div>
+
+                    <div className="my-sub-card-details">
+                      <DetailRow label="Next box">{shortWeekdayDate(ymd)}</DetailRow>
+                      <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
+                      <DetailRow label="Location">{location}</DetailRow>
+                      <DetailRow label="Change meals by">{mealsBy}</DetailRow>
+                      <DetailRow label="Pause or cancel by">{pauseBy}</DetailRow>
+                      <DetailRow label="Card on file">
+                        {cardLabel(row.card)}
+                        <button
+                          type="button"
+                          className="my-sub-edit-link"
+                          disabled={savingId === row.id}
+                          onClick={() => changeCard(row)}
+                        >
+                          Edit
+                        </button>
+                      </DetailRow>
+                    </div>
+
+                    <div className="my-sub-card-actions">
+                      {canEdit ? (
                         <Link
                           to={`/my-subscriptions/${row.id}/meals`}
                           state={{ fresh: true }}
-                          className="order-history-button"
+                          className="my-sub-primary"
                         >
-                          Edit plan
+                          Edit meals
                         </Link>
+                      ) : (
                         <button
                           type="button"
-                          className="order-history-button"
-                          onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
+                          className="my-sub-primary"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmStatus(row, 'resume')}
                         >
-                          {editingId === row.id ? 'Close' : 'Edit pickup / delivery'}
+                          Resume
                         </button>
-                        <button
-                          type="button"
-                          className="order-history-button"
-                          onClick={() => setChangingId(changingId === row.id ? null : row.id)}
-                        >
-                          {changingId === row.id ? 'Close plans' : 'Change plan'}
-                        </button>
-                        {pending ? (
+                      )}
+                      {canEdit ? (
+                        <>
                           <button
                             type="button"
-                            className="order-history-button"
-                            disabled={savingId === row.id}
-                            onClick={() => confirmStatus(row, 'resume')}
+                            className="my-sub-text-link"
+                            onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
                           >
-                            Keep this Sunday
+                            {editingId === row.id ? 'Close pickup or delivery' : 'Change pickup or delivery'}
                           </button>
-                        ) : (
                           <button
                             type="button"
-                            className="order-history-button"
-                            disabled={savingId === row.id}
-                            onClick={() => confirmStatus(row, 'pause')}
+                            className="my-sub-text-link"
+                            onClick={() => setChangingId(changingId === row.id ? null : row.id)}
                           >
-                            Pause
+                            {changingId === row.id ? 'Close plans' : 'Change plan'}
                           </button>
-                        )}
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        className="order-history-button"
-                        disabled={savingId === row.id}
-                        onClick={() => confirmStatus(row, 'resume')}
-                      >
-                        Resume
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="order-history-button"
-                      disabled={savingId === row.id}
-                      onClick={() => confirmStatus(row, 'cancel')}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </header>
-
-                <p className="my-sub-week-note">{weekNote}</p>
-
-                <div className="order-meta-grid">
-                  {isDelivery ? (
-                    <>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">This Sunday</p>
-                        <p className="order-meta-value">{sunday || '—'}</p>
-                      </div>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Window</p>
-                        <p className="order-meta-value">11:00 AM – 6:00 PM</p>
-                      </div>
-                      {cycle.delivery_postal_code ? (
-                        <div className="order-meta-field">
-                          <p className="order-meta-label">Postal code</p>
-                          <p className="order-meta-value">{cycle.delivery_postal_code}</p>
-                        </div>
+                        </>
                       ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Pickup</p>
-                        <p className="order-meta-value">{sunday || '—'}</p>
-                      </div>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Time</p>
-                        <p className="order-meta-value">{formatPickupSlot(cycle.pickup_time_slot) || '—'}</p>
-                      </div>
-                      <div className="order-meta-field order-meta-field--wide">
-                        <p className="order-meta-label">Address</p>
-                        <p className="order-meta-value">{PICKUP_ADDRESS}</p>
-                      </div>
-                    </>
-                  )}
-                  <div className="order-meta-field order-meta-field--wide">
-                    <p className="order-meta-label">Change meals by</p>
-                    <p className="order-meta-value">{row.week?.cutoff_label || 'Thursday at 5:00 PM ET'}</p>
-                  </div>
-                  <div className="order-meta-field order-meta-field--wide">
-                    <p className="order-meta-label">Pause / cancel / change plan by</p>
-                    <p className="order-meta-value">{row.charge?.charge_label || 'Wednesday at 5:00 PM ET'}</p>
-                  </div>
-                  <div className="order-meta-field order-meta-field--wide">
-                    <p className="order-meta-label">Card on file</p>
-                    <p className="order-meta-value">
-                      {cardLabel(row.card)}
+                    </div>
+
+                    <div className="my-sub-card-danger">
+                      {canEdit && pending ? (
+                        <button
+                          type="button"
+                          className="my-sub-danger-link"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmStatus(row, 'resume')}
+                        >
+                          Keep this Sunday
+                        </button>
+                      ) : canEdit ? (
+                        <button
+                          type="button"
+                          className="my-sub-danger-link"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmStatus(row, 'pause')}
+                        >
+                          Pause plan
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        className="my-sub-edit-link"
+                        className="my-sub-danger-link my-sub-danger-link--cancel"
                         disabled={savingId === row.id}
-                        onClick={() => changeCard(row)}
+                        onClick={() => confirmStatus(row, 'cancel')}
                       >
-                        Edit
+                        Cancel plan
                       </button>
-                    </p>
+                    </div>
+
+                    <div className="my-sub-card-terms">
+                      <button type="button" className="my-sub-text-link" onClick={openPlanDetails}>
+                        View plan details &amp; rules
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {pendingPlan ? (
-                  <p className="my-sub-week-note">
-                    Starting next week: {mealsAWeek(pendingPlan.meal_count)} ({formatPlanPrice(pendingPlan.price_cents)}/week).
-                  </p>
-                ) : null}
-
-                {row.meals_need_update ? (
-                  <p className="my-sub-week-note">
-                    Pick exactly {plan.meal_count} meals for this Sunday before Thursday 5:00 PM.
-                  </p>
-                ) : null}
-
-                {cycle.special_note ? (
-                  <div className="order-notes">
-                    <p className="order-meta-label">{isDelivery ? 'Address & notes' : 'Notes'}</p>
-                    <p className="order-notes-body">{cycle.special_note}</p>
-                  </div>
-                ) : null}
-
-                <p className="order-meta-label">This week&apos;s meals</p>
-                <ul className="order-items">
-                  {meals.map((item) => (
-                    <li key={item.id} className="order-item">
-                      <div className="order-item-link">
-                        {item.products?.image_url ? (
-                          <img src={item.products.image_url} alt="" className="order-item-image" />
-                        ) : (
-                          <div className="order-item-image order-item-image--placeholder" />
-                        )}
-                        <div className="order-item-details">
-                          <p className="order-item-name">{item.products?.slug || 'Meal'}</p>
-                          {item.quantity > 1 ? (
-                            <p className="order-item-price">qty {item.quantity}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                {addons.length ? (
-                  <>
-                    <p className="order-meta-label">This week add-ons</p>
-                    <ul className="order-items">
-                      {addons.map((item) => (
-                        <li key={item.id} className="order-item">
-                          <div className="order-item-link">
-                            {item.products?.image_url ? (
-                              <img src={item.products.image_url} alt="" className="order-item-image" />
-                            ) : (
-                              <div className="order-item-image order-item-image--placeholder" />
-                            )}
-                            <div className="order-item-details">
-                              <p className="order-item-name">{item.products?.slug || 'Add-on'}</p>
-                              <p className="order-item-price">
-                                {item.quantity > 1 ? `Add-on · qty ${item.quantity}` : 'Add-on'}
-                              </p>
-                            </div>
-                          </div>
-                        </li>
+                  {changingId === row.id && canEdit && otherPlans.length ? (
+                    <div className="my-sub-plan-list">
+                      {otherPlans.map((planRow) => (
+                        <button
+                          key={planRow.id}
+                          type="button"
+                          className="order-history-button"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmPlan(row, planRow)}
+                        >
+                          {mealsAWeek(planRow.meal_count)} — {formatPlanPrice(planRow.price_cents)}/week
+                        </button>
                       ))}
-                    </ul>
-                  </>
-                ) : null}
+                    </div>
+                  ) : null}
 
-                {changingId === row.id && canEdit && otherPlans.length ? (
-                  <div className="my-sub-plan-list">
-                    {otherPlans.map((planRow) => (
+                  {editingId === row.id && canEdit ? (
+                    <div className="my-sub-fulfillment">
+                      <div className="my-sub-fulfill-radios">
+                        <label>
+                          <input
+                            type="radio"
+                            name={`sub-fulfillment-${row.id}`}
+                            value="pickup"
+                            checked={fulfillment === 'pickup'}
+                            onChange={() => setFulfillment('pickup')}
+                          />
+                          Pickup
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name={`sub-fulfillment-${row.id}`}
+                            value="delivery"
+                            checked={fulfillment === 'delivery'}
+                            onChange={() => setFulfillment('delivery')}
+                          />
+                          Delivery
+                        </label>
+                      </div>
+
+                      {fulfillment === 'pickup' ? (
+                        <PickupSelector
+                          pickupDate={pickupDate}
+                          pickupTime={pickupTime}
+                          onDateChange={setPickupDate}
+                          onTimeChange={setPickupTime}
+                          lockedDate={lockedDate}
+                          showReviewNotes={false}
+                        />
+                      ) : (
+                        <>
+                          <DeliverySelector
+                            postalCode={postalCode}
+                            onPostalCodeChange={setPostalCode}
+                            feeCents={deliveryFeeCents}
+                            onValidate={({ valid }) => setPostalValid(valid)}
+                            deliveryDate={deliveryDate}
+                            onDeliveryDateChange={setDeliveryDate}
+                            lockedDate={lockedDate}
+                          />
+                          {quoteStatus === 'ok' && deliveryFeeCents > 0 ? (
+                            <p className="my-sub-fee-line">
+                              Delivery {formatPlanPrice(deliveryFeeCents)} + HST {formatPlanPrice(deliveryWithTax - deliveryFeeCents)} = {formatPlanPrice(deliveryWithTax)}
+                            </p>
+                          ) : null}
+                        </>
+                      )}
+
+                      <div className="special-note-container">
+                        <label htmlFor={`sub-note-${row.id}`} className="general-text">Special Instructions </label>
+                        <textarea
+                          className="special-note-input"
+                          id={`sub-note-${row.id}`}
+                          value={specialNote}
+                          onChange={(e) => setSpecialNote(e.target.value)}
+                          placeholder={
+                            fulfillment === 'delivery'
+                              ? 'Delivery address, allergies, special instructions...'
+                              : 'Allergies, special instructions...'
+                          }
+                          rows="3"
+                        />
+                      </div>
+
+                      {quoteStatus === 'out' ? (
+                        <p className="general-text" style={{ color: '#b30000' }}>
+                          Delivery not available for this area.
+                        </p>
+                      ) : null}
+
                       <button
-                        key={planRow.id}
                         type="button"
                         className="order-history-button"
-                        disabled={savingId === row.id}
-                        onClick={() => confirmPlan(row, planRow)}
+                        disabled={!fulfillmentReady || savingId === row.id}
+                        onClick={() => saveFulfillment(row)}
                       >
-                        {mealsAWeek(planRow.meal_count)} — {formatPlanPrice(planRow.price_cents)}/week
+                        {savingId === row.id ? 'Saving…' : 'Save pickup / delivery'}
                       </button>
-                    ))}
-                  </div>
-                ) : null}
-
-                {editingId === row.id && canEdit ? (
-                  <div className="my-sub-fulfillment">
-                    <p className="my-sub-week-note">{weekNote}</p>
-                    <div className="general-text" style={{ margin: '0 0 16px' }}>
-                      <label style={{ marginRight: 16 }}>
-                        <input
-                          type="radio"
-                          name={`sub-fulfillment-${row.id}`}
-                          value="pickup"
-                          checked={fulfillment === 'pickup'}
-                          onChange={() => setFulfillment('pickup')}
-                        />{' '}
-                        Pickup
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name={`sub-fulfillment-${row.id}`}
-                          value="delivery"
-                          checked={fulfillment === 'delivery'}
-                          onChange={() => setFulfillment('delivery')}
-                        />{' '}
-                        Delivery
-                      </label>
                     </div>
-
-                    {fulfillment === 'pickup' ? (
-                      <PickupSelector
-                        pickupDate={pickupDate}
-                        pickupTime={pickupTime}
-                        onDateChange={setPickupDate}
-                        onTimeChange={setPickupTime}
-                        lockedDate={lockedDate}
-                        showReviewNotes={false}
-                      />
-                    ) : (
-                      <>
-                        <DeliverySelector
-                          postalCode={postalCode}
-                          onPostalCodeChange={setPostalCode}
-                          feeCents={deliveryFeeCents}
-                          onValidate={({ valid }) => setPostalValid(valid)}
-                          deliveryDate={deliveryDate}
-                          onDeliveryDateChange={setDeliveryDate}
-                          lockedDate={lockedDate}
-                        />
-                        {quoteStatus === 'ok' && deliveryFeeCents > 0 ? (
-                          <p className="my-sub-fee-line">
-                            Delivery {formatPlanPrice(deliveryFeeCents)} + HST {formatPlanPrice(deliveryWithTax - deliveryFeeCents)} = {formatPlanPrice(deliveryWithTax)}
-                          </p>
-                        ) : null}
-                      </>
-                    )}
-
-                    <div className="special-note-container">
-                      <label htmlFor={`sub-note-${row.id}`} className="general-text">Special Instructions </label>
-                      <textarea
-                        className="special-note-input"
-                        id={`sub-note-${row.id}`}
-                        value={specialNote}
-                        onChange={(e) => setSpecialNote(e.target.value)}
-                        placeholder={
-                          fulfillment === 'delivery'
-                            ? 'Delivery address, allergies, special instructions...'
-                            : 'Allergies, special instructions...'
-                        }
-                        rows="3"
-                      />
-                    </div>
-
-                    {quoteStatus === 'out' ? (
-                      <p className="general-text" style={{ color: '#b30000' }}>
-                        Delivery not available for this area.
-                      </p>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      className="order-history-button"
-                      disabled={!fulfillmentReady || savingId === row.id}
-                      onClick={() => saveFulfillment(row)}
-                    >
-                      {savingId === row.id ? 'Saving…' : 'Save pickup / delivery'}
-                    </button>
-                  </div>
-                ) : null}
-              </article>
+                  ) : null}
+                </aside>
+              </section>
             )
-          })
+          })}
+          </>
         )}
       </div>
       <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />

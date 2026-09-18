@@ -6,6 +6,26 @@ async function parseJson(res) {
   return data;
 }
 
+/** "cilantro lime chicken bowl" -> "Cilantro Lime Chicken Bowl" */
+const titleCaseName = (name) => {
+  return String(name || '').replace(/\w\S*/g, (word) => (
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ));
+};
+
+const titleCaseCycle = (cycle) => {
+  if (!cycle) return cycle;
+  const items = Array.isArray(cycle.subscription_cycle_items)
+    ? cycle.subscription_cycle_items.map((item) => ({
+        ...item,
+        products: item.products
+          ? { ...item.products, slug: titleCaseName(item.products.slug) }
+          : item.products,
+      }))
+    : cycle.subscription_cycle_items;
+  return { ...cycle, subscription_cycle_items: items };
+};
+
 const fetchSubscriptionPlans = async ({ activeOnly = false } = {}) => {
   const q = activeOnly ? '?active=1' : '';
   const res = await fetch(`/api/subscriptions/plans${q}`);
@@ -68,7 +88,13 @@ const fetchSubscriptionPlan = async (planId) => {
 
 const fetchMySubscriptions = async (userId) => {
   const res = await fetch(`/api/subscriptions/mine/${userId}`);
-  return parseJson(res);
+  const data = await parseJson(res);
+  if (!Array.isArray(data)) return data;
+  return data.map((row) => ({
+    ...row,
+    cycle: titleCaseCycle(row.cycle),
+    edit_cycle: titleCaseCycle(row.edit_cycle),
+  }));
 };
 
 const fetchAdminSubscriptions = async () => {
@@ -258,6 +284,7 @@ export {
   startCardSetup,
   fetchCardSetup,
   mealsAWeek,
+  titleCaseName,
   formatPickupSlot,
   formatCutoffShort,
   weekSaveCopy,

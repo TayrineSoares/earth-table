@@ -1,10 +1,19 @@
 import '../styles/Home.css';
 import { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
+import { Check } from 'lucide-react';
 import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
 import arrow from  "../assets/images/arrow.png"
 import { sizedImageUrl } from "../helpers/imageHelpers";
+import SubscribeSaveBand from '../components/SubscribeSaveBand';
+
+const MAKE_STANDARDS = [
+  'Seed oil free',
+  'Organic',
+  'Grass-fed, pasture-raised meat & dairy',
+  'Gluten free',
+];
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
@@ -31,8 +40,25 @@ const Home = () => {
       <div className="header-images">
         <img src={headerImage} className="header-image" alt="Background" />
         <img src={logoNoBackground} className="logo-no-background" alt="Logo" />
-        <div className="logo-text">Creating Nourishing Experiences that Support your Health Journey</div>
+        <div className="logo-text">Organic Meal Delivery & Catering Services</div>
       </div>
+
+      <SubscribeSaveBand />
+
+      <section className="homepage-make" aria-labelledby="homepage-make-heading">
+        <h2 id="homepage-make-heading" className="homepage-make-title">What we make</h2>
+        <p className="homepage-make-body">
+          Bowls, salads, breakfast, and everything else, all cooked fresh each week.
+        </p>
+        <ul className="homepage-make-standards">
+          {MAKE_STANDARDS.map((label) => (
+            <li key={label} className="homepage-make-standard">
+              <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+              {label}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <div className="page-wrapper">
         {homepageCategories.map((category, index) => (
@@ -60,14 +86,16 @@ const Home = () => {
               </div>
             </section>
           ))}
+      </div>
 
-        {categories.length > 0 && (
-          <div className='homepage-footer'>
-            <p className='footer-starter-text'>There's plenty more to discover!</p>
-            <p className='footer-secondary-text'>Shop our other services such as...</p>
+      {categories.length > 0 && (
+        <div className="homepage-footer">
+          <div className="page-wrapper">
+            <p className="footer-starter-text">And much more!</p>
+            <p className="footer-secondary-text">Shop our other categories such as...</p>
 
             <div className="footer-category-container">
-              {footerCategories.map(category => (
+              {footerCategories.map((category) => (
                 <div className="footer-category-card" key={category.id}>
                   <img
                     src={sizedImageUrl(category.image_url, 600)}
@@ -79,18 +107,19 @@ const Home = () => {
                 </div>
               ))}
             </div>
-            <div className='explore-button-container'>
-              <p className='explore-button-text'>EXPLORE ALL CATEGORIES</p>
+            <div className="explore-button-container">
+              <p className="explore-button-text">EXPLORE ALL CATEGORIES</p>
               <Link to={`/products/category`}>
-                <img 
+                <img
                   src={arrow}
-                  className='homepage-arrow'
-                  />
+                  className="homepage-arrow"
+                  alt=""
+                />
               </Link>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

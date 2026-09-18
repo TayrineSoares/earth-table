@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import { PlusCircle, RefreshCw, ShoppingBag, Truck } from 'lucide-react'
 import '../styles/SubscribeAndSave.css'
@@ -36,6 +36,7 @@ const HOW_IT_WORKS = [
 ]
 
 const SubscribeAndSave = () => {
+  const location = useLocation()
   const [plans, setPlans] = useState([])
   const [dates, setDates] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -70,6 +71,14 @@ const SubscribeAndSave = () => {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (isLoading) return
+    const id = location.hash.replace('#', '')
+    if (!id) return
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ block: 'start' })
+  }, [isLoading, location.hash])
 
   const savePercent = dates && dates.save_up_to_percent
 
@@ -114,7 +123,7 @@ const SubscribeAndSave = () => {
               </div>
             </section>
 
-            <section className="subscribe-how" aria-labelledby="subscribe-how-heading">
+            <section className="subscribe-how" id="how-it-works" aria-labelledby="subscribe-how-heading">
               <div className="subscribe-section-head">
                 <h2 id="subscribe-how-heading">How it works</h2>
               </div>

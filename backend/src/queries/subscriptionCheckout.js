@@ -399,6 +399,11 @@ async function loadSignupPayload(subscriptionId) {
           last_name: customer.last_name,
           email: customer.email,
           phone_number: customer.phone_number,
+          address_line1: customer.address_line1,
+          address_line2: customer.address_line2,
+          city: customer.city,
+          province: customer.province,
+          postal_code: customer.postal_code,
         }
       : null,
   };

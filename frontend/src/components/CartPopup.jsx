@@ -38,7 +38,7 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
         <>
           <h3 className='cart-popup-header'>
             <span className='popup-nav-text'>Your Cart</span>
-            <button onClick={() => setIsMinimized(true)}>
+            <button type="button" onClick={() => setIsMinimized(true)} aria-label="Minimize">
               <Minus />
             </button>
           </h3>
@@ -58,26 +58,31 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
                     <div className="cart-popup-item-details-1">
                       <span className="cart-popup-item-top">
                         <span className="cart-popup-item-name">{item.slug}</span>
-                        <span className="cart-popup-item-total-price">
-                          ${(item.price_cents * item.quantity / 100).toFixed(2)}
-                        </span>
+                        {item.price_cents * item.quantity > 0 ? (
+                          <span className="cart-popup-item-total-price">
+                            ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                          </span>
+                        ) : null}
                       </span>
-                      <span className="cart-popup-item-quantity">QTY:
-                        <div className='quantity-button-container'>
+                      <span className="cart-popup-item-quantity">
+                        QTY:
+                        <div className="quantity-button-container">
                           <button
                             type="button"
                             onClick={() => removeOneFromCart(item)}
-                            className='cart-popup-add-remove-button'
+                            className="cart-popup-add-remove-button"
                             aria-label={`Decrease ${item.slug}`}
-                          >-
+                          >
+                            -
                           </button>
                           {item.quantity}
                           <button
                             type="button"
                             onClick={() => addOneFromCart(item)}
-                            className='cart-popup-add-remove-button'
+                            className="cart-popup-add-remove-button"
                             aria-label={`Increase ${item.slug}`}
-                          >+
+                          >
+                            +
                           </button>
                         </div>
                         <button
@@ -97,16 +102,19 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
           )}
 
           <div className="cart-popup-footer">
-            <div className='go-to-chekout-button-container'>
-              <button
-                className='go-to-chekout-button'
-                onClick={() => navigate('/cart')}
-              >
-                GO TO CHECKOUT
-              </button>
+            <p className="cart-total-text">TOTAL COST:</p>
+            <div className="cart-popup-footer-end">
+              <p className="cart-total">${(totalPrice / 100).toFixed(2)}</p>
+              <div className="go-to-chekout-button-container">
+                <button
+                  type="button"
+                  className="go-to-chekout-button"
+                  onClick={() => navigate('/cart')}
+                >
+                  GO TO CHECKOUT
+                </button>
+              </div>
             </div>
-            <p className='cart-total-text'>TOTAL COST:</p>
-            <p className='cart-total'>${(totalPrice / 100).toFixed(2)}</p>
           </div>
         </>
       ) : (
@@ -116,13 +124,13 @@ function CartPopup({ cart, removeOneFromCart, addOneFromCart, removeAll }) {
         >
           {isMobile ? (
             <div className="minimized-count">
-            <ShoppingCart size={20} />
-            <span>{" "}{getCartItemCount(cart)}</span>
-          </div>
+              <ShoppingCart size={20} />
+              <span>{" "}{getCartItemCount(cart)}</span>
+            </div>
           ) : (
             <>
               <span>Your Cart ({getCartItemCount(cart)})</span>
-              <button className="expand-button" aria-label="Expand cart">
+              <button type="button" className="expand-button" aria-label="Expand cart">
                 +
               </button>
             </>
