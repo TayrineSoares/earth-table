@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -52,6 +53,11 @@ const AppRoutes = ({
   const onSubscribeSignup = location.pathname.startsWith('/subscribe/')
     && location.pathname !== '/subscribe/confirmation';
   const onSubscribeCart = location.pathname === '/subscribe/cart';
+
+  // SPA pages keep the previous scroll; meals → add-ons would stay mid-catalog.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <>
