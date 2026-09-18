@@ -1,11 +1,19 @@
 import '../styles/Home.css';
 import { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
+import { Check } from 'lucide-react';
 import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
 import arrow from  "../assets/images/arrow.png"
 import { sizedImageUrl } from "../helpers/imageHelpers";
 import SubscribeSaveBand from '../components/SubscribeSaveBand';
+
+const MAKE_STANDARDS = [
+  'Seed oil free',
+  'Organic',
+  'Grass-fed, pasture-raised meat & dairy',
+  'Gluten free',
+];
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
@@ -40,8 +48,16 @@ const Home = () => {
       <section className="homepage-make" aria-labelledby="homepage-make-heading">
         <h2 id="homepage-make-heading" className="homepage-make-title">What we make</h2>
         <p className="homepage-make-body">
-          Meals, bowls, salads, and everything else — all cooked fresh each week.
+          Bowls, salads, breakfast, and everything else, all cooked fresh each week.
         </p>
+        <ul className="homepage-make-standards">
+          {MAKE_STANDARDS.map((label) => (
+            <li key={label} className="homepage-make-standard">
+              <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+              {label}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div className="page-wrapper">
@@ -75,7 +91,7 @@ const Home = () => {
       {categories.length > 0 && (
         <div className="homepage-footer">
           <div className="page-wrapper">
-            <p className="footer-starter-text">There's plenty more to discover!</p>
+            <p className="footer-starter-text">And much more!</p>
             <p className="footer-secondary-text">Shop our other categories such as...</p>
 
             <div className="footer-category-container">

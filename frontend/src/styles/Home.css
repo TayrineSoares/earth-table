@@ -46,7 +46,7 @@
 }
 
 .zigzag-section:first-child .zigzag-content {
-  padding-top: clamp(36px, 4.5vw, 56px);
+  padding-top: clamp(56px, 6vw, 88px);
 }
 
 .homepage-make {
@@ -76,10 +76,43 @@
   font-weight: 400;
   font-size: 17px;
   line-height: 1.4;
-  color: #BE7200;
+  color: #000;
   max-width: 52ch;
   margin: 0;
   text-wrap: pretty;
+}
+
+.homepage-make-standards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.homepage-make-standard {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.3;
+  color: #000;
+  background: #F6DFC2;
+  border: 1px solid #E9CEA8;
+  border-radius: 999px;
+  padding: 5px 12px;
+  pointer-events: none;
+}
+
+.homepage-make-standard svg {
+  flex-shrink: 0;
+  color: #8A6A1E;
 }
 
 .zigzag-content.reverse {
@@ -358,6 +391,12 @@
   .homepage-make-body {
     font-size: 16px;
     max-width: 100%;
+  }
+
+  .homepage-make-standards {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
