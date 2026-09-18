@@ -46,8 +46,7 @@ const Home = () => {
       <SubscribeSaveBand />
 
       <section className="homepage-make" aria-labelledby="homepage-make-heading">
-        <p className="homepage-make-eyebrow">What we make</p>
-        <h2 id="homepage-make-heading" className="homepage-make-title">Our Menu</h2>
+        <h2 id="homepage-make-heading" className="homepage-make-title">What we make</h2>
         <p className="homepage-make-body">
           Bowls, salads, breakfast, and everything else, all cooked fresh each week.
         </p>
