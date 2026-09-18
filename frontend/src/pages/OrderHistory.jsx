@@ -1,35 +1,291 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   DELIVERY_WINDOW,
   fetchOrdersByAuthId,
   formatMoney,
-  formatOrderPlacedAt,
+  formatOrderPlacedDate,
+  formatTimeWindow,
   formatYmdLong,
-  getDeliveryFeeCents,
-  getOrderDiscount,
+  formatYmdMedium,
+  getFulfillmentYmd,
+  getItemCount,
+  getOrderTotals,
   getPostalFromBuyerInfo,
+  isOrderCompleted,
   isOrderItemAvailable,
   PICKUP_ADDRESS,
   shortOrderId,
   toCartProduct,
 } from "../helpers/orderHelpers";
 import { supabase } from "../supabaseClient";
+import FeedbackDialog from "../components/FeedbackDialog";
 import "../styles/Cart.css";
 import "../styles/OrderHistory.css";
 import loadingAnimation from "../assets/loading.json";
 import Lottie from "lottie-react";
 import checkoutImage from "../assets/images/checkoutImage.png";
 
-const formatStatus = (status) => {
-  const label = String(status || "paid").replace(/_/g, " ").trim();
-  return label ? label.charAt(0).toUpperCase() + label.slice(1) : "Paid";
+const ITEM_PREVIEW = 4;
+const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "past", label: "Past" },
+];
+
+const itemsOf = (order) =>
+  Array.isArray(order?.order_products) ? order.order_products : [];
+
+const itemLabel = (count) => `${count} ${count === 1 ? "item" : "items"}`;
+
+const fulfillmentWindow = (order) => {
+  if (order.delivery) return formatTimeWindow(DELIVERY_WINDOW) || DELIVERY_WINDOW;
+  return formatTimeWindow(order.pickup_time_slot) || "—";
+};
+
+const collapsedSummary = (order, completed) => {
+  const date = formatYmdMedium(getFulfillmentYmd(order)) || "—";
+  const verb = order.delivery
+    ? (completed ? "Delivered" : "Delivery")
+    : (completed ? "Picked up" : "Pickup");
+  return `${verb} ${date} · ${itemLabel(getItemCount(order))}`;
+};
+
+const OrderItemRow = ({ item, onReorder }) => {
+  const available = isOrderItemAvailable(item);
+  const name = item.product?.slug || "Unnamed product";
+  const productId = item.product?.id || item.product_id;
+  const qty = Number(item.quantity) || 0;
+  const unitCents = Number(item.unit_price_cents) || 0;
+  const lineTotal = qty * unitCents;
+
+  const body = (
+    <>
+      {item.product?.image_url ? (
+        <img src={item.product.image_url} alt="" className="order-item-image" />
+      ) : (
+        <div className="order-item-image order-item-image--placeholder" />
+      )}
+      <div className="order-item-details">
+        <p className="order-item-name">{name}</p>
+        <p className="order-item-unit">
+          {qty} × {formatMoney(unitCents)}
+        </p>
+      </div>
+      <p className="order-item-line-total">{formatMoney(lineTotal)}</p>
+    </>
+  );
+
+  return (
+    <li className={`order-item${available ? "" : " is-unavailable"}`}>
+      {available && productId ? (
+        <Link to={`/products/${productId}`} className="order-item-link">
+          {body}
+        </Link>
+      ) : (
+        <div className="order-item-link">{body}</div>
+      )}
+      {available ? (
+        <button
+          type="button"
+          className="order-history-button order-history-button--small"
+          onClick={() => onReorder(item)}
+        >
+          Reorder
+        </button>
+      ) : (
+        <span className="order-item-unavailable">Unavailable</span>
+      )}
+    </li>
+  );
+};
+
+const ExpandedOrderCard = ({
+  order,
+  canCollapse,
+  isCurrent,
+  printTarget,
+  onReorderAll,
+  onReorderItem,
+  onToggleDetails,
+  onPrintReceipt,
+}) => {
+  const [showAllItems, setShowAllItems] = useState(false);
+  const isDelivery = Boolean(order.delivery);
+  const items = itemsOf(order);
+  const hiddenCount = Math.max(0, items.length - ITEM_PREVIEW);
+  const visibleItems = printTarget || showAllItems || hiddenCount === 0
+    ? items
+    : items.slice(0, ITEM_PREVIEW);
+  const totals = getOrderTotals(order);
+  const postal = isDelivery ? getPostalFromBuyerInfo(order.buyer_stripe_payment_info) : "";
+  const dateLabel = formatYmdLong(getFulfillmentYmd(order)) || "—";
+  const windowLabel = fulfillmentWindow(order);
+  const address = isDelivery ? (postal || "") : PICKUP_ADDRESS;
+  const note = String(order.special_note || "").trim();
+
+  return (
+    <article
+      className={`order-card order-card--expanded${isCurrent ? " is-current" : ""}${printTarget ? " is-print-target" : ""}`}
+    >
+      <header className="order-card-header">
+        <div className="order-card-header-main">
+          <p className="order-card-id">Order {shortOrderId(order.id)}</p>
+        </div>
+        <p className="order-card-placed">
+          {formatOrderPlacedDate(order.created_at)
+            ? `Placed ${formatOrderPlacedDate(order.created_at)}`
+            : ""}
+        </p>
+      </header>
+
+      <div className="order-card-body">
+        <div className="order-items-col">
+          {items.length > 0 && (
+            <ul className="order-items">
+              {visibleItems.map((item, idx) => (
+                <OrderItemRow
+                  key={`${item.product?.id || item.product_id || item.product?.slug || "item"}-${idx}`}
+                  item={item}
+                  onReorder={onReorderItem}
+                />
+              ))}
+            </ul>
+          )}
+          {hiddenCount > 0 && !showAllItems && !printTarget && (
+            <button
+              type="button"
+              className="order-text-link order-show-more"
+              onClick={() => setShowAllItems(true)}
+            >
+              Show {hiddenCount} more {hiddenCount === 1 ? "item" : "items"}
+            </button>
+          )}
+        </div>
+
+        <aside className="order-summary-col">
+          <div className="order-fulfillment">
+            <p className="order-fulfillment-label">{isDelivery ? "Delivery" : "Pickup"}</p>
+            <p className="order-fulfillment-when">
+              {dateLabel} · {windowLabel}
+            </p>
+            {!!address && <p className="order-fulfillment-address">{address}</p>}
+            {!!note && (
+              <p className="order-fulfillment-note">{note}</p>
+            )}
+          </div>
+
+          <div className="order-totals">
+            {totals.itemSubtotalCents > 0 && (
+              <div className="order-total-row">
+                <span>Subtotal</span>
+                <span>{formatMoney(totals.itemSubtotalCents)}</span>
+              </div>
+            )}
+            {totals.discount && (
+              <div className="order-total-row">
+                <span>
+                  {totals.discount.label} ({totals.discount.code})
+                  {totals.discount.percent != null ? ` — ${totals.discount.percent}% off` : ""}
+                </span>
+                <span>−{formatMoney(totals.discountCents)}</span>
+              </div>
+            )}
+            {totals.deliveryPreTaxCents > 0 && (
+              <div className="order-total-row">
+                <span>Delivery fee</span>
+                <span>{formatMoney(totals.deliveryPreTaxCents)}</span>
+              </div>
+            )}
+            {totals.hstCents > 0 && (
+              <div className="order-total-row">
+                <span>HST</span>
+                <span>{formatMoney(totals.hstCents)}</span>
+              </div>
+            )}
+            {totals.creditCents > 0 && (
+              <div className="order-total-row">
+                <span>Store credit</span>
+                <span>−{formatMoney(totals.creditCents)}</span>
+              </div>
+            )}
+            <div className="order-total-row order-total-row--grand">
+              <span>Total</span>
+              <span>{formatMoney(totals.totalCents)}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="order-history-cta"
+            onClick={() => onReorderAll(order)}
+          >
+            Reorder all
+          </button>
+          <button
+            type="button"
+            className="order-text-link order-receipt-link"
+            onClick={() => onPrintReceipt(order.id)}
+          >
+            Print receipt
+          </button>
+          {canCollapse && (
+            <button
+              type="button"
+              className="order-text-link"
+              onClick={onToggleDetails}
+            >
+              Hide details
+            </button>
+          )}
+        </aside>
+      </div>
+    </article>
+  );
+};
+
+const CollapsedOrderRow = ({ order, completed, onReorderAll, onToggleDetails }) => {
+  const totals = getOrderTotals(order);
+
+  return (
+    <article className="order-card order-card--collapsed">
+      <div className="order-row-left">
+        <div className="order-row-title">
+          <p className="order-row-id">Order {shortOrderId(order.id)}</p>
+        </div>
+        <p className="order-row-meta">{collapsedSummary(order, completed)}</p>
+      </div>
+      <div className="order-row-right">
+        <p className="order-row-total">{formatMoney(totals.totalCents)}</p>
+        <button
+          type="button"
+          className="order-text-link"
+          onClick={() => onReorderAll(order)}
+        >
+          Reorder
+        </button>
+        <button
+          type="button"
+          className="order-text-link"
+          aria-expanded="false"
+          onClick={onToggleDetails}
+        >
+          Details
+        </button>
+      </div>
+    </article>
+  );
 };
 
 const OrderHistory = ({ user, addToCart }) => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(Boolean(user?.id));
+  const [filter, setFilter] = useState("all");
+  const [detailsOpen, setDetailsOpen] = useState({});
+  const [printId, setPrintId] = useState(null);
+  const [dialog, setDialog] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,9 +328,54 @@ const OrderHistory = ({ user, addToCart }) => {
     };
   }, [user]);
 
+  const featuredUpcomingId = useMemo(
+    () => orders.find((order) => !isOrderCompleted(order))?.id || null,
+    [orders]
+  );
+
+  const visibleOrders = useMemo(() => {
+    if (filter === "upcoming") return orders.filter((order) => !isOrderCompleted(order));
+    if (filter === "past") return orders.filter((order) => isOrderCompleted(order));
+    return orders;
+  }, [orders, filter]);
+
+  const isExpanded = (order) => {
+    if (Object.prototype.hasOwnProperty.call(detailsOpen, order.id)) {
+      return Boolean(detailsOpen[order.id]);
+    }
+    return order.id === featuredUpcomingId;
+  };
+
+  const toggleDetails = (orderId, next) => {
+    setDetailsOpen((prev) => ({ ...prev, [orderId]: next }));
+  };
+
   const handleReorderItem = (item) => {
     if (!isOrderItemAvailable(item)) return;
     addToCart?.(toCartProduct(item), item.quantity);
+  };
+
+  const handleReorderAll = (order) => {
+    const available = itemsOf(order).filter(isOrderItemAvailable);
+    if (!available.length) {
+      setDialog({
+        icon: "alert",
+        title: "Nothing to reorder",
+        body: "None of the items from this order are available right now.",
+        primaryLabel: "Got it",
+      });
+      return;
+    }
+    available.forEach((item) => addToCart?.(toCartProduct(item), item.quantity));
+  };
+
+  const handlePrintReceipt = (orderId) => {
+    flushSync(() => {
+      setDetailsOpen((prev) => ({ ...prev, [orderId]: true }));
+      setPrintId(orderId);
+    });
+    window.print();
+    setPrintId(null);
   };
 
   if (isLoading) {
@@ -93,6 +394,23 @@ const OrderHistory = ({ user, addToCart }) => {
     );
   }
 
+  const emptyCopy = !signedIn
+    ? "Sign in to see your order history."
+    : !orders.length
+      ? "You haven't placed an order yet."
+      : filter === "upcoming"
+        ? "No upcoming orders."
+        : filter === "past"
+          ? "No past orders."
+          : "You haven't placed an order yet.";
+
+  const emptyCta = !signedIn
+    ? { to: "/login?next=/orders", label: "Log in", outline: true }
+    : { to: "/products/category", label: "Browse the menu", outline: false };
+
+  const showFilters = signedIn && orders.length > 0;
+  const showEmpty = !signedIn || !visibleOrders.length;
+
   return (
     <div className="order-history-page">
       <div className="checkout-page-header-image">
@@ -100,187 +418,73 @@ const OrderHistory = ({ user, addToCart }) => {
       </div>
 
       <div className="page-wrapper">
-        <h1 className="order-history-title">Your orders</h1>
+        <div className="order-history-header">
+          <h1 className="order-history-title">Your orders</h1>
+          {showFilters && (
+            <div className="order-history-filters" role="tablist" aria-label="Filter orders">
+              {FILTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === item.id}
+                  className={`order-history-filter${filter === item.id ? " is-active" : ""}`}
+                  onClick={() => setFilter(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {!signedIn ? (
+        {showEmpty ? (
           <div className="order-history-empty">
-            <p className="order-history-empty-copy">Sign in to see your order history.</p>
-            <Link to="/login" className="order-history-button">Log in</Link>
-          </div>
-        ) : !orders.length ? (
-          <div className="order-history-empty">
-            <p className="order-history-empty-copy">You haven't placed an order yet.</p>
-            <Link to="/products/category" className="order-history-button">Shop</Link>
+            <p className="order-history-empty-copy">{emptyCopy}</p>
+            {(!signedIn || !orders.length) && (
+              <Link
+                to={emptyCta.to}
+                className={emptyCta.outline ? "order-history-button" : "order-history-cta"}
+              >
+                {emptyCta.label}
+              </Link>
+            )}
           </div>
         ) : (
-          orders.map((order) => {
-            const isDelivery = Boolean(order.delivery);
-            const items = Array.isArray(order.order_products) ? order.order_products : [];
-            const postal = isDelivery
-              ? getPostalFromBuyerInfo(order.buyer_stripe_payment_info)
-              : "";
-            const itemSubtotalCents = Number(order.item_subtotal_cents) || 0;
-            const discount = getOrderDiscount(order);
-            const deliveryFeeCents = isDelivery ? getDeliveryFeeCents(order) : 0;
-            const creditCents = Number(order.credit_applied_cents) || 0;
-
-            return (
-              <article key={order.id} className="order-card">
-                <header className="order-card-header">
-                  <div className="order-card-header-main">
-                    <p className="order-card-id">Order {shortOrderId(order.id)}</p>
-                    <div className="order-card-chips">
-                      <span className="order-chip">{formatStatus(order.status)}</span>
-                      <span className="order-chip">{isDelivery ? "Delivery" : "Pickup"}</span>
-                    </div>
-                  </div>
-                  <p className="order-card-placed">{formatOrderPlacedAt(order.created_at)}</p>
-                </header>
-
-                <div className="order-meta-grid">
-                  {isDelivery ? (
-                    <>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Delivery date</p>
-                        <p className="order-meta-value">{formatYmdLong(order.delivery_date) || "—"}</p>
-                      </div>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Window</p>
-                        <p className="order-meta-value">{DELIVERY_WINDOW}</p>
-                      </div>
-                      {!!postal && (
-                        <div className="order-meta-field">
-                          <p className="order-meta-label">Postal code</p>
-                          <p className="order-meta-value">{postal}</p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Pickup date</p>
-                        <p className="order-meta-value">{formatYmdLong(order.pickup_date) || "—"}</p>
-                      </div>
-                      <div className="order-meta-field">
-                        <p className="order-meta-label">Time</p>
-                        <p className="order-meta-value">{order.pickup_time_slot || "—"}</p>
-                      </div>
-                      <div className="order-meta-field order-meta-field--wide">
-                        <p className="order-meta-label">Address</p>
-                        <p className="order-meta-value">{PICKUP_ADDRESS}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {items.length > 0 && (
-                  <ul className="order-items">
-                    {items.map((item, idx) => {
-                      const available = isOrderItemAvailable(item);
-                      const name = item.product?.slug || "Unnamed product";
-                      const productId = item.product?.id || item.product_id;
-                      const row = (
-                        <>
-                          {item.product?.image_url ? (
-                            <img
-                              src={item.product.image_url}
-                              alt=""
-                              className="order-item-image"
-                            />
-                          ) : (
-                            <div className="order-item-image order-item-image--placeholder" />
-                          )}
-                          <div className="order-item-details">
-                            <p className="order-item-name">{name}</p>
-                            <p className="order-item-price">
-                              {item.quantity}x {formatMoney(item.unit_price_cents)}
-                            </p>
-                          </div>
-                        </>
-                      );
-
-                      return (
-                        <li
-                          key={`${productId || name}-${idx}`}
-                          className={`order-item${available ? "" : " is-unavailable"}`}
-                        >
-                          {available ? (
-                            <a
-                              href={`/products/${productId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="order-item-link"
-                            >
-                              {row}
-                            </a>
-                          ) : (
-                            <div className="order-item-link">{row}</div>
-                          )}
-
-                          {available ? (
-                            <button
-                              type="button"
-                              className="order-history-button order-history-button--small"
-                              onClick={() => handleReorderItem(item)}
-                            >
-                              Reorder
-                            </button>
-                          ) : (
-                            <span className="order-item-unavailable">Unavailable</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-
-                {order.special_note && (
-                  <div className="order-notes">
-                    <p className="order-meta-label">
-                      {isDelivery ? "Address & notes" : "Notes"}
-                    </p>
-                    <p className="order-notes-body">{order.special_note}</p>
-                  </div>
-                )}
-
-                <div className="order-totals">
-                  {itemSubtotalCents > 0 && (
-                    <div className="order-total-row">
-                      <span>{discount ? "Subtotal (before discount)" : "Subtotal"}</span>
-                      <span>{formatMoney(itemSubtotalCents)}</span>
-                    </div>
-                  )}
-                  {discount && (
-                    <div className="order-total-row">
-                      <span>
-                        {discount.label} ({discount.code})
-                        {discount.percent != null ? ` — ${discount.percent}% off` : ""}
-                      </span>
-                      <span>−{formatMoney(discount.amountOffCents)}</span>
-                    </div>
-                  )}
-                  {deliveryFeeCents > 0 && (
-                    <div className="order-total-row">
-                      <span>Delivery fee</span>
-                      <span>{formatMoney(deliveryFeeCents)}</span>
-                    </div>
-                  )}
-                  {creditCents > 0 && (
-                    <div className="order-total-row">
-                      <span>Store credit</span>
-                      <span>−{formatMoney(creditCents)}</span>
-                    </div>
-                  )}
-                  <div className="order-total-row order-total-row--grand">
-                    <span>Total</span>
-                    <span>{formatMoney(order.total_cents)}</span>
-                  </div>
-                </div>
-              </article>
-            );
-          })
+          <div className="order-history-list">
+            {visibleOrders.map((order) => {
+              const completed = isOrderCompleted(order);
+              const expanded = isExpanded(order);
+              if (expanded) {
+                return (
+                  <ExpandedOrderCard
+                    key={order.id}
+                    order={order}
+                    canCollapse={order.id !== featuredUpcomingId}
+                    isCurrent={order.id === featuredUpcomingId}
+                    printTarget={printId === order.id}
+                    onReorderAll={handleReorderAll}
+                    onReorderItem={handleReorderItem}
+                    onToggleDetails={() => toggleDetails(order.id, false)}
+                    onPrintReceipt={handlePrintReceipt}
+                  />
+                );
+              }
+              return (
+                <CollapsedOrderRow
+                  key={order.id}
+                  order={order}
+                  completed={completed}
+                  onReorderAll={handleReorderAll}
+                  onToggleDetails={() => toggleDetails(order.id, true)}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
+
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };

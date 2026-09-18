@@ -71,7 +71,7 @@ const Home = () => {
                   </div>
                   <div className="shop-button-container">
                     <Link to={`/products/category/${category.id}`}>
-                      <button className="shop-button">Shop Now</button>
+                      <button className="shop-button">Shop {category.name}</button>
                     </Link>
                   </div>
                 </div>
