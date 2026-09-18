@@ -158,7 +158,7 @@ function SubscribeCartPopup({
             <p className="cart-total-text">
               {mealCount} / {subCart.mealCount} meals
             </p>
-            <div className="subscribe-cart-popup-footer-end">
+            <div className="cart-popup-footer-end">
               {addonTotalLabel ? (
                 <p className="cart-total">Add-ons {addonTotalLabel}</p>
               ) : null}
