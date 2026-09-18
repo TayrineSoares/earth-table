@@ -6,17 +6,21 @@ import loadingAnimation from '../assets/loading.json'
 import {
   fetchSubscriptionSignup,
   formatCutoffShort,
-  formatPickupSlot,
   formatPlanPrice,
   mealsAWeek,
 } from '../helpers/subscriptionHelpers'
-import { formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import { formatYmdLong } from '../helpers/orderHelpers'
 import '../styles/Cart.css'
 import '../styles/Confirmation.css'
-import '../styles/SubscribeFlow.css'
 
 const POLL_MS = 1000
 const POLL_TRIES = 20
+
+/** "Sunday, September 27, 2026" -> "Sunday, September 27" */
+function sundayLabel(ymd) {
+  const full = formatYmdLong(ymd)
+  return full.replace(/, \d{4}$/, '') || 'Sunday'
+}
 
 export default function SubscribeConfirmation({ clearSubCart }) {
   const [searchParams] = useSearchParams()
@@ -104,13 +108,12 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const customer = payload?.customer || {}
   const firstName = customer.first_name || ''
   const email = customer.email || ''
-  const isDelivery = !!cycle.delivery
-  const sunday = formatYmdLong(cycle.delivery_date || cycle.pickup_date)
-  const items = Array.isArray(cycle.subscription_cycle_items) ? cycle.subscription_cycle_items : []
-  const planItems = items.filter((item) => item.kind === 'plan')
-  const addonItems = items.filter((item) => item.kind === 'addon')
+  const mealCount = Number(plan.meal_count) || 0
+  const sunday = sundayLabel(cycle.delivery_date || cycle.pickup_date)
   const cutoffShort = formatCutoffShort(cycle.cutoff_at)
-  const slotLabel = isDelivery ? '11:00 AM – 6:00 PM' : formatPickupSlot(cycle.pickup_time_slot)
+  const heading = firstName
+    ? `Your weekly plan is set, ${firstName}`
+    : 'Your weekly plan is set'
 
   return (
     <div className="checkout-page subscribe-confirm-page">
@@ -121,16 +124,24 @@ export default function SubscribeConfirmation({ clearSubCart }) {
       <div className="page-wrapper">
         <div className="checkout-page-container">
           <div className="checkout-order-summary subscribe-confirm-copy">
-            <p className="checkout-summary-text">
-              {firstName ? `Thank you, ${firstName}` : 'Thank you'}
+            <p className="checkout-summary-text">{heading}</p>
+            <p className="subscribe-confirm-lead">
+              Thank you for subscribing — we&apos;re so glad you&apos;re here. Your first box is {sunday}.
             </p>
-            <p className="subscribe-confirm-lead">We&apos;re so glad you&apos;re here.</p>
-            <p className="subscribe-confirm-body">
-              Your first box is {sunday || 'Sunday'} — here&apos;s what happens next.
-            </p>
-            <p className="subscribe-confirm-body">
-              You can still change your meals. Swap anything, add extras like smoothies, sides, or snacks, or switch to delivery anytime until {cutoffShort}.
-            </p>
+
+            <div className="subscribe-confirm-plan-block">
+              <p className="subscribe-confirm-kicker">Your plan</p>
+              <p className="subscribe-confirm-plan">
+                {mealsAWeek(mealCount)}
+                {mealCount ? ` — all ${mealCount} selected` : ''}
+              </p>
+              <p className="subscribe-confirm-meta">
+                {formatPlanPrice(plan.price_cents)} · paid today · Renews every Thursday
+              </p>
+              <p className="subscribe-confirm-meta">
+                Change by {cutoffShort}
+              </p>
+            </div>
 
             <button type="button" onClick={() => navigate('/my-subscriptions')} className="checkout-button">
               Manage my subscription
@@ -146,62 +157,6 @@ export default function SubscribeConfirmation({ clearSubCart }) {
               <br />
               Selena &amp; the Earth Table team
             </p>
-          </div>
-
-          <div className="checkout-items subscribe-cart-items subscribe-confirm-side">
-            <p className="subscribe-confirm-kicker">Your plan</p>
-            <p className="subscribe-confirm-plan">{mealsAWeek(plan.meal_count)}</p>
-            <p className="subscribe-confirm-meta">
-              {formatPlanPrice(plan.price_cents)}/week · plan paid today
-            </p>
-            <p className="subscribe-confirm-meta">Renews every Thursday</p>
-
-            <p className="subscribe-confirm-kicker">{isDelivery ? 'Delivery' : 'Pickup'}</p>
-            <p className="subscribe-confirm-plan">{sunday || 'Sunday'}</p>
-            <p className="subscribe-confirm-meta">{slotLabel || '—'}</p>
-            {isDelivery ? (
-              cycle.delivery_postal_code ? (
-                <p className="subscribe-confirm-meta">{cycle.delivery_postal_code}</p>
-              ) : null
-            ) : (
-              <p className="subscribe-confirm-meta">{PICKUP_ADDRESS}</p>
-            )}
-
-            <p className="subscribe-confirm-kicker">Change by</p>
-            <p className="subscribe-confirm-meta">{cutoffShort}</p>
-
-            {planItems.map((item) => (
-              <div className="checkout-items-container" key={`plan-${item.id}`}>
-                {item.products?.image_url ? (
-                  <img src={item.products.image_url} className="checkout-product-image" alt="" />
-                ) : (
-                  <div className="checkout-product-image" style={{ background: '#f2f2f2' }} />
-                )}
-                <div className="checkout-item-details">
-                  <p className="checkout-item-title">{item.products?.slug || 'Meal'}</p>
-                  {item.quantity > 1 ? (
-                    <p className="checkout-item-price">qty {item.quantity}</p>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-            {addonItems.map((item) => (
-              <div className="checkout-items-container" key={`addon-${item.id}`}>
-                {item.products?.image_url ? (
-                  <img src={item.products.image_url} className="checkout-product-image" alt="" />
-                ) : (
-                  <div className="checkout-product-image" style={{ background: '#f2f2f2' }} />
-                )}
-                <div className="checkout-item-details">
-                  <p className="checkout-item-title">{item.products?.slug || 'Add-on'}</p>
-                  <p className="checkout-item-price">
-                    {item.quantity > 1
-                      ? `Add-on · qty ${item.quantity} · billed Thursday`
-                      : 'Add-on · billed Thursday'}
-                  </p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
