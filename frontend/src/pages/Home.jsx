@@ -5,6 +5,7 @@ import headerImage from "../assets/images/headerImage.webp";
 import logoNoBackground from "../assets/images/logoNoBackground.png";
 import arrow from  "../assets/images/arrow.png"
 import { sizedImageUrl } from "../helpers/imageHelpers";
+import SubscribeSaveBand from '../components/SubscribeSaveBand';
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
@@ -33,6 +34,8 @@ const Home = () => {
         <img src={logoNoBackground} className="logo-no-background" alt="Logo" />
         <div className="logo-text">Organic Meal Delivery Service & Catering</div>
       </div>
+
+      <SubscribeSaveBand />
 
       <div className="page-wrapper">
         {homepageCategories.map((category, index) => (

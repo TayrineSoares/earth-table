@@ -124,6 +124,10 @@
   margin-top: 76px;
 }
 
+.subscribe-how {
+  scroll-margin-top: 140px;
+}
+
 .subscribe-plans-section {
   scroll-margin-top: 140px;
 }
@@ -457,6 +461,7 @@
     flex-wrap: wrap;
   }
 
+  .subscribe-how,
   .subscribe-plans-section {
     scroll-margin-top: 96px;
   }

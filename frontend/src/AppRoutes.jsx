@@ -56,8 +56,9 @@ const AppRoutes = ({
 
   // SPA pages keep the previous scroll; meals → add-ons would stay mid-catalog.
   useEffect(() => {
+    if (location.hash) return;
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+  }, [location.pathname, location.hash]);
 
   return (
     <>
