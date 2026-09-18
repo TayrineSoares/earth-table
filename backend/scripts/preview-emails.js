@@ -19,6 +19,12 @@ const {
   renderSubscriptionManageEmail,
   renderSubscriptionWednesdayEmail,
   renderSubscriptionThursdayEmail,
+  renderSubscriptionHolidaySkipEmail,
+  renderOwnerThursdayLockEmail,
+  renderOwnerStatusEmail,
+  renderOwnerPlanChangedEmail,
+  renderOwnerFulfillmentEmail,
+  renderOwnerPaymentFailedEmail,
 } = require('../src/utils/emailTemplates');
 
 const outDir = path.join(__dirname, '../email-previews');
@@ -69,8 +75,8 @@ const sampleOrder = {
 
 const partner = {
   referral_code: 'JOSH15',
-  discount_percent: 10,
-  cashback_percent: 10,
+  discount_percent: 15,
+  cashback_percent: 12,
 };
 const partnerUser = {
   first_name: 'Tayrine',
@@ -149,10 +155,10 @@ const subMail = {
   deliveryLabel: 'Sunday, September 20',
   pickupSlot: '10:00-13:00',
   cutoffLabel: 'Thursday, September 17 at 5:00 PM ET',
+  chargeLabel: 'Wednesday, September 16 at 9:00 AM ET',
   subscriptionId: 'preview',
-  subscribedAtLabel: 'September 16, 2026 at 2:14 PM',
-  paidCents: 18000,
-  chargeId: 'ch_3Q8xY2preview',
+  subscribedAtLabel: 'Wednesday, September 16, 2026 at 2:14 PM',
+  paidCents: 20340,
   meals: [
     { slug: 'Harvest Bowl', quantity: 4 },
     { slug: 'Citrus Salad', quantity: 3 },
@@ -163,6 +169,7 @@ const subMail = {
   phone: '6475550148',
   notes: 'No nut allergy flagged · Dairy: OK',
   appliesTo: 'this_sunday',
+  address: '12 Bartlett Ave, Toronto',
 };
 write('09-subscription-welcome.html', renderSubscriptionWelcomeEmail(subMail).html);
 write('10-subscription-owner.html', renderOwnerSubscriptionEmail(subMail).html);
@@ -170,7 +177,72 @@ write('11-subscription-updated.html', renderSubscriptionUpdatedEmail(subMail).ht
 write('12-subscription-paused.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'pause_now',
-  chargeLabel: 'Wednesday, September 16 at 5:00 PM ET',
+}).html);
+write('12b-subscription-paused-next.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'pause_next',
+}).html);
+write('12c-subscription-pause-nudge.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'pause_nudge',
+}).html);
+write('12d-subscription-resume.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'resume',
+}).html);
+write('12e-subscription-cancel.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'cancel_now',
+}).html);
+write('12f-subscription-cancel-last-box.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'cancel_next',
+  lastBox: true,
+}).html);
+write('12g-subscription-payment-failed.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'payment_failed',
+  planPrice: '$180.00',
+  cardBrand: 'visa',
+  last4: '4242',
+}).html);
+write('12h-subscription-plan-up.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'plan_now',
+  oldMealCount: 10,
+  nextMealCount: 15,
+  oldPrice: '$180.00',
+  newPrice: '$270.00',
+  effectiveDate: 'Sunday, September 20',
+  nextChargeDate: 'Wednesday, September 23 at 9:00 AM ET',
+  difference: 5,
+}).html);
+write('12i-subscription-plan-down.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'plan_now',
+  oldMealCount: 15,
+  nextMealCount: 10,
+  oldPrice: '$270.00',
+  newPrice: '$180.00',
+  effectiveDate: 'Sunday, September 27',
+  nextChargeDate: 'Wednesday, September 23 at 9:00 AM ET',
+}).html);
+write('12j-subscription-delivery.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'fulfillment_delivery',
+  address: subMail.address,
+}).html);
+write('12k-subscription-pickup.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'fulfillment_pickup',
+}).html);
+write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'card_expiry',
+  cardBrand: 'visa',
+  last4: '4242',
+  expMonth: '10',
+  expYear: 2026,
 }).html);
 write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
   ...subMail,
@@ -178,15 +250,128 @@ write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
   planCents: 18000,
   deliveryCents: 800,
   chargedCents: 21234,
+  cardBrand: 'visa',
+  last4: '4242',
+}).html);
+write('13b-subscription-wednesday-paid.html', renderSubscriptionWednesdayEmail({
+  ...subMail,
+  charged: false,
 }).html);
 write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
   ...subMail,
   delivery: true,
-  postalCode: 'M6G 1A1',
+  address: subMail.address,
+  notes: subMail.address,
   chargedAddons: true,
   addonCents: 2400,
   chargedCents: 2712,
   addonItems: subMail.addons,
+  cardBrand: 'visa',
+  last4: '4242',
+}).html);
+write('14b-subscription-thursday-no-extras.html', renderSubscriptionThursdayEmail({
+  ...subMail,
+  chargedAddons: false,
+  addonItems: [],
+}).html);
+write('15-holiday-user.html', renderSubscriptionHolidaySkipEmail({
+  firstName: 'Tayrine',
+  skippedSunday: 'Sunday, December 27',
+  nextSunday: 'Sunday, January 3',
+}).html);
+write('15b-holiday-owner.html', renderSubscriptionHolidaySkipEmail({
+  skippedSunday: 'Sunday, December 27',
+  nextSunday: 'Sunday, January 3',
+  owner: true,
+}).html);
+write('16-owner-thursday.html', renderOwnerThursdayLockEmail({
+  sunday: 'Sunday, September 20',
+  boxes: [
+    {
+      name: 'Tayrine Soares',
+      mealCount: 10,
+      delivery: false,
+      method: 'Pickup',
+      windowStart: '10:00 AM',
+      windowEnd: '1:00 PM',
+      address: '77 Woodstream Blvd, Vaughan, ON L4L 7Y7',
+      phone: '6475550148',
+      email: 'tayrine.a@email.com',
+      notes: 'No nuts',
+      meals: subMail.meals,
+      extras: subMail.addons,
+    },
+    {
+      name: 'Alex Kim',
+      mealCount: 15,
+      delivery: true,
+      method: 'Delivery',
+      windowStart: '11:00 AM',
+      windowEnd: '6:00 PM',
+      address: '88 Clinton St, Toronto',
+      phone: '4165550199',
+      email: 'alex@email.com',
+      meals: [{ slug: 'Harvest Bowl', quantity: 15 }],
+      extras: [],
+    },
+  ],
+}).html);
+write('17-owner-paused.html', renderOwnerStatusEmail({
+  kind: 'paused',
+  customerName: 'Tayrine Soares',
+  mealCount: 10,
+  price: '$180.00',
+  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
+  weeks: 6,
+  lifetimeValue: '$1,080.00',
+}).html);
+write('17c-owner-resumed.html', renderOwnerStatusEmail({
+  kind: 'resumed',
+  customerName: 'Tayrine Soares',
+  mealCount: 10,
+  price: '$180.00',
+  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
+  weeks: 6,
+  lifetimeValue: '$1,080.00',
+}).html);
+write('17b-owner-cancelled.html', renderOwnerStatusEmail({
+  kind: 'cancelled',
+  customerName: 'Tayrine Soares',
+  mealCount: 10,
+  price: '$180.00',
+  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
+  lastBoxDate: 'Sunday, September 20',
+  lastBoxPaid: true,
+  weeks: 6,
+  lifetimeValue: '$1,080.00',
+}).html);
+write('18-owner-plan.html', renderOwnerPlanChangedEmail({
+  customerName: 'Tayrine Soares',
+  oldMealCount: 10,
+  newMealCount: 15,
+  oldPriceCents: 18000,
+  newPriceCents: 27000,
+  effectiveDate: 'Sunday, September 20',
+  selectedCount: 10,
+}).html);
+write('19-owner-fulfillment.html', renderOwnerFulfillmentEmail({
+  customerName: 'Tayrine Soares',
+  oldMethod: 'pickup',
+  newMethod: 'delivery',
+  fulfillmentDate: 'Sunday, September 20',
+  address: '12 Bartlett Ave, Toronto',
+  windowStart: '11:00 AM',
+  windowEnd: '6:00 PM',
+}).html);
+write('20-owner-payment-failed.html', renderOwnerPaymentFailedEmail({
+  customerName: 'Tayrine Soares',
+  amount: '$180.00',
+  fulfillmentDate: 'Sunday, September 20',
+  cardBrand: 'visa',
+  last4: '4242',
+  declineReason: 'insufficient_funds',
+  dateTime: 'Wednesday, September 16, 2026 at 9:01 AM',
+  cutoffDateTime: 'Thursday, September 17 at 5:00 PM ET',
 }).html);
 
 const labels = {
@@ -198,12 +383,34 @@ const labels = {
   '06-partner-monthly.html': 'Partner monthly statement',
   '07-admin-monthly.html': 'Admin monthly invoice',
   '08-confirm-signup.html': 'Confirm signup (Supabase Auth)',
-  '09-subscription-welcome.html': 'Subscription welcome',
-  '10-subscription-owner.html': 'Owner: new subscription',
-  '11-subscription-updated.html': 'Subscription updated',
-  '12-subscription-paused.html': 'Subscription paused',
-  '13-subscription-wednesday.html': 'Wednesday charge + reminder',
-  '14-subscription-thursday.html': 'Thursday lock + add-on receipt',
+  '09-subscription-welcome.html': '1. Welcome',
+  '10-subscription-owner.html': '13. Owner: new subscription',
+  '11-subscription-updated.html': '4. Box updated',
+  '12-subscription-paused.html': '5. Paused',
+  '12b-subscription-paused-next.html': '5. Paused after charge',
+  '12c-subscription-pause-nudge.html': '6. Pause reminder',
+  '12d-subscription-resume.html': '7. Resumed',
+  '12e-subscription-cancel.html': '8. Cancelled',
+  '12f-subscription-cancel-last-box.html': '8. Cancelled, last box remains',
+  '12g-subscription-payment-failed.html': '9. Payment failed',
+  '12h-subscription-plan-up.html': '10. Plan upgrade',
+  '12i-subscription-plan-down.html': '10. Plan downgrade',
+  '12j-subscription-delivery.html': '11. Switched to delivery',
+  '12k-subscription-pickup.html': '11. Switched to pickup',
+  '12l-subscription-card-expiry.html': '12. Card expiring',
+  '13-subscription-wednesday.html': '2. Wednesday charge + reminder',
+  '13b-subscription-wednesday-paid.html': '2. Wednesday reminder (already paid)',
+  '14-subscription-thursday.html': '3. Thursday lock + extras',
+  '14b-subscription-thursday-no-extras.html': '3. Thursday lock, no extras',
+  '15-holiday-user.html': 'Holiday skip (customer)',
+  '15b-holiday-owner.html': 'Holiday skip (owner)',
+  '16-owner-thursday.html': '14. Owner Thursday prep',
+  '17-owner-paused.html': '15. Owner paused',
+  '17c-owner-resumed.html': '15. Owner resumed',
+  '17b-owner-cancelled.html': '15. Owner cancelled',
+  '18-owner-plan.html': '16. Owner plan changed',
+  '19-owner-fulfillment.html': '17. Owner fulfillment',
+  '20-owner-payment-failed.html': '18. Owner payment failed',
 };
 
 const confirmSignupPreview = '08-confirm-signup.html';

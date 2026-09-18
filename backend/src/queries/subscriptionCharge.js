@@ -6,23 +6,33 @@
 const supabase = require('../../supabase/db');
 const { createOrderWithProducts, getOrderByStripeSessionId } = require('./order');
 const { getUserByAuthId } = require('./user');
-const { sendEmail, ownerNotificationEmails } = require('../utils/email');
+const { getSettings, getPlanById } = require('./subscription');
 const {
   renderSubscriptionManageEmail,
   renderOwnerThursdayLockEmail,
   renderSubscriptionHolidaySkipEmail,
   renderSubscriptionWednesdayEmail,
   renderSubscriptionThursdayEmail,
+  renderOwnerPaymentFailedEmail,
+  formatDollars,
 } = require('../utils/emailTemplates');
-const { getSettings, getPlanById } = require('./subscription');
+const {
+  sendCustomerEmail,
+  sendOwnerEmail,
+  emailPrefOn,
+  cardForPaymentMethod,
+  declineReasonFrom,
+} = require('../emails/sendSubscriptionMail');
 const {
   getSignupDates,
   getChargeDeadline,
   getTargetSundayYmd,
   isYmdBlocked,
-  mealsAWeek,
   sundayLabelFromYmd,
+  formatPickupSlot,
+  formatTorontoStamp,
 } = require('./subscriptionWeek');
+const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
 
 const HST = 1.13;
 
@@ -109,17 +119,45 @@ async function notifyUser(userId, payload) {
   const user = await getUserByAuthId(userId);
   const email = user?.email;
   if (!email) return;
+  const card = payload.card || null;
   const msg = renderSubscriptionManageEmail({
     ...payload,
     firstName: user.first_name,
+    cardBrand: card?.brand,
+    last4: card?.last4,
   });
-  await sendEmail({
-    to: email,
-    subject: msg.subject,
-    html: msg.html,
-    text: msg.text,
-    replyTo: 'hello@earthtableco.ca',
-  });
+  await sendCustomerEmail({ to: email, msg });
+}
+
+function splitWin(delivery, pickupSlot) {
+  const raw = delivery ? DELIVERY_WINDOW : formatPickupSlot(pickupSlot);
+  const parts = String(raw || '').split(/\s*[–-]\s*/);
+  return {
+    start: (parts[0] || '').trim() || '—',
+    end: (parts.slice(1).join(' – ') || '').trim() || '—',
+  };
+}
+
+async function ownerBoxFrom(sub, cycle) {
+  const user = await getUserByAuthId(sub.user_id);
+  const labeled = await sluggedItems(cycle.subscription_cycle_items);
+  const win = splitWin(!!cycle.delivery, cycle.pickup_time_slot);
+  return {
+    name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
+    mealCount: sub.subscription_plans?.meal_count,
+    delivery: !!cycle.delivery,
+    method: cycle.delivery ? 'Delivery' : 'Pickup',
+    windowStart: win.start,
+    windowEnd: win.end,
+    address: cycle.delivery
+      ? (cycle.special_note || cycle.delivery_postal_code || '—')
+      : PICKUP_ADDRESS,
+    phone: user?.phone_number,
+    email: user?.email,
+    notes: cycle.special_note,
+    meals: itemsByKind(labeled, 'plan'),
+    extras: itemsByKind(labeled, 'addon'),
+  };
 }
 
 async function loadSubsForSunday() {
@@ -263,7 +301,7 @@ async function chargePlanDelivery(sub, cycle, sunday) {
   return { charged: true, skipped: false, amount, planCents: due, deliveryCents: fee };
 }
 
-async function markPaymentFailed(sub, sunday, chargeLabel) {
+async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
   await supabase
     .from('subscriptions')
     .update({
@@ -272,23 +310,47 @@ async function markPaymentFailed(sub, sunday, chargeLabel) {
       paused_at: new Date().toISOString(),
     })
     .eq('id', sub.id);
+  const card = await cardForPaymentMethod(sub.stripe_payment_method_id);
+  const planPrice = formatDollars(sub.subscription_plans?.price_cents || 0);
+  const fulfillmentDate = sundayLabelFromYmd(sunday);
   try {
     await notifyUser(sub.user_id, {
       kind: 'payment_failed',
       mealCount: sub.subscription_plans?.meal_count,
-      deliveryLabel: sunday,
-      chargeLabel,
+      fulfillmentDate,
+      cutoffLabel,
+      planPrice,
+      card,
     });
   } catch (err) {
     console.warn('[subscriptions] payment-failed email failed:', err.message);
+  }
+  try {
+    const user = await getUserByAuthId(sub.user_id);
+    const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer';
+    const msg = renderOwnerPaymentFailedEmail({
+      customerName: name,
+      amount: planPrice,
+      fulfillmentDate,
+      cardBrand: card?.brand,
+      last4: card?.last4,
+      declineReason: declineReasonFrom(stripeErr),
+      dateTime: formatTorontoStamp(new Date()),
+      cutoffDateTime: cutoffLabel,
+    });
+    await sendOwnerEmail(msg);
+  } catch (err) {
+    console.warn('[subscriptions] owner payment-failed email failed:', err.message);
   }
 }
 
 async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
+  if (!emailPrefOn(user, 'wednesday_reminder')) return;
   const labeled = await sluggedItems(cycle.subscription_cycle_items);
   const charged = !!chargeResult?.charged;
+  const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const msg = renderSubscriptionWednesdayEmail({
     firstName: user.first_name,
     mealCount: sub.subscription_plans?.meal_count,
@@ -303,14 +365,10 @@ async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
     meals: itemsByKind(labeled, 'plan'),
     addons: itemsByKind(labeled, 'addon'),
     subscriptionId: sub.id,
+    cardBrand: card?.brand,
+    last4: card?.last4,
   });
-  await sendEmail({
-    to: user.email,
-    subject: msg.subject,
-    html: msg.html,
-    text: msg.text,
-    replyTo: 'hello@earthtableco.ca',
-  });
+  await sendCustomerEmail({ to: user.email, msg });
 }
 
 async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
@@ -318,26 +376,24 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
   if (!user?.email) return;
   const labeled = await sluggedItems(cycle.subscription_cycle_items);
   const chargedAddons = !!addonResult?.charged;
+  const card = chargedAddons ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const msg = renderSubscriptionThursdayEmail({
     firstName: user.first_name,
     mealCount: sub.subscription_plans?.meal_count,
     delivery: !!cycle.delivery,
     deliveryLabel: sundayLabelFromYmd(sunday),
     pickupSlot: cycle.pickup_time_slot,
-    postalCode: cycle.delivery_postal_code,
+    address: cycle.delivery ? cycle.special_note : undefined,
+    notes: cycle.special_note,
     chargedAddons,
     addonCents: chargedAddons ? (Number(addonResult.due) || 0) : 0,
     chargedCents: chargedAddons ? (Number(addonResult.amount) || 0) : 0,
     addonItems: itemsByKind(labeled, 'addon'),
     meals: itemsByKind(labeled, 'plan'),
+    cardBrand: card?.brand,
+    last4: card?.last4,
   });
-  await sendEmail({
-    to: user.email,
-    subject: msg.subject,
-    html: msg.html,
-    text: msg.text,
-    replyTo: 'hello@earthtableco.ca',
-  });
+  await sendCustomerEmail({ to: user.email, msg });
 }
 
 async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
@@ -402,7 +458,7 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
       } catch (err) {
         failures.push({ subscription_id: sub.id, error: err.message || String(err) });
         console.warn('[subscriptions] Wednesday charge failed:', sub.id, err.message);
-        await markPaymentFailed(sub, sunday, charge.charge_label);
+        await markPaymentFailed(sub, sunday, dates.cutoff_label, err);
         continue;
       }
     }
@@ -446,47 +502,29 @@ async function skipHolidayWeek(sunday, chargeLabel) {
     try {
       const user = await getUserByAuthId(sub.user_id);
       if (!user?.email) continue;
-      const nextSunday = nextOpenSunday(sunday);
+      const nextSunday = sundayLabelFromYmd(nextOpenSunday(sunday));
       const msg = renderSubscriptionHolidaySkipEmail({
         firstName: user.first_name,
-        skippedSunday: sunday,
+        skippedSunday: sundayLabelFromYmd(sunday),
         nextSunday,
-        chargeLabel,
       });
-      await sendEmail({
-        to: user.email,
-        subject: msg.subject,
-        html: msg.html,
-        text: msg.text,
-        replyTo: 'hello@earthtableco.ca',
-      });
+      await sendCustomerEmail({ to: user.email, msg });
       emailed += 1;
     } catch (err) {
       console.warn('[subscriptions] holiday skip email failed:', err.message);
     }
   }
-  const ownerTo = ownerNotificationEmails();
-  if (ownerTo.length) {
-    try {
-      const nextSunday = nextOpenSunday(sunday);
+  try {
+      const nextSunday = sundayLabelFromYmd(nextOpenSunday(sunday));
       const msg = renderSubscriptionHolidaySkipEmail({
-        firstName: 'Earth Table',
-        skippedSunday: sunday,
+        skippedSunday: sundayLabelFromYmd(sunday),
         nextSunday,
-        chargeLabel,
         owner: true,
       });
-      await sendEmail({
-        to: ownerTo,
-        subject: msg.subject,
-        html: msg.html,
-        text: msg.text,
-        replyTo: 'hello@earthtableco.ca',
-      });
+      await sendOwnerEmail(msg);
     } catch (err) {
       console.warn('[subscriptions] holiday owner email failed:', err.message);
     }
-  }
   return { emailed, skipped_cycles: (cycles || []).length };
 }
 
@@ -710,6 +748,11 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
           console.warn('[subscriptions] Thursday email failed:', sub.id, err.message);
         }
       }
+      try {
+        boxLines.push(await ownerBoxFrom(sub, cycle));
+      } catch (err) {
+        console.warn('[subscriptions] Thursday owner row failed:', err.message);
+      }
       continue;
     }
 
@@ -759,40 +802,20 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       }
     }
 
-    boxLines.push({
-      name: sub.user_id,
-      plan: mealsAWeek(sub.subscription_plans?.meal_count),
-      delivery: cycle.delivery,
-    });
+    try {
+      boxLines.push(await ownerBoxFrom(sub, cycle));
+    } catch (err) {
+      console.warn('[subscriptions] Thursday owner row failed:', err.message);
+    }
   }
 
-  const ownerTo = ownerNotificationEmails();
-  if (ownerTo.length && boxLines.length) {
+  if (boxLines.length) {
     try {
-      const labeled = [];
-      for (const line of boxLines) {
-        try {
-          const user = await getUserByAuthId(line.name);
-          labeled.push({
-            name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
-            plan: line.plan,
-            fulfillment: line.delivery ? 'Delivery' : 'Pickup',
-          });
-        } catch (err) {
-          labeled.push({ name: 'Customer', plan: line.plan, fulfillment: line.delivery ? 'Delivery' : 'Pickup' });
-        }
-      }
       const msg = renderOwnerThursdayLockEmail({
-        sunday,
-        boxes: labeled,
+        sunday: sundayLabelFromYmd(sunday),
+        boxes: boxLines,
       });
-      await sendEmail({
-        to: ownerTo,
-        subject: msg.subject,
-        html: msg.html,
-        text: msg.text,
-        replyTo: 'hello@earthtableco.ca',
-      });
+      await sendOwnerEmail(msg);
     } catch (err) {
       console.warn('[subscriptions] Thursday owner email failed:', err.message);
     }

@@ -9,6 +9,7 @@ const {
 } = require('../queries/partner');
 const { sendPauseReminders } = require('../queries/subscriptionManage');
 const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
+const { flushDebouncedEmails, runCardExpiryNotices } = require('../queries/subscription');
 const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
   renderPartnerMonthlyInvoiceEmail,
@@ -204,5 +205,40 @@ router.get('/subscription-lock', handleSubscriptionLock);
 router.post('/subscription-lock', handleSubscriptionLock);
 router.get('/thursday-lock', handleSubscriptionLock);
 router.post('/thursday-lock', handleSubscriptionLock);
+
+function handleEmailFlush(req, res) {
+  if (!process.env.CRON_SECRET) {
+    return res.status(500).json({ error: 'Cron is not configured.' });
+  }
+  if (!cronAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  flushDebouncedEmails()
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('[cron/subscription-email-flush]', err);
+      return res.status(500).json({ error: err.message || 'Server error' });
+    });
+}
+
+function handleCardExpiry(req, res) {
+  if (!process.env.CRON_SECRET) {
+    return res.status(500).json({ error: 'Cron is not configured.' });
+  }
+  if (!cronAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  runCardExpiryNotices()
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('[cron/subscription-card-expiry]', err);
+      return res.status(500).json({ error: err.message || 'Server error' });
+    });
+}
+
+router.get('/subscription-email-flush', handleEmailFlush);
+router.post('/subscription-email-flush', handleEmailFlush);
+router.get('/subscription-card-expiry', handleCardExpiry);
+router.post('/subscription-card-expiry', handleCardExpiry);
 
 module.exports = router;

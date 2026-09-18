@@ -213,7 +213,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                     <p className="subscribe-confirm-step-lead">It repeats, unless you say otherwise.</p>
                     <p className="subscribe-confirm-step-body">
                       Don&apos;t have time to pick? We&apos;ll repeat last week&apos;s selection.
-                      Pause or cancel any time before Wednesday, no fees.
+                      Pause or cancel any time before Wednesday at 9:00 AM ET, no fees.
                     </p>
                   </div>
                 </li>
@@ -261,7 +261,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 </div>
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Renews</span>
-                  <span className="subscribe-confirm-row-value">Every {RENEWAL_DAY}</span>
+                  <span className="subscribe-confirm-row-value">Every Wednesday at 9:00 AM ET</span>
                 </div>
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Meal Selection Cutoff</span>

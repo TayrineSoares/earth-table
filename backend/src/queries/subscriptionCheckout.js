@@ -447,7 +447,6 @@ async function completeSubscriptionSignup(session) {
     ? paidSession.customer
     : paidSession.customer?.id || null;
   let paymentMethodId = null;
-  let chargeId = null;
   let paidCents = Number(paidSession.amount_total) || 0;
 
   if (piId) {
@@ -457,8 +456,6 @@ async function completeSubscriptionSignup(session) {
     if (!customerId) {
       customerId = typeof pi.customer === 'string' ? pi.customer : pi.customer?.id || null;
     }
-    const charge = pi.latest_charge;
-    chargeId = typeof charge === 'string' ? charge : charge?.id || null;
     if (!paidCents && Number(pi.amount_received)) paidCents = Number(pi.amount_received);
   }
 
@@ -566,11 +563,15 @@ async function completeSubscriptionSignup(session) {
       const msg = renderSubscriptionWelcomeEmail({
         firstName: user?.first_name || '',
         mealCount: cart.meal_count,
+        planPriceCents: cart.plan_price_cents,
         delivery,
         deliveryLabel: cart.first_delivery_label,
         pickupSlot: cart.pickup_time_slot,
         cutoffLabel: cart.cutoff_label,
         subscriptionId: sub.id,
+        address: delivery ? draft.special_note : undefined,
+        notes: draft.special_note,
+        meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
       });
       await sendEmail({
         to: email,
@@ -597,12 +598,13 @@ async function completeSubscriptionSignup(session) {
         pickupSlot: cart.pickup_time_slot,
         subscribedAtLabel: formatTorontoStamp(new Date()),
         paidCents,
-        chargeId,
         meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
+        addons: (cart.addons || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
         cutoffLabel: cart.cutoff_label,
         email,
         phone: paidSession.customer_details?.phone || user?.phone_number,
         notes: draft.special_note,
+        address: delivery ? draft.special_note : undefined,
       });
       await sendEmail({
         to: ownerTo,

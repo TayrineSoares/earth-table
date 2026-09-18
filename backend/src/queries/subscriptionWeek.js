@@ -8,6 +8,7 @@
  *
  * If admin set test_lock_at, that instant is used instead of Thursday 5pm
  * until it has passed, then we fall back to the live Thursday schedule.
+ * Plan charge is Wednesday 9:00 AM America/Toronto (not Thursday).
  *
  * No date library — Intl + a small nudge loop to map Toronto wall-clock
  * times onto UTC instants (handles EST/EDT).
@@ -29,6 +30,8 @@ const WEEKDAY_NUM = {
 };
 
 const CHARGE_WEEKDAY = 3; // Wednesday
+const CHARGE_HOUR = 9;
+const CHARGE_MINUTE = 0;
 const LOCK_WEEKDAY = 4; // Thursday
 const LOCK_HOUR = 17;
 const LOCK_MINUTE = 0;
@@ -103,23 +106,23 @@ function thisWeekLockAt(now) {
   return torontoDate(shifted.year, shifted.month, shifted.day, LOCK_HOUR, LOCK_MINUTE);
 }
 
-/** Wednesday 5pm before a Sunday delivery (same calendar week). */
+/** Wednesday 9:00 AM before a Sunday delivery (same calendar week). */
 function chargeAtForSunday(ymdStr) {
   const sunday = parseYmdToronto(ymdStr);
   if (!sunday) {
     const p = torontoParts(new Date());
     const shifted = addCalendarDays(p.year, p.month, p.day, CHARGE_WEEKDAY - p.weekday);
-    return torontoDate(shifted.year, shifted.month, shifted.day, LOCK_HOUR, LOCK_MINUTE);
+    return torontoDate(shifted.year, shifted.month, shifted.day, CHARGE_HOUR, CHARGE_MINUTE);
   }
   const p = torontoParts(sunday);
   const wed = addCalendarDays(p.year, p.month, p.day, CHARGE_WEEKDAY - p.weekday);
-  return torontoDate(wed.year, wed.month, wed.day, LOCK_HOUR, LOCK_MINUTE);
+  return torontoDate(wed.year, wed.month, wed.day, CHARGE_HOUR, CHARGE_MINUTE);
 }
 
 /**
  * Pause / cancel / plan-change deadline for the Sunday currently being edited.
- * After Thursday lock, that Sunday is next week, so the deadline is next Wednesday.
- * test_charge_at stands in for Wednesday when set.
+ * After Thursday lock, that Sunday is next week, so the deadline is next Wednesday 9:00 AM.
+ * test_charge_at stands in for Wednesday 9:00 AM when set.
  */
 function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = null) {
   const testRaw = settings && settings.test_charge_at;
@@ -319,6 +322,7 @@ function formatFulfillmentLine({ delivery, deliveryLabel, pickupSlot }) {
 function formatTorontoStamp(date = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: TZ,
+    weekday: 'long',
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -327,6 +331,37 @@ function formatTorontoStamp(date = new Date()) {
     hour12: true,
   });
   return fmt.format(date).replace(/, (\d+:)/, ' at $1');
+
+}
+
+/** First Monday 9:00 AM ET on or after `from`. */
+function mondayNineOnOrAfter(from) {
+  const start = from instanceof Date ? from : new Date(from);
+  const p = torontoParts(start);
+  const daysUntilMonday = (1 - p.weekday + 7) % 7;
+  const day = addCalendarDays(p.year, p.month, p.day, daysUntilMonday);
+  let at = torontoDate(day.year, day.month, day.day, 9, 0);
+  if (at.getTime() < start.getTime()) {
+    const next = addCalendarDays(day.year, day.month, day.day, 7);
+    at = torontoDate(next.year, next.month, next.day, 9, 0);
+  }
+  return at;
+}
+
+/**
+ * 1-based week index of the Monday 9:00 AM pause nudge relative to paused_at.
+ * Week 1 is the first Monday 9:00 AM on or after the pause.
+ */
+function pauseNudgeWeek(pausedAt, now = new Date()) {
+  if (!pausedAt) return 0;
+  const first = mondayNineOnOrAfter(pausedAt);
+  const p = torontoParts(now);
+  const daysSinceMonday = (p.weekday + 6) % 7;
+  const thisMon = addCalendarDays(p.year, p.month, p.day, -daysSinceMonday);
+  const thisRun = torontoDate(thisMon.year, thisMon.month, thisMon.day, 9, 0);
+  const diff = thisRun.getTime() - first.getTime();
+  if (diff < 0) return 0;
+  return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
 }
 
 /**
@@ -379,8 +414,11 @@ module.exports = {
   mealsAWeek,
   mealPlanPhrase,
   formatTorontoStamp,
+  formatPickupSlot,
+  formatDeliveryLabel,
   sundayLabelFromYmd,
   torontoYmd,
   getTargetSundayYmd,
   isYmdBlocked,
+  pauseNudgeWeek,
 };

@@ -46,7 +46,8 @@ router.patch('/:auth_user_id', async (req, res) => {
     'address_line2',
     'city',
     'province',
-    'postal_code'
+    'postal_code',
+    'email_prefs',
   ];
   const updates = {};
 

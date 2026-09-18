@@ -1070,4 +1070,6 @@ module.exports = {
   parsePeriodKey,
   closePartnerMonth,
   markInvoicesEmailed,
+  partnerDiscountPercent,
+  partnerCashbackPercent,
 };

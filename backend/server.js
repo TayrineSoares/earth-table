@@ -316,7 +316,9 @@ const stripeWebhookHandler = async (request, response) => {
             cashback_cents: earnRow?.amount_cents
               ?? Math.floor(
                 (Number(detailedOrder?.item_subtotal_cents) || 0)
-                * (Number(referralPartner.cashback_percent) || 10)
+                * (Number.isFinite(Number(referralPartner.cashback_percent))
+                  ? Number(referralPartner.cashback_percent)
+                  : 10)
                 / 100
               ),
             item_subtotal_cents: Number(detailedOrder?.item_subtotal_cents) || 0,

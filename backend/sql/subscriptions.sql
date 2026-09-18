@@ -6,7 +6,7 @@
 --
 -- After testing: deactivate the $1 plan, and set
 --   test_charge_at = null, test_lock_at = null
--- so live Wednesday 5pm / Thursday 5pm America/Toronto apply.
+-- so live Wednesday 9:00 AM / Thursday 5:00 PM America/Toronto apply.
 
 -- Needed for gen_random_uuid() on some projects
 create extension if not exists pgcrypto;
@@ -131,7 +131,7 @@ create table if not exists public.cutoff_runs (
 -- ---------------------------------------------------------------------------
 -- Test-week overrides. One row only (id = 1).
 -- If test_charge_at / test_lock_at are set, the app uses those instead of
--- live Wednesday 5pm / Thursday 5pm America/Toronto.
+-- live Wednesday 9:00 AM / Thursday 5:00 PM America/Toronto.
 -- ---------------------------------------------------------------------------
 create table if not exists public.subscription_settings (
   id int primary key default 1 check (id = 1),
@@ -207,4 +207,30 @@ revoke all on public.subscription_settings from anon, authenticated;
 alter table public.cutoff_runs drop constraint if exists cutoff_runs_job_check;
 alter table public.cutoff_runs
   add constraint cutoff_runs_job_check
-  check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder'));
+  check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder', 'email_flush', 'card_expiry'));
+
+alter table public.users
+  add column if not exists email_prefs jsonb not null default '{"wednesday_reminder":true,"pause_reminder":true}'::jsonb;
+
+create table if not exists public.subscription_email_debounce (
+  subscription_id uuid primary key references public.subscriptions (id) on delete cascade,
+  kind text not null default 'box_updated',
+  send_at timestamptz not null,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+revoke all on public.subscription_email_debounce from anon, authenticated;
+alter table public.subscription_email_debounce enable row level security;
+
+create table if not exists public.subscription_card_expiry_notices (
+  subscription_id uuid not null references public.subscriptions (id) on delete cascade,
+  payment_method_id text not null,
+  exp_month int not null,
+  exp_year int not null,
+  sent_at timestamptz not null default now(),
+  primary key (subscription_id, payment_method_id, exp_month, exp_year)
+);
+
+revoke all on public.subscription_card_expiry_notices from anon, authenticated;
+alter table public.subscription_card_expiry_notices enable row level security;

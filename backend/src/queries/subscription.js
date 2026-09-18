@@ -452,14 +452,13 @@ async function loadCycleItems(cycleId) {
   return data || [];
 }
 
-async function notifyCustomerUpdate(userId, sub, cycle, week) {
+async function sendBoxUpdatedNow(userId, sub, cycle, week) {
   const { getUserByAuthId } = require('./user');
-  const { sendEmail } = require('../utils/email');
   const { renderSubscriptionUpdatedEmail } = require('../utils/emailTemplates');
+  const { sendCustomerEmail } = require('../emails/sendSubscriptionMail');
   const user = await getUserByAuthId(userId);
   const email = user?.email;
   if (!email) return;
-
   const items = await loadCycleItems(cycle.id);
   const meals = items.filter((item) => item.kind === 'plan').map((item) => ({
     slug: item.products?.slug,
@@ -469,25 +468,121 @@ async function notifyCustomerUpdate(userId, sub, cycle, week) {
     slug: item.products?.slug,
     quantity: item.quantity,
   }));
-  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const msg = renderSubscriptionUpdatedEmail({
     firstName: user.first_name,
-    mealCount: plan?.meal_count,
-    delivery: cycle.delivery,
     deliveryLabel: week.delivery_label,
-    pickupSlot: cycle.pickup_time_slot,
     cutoffLabel: week.cutoff_label,
-    appliesTo: week.applies_to,
     meals,
     addons,
+    subscriptionId: sub.id,
   });
-  await sendEmail({
-    to: email,
-    subject: msg.subject,
-    html: msg.html,
-    text: msg.text,
-    replyTo: 'hello@earthtableco.ca',
-  });
+  await sendCustomerEmail({ to: email, msg });
+}
+
+async function notifyCustomerUpdate(userId, sub, cycle, week) {
+  const { CADENCE } = require('../emails/subscriptionEmailSpec');
+  const sendAt = new Date(Date.now() + CADENCE.UPDATE_DEBOUNCE_MS).toISOString();
+  const { error } = await supabase.from('subscription_email_debounce').upsert({
+    subscription_id: sub.id,
+    kind: 'box_updated',
+    send_at: sendAt,
+    payload: { userId, cycleId: cycle.id },
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'subscription_id' });
+  if (error) {
+    console.warn('[subscriptions] debounce queue failed:', error.message);
+    await sendBoxUpdatedNow(userId, sub, cycle, week);
+  }
+}
+
+async function flushDebouncedEmails(now = new Date()) {
+  const { data, error } = await supabase
+    .from('subscription_email_debounce')
+    .select('*')
+    .lte('send_at', now.toISOString());
+  if (error) {
+    console.warn('[subscriptions] debounce flush failed:', error.message);
+    return { ok: false, error: error.message };
+  }
+  let sent = 0;
+  for (const row of data || []) {
+    const { data: taken } = await supabase
+      .from('subscription_email_debounce')
+      .delete()
+      .eq('subscription_id', row.subscription_id)
+      .eq('updated_at', row.updated_at)
+      .select('payload')
+      .maybeSingle();
+    if (!taken) continue;
+    try {
+      const sub = await getOwnedSubscription(row.payload.userId, row.subscription_id);
+      const settings = await getSettings();
+      const { data: cycle } = await supabase
+        .from('subscription_cycles')
+        .select('*')
+        .eq('id', row.payload.cycleId)
+        .maybeSingle();
+      if (!cycle) continue;
+      const week = getEditWeek(now, settings || {}, cycle);
+      await sendBoxUpdatedNow(row.payload.userId, sub, cycle, week);
+      sent += 1;
+    } catch (err) {
+      console.warn('[subscriptions] debounce send failed:', err.message);
+    }
+  }
+  return { ok: true, sent };
+}
+
+async function runCardExpiryNotices(now = new Date()) {
+  const { getUserByAuthId } = require('./user');
+  const { renderSubscriptionManageEmail } = require('../utils/emailTemplates');
+  const { sendCustomerEmail, cardForPaymentMethod } = require('../emails/sendSubscriptionMail');
+  const { CADENCE } = require('../emails/subscriptionEmailSpec');
+  const { data: subs, error } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, stripe_payment_method_id')
+    .eq('status', 'active');
+  if (error) throw error;
+  let emailed = 0;
+  const horizon = now.getTime() + CADENCE.CARD_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  for (const sub of subs || []) {
+    const card = await cardForPaymentMethod(sub.stripe_payment_method_id);
+    if (!card?.last4 || !card.expMonth || !card.expYear) continue;
+    const expires = new Date(card.expYear, card.expMonth, 0, 23, 59, 59);
+    if (expires.getTime() < now.getTime() || expires.getTime() > horizon) continue;
+    const { data: existing } = await supabase
+      .from('subscription_card_expiry_notices')
+      .select('subscription_id')
+      .eq('subscription_id', sub.id)
+      .eq('payment_method_id', sub.stripe_payment_method_id)
+      .eq('exp_month', card.expMonth)
+      .eq('exp_year', card.expYear)
+      .maybeSingle();
+    if (existing) continue;
+    try {
+      const user = await getUserByAuthId(sub.user_id);
+      if (!user?.email) continue;
+      const msg = renderSubscriptionManageEmail({
+        kind: 'card_expiry',
+        firstName: user.first_name,
+        cardBrand: card.brand,
+        last4: card.last4,
+        expMonth: String(card.expMonth).padStart(2, '0'),
+        expYear: card.expYear,
+      });
+      await sendCustomerEmail({ to: user.email, msg });
+      await supabase.from('subscription_card_expiry_notices').insert({
+        subscription_id: sub.id,
+        payment_method_id: sub.stripe_payment_method_id,
+        exp_month: card.expMonth,
+        exp_year: card.expYear,
+      });
+      emailed += 1;
+    } catch (err) {
+      console.warn('[subscriptions] card-expiry email failed:', sub.id, err.message);
+    }
+  }
+  return { ok: true, emailed };
 }
 
 async function replaceCycleKindItems(cycleId, kind, resolved) {
@@ -662,10 +757,41 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
   if (cycleErr) throw cycleErr;
 
   const updated = { ...cycle, ...patch };
+  const switched = delivery !== !wasPickup;
   try {
-    await notifyCustomerUpdate(userId, sub, updated, week);
+    if (switched) {
+      const { getUserByAuthId } = require('./user');
+      const { renderSubscriptionManageEmail, renderOwnerFulfillmentEmail } = require('../utils/emailTemplates');
+      const { sendCustomerEmail, sendOwnerEmail } = require('../emails/sendSubscriptionMail');
+      const { formatPickupSlot } = require('./subscriptionWeek');
+      const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
+      const user = await getUserByAuthId(userId);
+      if (user?.email) {
+        const msg = renderSubscriptionManageEmail({
+          kind: delivery ? 'fulfillment_delivery' : 'fulfillment_pickup',
+          firstName: user.first_name,
+          fulfillmentDate: week.delivery_label,
+          deliveryLabel: week.delivery_label,
+          address: delivery ? specialNote : PICKUP_ADDRESS,
+          pickupSlot,
+        });
+        await sendCustomerEmail({ to: user.email, msg });
+      }
+      const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer';
+      const win = delivery ? DELIVERY_WINDOW : formatPickupSlot(pickupSlot);
+      const parts = String(win || '').split(/\s*[–-]\s*/);
+      await sendOwnerEmail(renderOwnerFulfillmentEmail({
+        customerName: name,
+        oldMethod: wasPickup ? 'pickup' : 'delivery',
+        newMethod: delivery ? 'delivery' : 'pickup',
+        fulfillmentDate: week.delivery_label,
+        address: delivery ? specialNote : PICKUP_ADDRESS,
+        windowStart: (parts[0] || '').trim(),
+        windowEnd: (parts.slice(1).join(' – ') || '').trim(),
+      }));
+    }
   } catch (err) {
-    console.warn('[subscriptions] update email failed:', err.message);
+    console.warn('[subscriptions] fulfillment email failed:', err.message);
   }
 
   return {
@@ -726,7 +852,7 @@ async function getSettings() {
 
 /**
  * Test charge/lock timestamps. Pass null (or '') to clear and use live
- * Wednesday/Thursday 5:00 PM America/Toronto.
+ * Wednesday 9:00 AM plan charge / Thursday 5:00 PM meal lock, America/Toronto.
  */
 async function updateSettings(body) {
   const patch = {};
@@ -830,4 +956,6 @@ module.exports = {
   replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
+  flushDebouncedEmails,
+  runCardExpiryNotices,
 };

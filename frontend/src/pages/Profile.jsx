@@ -40,6 +40,7 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [partner, setPartner] = useState(null);
   const [savingPayout, setSavingPayout] = useState(false);
+  const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
@@ -154,6 +155,29 @@ const Profile = () => {
       setError(err.message || 'Failed to update payout preference.');
     } finally {
       setSavingPayout(false);
+    }
+  };
+
+  const emailPrefs = user?.email_prefs && typeof user.email_prefs === 'object' ? user.email_prefs : {};
+  const wednesdayReminder = emailPrefs.wednesday_reminder !== false;
+  const pauseReminder = emailPrefs.pause_reminder !== false;
+
+  const handleEmailPref = async (key, value) => {
+    if (savingEmailPrefs) return;
+    setSavingEmailPrefs(true);
+    setError("");
+    try {
+      const updated = await patchUserProfile(auth_user_id, {
+        email_prefs: {
+          wednesday_reminder: key === 'wednesday_reminder' ? value : wednesdayReminder,
+          pause_reminder: key === 'pause_reminder' ? value : pauseReminder,
+        },
+      });
+      setUser(updated);
+    } catch (err) {
+      setError(err.message || 'Failed to update email preferences.');
+    } finally {
+      setSavingEmailPrefs(false);
     }
   };
 
@@ -299,6 +323,31 @@ const Profile = () => {
               </div>
             </form>
           )}
+
+          <section className="profile-email-prefs">
+            <h2 className="profile-partner-title">Weekly emails</h2>
+            <p className="profile-email-prefs-lead">
+              Transactional mail still sends when something on your plan changes. These two can be turned off.
+            </p>
+            <label className="profile-email-pref">
+              <input
+                type="checkbox"
+                checked={wednesdayReminder}
+                disabled={savingEmailPrefs || isLoading}
+                onChange={(e) => handleEmailPref('wednesday_reminder', e.target.checked)}
+              />
+              <span>Wednesday meal reminder (plan charge still runs)</span>
+            </label>
+            <label className="profile-email-pref">
+              <input
+                type="checkbox"
+                checked={pauseReminder}
+                disabled={savingEmailPrefs || isLoading}
+                onChange={(e) => handleEmailPref('pause_reminder', e.target.checked)}
+              />
+              <span>Reminder while your plan is paused</span>
+            </label>
+          </section>
 
           {partner && (
             <section className="profile-partner">

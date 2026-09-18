@@ -15,6 +15,11 @@ import {
   startSubscriptionCheckout,
 } from '../helpers/subscriptionHelpers'
 import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
+import {
+  HOW_IT_WORKS_CHARGE,
+  HOW_IT_WORKS_MEALS,
+  HOW_IT_WORKS_PAUSE,
+} from '../helpers/subscriptionCadence'
 
 const HST_RATE = 0.13
 
@@ -237,12 +242,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
+        HOW_IT_WORKS_CHARGE,
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        'Pause or cancel by Wednesday, no fees.',
+        HOW_IT_WORKS_PAUSE,
         dates?.first_delivery_label ? `First delivery: ${dates.first_delivery_label}.` : null,
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
+        HOW_IT_WORKS_MEALS,
       ].filter(Boolean),
       hint: (
         <>

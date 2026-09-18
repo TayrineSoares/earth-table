@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchUserByAuthId } from '../helpers/adminHelpers';
 import { supabase } from '../supabaseClient';
 import '../styles/Admin.css'
@@ -15,10 +15,14 @@ import SubscriberAdmin from '../components/SubscriberAdmin';
 
 const Admin = () => {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState(null);
-  
-
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (tabFromUrl) setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   useEffect(() => {
     const fetchUser = async () => {

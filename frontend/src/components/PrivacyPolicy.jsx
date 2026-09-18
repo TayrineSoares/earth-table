@@ -24,11 +24,11 @@ const PrivacyPolicy = () => {
           <li><strong>Product availability:</strong> While we do our best to keep our menu accurate, all items are subject to availability. If a product is unavailable, we will notify you as soon as possible and suggest alternatives.</li>
           <li><strong>Allergies and notes:</strong> Customers are responsible for clearly indicating allergies or dietary restrictions in the “Special Instructions” field. Earth Table cannot guarantee against cross-contamination.</li>
           <li><strong>Agreement:</strong> By placing an order, you acknowledge and agree to these Terms &amp; Conditions.</li>
-          <li><strong>Subscription plans:</strong> Customers may subscribe to a recurring weekly meal plan (10, 15, or 20 meals/week). Subscribers select their meals each cycle by the Thursday 5pm cutoff. Add-ons do not carry over automatically to the following week. Cancelling or pausing a subscription requires 7 days' notice.</li>
-          <li><strong>Auto-renewal:</strong> Subscription plans automatically renew and rebill each week on your selected schedule unless cancelled or paused with at least 7 days' notice. You will be charged automatically for each upcoming cycle unless you cancel before the applicable cutoff.</li>
+          <li><strong>Subscription plans:</strong> Customers may subscribe to a recurring weekly meal plan (10, 15, or 20 meals/week). Subscribers select their meals each cycle by the Thursday 5:00 PM ET cutoff. Add-ons do not carry over automatically to the following week. Cancelling or pausing a subscription for an upcoming Sunday must be done before Wednesday at 9:00 AM ET.</li>
+          <li><strong>Auto-renewal:</strong> Subscription plans automatically renew and rebill each week. The plan and delivery are charged Wednesday at 9:00 AM ET; add-ons are charged at the Thursday 5:00 PM ET lock. You will be charged automatically for each upcoming cycle unless you cancel or pause before Wednesday at 9:00 AM ET.</li>
           <li><strong>Failed payments:</strong> If a recurring subscription charge fails, Stripe will automatically retry the payment according to its retry schedule. We will notify you by email so you can update your payment method on file. If the charge still cannot be completed after retry attempts, your subscription may be paused until a valid payment method is provided. Fulfillment of the affected cycle may be delayed or withheld until payment succeeds.</li>
           <li><strong>Price changes:</strong> Earth Table may change subscription pricing from time to time. If we do, we will give subscribers advance notice (for example, by email) before the new price applies to their next billing cycle. If you do not accept the new price, you may cancel or pause your subscription before the new price takes effect.</li>
-          <li><strong>Subscription refunds:</strong> Subscription orders are non-refundable once a cycle's cutoff has passed. Customers who wish to avoid a charge for an upcoming week must cancel or pause before the Thursday 5pm cutoff for that cycle.</li>
+          <li><strong>Subscription refunds:</strong> Subscription orders are non-refundable once a cycle's Wednesday 9:00 AM ET charge has passed. Customers who wish to avoid a charge for an upcoming week must cancel or pause before Wednesday at 9:00 AM ET for that cycle.</li>
         </ul>
 
         {/* Privacy Policy */}
@@ -74,7 +74,7 @@ const PrivacyPolicy = () => {
           <li>Request correction or deletion of your personal information.</li>
           <li>Withdraw consent for us to use your personal information at any time.</li>
           <li>Opt out of marketing communications (emails, newsletters) in accordance with CASL.</li>
-          <li>Cancel or pause your subscription at any time by contacting us at least 7 days before your next billing cycle.</li>
+          <li>Cancel or pause your subscription in My Subscriptions before Wednesday at 9:00 AM ET to skip that Sunday's charge.</li>
         </ul>
         <p className="et-terms__p">
           To exercise these rights, contact us at:{" "}

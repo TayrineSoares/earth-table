@@ -9,8 +9,10 @@
   "crons": [
     { "path": "/api/cron/partner-monthly", "schedule": "0 8 1 * *" },
     { "path": "/api/cron/pause-reminder", "schedule": "0 13 * * 1" },
-    { "path": "/api/cron/subscription-charge", "schedule": "0 21 * * 3" },
-    { "path": "/api/cron/subscription-lock", "schedule": "0 22 * * 4" }
+    { "path": "/api/cron/subscription-charge", "schedule": "0 13 * * 3" },
+    { "path": "/api/cron/subscription-lock", "schedule": "0 22 * * 4" },
+    { "path": "/api/cron/subscription-email-flush", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/subscription-card-expiry", "schedule": "0 14 * * *" }
   ],
   "rewrites": [
     { "source": "/api/webhook", "destination": "/webhook" },

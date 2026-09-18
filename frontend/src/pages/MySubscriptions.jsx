@@ -24,6 +24,14 @@ import {
 } from '../helpers/subscriptionHelpers'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import { clearEditCart } from '../helpers/subscriptionCart'
+import {
+  HOW_IT_WORKS_CHARGE,
+  HOW_IT_WORKS_MEALS,
+  HOW_IT_WORKS_PAUSE,
+  PAUSED_BANNER,
+  PAUSE_CANCEL_BY,
+  RESUME_BY_CHARGE,
+} from '../helpers/subscriptionCadence'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
@@ -328,7 +336,7 @@ const MySubscriptions = ({ user }) => {
           title: 'Pause this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            'Resume by Wednesday 5:00 PM for that week\'s box.',
+            RESUME_BY_CHARGE,
           ],
         }
         : {
@@ -453,11 +461,11 @@ const MySubscriptions = ({ user }) => {
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
+        HOW_IT_WORKS_CHARGE,
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        'Pause or cancel by Wednesday, no fees.',
+        HOW_IT_WORKS_PAUSE,
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
+        HOW_IT_WORKS_MEALS,
       ],
       hint: (
         <>
@@ -545,7 +553,7 @@ const MySubscriptions = ({ user }) => {
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const statusNote = isPaused || pending === 'paused'
-              ? 'This plan is paused. Your last meals and card stay on file. Resume by Wednesday 5:00 PM to get that Sunday\'s box.'
+              ? PAUSED_BANNER
               : pending === 'cancelled'
                 ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                 : row.week?.applies_to === 'next_week'
@@ -575,7 +583,9 @@ const MySubscriptions = ({ user }) => {
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
             const mealsBy = formatCutoffShort(row.week?.cutoff_at || cycle.cutoff_at)
-            const pauseBy = formatCutoffShort(row.charge?.charge_at)
+            const pauseBy = row.charge?.charge_at
+              ? formatCutoffShort(row.charge.charge_at)
+              : (row.charge?.charge_label || PAUSE_CANCEL_BY)
 
             return (
               <section key={row.id} className="my-sub-plan">

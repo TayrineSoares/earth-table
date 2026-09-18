@@ -31,7 +31,7 @@ const HOW_IT_WORKS = [
   {
     icon: RefreshCw,
     title: 'Change it up',
-    body: 'Update your meals and add-ons up to Thursday at 5:00 PM. Need to pause or skip a week? Just let us know by Wednesday. No long-term commitment.',
+    body: 'Update your meals and add-ons up to Thursday at 5:00 PM ET. Need to pause or skip a week? Let us know by Wednesday at 9:00 AM ET. No long-term commitment.',
   },
 ]
 
