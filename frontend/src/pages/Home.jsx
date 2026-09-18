@@ -63,14 +63,16 @@ const Home = () => {
               </div>
             </section>
           ))}
+      </div>
 
-        {categories.length > 0 && (
-          <div className='homepage-footer'>
-            <p className='footer-starter-text'>There's plenty more to discover!</p>
-            <p className='footer-secondary-text'>Shop our other services such as...</p>
+      {categories.length > 0 && (
+        <div className="homepage-footer">
+          <div className="page-wrapper">
+            <p className="footer-starter-text">There's plenty more to discover!</p>
+            <p className="footer-secondary-text">Shop our other categories such as...</p>
 
             <div className="footer-category-container">
-              {footerCategories.map(category => (
+              {footerCategories.map((category) => (
                 <div className="footer-category-card" key={category.id}>
                   <img
                     src={sizedImageUrl(category.image_url, 600)}
@@ -82,18 +84,19 @@ const Home = () => {
                 </div>
               ))}
             </div>
-            <div className='explore-button-container'>
-              <p className='explore-button-text'>EXPLORE ALL CATEGORIES</p>
+            <div className="explore-button-container">
+              <p className="explore-button-text">EXPLORE ALL CATEGORIES</p>
               <Link to={`/products/category`}>
-                <img 
+                <img
                   src={arrow}
-                  className='homepage-arrow'
-                  />
+                  className="homepage-arrow"
+                  alt=""
+                />
               </Link>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
