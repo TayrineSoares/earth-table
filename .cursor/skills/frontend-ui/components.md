@@ -196,7 +196,7 @@ Grid: `.products-container`. Subscribe meals is 4-col with `gap: 36px 40px` (mor
 - Errors as text under the field, not `alert`
 - **Locked pickup** (subscribe): one row — `First Pickup - Sunday, September 27th` + time `<select>` (no “Pickup Time” label). `.pickup-field-datetime` vertically centers the 44px select. Pass `dateLabel="First Pickup"`.
 - **Locked delivery** (subscribe): hide the date field (`showDateField={false}`). Show `First Delivery - {date}, 11:00 AM- 6:00 PM` after Special Instructions.
-- Delivery quote: optional `onCalculate` + **Calculate** (promo-apply button). Subscribe checkout quotes only on click; à-la-carte Cart may still auto-quote until it is restyled to match.
+- Delivery quote: optional `onCalculate` + **Calculate** (promo-apply button). Subscribe checkout quotes only on click. À-la-carte Cart auto-quotes (no Calculate).
 - Fee helper copy: **Delivery fee: $X.XX** (not “Estimated”)
 - Pickup/delivery radios on checkout: keep the **dot**. `.subscribe-fulfill-option` — 20px circle, `1.5px solid #D8C7B0`, checked `radial-gradient` tangerine fill `#EDA413`. Encode Sans 15 / 500 / small-caps. Do not replace with peach chips.
 

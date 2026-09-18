@@ -5,7 +5,9 @@ import checkoutImage from "../assets/images/checkoutImage.png"
 import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
+import FeedbackDialog from '../components/FeedbackDialog';
 import "../styles/Cart.css"
+import "../styles/SubscribeFlow.css"
 import { Link } from "react-router-dom";
 
 const API_BASE =
@@ -37,6 +39,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [promoLoading, setPromoLoading] = useState(false);
   const [lastValidatedCode, setLastValidatedCode] = useState('');
   const [partnerWallet, setPartnerWallet] = useState(null);
+  const [dialog, setDialog] = useState(null);
 
 
   useEffect(() => {
@@ -207,6 +210,41 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     );
   }
 
+  const missingCheckoutItems = () => {
+    const missing = [];
+    if (cart.length === 0) missing.push('Add items to your cart.');
+    if (fulfillment === 'pickup') {
+      if (!pickupDate) missing.push('Select a pickup date.');
+      if (!pickupTime) missing.push('Select a pickup time.');
+    } else {
+      if (!postalValid) {
+        missing.push('Enter a valid postal code.');
+      } else if (quoteStatus === 'out') {
+        missing.push('Delivery is not available for this postal code.');
+      } else if (quoteStatus !== 'ok' || deliveryFeeCents <= 0) {
+        missing.push('Enter a postal code we can deliver to.');
+      }
+      if (!deliveryDate) missing.push('Select a delivery date.');
+      if (specialNote.trim().length < 8) {
+        missing.push('Add your full delivery address in Special Instructions.');
+      }
+    }
+    if (!agreedToPrivacy) {
+      missing.push('Agree to the Privacy Policy to continue.');
+    }
+    return missing;
+  };
+
+  const showMissingDialog = (missing) => {
+    setDialog({
+      icon: 'alert',
+      title: missing.length === 1 ? 'One more step' : 'A few things are missing',
+      asList: missing.length > 1,
+      body: missing.length === 1 ? missing[0] : missing,
+      primaryLabel: 'Got it',
+    });
+  };
+
   // APPLY PROMO CODE 
   const handleApplyPromo = async () => {
     const code = (promoInput || '').trim();
@@ -236,6 +274,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
   // HANDLE CHECKOUT 
   const handleCheckout = async () => {
+    const missing = missingCheckoutItems();
+    if (missing.length) {
+      showMissingDialog(missing);
+      return;
+    }
+
     console.log("[checkout] click", {
       fulfillment,
       postalCode,
@@ -262,13 +306,23 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         setPromoResult(data);
         setLastValidatedCode(code);
         if (!data.valid) {
-          alert(data.message || 'That code could not be applied.');
+          setDialog({
+            icon: 'alert',
+            title: 'Promo code',
+            body: data.message || 'That code could not be applied.',
+            primaryLabel: 'OK',
+          });
           return;
         }
         checkoutPromoCode = code;
       } catch (e) {
         console.error('[checkout] promo validate failed', e);
-        alert('Could not validate your code. Try again.');
+        setDialog({
+          icon: 'alert',
+          title: 'Promo code',
+          body: 'Could not validate your code. Try again.',
+          primaryLabel: 'OK',
+        });
         return;
       }
     }
@@ -299,7 +353,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       console.error("[checkout] server error", response.status, err);
-      alert(err.error || "Checkout failed. Please try again.");
+      setDialog({
+        icon: 'alert',
+        title: 'Could not start checkout',
+        body: err.error || 'Checkout failed. Please try again.',
+        primaryLabel: 'OK',
+      });
       return;
     }
 
@@ -309,7 +368,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       window.location.href = data.url;
     } else {
       console.error("[checkout] missing session url", data);
-      alert("Checkout failed. Please try again.");
+      setDialog({
+        icon: 'alert',
+        title: 'Could not start checkout',
+        body: 'Checkout failed. Please try again.',
+        primaryLabel: 'OK',
+      });
     }
   };
 
@@ -318,54 +382,140 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   };
 
   return (
-    <div className='checkout-page'>
-
-      <div className='checkout-page-header-image'>
-        <img
-          src={checkoutImage}
-          className='checkout-image'
-          alt="Checkout header"
-        />
+    <div className="checkout-page subscribe-cart-page">
+      <div className="checkout-page-header-image">
+        <img src={checkoutImage} className="checkout-image" alt="" />
       </div>
 
-      <div className='page-wrapper'>
-        <div className='checkout-page-container'>
-
-          <div className='checkout-order-summary'>
-
-            <p className='checkout-summary-text'>Order Summary</p>
-
-            <div className='checkout-summary-items'>
-              <p className='number-of-items'>{getCartItemCount(cart)} ITEMS</p>
+      <div className="page-wrapper">
+        <div className="checkout-page-container">
+          <div className="checkout-order-summary">
+            <div className="subscribe-checkout-hero">
+              <p className="checkout-summary-text">Order Summary</p>
             </div>
 
-            {/* Fulfillment toggle */}
-            <div className="general-text" style={{ margin: "10px 0 16px" }}>
-              <label style={{ marginRight: 16 }}>
-                <input
-                  type="radio"
-                  name="fulfillment"
-                  value="pickup"
-                  checked={fulfillment === "pickup"}
-                  onChange={() => switchFulfillment("pickup")}
-                />{" "}
-                Pickup
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="fulfillment"
-                  value="delivery"
-                  checked={fulfillment === "delivery"}
-                  onChange={() => switchFulfillment("delivery")}
-                />{" "}
-                Delivery
-              </label>
+            <p className="subscribe-summary-heading">Your order</p>
+            <p className="subscribe-summary-empty">
+              {getCartItemCount(cart)} {getCartItemCount(cart) === 1 ? 'item' : 'items'}
+            </p>
+            <div className="checkout-summary-subtotal">
+              <p className="subtotal">Subtotal</p>
+              <p className="subtotal">${(subtotalCents / 100).toFixed(2)}</p>
+            </div>
+            {fulfillment === 'delivery' ? (
+              <>
+                <div className="checkout-summary-subtotal">
+                  <p className="subtotal">Delivery fee</p>
+                  <p className="subtotal">
+                    {quoteStatus === 'loading'
+                      ? 'Calculating...'
+                      : deliveryFeeCents > 0
+                        ? `$${(deliveryFeeCents / 100).toFixed(2)}`
+                        : '$0.00'}
+                  </p>
+                </div>
+                {quoteStatus === 'out' ? (
+                  <p className="general-text" style={{ color: '#b30000' }}>
+                    Delivery not available for this area. For Delivery via Uber Courier, email{' '}
+                    <a className="footer-account-register" href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
+                  </p>
+                ) : null}
+                {quoteStatus === 'error' ? (
+                  <p className="general-text" style={{ color: '#b30000' }}>
+                    Couldn&apos;t calculate delivery distance. Check the postal code and try again.
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            {promoResult?.valid ? (
+              <div className="checkout-summary-subtotal">
+                <p className="subtotal">
+                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
+                </p>
+                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
+              </div>
+            ) : null}
+            <div className="checkout-summary-subtotal">
+              <p className="subtotal">hst</p>
+              <p className="subtotal">${(taxCents / 100).toFixed(2)}</p>
             </div>
 
-            {/* PROMO CODE */}
+            {showStoreCredit ? (
+              <div className="checkout-summary-subtotal">
+                <p className="subtotal">Store credit</p>
+                <p className="subtotal">- ${(creditPreviewCents / 100).toFixed(2)}</p>
+              </div>
+            ) : null}
+
+            <div className="checkout-total">
+              <p className="total">Total</p>
+              <p className="total">${(chargeCents / 100).toFixed(2)}</p>
+            </div>
+
+            <div className="subscribe-fulfill-block">
+              <p className="subscribe-summary-heading">How you&apos;ll get it</p>
+              <div className="subscribe-fulfill-row" role="radiogroup" aria-label="How you'll get it">
+                <label className="subscribe-fulfill-option">
+                  <input
+                    type="radio"
+                    name="fulfillment"
+                    value="pickup"
+                    checked={fulfillment === 'pickup'}
+                    onChange={() => switchFulfillment('pickup')}
+                  />
+                  Pickup
+                </label>
+                <label className="subscribe-fulfill-option">
+                  <input
+                    type="radio"
+                    name="fulfillment"
+                    value="delivery"
+                    checked={fulfillment === 'delivery'}
+                    onChange={() => switchFulfillment('delivery')}
+                  />
+                  Delivery
+                </label>
+              </div>
+
+              {fulfillment === 'pickup' ? (
+                <PickupSelector
+                  pickupDate={pickupDate}
+                  pickupTime={pickupTime}
+                  onDateChange={setPickupDate}
+                  onTimeChange={setPickupTime}
+                  showReviewNotes={false}
+                />
+              ) : (
+                <DeliverySelector
+                  postalCode={postalCode}
+                  onPostalCodeChange={setPostalCode}
+                  feeCents={deliveryFeeCents}
+                  onValidate={({ valid }) => setPostalValid(valid)}
+                  deliveryDate={deliveryDate}
+                  onDeliveryDateChange={setDeliveryDate}
+                  showReviewNotes={false}
+                />
+              )}
+            </div>
+
+            <div className="special-note-container">
+              <label htmlFor="special-note" className="general-text">Special Instructions </label>
+              <textarea
+                className="special-note-input"
+                id="special-note"
+                value={specialNote}
+                onChange={(e) => setSpecialNote(e.target.value)}
+                placeholder={
+                  fulfillment === 'delivery'
+                    ? 'Delivery address, allergies, special instructions...'
+                    : 'Allergies, special instructions...'
+                }
+                rows="3"
+              />
+            </div>
+
             <div className="promo-wrap general-text">
-
+              <p className="subscribe-summary-heading">Promo code</p>
               <div className="promo-row">
                 <input
                   id="promo"
@@ -374,8 +524,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   onChange={(e) => {
                     const next = e.target.value;
                     setPromoInput(next);
-
-                    // Hide message if input is cleared or no longer matches the last validated code
                     if (!next.trim() || next.trim().toLowerCase() !== (lastValidatedCode || '').toLowerCase()) {
                       setPromoResult(null);
                     }
@@ -394,120 +542,17 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                   {promoLoading ? 'Applying…' : 'Apply'}
                 </button>
               </div>
-
-              {promoResult && (
+              {promoResult ? (
                 <div
                   className={`promo-msg ${promoResult.valid ? 'promo-msg--ok' : 'promo-msg--err'}`}
                   aria-live="polite"
                 >
                   {promoResult.message}
                 </div>
-              )}
+              ) : null}
             </div>
 
-            {/* SUBTOTAL */}
-            <div className='checkout-summary-subtotal'>
-              <p className='subtotal'>SUBTOTAL</p>
-              <p className='subtotal'>${(subtotalCents / 100).toFixed(2)}</p>
-            </div>
-
-            {/* PROMO LINE (only if valid) */}
-            {promoResult?.valid && (
-              <div className='checkout-summary-subtotal'>
-                <p className='subtotal'>
-                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
-                </p>
-                <p className='subtotal'>- ${(promoDiscountCents / 100).toFixed(2)}</p>
-              </div>
-            )}
-
-            {/* Delivery fee row (delivery only) */}
-            {fulfillment === "delivery" && (
-              <>
-                <div className='checkout-summary-subtotal'>
-                  <p className='subtotal'>Delivery fee (pre-tax)</p>
-                  <p className='subtotal'>
-                    {quoteStatus === "loading"
-                      ? "Calculating..."
-                      : deliveryFeeCents > 0
-                        ? `$${(deliveryFeeCents / 100).toFixed(2)}`
-                        : "$0.00"}
-                  </p>
-                </div>
-       
-
-                {quoteStatus === "out" && (
-                  <p className="general-text" style={{ color: "#b30000" }}>
-                    Delivery not available for this area. For Delivery via Uber Courier, email{" "}
-                    <a className="footer-account-register" href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.
-                  </p>
-                )}
-                {quoteStatus === "error" && (
-                  <p className="general-text" style={{ color: "#b30000" }}>
-                    Couldn't calculate delivery distance. Check the postal code and try again.
-                  </p>
-                )}
-                
-              </>
-            )}
-
-            {/* TAX */}
-            {showStoreCredit && (
-              <div className='checkout-summary-subtotal'>
-                <p className='subtotal'>Store credit</p>
-                <p className='subtotal'>- ${(creditPreviewCents / 100).toFixed(2)}</p>
-              </div>
-            )}
-
-            <div className='checkout-summary-tax'>
-              <p className='tax'>HST (13%)</p>
-              <p className='tax'>${(taxCents / 100).toFixed(2)}</p>
-            </div>
-
-            {/* TOTAL */}
-            <div className='checkout-total'>
-              <p className='total'>Total</p>
-              <p className='total'>${(chargeCents / 100).toFixed(2)}</p>
-            </div>
-
-
-            {/* PICKUP or DELIVERY SELECTOR */}
-            {fulfillment === "pickup" ? (
-              <PickupSelector
-                pickupDate={pickupDate}
-                pickupTime={pickupTime}
-                onDateChange={setPickupDate}
-                onTimeChange={setPickupTime}
-              />
-            ) : (
-              <DeliverySelector
-                postalCode={postalCode}
-                onPostalCodeChange={setPostalCode}
-                feeCents={deliveryFeeCents}
-                onValidate={({ valid }) => setPostalValid(valid)}
-                deliveryDate={deliveryDate}
-                onDeliveryDateChange={setDeliveryDate}
-              />
-            )}
-            <br />
-
-            <div className="special-note-container">
-              <label htmlFor="special-note" className='general-text'>Special Instructions </label>
-              <textarea
-                className='special-note-input'
-                id="special-note"
-                value={specialNote}
-                onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder={
-                  fulfillment === "delivery"
-                    ? "Delivery address, allergies, special instructions..."
-                    : "Allergies, special instructions..."
-                }
-                rows="3"
-              />
-            </div>
-
-            <div className="general-text">
+            <div className="subscribe-checkout-consent">
               <input
                 type="checkbox"
                 id="privacy-agree"
@@ -520,67 +565,61 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             </div>
 
             <button
-              disabled={
-                !agreedToPrivacy ||
-                (fulfillment === "pickup" && (!pickupDate || !pickupTime)) ||
-                (fulfillment === "delivery" && (
-                  !postalValid ||
-                  quoteStatus !== "ok" ||        // must be within 30 km
-                  deliveryFeeCents <= 0 ||
-                  !deliveryDate ||
-                  specialNote.trim().length < 8  // require full delivery address here
-                ))
-              }
-              onClick={handleCheckout}
+              type="button"
               className="checkout-button"
+              onClick={handleCheckout}
             >
               Proceed to Checkout
             </button>
-
           </div>
 
-          <div className='checkout-items'>
-            {cart.map(item => (
-              <div
-                className='checkout-items-container'
-                key={item.id}
-              >
-                <img
-                  src={item.image_url}
-                  className='checkout-product-image'
-                  alt={item.slug}
-                />
-
-                <div className='checkout-item-details'>
-                  <p className='checkout-item-title'>{item.slug}</p>
-                  <p className='checkout-item-price'>${(item.price_cents * item.quantity / 100).toFixed(2)}</p>
-
-                  <div className="cart-popup-item-quantity-container">
-                    <p className='checkout-quantity'>QTY:</p>
-                    <div className='checkout-quantity-button-container'>
-                      <button
-                        onClick={() => removeOneFromCart(item)}
-                        className='checkout-cart-popup-remove-button'
-                      >-
-                      </button>
-                      <p className='checkout-item-quantity'>{item.quantity}</p>
-                      <button
-                        onClick={() => addOneFromCart(item)}
-                        className='checkout-cart-popup-add-button'
-                      > +
-                      </button>
-                    </div>
-                    <button className="checkout-popup-remove-button" onClick={() => removeAll(item)}>REMOVE</button>
+          <div className="checkout-items subscribe-cart-items">
+            <p className="subscribe-list-heading">Your items</p>
+            {cart.length === 0 ? (
+              <p className="general-text">Your cart is empty.</p>
+            ) : (
+              cart.map((item) => (
+                <div className="checkout-items-container" key={item.id}>
+                  <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
+                  <div className="checkout-item-details">
+                    <p className="checkout-item-title">
+                      {item.slug}
+                      <span className="subscribe-cart-qty">
+                        <button
+                          type="button"
+                          className="checkout-cart-popup-remove-button"
+                          onClick={() => removeOneFromCart(item)}
+                          aria-label={`Decrease ${item.slug}`}
+                        >
+                          -
+                        </button>
+                        <span className="checkout-item-quantity">{item.quantity}</span>
+                        <button
+                          type="button"
+                          className="checkout-cart-popup-add-button"
+                          onClick={() => addOneFromCart(item)}
+                          aria-label={`Increase ${item.slug}`}
+                        >
+                          +
+                        </button>
+                      </span>
+                    </p>
+                    <p className="checkout-item-price">${((item.price_cents * item.quantity) / 100).toFixed(2)}</p>
+                    <button
+                      type="button"
+                      className="checkout-popup-remove-button"
+                      onClick={() => removeAll(item)}
+                    >
+                      REMOVE
+                    </button>
                   </div>
                 </div>
-
-              </div>
-
-            ))}
+              ))
+            )}
           </div>
-
         </div>
       </div>
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   )
 };

@@ -774,6 +774,17 @@
   margin-top: 0;
 }
 
+.subscribe-cart-items .subscribe-cart-qty .checkout-item-quantity {
+  margin: 0;
+}
+
+.subscribe-cart-items .checkout-popup-remove-button {
+  margin-left: 0;
+  margin-top: 4px;
+  padding: 0;
+  min-height: 44px;
+}
+
 .subscribe-dates-block {
   margin: 16px 0 8px;
 }
