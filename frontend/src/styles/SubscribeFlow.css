@@ -616,6 +616,33 @@
   margin: 16px 0 8px;
 }
 
+.subscribe-cart-page .subscribe-summary-heading-row--count {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.subscribe-item-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 6px 14px;
+  min-height: 32px;
+  box-sizing: border-box;
+  background-color: #FEE8D4;
+  border: 1px solid #EDA413;
+  border-radius: 999px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
 .subscribe-cart-page .subscribe-terms-link {
   min-height: 44px;
   margin: -10px 0;

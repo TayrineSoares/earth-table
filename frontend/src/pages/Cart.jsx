@@ -391,13 +391,15 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
             <div className="subscribe-checkout-hero">
-              <p className="checkout-summary-text">Order Summary</p>
+              <p className="checkout-summary-text">Review &amp; Confirm</p>
             </div>
 
-            <p className="subscribe-summary-heading">Your order</p>
-            <p className="subscribe-summary-empty">
-              {getCartItemCount(cart)} {getCartItemCount(cart) === 1 ? 'item' : 'items'}
-            </p>
+            <div className="subscribe-summary-heading-row subscribe-summary-heading-row--count">
+              <p className="subscribe-summary-heading">Order summary</p>
+              <p className="subscribe-item-count">
+                {getCartItemCount(cart)} {getCartItemCount(cart) === 1 ? 'item' : 'items'}
+              </p>
+            </div>
             <div className="checkout-summary-subtotal">
               <p className="subtotal">Subtotal</p>
               <p className="subtotal">${(subtotalCents / 100).toFixed(2)}</p>
