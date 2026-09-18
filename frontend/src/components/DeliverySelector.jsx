@@ -13,6 +13,8 @@ export default function DeliverySelector({
   onValidate, // ({ valid, normalizedPostal })
   lockedDate,
   showReviewNotes = true,
+  onCalculate,
+  calculateLoading = false,
 }) {
   const [dateError, setDateError] = useState('');
   const locked = Boolean(lockedDate);
@@ -138,13 +140,35 @@ export default function DeliverySelector({
           <label className="pickup-label" htmlFor="delivery-postal">
             Postal Code (Delivery Quote)
           </label>
-          <input
-            id="delivery-postal"
-            className="pickup-input"
-            placeholder="e.g., M5V 3L9"
-            value={postalCode}
-            onChange={(e) => onPostalCodeChange(e.target.value)}
-          />
+          {onCalculate ? (
+            <div className="promo-row">
+              <input
+                id="delivery-postal"
+                className="pickup-input"
+                placeholder="e.g., M5V 3L9"
+                value={postalCode}
+                autoComplete="postal-code"
+                onChange={(e) => onPostalCodeChange(e.target.value)}
+              />
+              <button
+                type="button"
+                className={`checkout-button promo-apply-btn ${!pcRegex.test(postalCode || '') || calculateLoading ? 'is-disabled' : ''}`}
+                onClick={onCalculate}
+                disabled={!pcRegex.test(postalCode || '') || calculateLoading}
+              >
+                {calculateLoading ? 'Calculating…' : 'Calculate'}
+              </button>
+            </div>
+          ) : (
+            <input
+              id="delivery-postal"
+              className="pickup-input"
+              placeholder="e.g., M5V 3L9"
+              value={postalCode}
+              autoComplete="postal-code"
+              onChange={(e) => onPostalCodeChange(e.target.value)}
+            />
+          )}
           {feeCents > 0 && (
             <p className="pickup-hint">
               Estimated delivery fee: ${(feeCents / 100).toFixed(2)}
@@ -161,7 +185,7 @@ export default function DeliverySelector({
           <label className="pickup-label" htmlFor={locked ? undefined : 'delivery-date'}>
             Delivery Date
             {locked && lockedDateLabel ? (
-              <span className="pickup-label-date"> - {lockedDateLabel}</span>
+              <span className="pickup-label-date"> - {lockedDateLabel}, between 11:00 AM and 6:00 PM</span>
             ) : null}
           </label>
           {locked ? null : (
@@ -176,11 +200,11 @@ export default function DeliverySelector({
             />
           )}
 
-          <p className="pickup-hint">
-            {locked
-              ? 'Subscription delivery is on Sundays. Delivery window is 11:00 AM – 6:00 PM.'
-              : 'Deliveries require at least 24 hours\u0027 notice. Delivery window is 11:00 AM – 6:00 PM.'}
-          </p>
+          {!locked ? (
+            <p className="pickup-hint">
+              Deliveries require at least 24 hours&apos; notice. Delivery window is 11:00 AM – 6:00 PM.
+            </p>
+          ) : null}
 
           {dateError && (
             <p className="pickup-error" role="alert">

@@ -114,15 +114,14 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     if (!hasExistingSub) return
     setDialog((prev) => prev || {
       icon: 'alert',
-      title: 'You are already subscribed to a weekly plan',
+      title: 'You already have a weekly plan',
       body: [
-        'Continuing will add this plan as a new subscription.',
+        'Continuing creates a second subscription — you\'ll be billed for both.',
         <>
-          If you&apos;d like to change your existing plan, go to{' '}
+          Want to change your current plan instead?{' '}
           <Link className="feedback-dialog-secondary" to="/my-subscriptions">
-            My Subscriptions
+            Manage subscriptions
           </Link>
-          .
         </>,
       ],
       primaryLabel: 'Got it',
@@ -143,45 +142,38 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   }, [fulfillment])
 
   useEffect(() => {
-    if (fulfillment !== 'delivery' || !postalValid) {
-      setQuoteStatus('idle')
-      setDeliveryFeeCents(0)
-      return
-    }
+    if (fulfillment !== 'delivery') return
+    setQuoteStatus('idle')
+    setDeliveryFeeCents(0)
+  }, [postalCode, fulfillment])
 
-    let cancelled = false
-    ;(async () => {
-      try {
-        setQuoteStatus('loading')
-        const resp = await fetch('/api/delivery/quote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ postalCode }),
-        })
-        const data = await resp.json().catch(() => ({}))
-        if (cancelled) return
-        if (resp.ok && data?.ok) {
-          setDeliveryFeeCents(data.fee_cents || 0)
-          setQuoteStatus('ok')
-        } else if (data?.reason === 'OUT_OF_ZONE') {
-          setDeliveryFeeCents(0)
-          setQuoteStatus('out')
-        } else {
-          setDeliveryFeeCents(0)
-          setQuoteStatus('error')
-        }
-      } catch (err) {
-        console.error(err)
-        if (!cancelled) {
-          setDeliveryFeeCents(0)
-          setQuoteStatus('error')
-        }
+  const handleQuoteDelivery = async () => {
+    if (fulfillment !== 'delivery' || !postalValid) return
+    setQuoteStatus('loading')
+    setDeliveryFeeCents(0)
+    try {
+      const resp = await fetch('/api/delivery/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postalCode }),
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (resp.ok && data?.ok) {
+        setDeliveryFeeCents(data.fee_cents || 0)
+        setQuoteStatus('ok')
+      } else if (data?.reason === 'OUT_OF_ZONE') {
+        setDeliveryFeeCents(0)
+        setQuoteStatus('out')
+      } else {
+        setDeliveryFeeCents(0)
+        setQuoteStatus('error')
       }
-    })()
-    return () => {
-      cancelled = true
+    } catch (err) {
+      console.error(err)
+      setDeliveryFeeCents(0)
+      setQuoteStatus('error')
     }
-  }, [fulfillment, postalCode, postalValid])
+  }
 
   const planCents = Number(subCart.priceCents) || 0
   const addonCents = addonSubtotalCents(subCart)
@@ -337,73 +329,25 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       <div className="page-wrapper">
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
-            <p className="checkout-summary-text">Your weekly plan</p>
-            {savedCents > 0 ? (
-              <p className="subscribe-cart-savings-pill">
-                You are saving {formatPlanPrice(savedCents)} by ordering through a subscription plan.
-              </p>
-            ) : null}
-
-            <div className="general-text" style={{ margin: '10px 0 16px' }}>
-              <label style={{ marginRight: 16 }}>
-                <input
-                  type="radio"
-                  name="sub-fulfillment"
-                  value="pickup"
-                  checked={fulfillment === 'pickup'}
-                  onChange={() => setFulfillment('pickup')}
-                />{' '}
-                Pickup
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="sub-fulfillment"
-                  value="delivery"
-                  checked={fulfillment === 'delivery'}
-                  onChange={() => setFulfillment('delivery')}
-                />{' '}
-                Delivery
-              </label>
-            </div>
-
-            <div className="promo-wrap general-text">
-              <div className="promo-row">
-                <input
-                  id="sub-promo"
-                  type="text"
-                  value={promoInput}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    setPromoInput(next)
-                    if (!next.trim() || next.trim().toLowerCase() !== (lastValidatedCode || '').toLowerCase()) {
-                      setPromoResult(null)
-                    }
-                  }}
-                  placeholder="Have a promo code?"
-                  autoComplete="off"
-                  className="promo-input"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  disabled={promoLoading}
-                  className={`checkout-button promo-apply-btn ${promoLoading ? 'is-disabled' : ''}`}
-                >
-                  {promoLoading ? 'Applying…' : 'Apply'}
-                </button>
-              </div>
-              {promoResult ? (
-                <div
-                  className={`promo-msg ${promoResult.valid ? 'promo-msg--ok' : 'promo-msg--err'}`}
-                  aria-live="polite"
-                >
-                  {promoResult.message}
-                </div>
+            <div className="subscribe-checkout-hero">
+              <p className="checkout-summary-text">Review &amp; Confirm</p>
+              {savedCents > 0 ? (
+                <p className="subscribe-cart-savings-pill">
+                  You&apos;re saving ${(savedCents / 100).toFixed(0)} with your subscription.
+                </p>
               ) : null}
             </div>
 
-            <p className="subscribe-summary-heading">Weekly Subscription</p>
+            <div className="subscribe-summary-heading-row">
+              <p className="subscribe-summary-heading">Weekly Subscription</p>
+              <button
+                type="button"
+                className="subscribe-terms-link"
+                onClick={openSubscriptionDetails}
+              >
+                Subscription terms
+              </button>
+            </div>
             <div className="checkout-summary-subtotal">
               <p className="subtotal">
                 {subCart.mealCount} {Number(subCart.mealCount) === 1 ? 'meal' : 'meals'} plan
@@ -486,27 +430,55 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
               </>
             ) : null}
 
-            {fulfillment === 'pickup' ? (
-              <PickupSelector
-                pickupDate={pickupDate}
-                pickupTime={pickupTime}
-                onDateChange={setPickupDate}
-                onTimeChange={setPickupTime}
-                lockedDate={lockedDate}
-                showReviewNotes={false}
-              />
-            ) : (
-              <DeliverySelector
-                postalCode={postalCode}
-                onPostalCodeChange={setPostalCode}
-                feeCents={deliveryFeeCents}
-                onValidate={({ valid }) => setPostalValid(valid)}
-                deliveryDate={deliveryDate}
-                onDeliveryDateChange={setDeliveryDate}
-                lockedDate={lockedDate}
-                showReviewNotes={false}
-              />
-            )}
+            <div className="subscribe-fulfill-block">
+              <p className="subscribe-summary-heading">How you&apos;ll get it</p>
+              <div className="general-text subscribe-fulfill-row">
+                <label style={{ marginRight: 16 }}>
+                  <input
+                    type="radio"
+                    name="sub-fulfillment"
+                    value="pickup"
+                    checked={fulfillment === 'pickup'}
+                    onChange={() => setFulfillment('pickup')}
+                  />{' '}
+                  Pickup
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="sub-fulfillment"
+                    value="delivery"
+                    checked={fulfillment === 'delivery'}
+                    onChange={() => setFulfillment('delivery')}
+                  />{' '}
+                  Delivery
+                </label>
+              </div>
+
+              {fulfillment === 'pickup' ? (
+                <PickupSelector
+                  pickupDate={pickupDate}
+                  pickupTime={pickupTime}
+                  onDateChange={setPickupDate}
+                  onTimeChange={setPickupTime}
+                  lockedDate={lockedDate}
+                  showReviewNotes={false}
+                />
+              ) : (
+                <DeliverySelector
+                  postalCode={postalCode}
+                  onPostalCodeChange={setPostalCode}
+                  feeCents={deliveryFeeCents}
+                  onValidate={({ valid }) => setPostalValid(valid)}
+                  deliveryDate={deliveryDate}
+                  onDeliveryDateChange={setDeliveryDate}
+                  lockedDate={lockedDate}
+                  showReviewNotes={false}
+                  onCalculate={handleQuoteDelivery}
+                  calculateLoading={quoteStatus === 'loading'}
+                />
+              )}
+            </div>
 
             <div className="special-note-container">
               <label htmlFor="sub-special-note" className="general-text">Special Instructions </label>
@@ -524,26 +496,43 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
               />
             </div>
 
-            <div className="general-text subscribe-cart-notes">
-              <p>
-                Please review your order details
-                {fulfillment === 'pickup' ? ' and pickup time' : ''} before continuing.
-              </p>
-              <p>
-                You can see subscription details{' '}
+            <div className="promo-wrap general-text">
+              <div className="promo-row">
+                <input
+                  id="sub-promo"
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setPromoInput(next)
+                    if (!next.trim() || next.trim().toLowerCase() !== (lastValidatedCode || '').toLowerCase()) {
+                      setPromoResult(null)
+                    }
+                  }}
+                  placeholder="Have a promo code?"
+                  autoComplete="off"
+                  className="promo-input"
+                />
                 <button
                   type="button"
-                  className="subscribe-inline-link subscribe-details-link"
-                  onClick={openSubscriptionDetails}
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading}
+                  className={`checkout-button promo-apply-btn ${promoLoading ? 'is-disabled' : ''}`}
                 >
-                  here
+                  {promoLoading ? 'Applying…' : 'Apply'}
                 </button>
-                .
-              </p>
-              <p>Once payment is processed, orders cannot be modified or cancelled.</p>
+              </div>
+              {promoResult ? (
+                <div
+                  className={`promo-msg ${promoResult.valid ? 'promo-msg--ok' : 'promo-msg--err'}`}
+                  aria-live="polite"
+                >
+                  {promoResult.message}
+                </div>
+              ) : null}
             </div>
 
-            <div className="general-text">
+            <div className="subscribe-checkout-consent">
               <input
                 type="checkbox"
                 id="sub-privacy-agree"
@@ -551,7 +540,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 onChange={(e) => setAgreedToPrivacy(e.target.checked)}
               />
               <label htmlFor="sub-privacy-agree">
-                I have read and agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link>.
+                I agree to the <Link className="footer-account-register" to="/privacy">Privacy Policy</Link> and understand orders are final once payment is processed.
               </label>
             </div>
 

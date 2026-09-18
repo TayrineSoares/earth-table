@@ -184,7 +184,7 @@ const PickupSelector = ({
         </div>
 
         {/* Time */}
-        <div className="pickup-field">
+        <div className="pickup-field pickup-field-time">
           <label htmlFor="pickup-time" className="pickup-label">
             Pickup Time
           </label>
