@@ -82,7 +82,7 @@ const AppRoutes = ({
           />
           <Route
             path="/subscribe/cart"
-            element={<SubscribeCart user={user} subCart={subCart} />}
+            element={<SubscribeCart user={user} subCart={subCart} bumpSubMeal={bumpSubMeal} bumpSubAddon={bumpSubAddon} />}
           />
           <Route
             path="/subscribe/confirmation"

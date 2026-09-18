@@ -36,6 +36,38 @@
   text-align: center;
 }
 
+.feedback-dialog-list {
+  margin: 0 0 12px;
+  padding: 0 0 0 1.15em;
+  text-align: left;
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #000;
+}
+
+.feedback-dialog-list li {
+  margin: 0 0 8px;
+}
+
+.feedback-dialog-list li:last-child {
+  margin-bottom: 0;
+}
+
+.feedback-dialog--list .feedback-dialog-hint {
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.feedback-dialog--list .feedback-dialog-hint .feedback-dialog-secondary {
+  display: inline;
+  font-variant: normal;
+  letter-spacing: 0;
+  min-height: 0;
+}
+
 .feedback-dialog--stacked .feedback-dialog-icon {
   display: block;
   margin-left: auto;
@@ -154,8 +186,9 @@
     font-size: 24px;
   }
 
-  .feedback-dialog-body {
-    font-size: 14px;
+  .feedback-dialog-body,
+  .feedback-dialog-list {
+    font-size: 13px;
   }
 
   .feedback-dialog-primary {

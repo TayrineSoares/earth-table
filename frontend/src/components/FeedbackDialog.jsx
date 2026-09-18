@@ -46,7 +46,7 @@ const FeedbackDialog = ({ dialog, onClose }) => {
       onClick={onClose}
     >
       <div
-        className={`feedback-dialog${Array.isArray(dialog.body) ? ' feedback-dialog--stacked' : ''}`}
+        className={`feedback-dialog${Array.isArray(dialog.body) ? ' feedback-dialog--stacked' : ''}${dialog.asList ? ' feedback-dialog--list' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-dialog-title"
@@ -57,7 +57,13 @@ const FeedbackDialog = ({ dialog, onClose }) => {
         <h2 id="feedback-dialog-title" className="feedback-dialog-title">
           {dialog.title}
         </h2>
-        {Array.isArray(dialog.body) ? (
+        {Array.isArray(dialog.body) && dialog.asList ? (
+          <ul id="feedback-dialog-body" className="feedback-dialog-list">
+            {dialog.body.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        ) : Array.isArray(dialog.body) ? (
           <div id="feedback-dialog-body" className="feedback-dialog-body-list">
             {dialog.body.map((paragraph, index) => (
               <p key={index} className="feedback-dialog-body">{paragraph}</p>

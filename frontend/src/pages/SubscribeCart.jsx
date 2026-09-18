@@ -14,11 +14,36 @@ import {
   formatPlanPrice,
   startSubscriptionCheckout,
 } from '../helpers/subscriptionHelpers'
-import { addonSubtotalCents, mealALaCarteCents, mealsExact } from '../helpers/subscriptionCart'
+import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
 
 const HST_RATE = 0.13
 
-const SubscribeCart = ({ user, subCart }) => {
+function CartQtyStepper({ name, quantity, onMinus, onPlus, plusDisabled = false }) {
+  return (
+    <div className="checkout-quantity-button-container subscribe-cart-qty">
+      <button
+        type="button"
+        className="checkout-cart-popup-remove-button"
+        onClick={onMinus}
+        aria-label={`Decrease ${name}`}
+      >
+        -
+      </button>
+      <p className="checkout-item-quantity">{quantity}</p>
+      <button
+        type="button"
+        className="checkout-cart-popup-add-button"
+        onClick={onPlus}
+        disabled={plusDisabled}
+        aria-label={`Increase ${name}`}
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
+const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const navigate = useNavigate()
   const [dates, setDates] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -46,7 +71,7 @@ const SubscribeCart = ({ user, subCart }) => {
       navigate('/subscribe-and-save', { replace: true })
       return
     }
-    if (!mealsExact(subCart)) {
+    if (!mealsExact(subCart) && totalQty(subCart.meals) === 0) {
       navigate(`/subscribe/${subCart.planId}/meals`, { replace: true })
     }
   }, [subCart, navigate])
@@ -196,6 +221,7 @@ const SubscribeCart = ({ user, subCart }) => {
     setDialog({
       icon: 'alert',
       title: 'Subscription details',
+      asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
         'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
@@ -205,6 +231,15 @@ const SubscribeCart = ({ user, subCart }) => {
         'Add-ons are for this week only. They do not repeat unless you add them again.',
         'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
       ].filter(Boolean),
+      hint: (
+        <>
+          All subscription information, rules, and terms are in the{' '}
+          <Link className="feedback-dialog-secondary" to="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </>
+      ),
       primaryLabel: 'Got it',
     })
   }
@@ -251,7 +286,7 @@ const SubscribeCart = ({ user, subCart }) => {
       navigate(`/login?next=${encodeURIComponent('/subscribe/cart')}`)
       return
     }
-    if (!agreedToPrivacy || !fulfillmentReady || isPaying) return
+    if (!agreedToPrivacy || !fulfillmentReady || isPaying || !mealsExact(subCart)) return
     setIsPaying(true)
     try {
       const data = await startSubscriptionCheckout({
@@ -303,11 +338,6 @@ const SubscribeCart = ({ user, subCart }) => {
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
             <p className="checkout-summary-text">Your weekly plan</p>
-            {dates?.first_delivery_label ? (
-              <p className="subscribe-first-delivery-note">
-                If you subscribe now, your first delivery will be {dates.first_delivery_label}.
-              </p>
-            ) : null}
             {savedCents > 0 ? (
               <p className="subscribe-cart-savings-pill">
                 You are saving {formatPlanPrice(savedCents)} by ordering through a subscription plan.
@@ -373,7 +403,7 @@ const SubscribeCart = ({ user, subCart }) => {
               ) : null}
             </div>
 
-            <p className="subscribe-summary-heading">Weekly Plan</p>
+            <p className="subscribe-summary-heading">Weekly Subscription</p>
             <div className="checkout-summary-subtotal">
               <p className="subtotal">
                 {subCart.mealCount} {Number(subCart.mealCount) === 1 ? 'meal' : 'meals'} plan
@@ -383,23 +413,23 @@ const SubscribeCart = ({ user, subCart }) => {
                 <span className="subscribe-hst-hint"> + hst</span>
               </p>
             </div>
-            <p className="subscribe-summary-heading">Add-ons</p>
-            {subCart.addons.length === 0 ? (
-              <p className="subscribe-summary-empty">None this week.</p>
-            ) : (
-              subCart.addons.map((item) => (
-                <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
-                  <p className="subtotal">
-                    {item.slug}
-                    {` × ${item.quantity}`}
-                  </p>
-                  <p className="subtotal">
-                    ${((item.price_cents * item.quantity) / 100).toFixed(2)}
-                    <span className="subscribe-hst-hint"> + hst</span>
-                  </p>
-                </div>
-              ))
-            )}
+            {subCart.addons.length > 0 ? (
+              <>
+                <p className="subscribe-summary-heading">Add-ons</p>
+                {subCart.addons.map((item) => (
+                  <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
+                    <p className="subtotal">
+                      {item.slug}
+                      {` × ${item.quantity}`}
+                    </p>
+                    <p className="subtotal">
+                      ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                      <span className="subscribe-hst-hint"> + hst</span>
+                    </p>
+                  </div>
+                ))}
+              </>
+            ) : null}
             {promoResult?.valid ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
@@ -443,15 +473,17 @@ const SubscribeCart = ({ user, subCart }) => {
               <p className="total">Total</p>
               <p className="total">{formatPlanPrice(totalCents)}</p>
             </div>
-            <div className="checkout-summary-subtotal subscribe-due-row">
-              <p className="subtotal">Due today</p>
-              <p className="subtotal">{formatPlanPrice(dueTodayCents)}</p>
-            </div>
             {addonThursdayCents > 0 ? (
-              <div className="checkout-summary-subtotal">
-                <p className="subtotal">Add-ons billed on cutoff date</p>
-                <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
-              </div>
+              <>
+                <div className="checkout-summary-subtotal subscribe-due-row">
+                  <p className="subtotal">Due today</p>
+                  <p className="subtotal">{formatPlanPrice(dueTodayCents)}</p>
+                </div>
+                <div className="checkout-summary-subtotal">
+                  <p className="subtotal">Add-ons billed on cutoff date</p>
+                  <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
+                </div>
+              </>
             ) : null}
 
             {fulfillment === 'pickup' ? (
@@ -526,7 +558,7 @@ const SubscribeCart = ({ user, subCart }) => {
             <button
               type="button"
               className="checkout-button"
-              disabled={user ? (!agreedToPrivacy || !fulfillmentReady || isPaying) : false}
+              disabled={user ? (!agreedToPrivacy || !fulfillmentReady || isPaying || !mealsExact(subCart)) : false}
               onClick={handleConfirm}
             >
               {user ? (isPaying ? 'Redirecting…' : 'Confirm & Subscribe') : 'Sign in to subscribe'}
@@ -546,7 +578,13 @@ const SubscribeCart = ({ user, subCart }) => {
                 <div className="checkout-item-details">
                   <p className="checkout-item-title">
                     {item.slug}
-                    <span className="subscribe-item-qty">x {item.quantity}</span>
+                    <CartQtyStepper
+                      name={item.slug}
+                      quantity={item.quantity}
+                      onMinus={() => bumpSubMeal(item, -1)}
+                      onPlus={() => bumpSubMeal(item, 1)}
+                      plusDisabled={totalQty(subCart.meals) >= subCart.mealCount}
+                    />
                   </p>
                 </div>
               </div>
@@ -567,7 +605,12 @@ const SubscribeCart = ({ user, subCart }) => {
                   <div className="checkout-item-details">
                     <p className="checkout-item-title">
                       {item.slug}
-                      <span className="subscribe-item-qty">x {item.quantity}</span>
+                      <CartQtyStepper
+                        name={item.slug}
+                        quantity={item.quantity}
+                        onMinus={() => bumpSubAddon(item, -1)}
+                        onPlus={() => bumpSubAddon(item, 1)}
+                      />
                     </p>
                   </div>
                 </div>
