@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
 import FeedbackDialog from '../components/FeedbackDialog';
+import { Trash2 } from 'lucide-react';
 import "../styles/Cart.css"
 import "../styles/SubscribeFlow.css"
 import { Link } from "react-router-dom";
@@ -41,6 +42,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [partnerWallet, setPartnerWallet] = useState(null);
   const [dialog, setDialog] = useState(null);
 
+  const checkoutEnabled = import.meta.env.VITE_CHECKOUT_ENABLED !== 'false';
 
   useEffect(() => {
     fetch(`${API_BASE}/cart`)
@@ -388,12 +390,12 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       </div>
 
       <div className="page-wrapper">
+        <div className="subscribe-checkout-hero">
+          <p className="checkout-summary-text">Review &amp; Confirm</p>
+        </div>
+
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
-            <div className="subscribe-checkout-hero">
-              <p className="checkout-summary-text">Review &amp; Confirm</p>
-            </div>
-
             <div className="subscribe-summary-heading-row subscribe-summary-heading-row--count">
               <p className="subscribe-summary-heading">Order summary</p>
               <p className="subscribe-item-count">
@@ -569,9 +571,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             <button
               type="button"
               className="checkout-button"
+              disabled={!checkoutEnabled}
               onClick={handleCheckout}
             >
-              Proceed to Checkout
+              {checkoutEnabled ? 'Proceed to Checkout' : 'Checkout unavailable'}
             </button>
           </div>
 
@@ -584,36 +587,39 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
                 <div className="checkout-items-container" key={item.id}>
                   <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                   <div className="checkout-item-details">
-                    <p className="checkout-item-title">
-                      {item.slug}
-                      <span className="subscribe-cart-qty">
+                    <p className="checkout-item-name">{item.slug}</p>
+                    <div className="subscribe-cart-item-meta">
+                      <p className="checkout-item-price">${((item.price_cents * item.quantity) / 100).toFixed(2)}</p>
+                      <span className="subscribe-cart-row-actions">
+                        <span className="subscribe-cart-qty">
+                          <button
+                            type="button"
+                            className="checkout-cart-popup-remove-button"
+                            onClick={() => removeOneFromCart(item)}
+                            aria-label={`Decrease ${item.slug}`}
+                          >
+                            -
+                          </button>
+                          <span className="checkout-item-quantity">{item.quantity}</span>
+                          <button
+                            type="button"
+                            className="checkout-cart-popup-add-button"
+                            onClick={() => addOneFromCart(item)}
+                            aria-label={`Increase ${item.slug}`}
+                          >
+                            +
+                          </button>
+                        </span>
                         <button
                           type="button"
-                          className="checkout-cart-popup-remove-button"
-                          onClick={() => removeOneFromCart(item)}
-                          aria-label={`Decrease ${item.slug}`}
+                          className="subscribe-cart-trash"
+                          onClick={() => removeAll(item)}
+                          aria-label={`Remove ${item.slug}`}
                         >
-                          -
-                        </button>
-                        <span className="checkout-item-quantity">{item.quantity}</span>
-                        <button
-                          type="button"
-                          className="checkout-cart-popup-add-button"
-                          onClick={() => addOneFromCart(item)}
-                          aria-label={`Increase ${item.slug}`}
-                        >
-                          +
+                          <Trash2 size={18} strokeWidth={2} />
                         </button>
                       </span>
-                    </p>
-                    <p className="checkout-item-price">${((item.price_cents * item.quantity) / 100).toFixed(2)}</p>
-                    <button
-                      type="button"
-                      className="checkout-popup-remove-button"
-                      onClick={() => removeAll(item)}
-                    >
-                      REMOVE
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))

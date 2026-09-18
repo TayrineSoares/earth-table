@@ -86,6 +86,8 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const [lastValidatedCode, setLastValidatedCode] = useState('')
   const [isPaying, setIsPaying] = useState(false)
 
+  const checkoutEnabled = import.meta.env.VITE_CHECKOUT_ENABLED !== 'false';
+
   useEffect(() => {
     if (!subCart.planId) {
       navigate('/subscribe-and-save', { replace: true })
@@ -375,17 +377,17 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       </div>
 
       <div className="page-wrapper">
+        <div className="subscribe-checkout-hero">
+          <p className="checkout-summary-text">Review &amp; Confirm</p>
+          {savedCents > 0 ? (
+            <p className="subscribe-cart-savings-pill">
+              You&apos;re saving ${(savedCents / 100).toFixed(0)} with your subscription.
+            </p>
+          ) : null}
+        </div>
+
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
-            <div className="subscribe-checkout-hero">
-              <p className="checkout-summary-text">Review &amp; Confirm</p>
-              {savedCents > 0 ? (
-                <p className="subscribe-cart-savings-pill">
-                  You&apos;re saving ${(savedCents / 100).toFixed(0)} with your subscription.
-                </p>
-              ) : null}
-            </div>
-
             <div className="subscribe-summary-heading-row">
               <p className="subscribe-summary-heading">Weekly Subscription</p>
               <button
@@ -608,10 +610,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
             <button
               type="button"
               className="checkout-button"
-              disabled={Boolean(user) && isPaying}
+              disabled={!checkoutEnabled || (Boolean(user) && isPaying)}
               onClick={handleConfirm}
             >
-              {user ? (isPaying ? 'Redirecting…' : 'Confirm & Subscribe') : 'Sign in to subscribe'}
+              {!checkoutEnabled
+                ? 'Checkout unavailable'
+                : user ? (isPaying ? 'Redirecting…' : 'Confirm & Subscribe') : 'Sign in to subscribe'}
             </button>
           </div>
 
@@ -627,7 +631,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                 <div className="checkout-item-details">
                   <p className="checkout-item-title">
-                    {item.slug}
+                    <span className="checkout-item-name">{item.slug}</span>
                     <CartQtyStepper
                       name={item.slug}
                       quantity={item.quantity}
@@ -654,7 +658,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
                   <div className="checkout-item-details">
                     <p className="checkout-item-title">
-                      {item.slug}
+                      <span className="checkout-item-name">{item.slug}</span>
                       <CartQtyStepper
                         name={item.slug}
                         quantity={item.quantity}
