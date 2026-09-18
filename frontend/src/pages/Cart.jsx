@@ -582,8 +582,9 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             <p className="subscribe-list-heading">Your items</p>
             {cart.length === 0 ? (
               <p className="general-text subscribe-cart-empty">
-                Your cart is empty.{' '}
-                <Link className="subscribe-inline-link" to="/products/category">Add items</Link>
+                Your cart is empty —{' '}
+                <Link className="subscribe-inline-link" to="/products/category">browse the menu</Link>
+                {' '}to add meals.
               </p>
             ) : (
               cart.map((item) => (
