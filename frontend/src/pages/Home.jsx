@@ -32,10 +32,17 @@ const Home = () => {
       <div className="header-images">
         <img src={headerImage} className="header-image" alt="Background" />
         <img src={logoNoBackground} className="logo-no-background" alt="Logo" />
-        <div className="logo-text">Organic Meal Delivery Service & Catering</div>
+        <div className="logo-text">Organic Meal Delivery & Catering Services</div>
       </div>
 
       <SubscribeSaveBand />
+
+      <section className="homepage-make" aria-labelledby="homepage-make-heading">
+        <h2 id="homepage-make-heading" className="homepage-make-title">What we make</h2>
+        <p className="homepage-make-body">
+          Meals, bowls, salads, and everything else — all cooked fresh each week.
+        </p>
+      </section>
 
       <div className="page-wrapper">
         {homepageCategories.map((category, index) => (

@@ -45,6 +45,43 @@
   padding-bottom: 118px;
 }
 
+.zigzag-section:first-child .zigzag-content {
+  padding-top: clamp(36px, 4.5vw, 56px);
+}
+
+.homepage-make {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(48px, 6vw, 72px) 40px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.homepage-make-title {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  font-size: clamp(28px, 3.4vw, 38px);
+  line-height: 1.15;
+  color: #000;
+  margin: 0;
+}
+
+.homepage-make-body {
+  font-family: var(--body-font);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.4;
+  color: #BE7200;
+  max-width: 52ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
 .zigzag-content.reverse {
   flex-direction: row-reverse;
 }
@@ -258,6 +295,14 @@
     padding-top: 64px;
   }
 
+  .homepage-make {
+    padding-left: 40px;
+    padding-right: 40px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .zigzag-image {
     width: 100%;
   }
@@ -304,6 +349,16 @@
   .homepage-footer {
     padding-top: 48px;
   }
+
+  .homepage-make {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .homepage-make-body {
+    font-size: 16px;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -348,6 +403,15 @@
 
   .homepage-footer {
     padding-top: 40px;
+  }
+
+  .homepage-make {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .homepage-make-body {
+    font-size: 14px;
   }
 
   .homepage-arrow {
