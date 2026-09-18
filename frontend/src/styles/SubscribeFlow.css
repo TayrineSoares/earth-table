@@ -375,7 +375,9 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin: 16px 0 0;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid #D9C7B0;
   font-family: var(--body-font);
   font-weight: 400;
   font-size: 15px;
@@ -484,6 +486,7 @@
 
 .subscribe-cart-page .promo-wrap .subscribe-summary-heading {
   margin-top: 0;
+  margin-bottom: 16px;
 }
 
 .subscribe-locked-date {
@@ -561,8 +564,63 @@
   color: #757575;
 }
 
+.subscribe-cart-page .subscribe-summary-heading {
+  margin: 16px 0 8px;
+}
+
+.subscribe-cart-page .subscribe-summary-heading-row {
+  align-items: center;
+  margin: 16px 0 8px;
+}
+
+.subscribe-cart-page .subscribe-terms-link {
+  min-height: 44px;
+  margin: -10px 0;
+  padding: 0 2px;
+}
+
 .subscribe-due-row {
   margin-top: 10px;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal .subtotal,
+.subscribe-cart-page .checkout-summary-tax .tax,
+.subscribe-cart-page .checkout-total .total {
+  margin: 0;
+  height: auto;
+  line-height: 1.3;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal,
+.subscribe-cart-page .checkout-summary-tax,
+.subscribe-cart-page .checkout-total {
+  align-items: baseline;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.subscribe-cart-page .checkout-summary-tax {
+  margin-top: 12px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 1px solid #D9C7B0;
+}
+
+.subscribe-cart-page .checkout-total {
+  margin-top: 10px;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal .subtotal:last-child,
+.subscribe-cart-page .checkout-summary-tax .tax:last-child,
+.subscribe-cart-page .checkout-total .total:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.subscribe-cart-page .checkout-summary-subtotal .subtotal:first-child,
+.subscribe-cart-page .checkout-summary-tax .tax:first-child,
+.subscribe-cart-page .checkout-total .total:first-child {
+  min-width: 0;
 }
 
 .subscribe-cart-notes {
@@ -645,17 +703,6 @@
   width: 100%;
   font-size: 20px;
   margin-bottom: 0;
-}
-
-.subscribe-cart-page .checkout-summary-subtotal .subtotal,
-.subscribe-cart-page .checkout-summary-tax .tax {
-  height: auto;
-  line-height: 1.3;
-}
-
-.subscribe-cart-page .checkout-summary-subtotal {
-  gap: 12px;
-  margin: 6px 0;
 }
 
 .subscribe-cart-items {
