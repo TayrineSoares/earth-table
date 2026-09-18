@@ -13,7 +13,7 @@ Routes live in `frontend/src/AppRoutes.jsx`. New pages must also be exported fro
 | Home-style landing | `Home.jsx` | Tall `.header-images` (663px) | `.page-wrapper` under the hero |
 | Menu / catalog | `Products.jsx` | None (optional in-content hero) | `.page-wrapper` only |
 | Auth / account | `Login.jsx` | `accountImage.png` via `.contact-header-image-container` | `.page-wrapper` |
-| Checkout / orders | `Cart.jsx` / `OrderHistory.jsx` / `Confirmation.jsx` | `checkoutImage.png` (234px) | `.page-wrapper` |
+| Checkout / orders | `SubscribeCart.jsx` (layout) + `Cart.css` / `OrderHistory.jsx` | `checkoutImage.png` (234px) | `.page-wrapper` |
 | Admin | `Admin.jsx` | None | `.admin-page` card, max-width 1000px |
 | Legal | `components/PrivacyPolicy.jsx` | None | `.et-terms` (this page is visually distinct — do not reuse for marketing) |
 
@@ -122,18 +122,39 @@ When restyling Menu, match the **item card chrome** in [components.md](component
 
 ## Checkout / orders
 
-**Cart / Confirmation / OrderHistory** use `checkoutImage.png` and `styles/Cart.css`.
+**Live checkout to copy: SubscribeCart** — `pages/SubscribeCart.jsx` + `styles/SubscribeFlow.css` + `styles/Cart.css`.
 
-- Forum 62 summary title
-- Two-column layout stacks at 849–1024
-- Line items: image + Forum 38 name + brown price + taupe bottom border
-- Qty stepper: tangerine 16px type
-- Checkout CTA: filled tangerine, 100% width from 1024
-- Promo row stacks at 480
-- Confirmation card: cream, `2px solid #EDA413`, 15px radius
-- Empty/error states stay inside `.page-wrapper` with the same CTA class
+When restyling à-la-carte `Cart.jsx`, match this page. Do not keep the old stacked radios / auto-quote / single grand HST as the visual source.
 
-Pickup/delivery widgets: [components.md](components.md). Date validation on **blur**, never inside `onChange`.
+Shell: `checkoutImage.png` (234px) + `.page-wrapper` + two columns (summary left, items right). Columns stack at **849px**. Left summary max-width **640px**.
+
+### Left column order
+
+1. **Review & Confirm** (Forum 62) + optional peach savings pill. Taupe `1px solid #D9C7B0` divider under the hero.
+2. **Summary sections** — Forum **24** `.subscribe-summary-heading` with tangerine underline. Label and price on **one row** (`display: flex; justify-content: space-between`). Reset `<p>` margin on those rows (default paragraph margin is why the old summary looked huge).
+   - Plan / items first. Delivery fee sits with the plan, not with extras.
+   - **hst** is a line **inside each section** (plan+delivery, then add-ons). No muted `+ hst` beside prices. No single grand HST row.
+   - Promo discount (if applied) lives in the plan section, above that section’s hst.
+   - Taupe divider, then **Total**. Split “Due today” / “billed later” only when extras exist.
+3. **How you'll get it** — taupe divider, then heading, then Pickup / Delivery **radios with visible dots** (`.subscribe-fulfill-option`): 20px circle, taupe ring, tangerine fill when selected, Encode Sans 15 small-caps labels, 44px tap. Not peach chips.
+4. Pickup or delivery fields (see [components.md](components.md)).
+5. Special instructions (extra space above the box).
+6. Locked delivery date **after** the notes box: `First Delivery - Sunday, September 27th, 11:00 AM- 6:00 PM`.
+7. **Promo code** heading (same 24px underline), 16px before the input, taupe divider above the block.
+8. Taupe divider, privacy checkbox, then Confirm CTA. Button stays clickable; missing fields open **FeedbackDialog** (`asList` when more than one).
+
+### Right column
+
+- Compact 64px thumbs. Name + cream/tangerine outlined qty stepper (`.subscribe-cart-qty`) on one row, stepper far right.
+- Edit meals / Edit add-ons as muted brown links.
+
+### Copy that is subscribe-only (do not copy onto à-la-carte)
+
+- Title **Review & Confirm**; savings pill; Subscription terms dialog; First Pickup / First Delivery locked Sunday; Calculate on delivery (do not auto-quote); hide empty add-ons in the summary.
+
+À-la-carte still picks its own date. Reuse the **layout, dividers, radios, per-section hst, promo heading, and missing-field dialog**.
+
+**Confirmation / OrderHistory** — same hero + `Cart.css`. Confirmation card: cream, `2px solid #EDA413`, 15px radius.
 
 ## Admin
 

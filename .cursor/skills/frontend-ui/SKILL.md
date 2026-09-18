@@ -69,7 +69,7 @@ const YourPage = () => (
 export default YourPage;
 ```
 
-Copy the header class from Contact (`contact-header-image-container`, 234px) unless the page is Home, Menu, Admin, or checkout — see [page-patterns.md](page-patterns.md).
+Copy the header class from Contact (`contact-header-image-container`, 234px) unless the page is Home, Menu, Admin, or checkout — see [page-patterns.md](page-patterns.md). **Checkout layout copies SubscribeCart**, not the older à-la-carte Cart.
 
 ## Hard rules
 

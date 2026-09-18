@@ -108,7 +108,9 @@ Images inside heroes: `width/height 100%`, `object-fit: cover`.
 - Form field label → input: 15px
 - Input padding: `19px 51px` desktop → `20px` @768 → `12px 16px` @480
 - Flex gaps: 1–2rem content, 10px chips, product grid `36px` rows / **`40px` columns** on the 4-col meals catalog
-- In-copy secondary actions (Change plan): muted `#757575`, 15px — do not compete with brown prices
+- In-copy secondary actions (Change plan, Subscription terms): muted `#757575`, 15px — do not compete with brown prices
+- Checkout section breaks: `1px solid #D9C7B0` (under the title, above How you'll get it, promo, consent, and Total)
+- Checkout section titles: Forum **24px** + `2px solid #EDA413` underline (`.subscribe-summary-heading`)
 
 ## Links and icons
 

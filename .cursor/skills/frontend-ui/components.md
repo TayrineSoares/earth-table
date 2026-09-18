@@ -39,8 +39,11 @@ setDialog({
   primaryLabel: 'Got it',
   secondaryLabel: 'Forgot password?', // optional
   secondaryTo: '/reset-password',     // optional; renders Link
+  asList: true,                       // optional; body is string[]
 });
 ```
+
+Incomplete checkout: keep Confirm enabled. On click, dialog title **One more step** (one gap) or **A few things are missing** (`asList` when several).
 
 Behavior to copy for any new overlay:
 
@@ -186,11 +189,16 @@ Grid: `.products-container`. Subscribe meals is 4-col with `gap: 36px 40px` (mor
 
 **PickupSelector** / **DeliverySelector** — `styles/PickupSelector.css`
 
-- Labels Encode Sans 16px small-caps `#757575`
+- Labels Encode Sans 16px small-caps `#757575`; locked date text is `#000` (`.pickup-label-date`)
 - Inputs 16px+, taupe 1.5px border, 10px radius, tangerine focus ring
 - `type="date"`: set value in `onChange`, **validate in `onBlur`** (iOS date spinner fires change while scrolling)
-- Parse `YYYY-MM-DD` as local (`new Date(y, m - 1, d)`), never `new Date('YYYY-MM-DD')`
+- Parse `YYYY-MM-DD` as local via `parseLocalYmd` / `formatLongDate` in `helpers/blockedDates.js`, never `new Date('YYYY-MM-DD')`
 - Errors as text under the field, not `alert`
+- **Locked pickup** (subscribe): one row — `First Pickup - Sunday, September 27th` + time `<select>` (no “Pickup Time” label). `.pickup-field-datetime` vertically centers the 44px select. Pass `dateLabel="First Pickup"`.
+- **Locked delivery** (subscribe): hide the date field (`showDateField={false}`). Show `First Delivery - {date}, 11:00 AM- 6:00 PM` after Special Instructions.
+- Delivery quote: optional `onCalculate` + **Calculate** (promo-apply button). Subscribe checkout quotes only on click; à-la-carte Cart may still auto-quote until it is restyled to match.
+- Fee helper copy: **Delivery fee: $X.XX** (not “Estimated”)
+- Pickup/delivery radios on checkout: keep the **dot**. `.subscribe-fulfill-option` — 20px circle, `1.5px solid #D8C7B0`, checked `radial-gradient` tangerine fill `#EDA413`. Encode Sans 15 / 500 / small-caps. Do not replace with peach chips.
 
 ## Admin pieces
 
