@@ -581,7 +581,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
           <div className="checkout-items subscribe-cart-items">
             <p className="subscribe-list-heading">Your items</p>
             {cart.length === 0 ? (
-              <p className="general-text">Your cart is empty.</p>
+              <p className="general-text subscribe-cart-empty">
+                Your cart is empty.{' '}
+                <Link className="subscribe-inline-link" to="/products/category">Add items</Link>
+              </p>
             ) : (
               cart.map((item) => (
                 <div className="checkout-items-container" key={item.id}>

@@ -862,6 +862,16 @@
   margin: 16px 0 8px;
 }
 
+.subscribe-cart-empty {
+  margin: 8px 0 0;
+}
+
+.subscribe-cart-empty .subscribe-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .subscribe-cart-page .subscribe-cart-heading-row {
   margin: 16px 0 8px;
   align-items: center;
