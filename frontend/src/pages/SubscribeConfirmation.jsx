@@ -15,7 +15,7 @@ import '../styles/Confirmation.css'
 
 const POLL_MS = 1000
 const POLL_TRIES = 20
-const RENEWAL_DAY = 'Thursday'
+const RENEWAL_DAY = 'Wednesday'
 
 /** "Sunday, September 27, 2026" -> "Sunday, September 27" */
 function sundayLabel(ymd) {
@@ -37,12 +37,12 @@ function splitWindow(label) {
   return { start: String(label || '—').trim(), end: '' }
 }
 
-/** First box is Sunday; next weekly charge is that week's Thursday. */
-function thursdayAfterSunday(ymd) {
+/** First box is Sunday; next weekly charge is that week's Wednesday. */
+function wednesdayAfterSunday(ymd) {
   const [y, m, d] = String(ymd || '').split('-').map(Number)
   if (!y || !m || !d) return RENEWAL_DAY
   const date = new Date(y, m - 1, d)
-  date.setDate(date.getDate() + 4)
+  date.setDate(date.getDate() + 3)
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -150,7 +150,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const note = String(cycle.special_note || '').trim()
   const postal = cycle.delivery_postal_code || customer.postal_code || ''
   const price = formatPlanPrice(plan.price_cents)
-  const nextChargeDate = thursdayAfterSunday(ymd)
+  const nextChargeDate = wednesdayAfterSunday(ymd)
   const heading = firstName
     ? `Your weekly plan is set, ${firstName}`
     : 'Your weekly plan is set'
@@ -262,6 +262,10 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Renews</span>
                   <span className="subscribe-confirm-row-value">Every {RENEWAL_DAY}</span>
+                </div>
+                <div className="subscribe-confirm-row">
+                  <span className="subscribe-confirm-row-label">Meal Selection Cutoff</span>
+                  <span className="subscribe-confirm-row-value">Every Thursday 5:00pm EST</span>
                 </div>
               </div>
 

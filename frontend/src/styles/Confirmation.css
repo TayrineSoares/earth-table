@@ -389,12 +389,13 @@
 
 .subscribe-confirm-row-label {
   color: #757575;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .subscribe-confirm-row-value {
   color: #000;
   text-align: right;
+  min-width: 0;
 }
 
 .subscribe-confirm-card-fulfill {
