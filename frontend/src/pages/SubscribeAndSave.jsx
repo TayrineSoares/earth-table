@@ -72,21 +72,6 @@ const SubscribeAndSave = () => {
   }, [])
 
   const savePercent = dates && dates.save_up_to_percent
-  const cutoffPassed = !!(dates && dates.cutoff_passed)
-
-  const onSelectPlan = (plan) => {
-    const mealsPath = `/subscribe/${plan.id}/meals`
-    if (!cutoffPassed) return
-
-    setDialog({
-      icon: 'alert',
-      title: "This week's cutoff has passed",
-      body: `If you subscribe now, your first delivery will be ${dates.first_delivery_label}. This Sunday is not available.`,
-      primaryLabel: 'Continue',
-      primaryTo: mealsPath,
-      secondaryLabel: 'Go back',
-    })
-  }
 
   const sortedPlans = [...plans].sort((a, b) => {
     const aMain = a.meal_count >= 10 ? 0 : 1
@@ -188,19 +173,9 @@ const SubscribeAndSave = () => {
                           {formatPlanPrice(plan.price_cents)}/week
                         </p>
                         <p className="subscribe-plan-desc">{plan.display_description || plan.description}</p>
-                        {cutoffPassed ? (
-                          <button
-                            type="button"
-                            className={selectClass}
-                            onClick={() => onSelectPlan(plan)}
-                          >
-                            Select
-                          </button>
-                        ) : (
-                          <Link className={selectClass} to={mealsPath}>
-                            Select
-                          </Link>
-                        )}
+                        <Link className={selectClass} to={mealsPath}>
+                          Select
+                        </Link>
                       </article>
                     )
                   })}

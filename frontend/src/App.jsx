@@ -1,7 +1,7 @@
 import './App.css';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
 import { supabase } from './supabaseClient';
@@ -242,10 +242,14 @@ const App = () => {
     wipeSubCart(user);
   };
 
-  const beginSubCart = (nextOrFn) => {
-    dropAlaCarteForSub();
+  const dropAlaCarteForSubRef = useRef(dropAlaCarteForSub);
+  dropAlaCarteForSubRef.current = dropAlaCarteForSub;
+
+  // Stable setter so Choose your meals does not refetch on every render.
+  const beginSubCart = useCallback((nextOrFn) => {
+    dropAlaCarteForSubRef.current();
     setSubCart(nextOrFn);
-  };
+  }, []);
 
   const addItemsToCart = (products = []) => {
     const list = Array.isArray(products) ? products.filter((item) => item?.id) : [];

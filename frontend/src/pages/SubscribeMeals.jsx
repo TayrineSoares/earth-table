@@ -85,7 +85,7 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
     return () => {
       cancelled = true
     }
-  }, [planId, setSubCart])
+  }, [planId])
 
   const picked = totalQty(subCart.meals)
   const need = Number(subCart.mealCount) || 0

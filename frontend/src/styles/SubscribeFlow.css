@@ -385,6 +385,11 @@
   max-width: 42ch;
 }
 
+.subscribe-cart-page .subscribe-cutoff-note {
+  margin: 0 0 16px;
+  max-width: 52ch;
+}
+
 .subscribe-cart-page .checkout-summary-text {
   width: auto;
   height: auto;

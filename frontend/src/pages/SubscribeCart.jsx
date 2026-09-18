@@ -259,6 +259,14 @@ const SubscribeCart = ({ user, subCart }) => {
         <div className="checkout-page-container">
           <div className="checkout-order-summary">
             <p className="checkout-summary-text">Your weekly plan</p>
+            {dates?.cutoff_passed ? (
+              <p className="subscribe-cutoff-note">
+                This week&apos;s cutoff has passed, so this Sunday is not available.
+                {dates.first_delivery_label
+                  ? ` If you subscribe now, your first delivery will be ${dates.first_delivery_label}.`
+                  : ''}
+              </p>
+            ) : null}
             {savedCents > 0 ? (
               <p className="subscribe-savings-line">
                 You saved ${(savedCents / 100).toFixed(2)} by ordering through a subscription plan.
@@ -446,9 +454,6 @@ const SubscribeCart = ({ user, subCart }) => {
 
             {dates ? (
               <div className="subscribe-dates-block general-text">
-                {dates.cutoff_passed ? (
-                  <p>This week&apos;s cutoff has passed. This Sunday is not available.</p>
-                ) : null}
                 <p>Every plan lets you choose any combination of bowls, salads, and main plates.</p>
                 <p>
                   Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week&apos;s box.
