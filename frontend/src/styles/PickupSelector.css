@@ -94,6 +94,30 @@
   flex-basis: 100%;
 }
 
+.pickup-datetime-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pickup-datetime-controls .pickup-input,
+.pickup-datetime-controls .pickup-select {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  font-size: 16px;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+.pickup-datetime-controls .pickup-select {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 @media (max-width: 768px) {
   .pickup-field-datetime {
     flex-direction: column;
@@ -107,11 +131,25 @@
     flex: none;
     box-sizing: border-box;
   }
+
+  .pickup-datetime-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pickup-datetime-controls .pickup-input,
+  .pickup-datetime-controls .pickup-select {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+  }
 }
 
 @media (max-width: 480px) {
   .pickup-field-datetime .pickup-label,
-  .pickup-field-datetime .pickup-select {
+  .pickup-field-datetime .pickup-select,
+  .pickup-datetime-controls .pickup-input,
+  .pickup-datetime-controls .pickup-select {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
