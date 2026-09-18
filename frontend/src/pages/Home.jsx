@@ -31,7 +31,7 @@ const Home = () => {
       <div className="header-images">
         <img src={headerImage} className="header-image" alt="Background" />
         <img src={logoNoBackground} className="logo-no-background" alt="Logo" />
-        <div className="logo-text">Creating Nourishing Experiences that Support your Health Journey</div>
+        <div className="logo-text">Organic Meal Delivery Service & Catering</div>
       </div>
 
       <div className="page-wrapper">

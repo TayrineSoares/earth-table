@@ -1,7 +1,7 @@
 .header-images {
   position: relative;
   overflow: hidden;
-  height: 663px;
+  height: 590px;
 }
 
 .header-image {
@@ -14,15 +14,15 @@
   position: absolute;
   top: 32%;
   left: 50%;
-  width: 370px;
-  height: 370px;
+  width: 320px;
+  height: 320px;
   transform: translate(-50%, -50%);
   z-index: 2;
 }
 
 .logo-text {
   position: absolute;
-  top: calc(50% + 135px);
+  top: calc(50% + 115px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -30,8 +30,12 @@
   font-family: var(--heading-font);
   font-size: 62px;
   font-weight: 400;
+  line-height: 1.1;
   text-align: center;
   width: 931px;
+  max-width: calc(100% - 48px);
+  box-sizing: border-box;
+  overflow-wrap: break-word;
 }
 
 .zigzag-content {
@@ -259,6 +263,8 @@
   .logo-text {
     font-size: 30px;
     width: 90%;
+    max-width: 100%;
+    padding: 0 16px;
     top: calc(50% + 90px);
   }
 
@@ -291,7 +297,10 @@
   }
 
   .logo-text {
-    font-size: 20px;
+    font-size: 18px;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
     top: calc(50% + 70px);
   }
 
