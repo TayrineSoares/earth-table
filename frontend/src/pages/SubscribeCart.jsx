@@ -18,6 +18,26 @@ import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../
 
 const HST_RATE = 0.13
 
+function formatLockedDateLabel(yyyyMmDd) {
+  if (!yyyyMmDd) return ''
+  const [y, m, d] = yyyyMmDd.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const n = date.getDate()
+  const v = n % 100
+  const ordinal = v >= 11 && v <= 13
+    ? `${n}th`
+    : n % 10 === 1
+      ? `${n}st`
+      : n % 10 === 2
+        ? `${n}nd`
+        : n % 10 === 3
+          ? `${n}rd`
+          : `${n}th`
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'long' })
+  const month = date.toLocaleDateString('en-US', { month: 'long' })
+  return `${weekday}, ${month} ${ordinal}`
+}
+
 function CartQtyStepper({ name, quantity, onMinus, onPlus, plusDisabled = false }) {
   return (
     <div className="subscribe-cart-qty">
@@ -208,6 +228,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   )
   const totalCents = dueTodayCents + addonThursdayCents
   const lockedDate = dates?.first_delivery_date || ''
+  const lockedDeliveryLabel = formatLockedDateLabel(lockedDate)
 
   const openSubscriptionDetails = () => {
     setDialog({
@@ -264,21 +285,50 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     }
   }
 
-  const fulfillmentReady =
-    fulfillment === 'pickup'
-      ? Boolean(pickupDate && pickupTime)
-      : postalValid &&
-        quoteStatus === 'ok' &&
-        deliveryFeeCents > 0 &&
-        Boolean(deliveryDate) &&
-        specialNote.trim().length >= 8
+  const missingCheckoutItems = () => {
+    const missing = []
+    if (!mealsExact(subCart)) {
+      missing.push(`Choose exactly ${subCart.mealCount} meals before confirming.`)
+    }
+    if (fulfillment === 'pickup') {
+      if (!pickupTime) missing.push('Select a pickup time.')
+      if (!pickupDate) missing.push('Pickup date is missing.')
+    } else {
+      if (!postalValid) {
+        missing.push('Enter a valid postal code.')
+      } else if (quoteStatus === 'out') {
+        missing.push('Delivery is not available for this postal code.')
+      } else if (quoteStatus !== 'ok' || deliveryFeeCents <= 0) {
+        missing.push('Calculate the delivery fee.')
+      }
+      if (!deliveryDate) missing.push('Delivery date is missing.')
+      if (specialNote.trim().length < 8) {
+        missing.push('Add your full delivery address in Special Instructions.')
+      }
+    }
+    if (!agreedToPrivacy) {
+      missing.push('Agree to the Privacy Policy to continue.')
+    }
+    return missing
+  }
 
   const handleConfirm = async () => {
     if (!user) {
       navigate(`/login?next=${encodeURIComponent('/subscribe/cart')}`)
       return
     }
-    if (!agreedToPrivacy || !fulfillmentReady || isPaying || !mealsExact(subCart)) return
+    if (isPaying) return
+    const missing = missingCheckoutItems()
+    if (missing.length) {
+      setDialog({
+        icon: 'alert',
+        title: missing.length === 1 ? 'One more step' : 'A few things are missing',
+        asList: missing.length > 1,
+        body: missing.length === 1 ? missing[0] : missing,
+        primaryLabel: 'Got it',
+      })
+      return
+    }
     setIsPaying(true)
     try {
       const data = await startSubscriptionCheckout({
@@ -357,32 +407,6 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 <span className="subscribe-hst-hint"> + hst</span>
               </p>
             </div>
-            {subCart.addons.length > 0 ? (
-              <>
-                <p className="subscribe-summary-heading">Add-ons</p>
-                {subCart.addons.map((item) => (
-                  <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
-                    <p className="subtotal">
-                      {item.slug}
-                      {` × ${item.quantity}`}
-                    </p>
-                    <p className="subtotal">
-                      ${((item.price_cents * item.quantity) / 100).toFixed(2)}
-                      <span className="subscribe-hst-hint"> + hst</span>
-                    </p>
-                  </div>
-                ))}
-              </>
-            ) : null}
-            {promoResult?.valid ? (
-              <div className="checkout-summary-subtotal">
-                <p className="subtotal">
-                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
-                </p>
-                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
-              </div>
-            ) : null}
-
             {fulfillment === 'delivery' ? (
               <>
                 <div className="checkout-summary-subtotal">
@@ -407,6 +431,31 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   </p>
                 ) : null}
               </>
+            ) : null}
+            {subCart.addons.length > 0 ? (
+              <>
+                <p className="subscribe-summary-heading">Add-ons</p>
+                {subCart.addons.map((item) => (
+                  <div className="checkout-summary-subtotal" key={`sum-addon-${item.id}`}>
+                    <p className="subtotal">
+                      {item.slug}
+                      {` × ${item.quantity}`}
+                    </p>
+                    <p className="subtotal">
+                      ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                      <span className="subscribe-hst-hint"> + hst</span>
+                    </p>
+                  </div>
+                ))}
+              </>
+            ) : null}
+            {promoResult?.valid ? (
+              <div className="checkout-summary-subtotal">
+                <p className="subtotal">
+                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
+                </p>
+                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
+              </div>
             ) : null}
 
             <div className="checkout-summary-tax">
@@ -476,6 +525,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   showReviewNotes={false}
                   onCalculate={handleQuoteDelivery}
                   calculateLoading={quoteStatus === 'loading'}
+                  showDateField={false}
                 />
               )}
             </div>
@@ -495,8 +545,18 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 rows="3"
               />
             </div>
+            {fulfillment === 'delivery' && lockedDeliveryLabel ? (
+              <p className="pickup-label subscribe-locked-date">
+                Delivery Date
+                <span className="pickup-label-date">
+                  {' '}
+                  - {lockedDeliveryLabel}, between 11:00 AM and 6:00 PM
+                </span>
+              </p>
+            ) : null}
 
             <div className="promo-wrap general-text">
+              <p className="subscribe-summary-heading">Promo code</p>
               <div className="promo-row">
                 <input
                   id="sub-promo"
@@ -547,7 +607,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
             <button
               type="button"
               className="checkout-button"
-              disabled={user ? (!agreedToPrivacy || !fulfillmentReady || isPaying || !mealsExact(subCart)) : false}
+              disabled={Boolean(user) && isPaying}
               onClick={handleConfirm}
             >
               {user ? (isPaying ? 'Redirecting…' : 'Confirm & Subscribe') : 'Sign in to subscribe'}

@@ -15,6 +15,7 @@ export default function DeliverySelector({
   showReviewNotes = true,
   onCalculate,
   calculateLoading = false,
+  showDateField = true,
 }) {
   const [dateError, setDateError] = useState('');
   const locked = Boolean(lockedDate);
@@ -171,7 +172,7 @@ export default function DeliverySelector({
           )}
           {feeCents > 0 && (
             <p className="pickup-hint">
-              Estimated delivery fee: ${(feeCents / 100).toFixed(2)}
+              Delivery fee: ${(feeCents / 100).toFixed(2)}
             </p>
           )}
         </div>
@@ -181,6 +182,7 @@ export default function DeliverySelector({
         </div>
 
         {/* Delivery Date */}
+        {showDateField ? (
         <div className="pickup-field">
           <label className="pickup-label" htmlFor={locked ? undefined : 'delivery-date'}>
             Delivery Date
@@ -212,13 +214,13 @@ export default function DeliverySelector({
             </p>
           )}
 
-          {/* Neutral helper if picking earliest date but 24h pushes past window end */}
           {isMinDate && !hasAnyTimeLeftToday && !locked && (
             <div className="pickup-helper">
               <span>No slots left for this date.</span>
             </div>
           )}
         </div>
+        ) : null}
 
         {showReviewNotes ? (
           <div className="general-text">

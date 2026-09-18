@@ -151,74 +151,87 @@ const PickupSelector = ({
   return (
     <section className="pickup-section">
       <div className="pickup-grid">
-        {/* Date */}
-        <div className="pickup-field">
-          <label htmlFor={locked ? undefined : 'pickup-date'} className="pickup-label">
-            Pickup Date
-            {locked && lockedDateLabel ? (
-              <span className="pickup-label-date"> - {lockedDateLabel}</span>
+        {locked ? (
+          <div className="pickup-field pickup-field-datetime">
+            <p className="pickup-label">
+              Pickup Date
+              {lockedDateLabel ? (
+                <span className="pickup-label-date"> - {lockedDateLabel}</span>
+              ) : null}
+            </p>
+            <select
+              id="pickup-time"
+              className="pickup-select"
+              value={pickupTime}
+              onChange={handleTimeChange}
+              disabled={!pickupDate || !!dateError}
+              aria-label="Pickup time"
+            >
+              <option value="">Select a time slot</option>
+              {SLOTS.map((slot) => (
+                <option
+                  key={slot}
+                  value={slot}
+                  disabled={!isSlotAllowed(slot)}
+                >
+                  {slot}
+                  {!isSlotAllowed(slot) ? ' — unavailable (<24h)' : ''}
+                </option>
+              ))}
+            </select>
+            {timeError ? <p className="pickup-error">{timeError}</p> : null}
+            {showNoSlotsToday ? (
+              <p className="pickup-hint">No slots left for this date.</p>
             ) : null}
-          </label>
-
-          {locked ? null : (
-            <input
-              id="pickup-date"
-              type="date"
-              className="pickup-input"
-              value={pickupDate}
-              min={minDateStr}
-              onChange={handleDateChange}
-              onBlur={handleDateBlur}
-            />
-          )}
-
-          {!locked ? (
-            <p className="pickup-hint">
-              Pickups require at least 24 hours&apos; notice.
-            </p>
-          ) : null}
-
-          {dateError && (
-            <p className="pickup-error">{dateError}</p>
-          )}
-        </div>
-
-        {/* Time */}
-        <div className="pickup-field pickup-field-time">
-          <label htmlFor="pickup-time" className="pickup-label">
-            Pickup Time
-          </label>
-
-          <select
-            id="pickup-time"
-            className="pickup-select"
-            value={pickupTime}
-            onChange={handleTimeChange}
-            disabled={!pickupDate || !!dateError}
-          >
-            <option value="">Select a time slot</option>
-            {SLOTS.map((slot) => (
-              <option
-                key={slot}
-                value={slot}
-                disabled={!isSlotAllowed(slot)}
+          </div>
+        ) : (
+          <>
+            <div className="pickup-field">
+              <label htmlFor="pickup-date" className="pickup-label">
+                Pickup Date
+              </label>
+              <input
+                id="pickup-date"
+                type="date"
+                className="pickup-input"
+                value={pickupDate}
+                min={minDateStr}
+                onChange={handleDateChange}
+                onBlur={handleDateBlur}
+              />
+              <p className="pickup-hint">
+                Pickups require at least 24 hours&apos; notice.
+              </p>
+              {dateError ? <p className="pickup-error">{dateError}</p> : null}
+            </div>
+            <div className="pickup-field pickup-field-time">
+              <select
+                id="pickup-time"
+                className="pickup-select"
+                value={pickupTime}
+                onChange={handleTimeChange}
+                disabled={!pickupDate || !!dateError}
+                aria-label="Pickup time"
               >
-                {slot}
-                {!isSlotAllowed(slot) ? ' — unavailable (<24h)' : ''}
-              </option>
-            ))}
-          </select>
-
-          {timeError && (
-            <p className="pickup-error">{timeError}</p>
-          )}
-
-          {showNoSlotsToday && (
-            <p className="pickup-hint">
-              No slots left for this date.
-            </p>
-          )}
-        </div>
+                <option value="">Select a time slot</option>
+                {SLOTS.map((slot) => (
+                  <option
+                    key={slot}
+                    value={slot}
+                    disabled={!isSlotAllowed(slot)}
+                  >
+                    {slot}
+                    {!isSlotAllowed(slot) ? ' — unavailable (<24h)' : ''}
+                  </option>
+                ))}
+              </select>
+              {timeError ? <p className="pickup-error">{timeError}</p> : null}
+              {showNoSlotsToday ? (
+                <p className="pickup-hint">No slots left for this date.</p>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
 
       {showReviewNotes ? (

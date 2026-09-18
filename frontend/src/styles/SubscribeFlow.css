@@ -482,28 +482,12 @@
   border-top: 1px solid #D9C7B0;
 }
 
-.subscribe-cart-page .pickup-field-time {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+.subscribe-cart-page .promo-wrap .subscribe-summary-heading {
+  margin-top: 0;
 }
 
-.subscribe-cart-page .pickup-field-time .pickup-label {
-  margin-bottom: 0;
-  white-space: nowrap;
-}
-
-.subscribe-cart-page .pickup-field-time .pickup-select {
-  flex: 1;
-  width: auto;
-  min-width: 180px;
-  font-size: 16px;
-}
-
-.subscribe-cart-page .pickup-field-time .pickup-error,
-.subscribe-cart-page .pickup-field-time .pickup-hint {
-  flex-basis: 100%;
+.subscribe-locked-date {
+  margin: 16px 0 0;
 }
 
 .subscribe-cart-page .pickup-input,
@@ -898,18 +882,13 @@
   .subscribe-fulfill-block,
   .subscribe-fulfill-row,
   .subscribe-cart-page .special-note-container,
-  .subscribe-cart-page .promo-wrap {
+  .subscribe-cart-page .promo-wrap,
+  .subscribe-locked-date {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
   }
 
-  .subscribe-cart-page .pickup-field-time {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .subscribe-cart-page .pickup-field-time .pickup-select,
   .subscribe-cart-page .pickup-field .promo-row,
   .subscribe-cart-page .pickup-field .promo-row .pickup-input {
     width: 100%;
