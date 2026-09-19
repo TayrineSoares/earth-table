@@ -226,6 +226,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const weeklyHstCents = planHstCents + deliveryHstCents
   const addonHstCents = Math.max(0, addonThursdayCents - addonAfterPromo)
   const totalCents = dueTodayCents + addonThursdayCents
+  const mealHave = totalQty(subCart.meals)
+  const mealNeed = Number(subCart.mealCount) || 0
+  const mealsShort = mealHave < mealNeed
+  const mealsShortCopy = mealsShort
+    ? `Your plan includes ${mealNeed} meals. Add ${mealNeed - mealHave} more meal${mealNeed - mealHave === 1 ? '' : 's'} before confirming.`
+    : ''
   const lockedDate = dates?.first_delivery_date || ''
   const lockedDeliveryLabel = formatLockedDateLabel(lockedDate)
   const promoCodeLabel = promoResult?.valid
@@ -290,8 +296,10 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
 
   const missingCheckoutItems = () => {
     const missing = []
-    if (!mealsExact(subCart)) {
-      missing.push(`Choose exactly ${subCart.mealCount} meals before confirming.`)
+    if (mealsShort) {
+      missing.push(mealsShortCopy)
+    } else if (!mealsExact(subCart)) {
+      missing.push(`Choose exactly ${mealNeed} meals before confirming.`)
     }
     if (fulfillment === 'pickup') {
       if (!pickupTime) missing.push('Select a pickup time.')
@@ -646,6 +654,11 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 Edit meals
               </Link>
             </div>
+            {mealsShort ? (
+              <p className="general-text" style={{ color: '#b30000' }}>
+                {mealsShortCopy}
+              </p>
+            ) : null}
             {subCart.meals.map((item) => (
               <div className="checkout-items-container" key={`meal-${item.id}`}>
                 <img src={item.image_url} className="checkout-product-image" alt={item.slug} />
@@ -657,8 +670,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                       quantity={item.quantity}
                       onMinus={() => bumpSubMeal(item, -1)}
                       onPlus={() => bumpSubMeal(item, 1)}
-                      plusDisabled={totalQty(subCart.meals) >= subCart.mealCount}
-                      minusDisabled={totalQty(subCart.meals) <= subCart.mealCount}
+                      plusDisabled={mealHave >= mealNeed}
                     />
                   </p>
                 </div>

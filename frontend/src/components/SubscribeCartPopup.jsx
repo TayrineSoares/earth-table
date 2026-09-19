@@ -124,7 +124,6 @@ function SubscribeCartPopup({
                         onMinus={() => bumpSubMeal(item, -1)}
                         onPlus={() => bumpSubMeal(item, 1)}
                         plusDisabled={mealCount >= subCart.mealCount}
-                        minusDisabled={mealCount <= subCart.mealCount}
                         onRemove={() => bumpSubMeal(item, -lineQty(subCart.meals, item.id))}
                       />
                     </div>
