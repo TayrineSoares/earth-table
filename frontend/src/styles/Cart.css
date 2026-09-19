@@ -344,6 +344,17 @@
   color: #5B4C3D;       /* neutral text color */
 }
 
+.subscribe-price-was {
+  text-decoration: line-through;
+  color: #757575;
+  margin-right: 8px;
+}
+
+.subscribe-price-off {
+  color: #757575;
+  font-size: 13px;
+}
+
 
 @media (max-width: 1224px) {
 

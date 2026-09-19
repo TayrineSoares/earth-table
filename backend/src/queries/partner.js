@@ -385,16 +385,20 @@ function buildMonthBreakdown(ledger = [], invoices = [], ordersById = {}) {
     if (row.payout_type === 'credit') months[key].credit_cents += amount;
     else months[key].cash_cents += amount;
 
-    const order = ordersById[row.order_id] || {};
+    const order = row.order_id ? (ordersById[row.order_id] || {}) : {};
+    const subMeta = !row.order_id && row.subscription_id
+      ? (ordersById[`sub:${row.subscription_id}`] || {})
+      : {};
     months[key].orders.push({
-      order_id: row.order_id,
+      order_id: row.order_id || null,
+      subscription_id: row.subscription_id || null,
       amount_cents: amount,
       status: row.status,
       payout_type: row.payout_type,
-      customer_name: order.customer_name || order.buyer_name || '—',
+      customer_name: order.customer_name || order.buyer_name || subMeta.customer_name || '—',
       cardholder_name: order.cardholder_name || null,
-      item_subtotal_cents: order.item_subtotal_cents ?? null,
-      order_date: order.created_at || null,
+      item_subtotal_cents: order.item_subtotal_cents ?? row.item_subtotal_cents ?? subMeta.item_subtotal_cents ?? null,
+      order_date: order.created_at || subMeta.created_at || row.created_at || null,
     });
   }
 
@@ -433,21 +437,39 @@ async function getPartnerAdminDetail(id) {
       .order('period_month', { ascending: false }),
     supabase
       .from('partner_ledger')
-      .select('kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
+      .select('kind, order_id, subscription_id, item_subtotal_cents, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
       .eq('partner_id', partner.id)
       .order('created_at', { ascending: false }),
   ]);
 
   if (invoicesRes.error) throw invoicesRes.error;
-  if (ledgerRes.error) throw ledgerRes.error;
+
+  let ledgerResSafe = ledgerRes;
+  if (ledgerRes.error && /subscription_id|item_subtotal_cents/.test(String(ledgerRes.error.message || ''))) {
+    ledgerResSafe = await supabase
+      .from('partner_ledger')
+      .select('kind, order_id, amount_cents, payout_type, status, accrual_month, invoice_id, created_at')
+      .eq('partner_id', partner.id)
+      .order('created_at', { ascending: false });
+  }
+  if (ledgerResSafe.error) throw ledgerResSafe.error;
 
   const invoices = invoicesRes.data || [];
-  const ledger = ledgerRes.data || [];
+  const ledger = ledgerResSafe.data || [];
 
   const orderIds = [...new Set(
     ledger.filter((row) => row.kind === 'earn' && row.order_id).map((row) => row.order_id)
   )];
   const ordersById = await loadOrdersByIds(orderIds);
+  const subscriptionIds = [...new Set(
+    ledger
+      .filter((row) => row.kind === 'earn' && row.subscription_id && !row.order_id)
+      .map((row) => row.subscription_id)
+  )];
+  const subscriptionEarnById = await loadSubscriptionEarnMeta(subscriptionIds);
+  for (const [id, meta] of Object.entries(subscriptionEarnById)) {
+    ordersById[`sub:${id}`] = meta;
+  }
 
   return displayPartner(partner, {
     user: usersByAuth[partner.user_id] || null,
@@ -815,33 +837,73 @@ async function setInvoicePaid(invoiceId, paid) {
   return normalizeInvoiceRow(data);
 }
 
-async function recordReferralEarn({ partnerId, orderId, itemSubtotalCents, payoutType }) {
-  if (!partnerId || !orderId) return null;
+async function recordReferralEarn({ partnerId, orderId, subscriptionId, itemSubtotalCents, payoutType }) {
+  if (!partnerId || (!orderId && !subscriptionId)) return null;
 
   const partner = await getPartnerById(partnerId);
   const cashbackPercent = partnerCashbackPercent(partner);
   const amountCents = Math.floor((Number(itemSubtotalCents) || 0) * cashbackPercent / 100);
   if (amountCents <= 0) return null;
 
-  const { data, error } = await supabase
+  const row = {
+    partner_id: partnerId,
+    kind: 'earn',
+    order_id: orderId || null,
+    amount_cents: amountCents,
+    payout_type: payoutType === 'credit' ? 'credit' : 'cash',
+    status: 'pending',
+    accrual_month: torontoMonthStart(),
+  };
+  if (subscriptionId) row.subscription_id = subscriptionId;
+  if (itemSubtotalCents != null && itemSubtotalCents !== '') {
+    row.item_subtotal_cents = Math.max(0, Number(itemSubtotalCents) || 0);
+  }
+
+  let { data, error } = await supabase
     .from('partner_ledger')
-    .insert([{
-      partner_id: partnerId,
-      kind: 'earn',
-      order_id: orderId,
-      amount_cents: amountCents,
-      payout_type: payoutType === 'credit' ? 'credit' : 'cash',
-      status: 'pending',
-      accrual_month: torontoMonthStart(),
-    }])
+    .insert([row])
     .select('*')
     .maybeSingle();
+
+  // Column may not exist until partner_ledger_subscriptions.sql is run.
+  if (error && /subscription_id|item_subtotal_cents/.test(String(error.message || ''))) {
+    delete row.subscription_id;
+    delete row.item_subtotal_cents;
+    ({ data, error } = await supabase
+      .from('partner_ledger')
+      .insert([row])
+      .select('*')
+      .maybeSingle());
+  }
 
   if (error) {
     if (error.code === '23505') return null;
     throw error;
   }
   return data;
+}
+
+async function loadSubscriptionEarnMeta(ids) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (!unique.length) return {};
+
+  const { data: subs, error } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, created_at')
+    .in('id', unique);
+  if (error) throw error;
+
+  const usersByAuth = await getUsersByAuthIds((subs || []).map((row) => row.user_id));
+  return Object.fromEntries((subs || []).map((row) => {
+    const user = usersByAuth[row.user_id] || {};
+    const customerName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
+      || user.email
+      || '—';
+    return [row.id, {
+      customer_name: customerName,
+      created_at: row.created_at,
+    }];
+  }));
 }
 
 async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
@@ -1063,6 +1125,7 @@ module.exports = {
   createPartner,
   updatePartner,
   getActiveReferralByCode,
+  getPartnerByCode,
   recordReferralEarn,
   recordCreditRedeem,
   setPayoutPreference,

@@ -11,10 +11,14 @@ const supabase = require('../../supabase/db');
 const { getAllCategories } = require('./category');
 const { getUserByAuthId, updateUserByAuthId } = require('./user');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./promo_code');
-const { getActiveReferralByCode } = require('./partner');
+const { getActiveReferralByCode, getPartnerByCode, getPartnerById, recordReferralEarn } = require('./partner');
 const { getServerDeliveryQuote } = require('../lib/deliveryQuote');
 const { sendEmail, ownerNotificationEmails } = require('../utils/email');
-const { renderSubscriptionWelcomeEmail, renderOwnerSubscriptionEmail } = require('../utils/emailTemplates');
+const {
+  renderSubscriptionWelcomeEmail,
+  renderOwnerSubscriptionEmail,
+  renderPartnerCodeUsedEmail,
+} = require('../utils/emailTemplates');
 const {
   SubscriptionError,
   getPlanById,
@@ -64,6 +68,173 @@ function paymentIntentId(session) {
   const pi = session && session.payment_intent;
   if (!pi) return null;
   return typeof pi === 'string' ? pi : pi.id;
+}
+
+/** Same floor math as subscriptionCharge / the cart. Delivery is never passed in. */
+function applyPromoPercent(cents, percent) {
+  const raw = Math.max(0, Number(cents) || 0);
+  const pct = Number(percent) || 0;
+  if (pct <= 0) return raw;
+  return Math.floor((raw * (100 - pct)) / 100);
+}
+
+function addonSubtotalCents(items = []) {
+  return (items || []).reduce((sum, item) => {
+    if (item.kind && item.kind !== 'addon') return sum;
+    return sum + (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 1);
+  }, 0);
+}
+
+function firstWeekDiscountLabel(code, kind) {
+  const c = String(code || '').toUpperCase();
+  if (!c) return '';
+  if (kind === 'promo') return `Promo (${c})`;
+  if (kind === 'referral') return `Referral (${c})`;
+  return c;
+}
+
+function firstWeekSavedCents({ planPriceCents, planPaidCents, addonItems, percent }) {
+  const pct = Number(percent) || 0;
+  const planFull = Number(planPriceCents) || 0;
+  const paid = Number(planPaidCents);
+  const planOff = Number.isFinite(paid) && paid >= 0
+    ? Math.max(0, planFull - paid)
+    : Math.max(0, planFull - applyPromoPercent(planFull, pct));
+  const addonFull = addonSubtotalCents(addonItems);
+  const addonOff = Math.max(0, addonFull - applyPromoPercent(addonFull, pct));
+  return {
+    planOff,
+    addonOff,
+    savedCents: planOff + addonOff,
+    addonFull,
+  };
+}
+
+async function inferDiscountKind(code) {
+  if (!code) return null;
+  try {
+    const partner = await getPartnerByCode(code);
+    return partner ? 'referral' : 'promo';
+  } catch (err) {
+    console.warn('[subscriptions] discount kind lookup failed:', err.message);
+    return null;
+  }
+}
+
+/** Partner ledger + "code used" email. Idempotent via unique earn-per-subscription. */
+async function syncReferralEarnForSubscription({ subscriptionId, discount, cart, user }) {
+  if (!subscriptionId || discount?.kind !== 'referral' || !discount.partnerId) return null;
+
+  const planCents = Number(cart?.plan_price_cents) || 0;
+  const addonCents = addonSubtotalCents(cart?.addons || []);
+  const itemSubtotalCents = planCents + addonCents;
+
+  let partner = null;
+  try {
+    partner = await getPartnerById(discount.partnerId);
+  } catch (err) {
+    console.warn('[subscriptions] partner lookup failed:', err.message);
+    return null;
+  }
+  if (!partner) return null;
+
+  let earnRow = null;
+  try {
+    earnRow = await recordReferralEarn({
+      partnerId: partner.id,
+      subscriptionId,
+      itemSubtotalCents,
+      payoutType: partner.payout_type,
+    });
+  } catch (err) {
+    console.warn('[subscriptions] recordReferralEarn failed:', err.message);
+    return null;
+  }
+  if (!earnRow) return null;
+
+  try {
+    const partnerUser = await getUserByAuthId(partner.user_id);
+    if (!partnerUser?.email) return earnRow;
+    const customerName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+      || user?.email
+      || '—';
+    const msg = renderPartnerCodeUsedEmail({
+      partner,
+      partnerUser,
+      order: {
+        id: 'Weekly plan',
+        item_subtotal_cents: itemSubtotalCents,
+        buyer_name: customerName,
+        user,
+      },
+      earn: earnRow,
+    });
+    await sendEmail({
+      to: partnerUser.email,
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      replyTo: 'hello@earthtableco.ca',
+    });
+  } catch (err) {
+    console.warn('[subscriptions] partner code-used email failed:', err.message);
+  }
+  return earnRow;
+}
+
+async function syncReferralEarnFromSubscriptionId(subscriptionId) {
+  if (!subscriptionId) return null;
+  const { data: sub, error } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, first_promo_code')
+    .eq('id', subscriptionId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!sub?.first_promo_code) return null;
+
+  let partner = null;
+  try {
+    partner = await getPartnerByCode(sub.first_promo_code);
+  } catch (err) {
+    console.warn('[subscriptions] partner-by-code lookup failed:', err.message);
+    return null;
+  }
+  if (!partner) return null;
+
+  const { data: cycle, error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .select(`
+      plan_price_cents,
+      subscription_cycle_items ( kind, unit_price_cents, quantity )
+    `)
+    .eq('subscription_id', subscriptionId)
+    .order('delivery_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (cycleErr) throw cycleErr;
+
+  let user = null;
+  if (sub.user_id) {
+    try {
+      user = await getUserByAuthId(sub.user_id);
+    } catch (err) {
+      console.warn('[subscriptions] referral user lookup failed:', err.message);
+    }
+  }
+
+  return syncReferralEarnForSubscription({
+    subscriptionId,
+    discount: {
+      kind: 'referral',
+      partnerId: partner.id,
+      code: sub.first_promo_code,
+    },
+    cart: {
+      plan_price_cents: cycle?.plan_price_cents,
+      addons: (cycle?.subscription_cycle_items || []).filter((item) => item.kind === 'addon'),
+    },
+    user,
+  });
 }
 
 async function loadProductsByIds(ids) {
@@ -362,6 +533,7 @@ async function loadSignupPayload(subscriptionId) {
     .from('subscriptions')
     .select(`
       id, status, plan_id, label, user_id, delivery, delivery_postal_code, pickup_time_slot, special_note,
+      first_promo_code, first_promo_percent, first_promo_applied,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .eq('id', subscriptionId)
@@ -403,11 +575,31 @@ async function loadSignupPayload(subscriptionId) {
     console.warn('[subscriptions] signup dates failed:', err.message);
   }
 
+  const discountKind = await inferDiscountKind(sub.first_promo_code);
+  const savings = firstWeekSavedCents({
+    planPriceCents: cycle?.plan_price_cents || sub.subscription_plans?.price_cents,
+    planPaidCents: cycle?.plan_paid_cents,
+    addonItems: cycle?.subscription_cycle_items || [],
+    percent: Number(cycle?.promo_percent || sub.first_promo_percent) || 0,
+  });
+  const discount = (sub.first_promo_applied || savings.savedCents > 0)
+    ? {
+        code: sub.first_promo_code ? String(sub.first_promo_code).toUpperCase() : null,
+        kind: discountKind,
+        percent: Number(cycle?.promo_percent || sub.first_promo_percent) || 0,
+        saved_cents: savings.savedCents,
+        plan_saved_cents: savings.planOff,
+        addon_saved_cents: savings.addonOff,
+        label: firstWeekDiscountLabel(sub.first_promo_code, discountKind),
+      }
+    : null;
+
   return {
     ready: true,
     subscription: sub,
     cycle: cycle || null,
     dates,
+    discount,
     customer: customer
       ? {
           first_name: customer.first_name,
@@ -441,7 +633,10 @@ async function completeSubscriptionSignup(session) {
   const piId = paymentIntentId(paidSession);
   if (piId) {
     const existing = await findCycleByPaymentIntent(piId);
-    if (existing) return loadSignupPayload(existing.subscription_id);
+    if (existing) {
+      await syncReferralEarnFromSubscriptionId(existing.subscription_id);
+      return loadSignupPayload(existing.subscription_id);
+    }
   }
 
   const draft = await loadDraft(md.draft_id);
@@ -495,7 +690,20 @@ async function completeSubscriptionSignup(session) {
   const delivery = !!draft.delivery;
   const sunday = draft.delivery_date;
   const discount = cart.discount || null;
-  const promoPercent = Number(discount?.pct) || 0;
+  const promoPercent = Number(discount?.pct ?? discount?.percent ?? discount?.discountPercentage) || 0;
+  let dates = {
+    cutoff_at: cart.cutoff_at,
+    cutoff_label: cart.cutoff_label,
+    charge_at: cart.charge_at,
+    charge_label: cart.charge_label,
+    first_delivery_label: cart.first_delivery_label,
+  };
+  try {
+    const settings = await getSettings();
+    dates = getSignupDates(new Date(), settings || {});
+  } catch (err) {
+    console.warn('[subscriptions] live signup dates failed, using checkout snapshot:', err.message);
+  }
 
   const { data: sub, error: subErr } = await supabase
     .from('subscriptions')
@@ -524,7 +732,7 @@ async function completeSubscriptionSignup(session) {
       subscription_id: sub.id,
       plan_id: cart.plan_id,
       plan_price_cents: Number(cart.plan_price_cents) || 0,
-      cutoff_at: cart.cutoff_at,
+      cutoff_at: dates.cutoff_at || cart.cutoff_at,
       delivery_date: sunday,
       pickup_date: delivery ? null : sunday,
       status: 'open',
@@ -545,7 +753,10 @@ async function completeSubscriptionSignup(session) {
     // Unique week row: webhook retried after the cycle already existed.
     if (cycleErr.code === '23505' && piId) {
       const again = await findCycleByPaymentIntent(piId);
-      if (again) return loadSignupPayload(again.subscription_id);
+      if (again) {
+        await syncReferralEarnFromSubscriptionId(again.subscription_id);
+        return loadSignupPayload(again.subscription_id);
+      }
     }
     throw cycleErr;
   }
@@ -573,21 +784,40 @@ async function completeSubscriptionSignup(session) {
     }
   }
 
+  await syncReferralEarnForSubscription({
+    subscriptionId: sub.id,
+    discount,
+    cart,
+    user,
+  });
+
   if (email) {
     try {
+      const addonItems = cart.addons || [];
+      const savings = firstWeekSavedCents({
+        planPriceCents: cart.plan_price_cents,
+        planPaidCents: cart.plan_paid_cents,
+        addonItems,
+        percent: promoPercent,
+      });
+      const discountKind = discount?.kind || null;
       const msg = renderSubscriptionWelcomeEmail({
         firstName: user?.first_name || '',
         mealCount: cart.meal_count,
         planPriceCents: cart.plan_price_cents,
         delivery,
-        deliveryLabel: cart.first_delivery_label,
+        deliveryLabel: dates.first_delivery_label || cart.first_delivery_label,
         pickupSlot: cart.pickup_time_slot,
-        cutoffLabel: cart.cutoff_label,
-        chargeLabel: cart.charge_label,
+        cutoffLabel: dates.cutoff_label,
+        chargeLabel: dates.charge_label,
         subscriptionId: sub.id,
         address: delivery ? draft.special_note : undefined,
         notes: draft.special_note,
         meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
+        discountCode: discount?.code || null,
+        discountKind,
+        discountLabel: firstWeekDiscountLabel(discount?.code, discountKind),
+        discountSavedCents: savings.savedCents,
       });
       await sendEmail({
         to: email,
@@ -610,13 +840,14 @@ async function completeSubscriptionSignup(session) {
         mealCount: cart.meal_count,
         planPriceCents: cart.plan_price_cents,
         delivery,
-        deliveryLabel: cart.first_delivery_label,
+        deliveryLabel: dates.first_delivery_label || cart.first_delivery_label,
         pickupSlot: cart.pickup_time_slot,
         subscribedAtLabel: formatTorontoStamp(new Date()),
         paidCents,
         meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
         addons: (cart.addons || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
-        cutoffLabel: cart.cutoff_label,
+        cutoffLabel: dates.cutoff_label,
+        chargeLabel: dates.charge_label,
         email,
         phone: paidSession.customer_details?.phone || user?.phone_number,
         notes: draft.special_note,

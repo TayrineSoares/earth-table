@@ -1,5 +1,11 @@
 import { useEffect, useState, Fragment } from 'react';
-import { fetchAllOrders, fetchOrderById, setOrderPickedUp } from '../helpers/orderHelpers';
+import {
+  fetchAllOrders,
+  fetchOrderById,
+  formatTimeWindow,
+  setOrderPickedUp,
+  titleCaseName,
+} from '../helpers/orderHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import '../styles/OrderAdmin.css';
 
@@ -103,6 +109,7 @@ const OrderAdmin = () => {
       return;
     }
     setExpandedOrderId(orderId);
+    setOrderDetails(null);
     setDetailsLoading(true);
     try {
       const fullOrder = await fetchOrderById(orderId);
@@ -143,6 +150,7 @@ const OrderAdmin = () => {
     return (
       order.id?.toString().includes(term) ||
       order.buyer_email?.toLowerCase().includes(term) ||
+      order.buyer_name?.toLowerCase().includes(term) ||
       order.status?.toLowerCase().includes(term) ||
       postal.includes(term) ||
       (order.pickup_date && formatYmd(order.pickup_date).toLowerCase().includes(term)) ||
@@ -167,7 +175,7 @@ const OrderAdmin = () => {
       <input
         className="user-search-input"
         type="text"
-        placeholder="Search by id, email, status, date or postal"
+        placeholder="Search by id, email, name, status, date or postal"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
@@ -192,9 +200,28 @@ const OrderAdmin = () => {
         <tbody>
           {filteredOrders.map((order) => {
             const isOpen = expandedOrderId === order.id;
-            const items = isOpen && orderDetails ? (orderDetails.order_products || []) : [];
+            const detailsReady = isOpen && !detailsLoading && orderDetails?.id === order.id;
+            const items = detailsReady ? (orderDetails.order_products || []) : [];
             const postal = getPostalFromInfo(order.buyer_stripe_payment_info);
             const { preTaxCents, withTaxCents } = getDeliveryFeeCents(order.buyer_stripe_payment_info);
+            const account = detailsReady ? orderDetails?.user : null;
+            const customerName = [account?.first_name, account?.last_name]
+              .filter(Boolean)
+              .join(' ')
+              .trim()
+              || (detailsReady ? orderDetails?.buyer_name : '')
+              || order.buyer_name
+              || '';
+            const customerEmail = account?.email
+              || (detailsReady ? orderDetails?.buyer_email : '')
+              || order.buyer_email
+              || '';
+            const customerPhone = account?.phone_number
+              ? formatPhoneNumber(account.phone_number)
+              : formatStripePhoneNumber(
+                  (detailsReady ? orderDetails?.buyer_phone_number : '')
+                  || order.buyer_phone_number
+                );
 
             return (
               <Fragment key={order.id}>
@@ -244,45 +271,31 @@ const OrderAdmin = () => {
                     <td colSpan={11}>
                       <div className="order-details-card">
                         {/* Buyer info */}
-                        {orderDetails?.user ? (
-                          <div className="order-admin-buyer">
-                            <strong>User:</strong>{' '}
-                            {orderDetails.user?.first_name || ''}{' '}
-                            {orderDetails.user?.last_name || ''}
-                            <br />
-                            <strong>Email: </strong>{orderDetails.user?.email || 'No email'}
-                            <br />
-                            <strong>Phone Number:</strong>{' '}
-                            {formatPhoneNumber(orderDetails?.user.phone_number) || 'No phone'}
-                            <br />
-                            <strong>Special Note:</strong>{' '}
-                            <span style={{ whiteSpace: 'pre-wrap' }}>
-                              {order.special_note || ''}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="order-admin-buyer">
-                            <strong>User not registered. </strong>
-                            <br />
-                            {orderDetails?.buyer_email || 'guest / unknown'}
-                            <br />
-                            {formatStripePhoneNumber(orderDetails?.buyer_phone_number) || ' / unknown'}
-                            <br />
-                            <strong>Special Note:</strong>{' '}
-                            <span style={{ whiteSpace: 'pre-wrap' }}>
-                              {order.special_note || ''}
-                            </span>
-                          </div>
-                        )}
+                        <div className="order-admin-buyer">
+                          <strong>Customer:</strong>{' '}
+                          {customerName || 'Guest'}
+                          {detailsReady && !account && (
+                            <span style={{ color: '#666' }}> (guest checkout)</span>
+                          )}
+                          <br />
+                          <strong>Email: </strong>{customerEmail || 'No email'}
+                          <br />
+                          <strong>Phone Number:</strong> {customerPhone || 'No phone'}
+                          <br />
+                          <strong>Special Note:</strong>{' '}
+                          <span style={{ whiteSpace: 'pre-wrap' }}>
+                            {order.special_note || ''}
+                          </span>
+                        </div>
 
                         {/* Items */}
                         {detailsLoading ? (
                           <em>Loading items…</em>
                         ) : items.length ? (
                           <ul className="order-items-list">
-                            {items.map((it) => (
-                              <li key={it.id}>
-                                {it.quantity}× {it.product?.slug || 'Unnamed product'} — {formatMoney(it.unit_price_cents)}
+                            {items.map((it, idx) => (
+                              <li key={it.id || `${it.product_id || 'item'}-${idx}`}>
+                                {it.quantity}× {titleCaseName(it.product?.slug || it.slug || 'Unnamed product')} — {formatMoney(it.unit_price_cents)}
                               </li>
                             ))}
                           </ul>
@@ -293,7 +306,8 @@ const OrderAdmin = () => {
                         {/* Pickup time (for pickup orders) */}
                         {!order.delivery && order.pickup_time_slot && (
                           <div style={{ marginTop: 8 }}>
-                            <strong>Pickup time:</strong> {order.pickup_time_slot}
+                            <strong>Pickup time:</strong>{' '}
+                            {formatTimeWindow(order.pickup_time_slot) || order.pickup_time_slot}
                           </div>
                         )}
 

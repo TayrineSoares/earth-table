@@ -1035,6 +1035,7 @@ ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
 function renderSubscriptionWelcomeEmail({
   firstName,
   mealCount,
+  planPriceCents,
   delivery,
   deliveryLabel,
   pickupSlot,
@@ -1042,6 +1043,10 @@ function renderSubscriptionWelcomeEmail({
   chargeLabel,
   subscriptionId,
   notes,
+  discountCode,
+  discountKind,
+  discountLabel,
+  discountSavedCents,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1052,6 +1057,17 @@ function renderSubscriptionWelcomeEmail({
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const charge = chargeLabel || PAUSE_CANCEL_BY;
   const note = String(notes || '').trim() || '—';
+  const saved = Math.max(0, Number(discountSavedCents) || 0);
+  const code = String(discountCode || '').toUpperCase();
+  const savingsLabel = discountLabel
+    || (code ? `${discountKind === 'promo' ? 'Promo' : discountKind === 'referral' ? 'Referral' : 'Code'} (${code})` : '');
+  const savingsLine = saved > 0 && (code || savingsLabel)
+    ? `You saved ${formatDollars(saved)} this first week with ${code || savingsLabel}. Later weeks are regular price.`
+    : '';
+
+  const discountRows = saved > 0
+    ? `${planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : ''}${kvRow(`${savingsLabel || code} · first week only`, `−${formatDollars(saved)}`)}`
+    : (planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : '');
 
   const subject = `Welcome to weekly plans — your first box is ${sunday}`;
 
@@ -1059,8 +1075,10 @@ function renderSubscriptionWelcomeEmail({
       ${eyebrow("Weekly subscription")}
       ${h1(`You're all set, ${name}`)}
       ${intro(`Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed ${cutoff} if they are still on the box.`)}
+      ${savingsLine ? `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT};">${savingsLine}</p>` : ''}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
+        ${discountRows}
         ${kvRow("This Sunday", fulfillment)}
         ${kvRow("Notes", note)}
         ${kvRow("Change your meals by", cutoff, { last: true })}
@@ -1077,8 +1095,8 @@ function renderSubscriptionWelcomeEmail({
   const text = `You're all set, ${name}
 
 Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed ${cutoff} if they are still on the box.
-
-Plan: ${planWeek}
+${savingsLine ? `\n${savingsLine}\n` : ''}
+Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceCents)}/week + HST` : ''}${saved > 0 ? `\n${savingsLabel || code} · first week only: −${formatDollars(saved)}` : ''}
 This Sunday: ${fulfillment}
 Notes: ${note}
 Change your meals by: ${cutoff}

@@ -5,9 +5,9 @@ import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
 import {
   fetchSubscriptionSignup,
-  formatCutoffShort,
   formatPickupSlot,
   formatPlanPrice,
+  firstWeekCodeLabel,
 } from '../helpers/subscriptionHelpers'
 import { CHARGE_DAY_TIME, MEAL_LOCK_BY, howItWorksPause } from '../helpers/subscriptionCadence'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
@@ -127,7 +127,6 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const ymd = cycle.delivery_date || cycle.pickup_date
   const fulfillmentDate = sundayLabel(ymd)
   const weekday = weekdayFromYmd(ymd)
-  const cutoffDateTime = formatCutoffShort(cycle.cutoff_at)
   const isDelivery = !!(cycle.delivery ?? sub.delivery)
   const windowLabel = isDelivery
     ? DELIVERY_WINDOW
@@ -139,8 +138,11 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const price = formatPlanPrice(plan.price_cents)
   const dates = payload?.dates || {}
   const chargeLabel = dates.charge_label || CHARGE_DAY_TIME
-  const lockLabel = dates.cutoff_label || cutoffDateTime || MEAL_LOCK_BY
-  const nextChargeDate = dates.charge_label || CHARGE_DAY_TIME
+  const lockLabel = dates.cutoff_label || MEAL_LOCK_BY
+  const discount = payload?.discount || null
+  const savedCents = Number(discount?.saved_cents) || 0
+  const discountLabel = discount?.label
+    || firstWeekCodeLabel(discount?.code || sub.first_promo_code, discount?.kind || sub.first_promo_kind)
   const heading = firstName
     ? `Your weekly plan is set, ${firstName}`
     : 'Your weekly plan is set'
@@ -158,6 +160,12 @@ export default function SubscribeConfirmation({ clearSubCart }) {
             <p className="subscribe-confirm-intro">
               Thank you for subscribing — we&apos;re so glad you&apos;re here. Your first box is{' '}
               <strong>{fulfillmentDate}</strong>.
+              {savedCents > 0 && discountLabel ? (
+                <>
+                  {' '}You saved {formatPlanPrice(savedCents)} this first week with{' '}
+                  <strong>{discount?.code || discountLabel}</strong>. Later weeks are regular price.
+                </>
+              ) : null}
             </p>
 
             <section className="subscribe-confirm-next">
@@ -169,7 +177,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                     <p className="subscribe-confirm-step-lead">Your meals are locked in until {lockLabel}.</p>
                     <p className="subscribe-confirm-step-body">
                       You&apos;ve picked all {mealCount || 'your meals'}, so there&apos;s nothing you need to do.
-                      Until {cutoffDateTime} you can swap meals or add extras — smoothies, sides, snacks, anything on the menu — all from{' '}
+                      Until {lockLabel} you can swap meals or add extras — smoothies, sides, snacks, anything on the menu — all from{' '}
                       <Link className="subscribe-confirm-inline-link" to="/my-subscriptions">
                         Manage my subscription
                       </Link>
@@ -245,10 +253,12 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                   <span className="subscribe-confirm-row-label">Price</span>
                   <span className="subscribe-confirm-row-value">{price}/week + hst</span>
                 </div>
-                <div className="subscribe-confirm-row">
-                  <span className="subscribe-confirm-row-label">Next charge</span>
-                  <span className="subscribe-confirm-row-value">{nextChargeDate}</span>
-                </div>
+                {savedCents > 0 && discountLabel ? (
+                  <div className="subscribe-confirm-row">
+                    <span className="subscribe-confirm-row-label">{discountLabel} · first week only</span>
+                    <span className="subscribe-confirm-row-value">−{formatPlanPrice(savedCents)}</span>
+                  </div>
+                ) : null}
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Renews</span>
                   <span className="subscribe-confirm-row-value">{chargeLabel}</span>

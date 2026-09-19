@@ -88,10 +88,10 @@ const Admin = () => {
           Orders
         </button>
         <button 
-          className={activeTab === 'users' ? 'active' : ''}
-          onClick={() => setActiveTab('users')}
+          className={activeTab === 'subscriptions' ? 'active' : ''}
+          onClick={() => setActiveTab('subscriptions')}
         >
-          Users
+          Subscriptions
         </button>
         <button 
           className={activeTab === 'promos' ? 'active' : ''}
@@ -106,10 +106,10 @@ const Admin = () => {
           Partners
         </button>
         <button 
-          className={activeTab === 'subscriptions' ? 'active' : ''}
-          onClick={() => setActiveTab('subscriptions')}
+          className={activeTab === 'users' ? 'active' : ''}
+          onClick={() => setActiveTab('users')}
         >
-          Subscriptions
+          Users
         </button>
       </div>
 
@@ -118,10 +118,10 @@ const Admin = () => {
       {activeTab === 'weekly-plans' && <SubscriptionAdmin />}
       {activeTab === 'products' && <ProductAdmin />}
       {activeTab === 'orders' && <OrderAdmin />}
-      {activeTab === 'users' && <UserAdmin currentUserId={user.auth_user_id} />}
+      {activeTab === 'subscriptions' && <SubscriberAdmin />}
       {activeTab === 'promos' && <PromoAdmin />}
       {activeTab === 'partners' && <PartnerAdmin />}
-      {activeTab === 'subscriptions' && <SubscriberAdmin />}
+      {activeTab === 'users' && <UserAdmin currentUserId={user.auth_user_id} />}
     </div>
   );
 };

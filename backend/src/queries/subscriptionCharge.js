@@ -27,6 +27,7 @@ const {
   getSignupDates,
   getChargeDeadline,
   getTargetSundayYmd,
+  nextOpenSunday,
   isYmdBlocked,
   sundayLabelFromYmd,
   formatPickupSlot,
@@ -38,27 +39,6 @@ const HST = 1.13;
 
 function getStripe() {
   return require('stripe')(process.env.STRIPE_SECRET_SK);
-}
-
-function pad2(n) {
-  return String(n).padStart(2, '0');
-}
-
-function addDaysYmd(ymdStr, days) {
-  const [year, month, day] = String(ymdStr || '').split('-').map(Number);
-  if (!year || !month || !day) return ymdStr;
-  const utc = Date.UTC(year, month - 1, day + days);
-  const dt = new Date(utc);
-  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
-}
-
-function nextOpenSunday(ymdStr) {
-  let next = addDaysYmd(ymdStr, 7);
-  for (let i = 0; i < 6; i += 1) {
-    if (!isYmdBlocked(next)) return next;
-    next = addDaysYmd(next, 7);
-  }
-  return next;
 }
 
 async function recordRun(weekKey, job, stats) {
@@ -101,7 +81,14 @@ function itemsByKind(items, kind) {
   return (items || []).filter((item) => item.kind === kind);
 }
 
-function addonDueCents(cycle) {
+function applyPromoPercent(cents, percent) {
+  const raw = Math.max(0, Number(cents) || 0);
+  const pct = Number(percent) || 0;
+  if (pct <= 0) return raw;
+  return Math.floor((raw * (100 - pct)) / 100);
+}
+
+function addonDueCents(cycle, promoPercent = 0) {
   const items = cycle.subscription_cycle_items || [];
   let raw = 0;
   for (const item of items) {
@@ -109,10 +96,28 @@ function addonDueCents(cycle) {
     raw += (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0);
   }
   const already = Number(cycle.addon_paid_cents) || 0;
-  const pct = Number(cycle.promo_percent) || 0;
-  const factor = already === 0 && pct > 0 ? (100 - pct) / 100 : 1;
-  const discounted = Math.floor(raw * factor);
+  const pct = Number(cycle.promo_percent) || Number(promoPercent) || 0;
+  // Apply first-week percent to the extras total, then subtract what was already billed.
+  const discounted = applyPromoPercent(raw, pct);
   return Math.max(0, discounted - already);
+}
+
+/** First cycle keeps first_promo_percent; later weeks are full price even if the subscription still has that flag. */
+async function promoPercentForAddons(sub, cycle) {
+  const stored = Number(cycle.promo_percent) || 0;
+  if (stored > 0) return stored;
+  const fromSub = Number(sub.first_promo_percent) || 0;
+  if (!fromSub) return 0;
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .select('id, delivery_date')
+    .eq('subscription_id', sub.id)
+    .order('delivery_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return 0;
+  if (data.id !== cycle.id && String(data.delivery_date) !== String(cycle.delivery_date)) return 0;
+  return fromSub;
 }
 
 async function notifyUser(userId, payload) {
@@ -167,6 +172,7 @@ async function loadSubsForSunday() {
       id, user_id, status, plan_id, pending_status, pending_plan_id, pause_reason,
       stripe_customer_id, stripe_payment_method_id, delivery, delivery_postal_code,
       pickup_time_slot, special_note,
+      first_promo_percent, first_promo_applied,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .in('status', ['active', 'paused']);
@@ -529,7 +535,12 @@ async function skipHolidayWeek(sunday, chargeLabel) {
 }
 
 async function chargeAddons(sub, cycle, sunday) {
-  const due = addonDueCents(cycle);
+  const pct = await promoPercentForAddons(sub, cycle);
+  if (pct > 0 && Number(cycle.promo_percent) !== pct) {
+    await supabase.from('subscription_cycles').update({ promo_percent: pct }).eq('id', cycle.id);
+    cycle.promo_percent = pct;
+  }
+  const due = addonDueCents(cycle, pct);
   const amount = Math.round(due * HST);
   if (amount < 50) return { charged: false, amount: 0, due: 0 };
   if (!sub.stripe_customer_id || !sub.stripe_payment_method_id) {
@@ -841,4 +852,6 @@ module.exports = {
   runThursdayLock,
   chargeThursdayAddons: runThursdayLock,
   retryFailedCharge,
+  addonDueCents,
+  applyPromoPercent,
 };

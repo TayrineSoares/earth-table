@@ -108,7 +108,10 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                       {month.orders.map((order, idx) => (
                         <tr key={`${order.order_id || 'earn'}-${idx}`}>
                           <td data-label="Order date">{formatOrderDate(order.order_date)}</td>
-                          <td data-label="Order #">{order.order_id || '—'}</td>
+                          <td data-label="Order #">
+                            {order.order_id
+                              || (order.subscription_id ? 'Weekly plan' : '—')}
+                          </td>
                           <td data-label="Customer">
                             {order.customer_name || '—'}
                             {order.cardholder_name ? (

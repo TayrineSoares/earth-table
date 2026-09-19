@@ -13,6 +13,8 @@ import {
   fetchSubscriptionDates,
   formatPlanPrice,
   startSubscriptionCheckout,
+  applyPromoPercent,
+  firstWeekCodeLabel,
 } from '../helpers/subscriptionHelpers'
 import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
 import {
@@ -207,28 +209,17 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
 
   const planCents = Number(subCart.priceCents) || 0
   const addonCents = addonSubtotalCents(subCart)
-  const discountableCents = planCents
+  const promoPct = promoResult?.valid ? Number(promoResult.discountPercentage) || 0 : 0
   const savedCents = Math.max(0, mealALaCarteCents(subCart) - planCents)
 
-  let promoDiscountCents = 0
-  if (promoResult?.valid && promoResult.discountPercentage != null) {
-    const rate = promoResult.discountPercentage / 100
-    promoDiscountCents = Math.min(
-      Math.round(discountableCents * rate),
-      discountableCents
-    )
-  }
-
-  const planAfterPromo = Math.max(0, planCents - promoDiscountCents)
+  const promoDiscountCents = promoPct > 0 ? Math.max(0, planCents - applyPromoPercent(planCents, promoPct)) : 0
+  const planAfterPromo = applyPromoPercent(planCents, promoPct)
   const deliveryCents = fulfillment === 'delivery' ? deliveryFeeCents : 0
   const withHst = (cents) => Math.round((Number(cents) || 0) * (1 + HST_RATE))
   const planDueCents = withHst(planAfterPromo)
   const deliveryDueCents = deliveryCents > 0 ? withHst(deliveryCents) : 0
   const dueTodayCents = planDueCents + deliveryDueCents
-  const addonPromoCents = promoResult?.valid && promoResult.discountPercentage != null
-    ? Math.min(Math.round(addonCents * (promoResult.discountPercentage / 100)), addonCents)
-    : 0
-  const addonAfterPromo = Math.max(0, addonCents - addonPromoCents)
+  const addonAfterPromo = applyPromoPercent(addonCents, promoPct)
   const addonThursdayCents = addonAfterPromo > 0 ? withHst(addonAfterPromo) : 0
   const planHstCents = Math.max(0, planDueCents - planAfterPromo)
   const deliveryHstCents = Math.max(0, deliveryDueCents - deliveryCents)
@@ -237,6 +228,10 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const totalCents = dueTodayCents + addonThursdayCents
   const lockedDate = dates?.first_delivery_date || ''
   const lockedDeliveryLabel = formatLockedDateLabel(lockedDate)
+  const promoCodeLabel = promoResult?.valid
+    ? firstWeekCodeLabel(promoResult.code, promoResult.kind)
+    : ''
+  const addonPromoOffCents = Math.max(0, addonCents - addonAfterPromo)
 
   const openSubscriptionDetails = () => {
     setDialog({
@@ -278,7 +273,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
-          subtotalCents: discountableCents,
+          subtotalCents: planCents,
           userId: user?.id || null,
         }),
       })
@@ -439,12 +434,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 ) : null}
               </>
             ) : null}
-            {promoResult?.valid ? (
+            {promoResult?.valid && promoDiscountCents > 0 ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
-                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code}) · first week only
+                  {promoCodeLabel} · first week only
                 </p>
-                <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
+                <p className="subtotal">-{formatPlanPrice(promoDiscountCents)}</p>
               </div>
             ) : null}
             <div className="checkout-summary-subtotal">
@@ -461,10 +456,18 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                       {` × ${item.quantity}`}
                     </p>
                     <p className="subtotal">
-                      ${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                      {formatPlanPrice((Number(item.price_cents) || 0) * (Number(item.quantity) || 0))}
                     </p>
                   </div>
                 ))}
+                {addonPromoOffCents > 0 ? (
+                  <div className="checkout-summary-subtotal">
+                    <p className="subtotal">
+                      {promoCodeLabel} · first week only
+                    </p>
+                    <p className="subtotal">-{formatPlanPrice(addonPromoOffCents)}</p>
+                  </div>
+                ) : null}
                 <div className="checkout-summary-subtotal">
                   <p className="subtotal">hst</p>
                   <p className="subtotal">{formatPlanPrice(addonHstCents)}</p>
@@ -484,7 +487,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 </div>
                 <div className="checkout-summary-subtotal">
                   <p className="subtotal">
-                    {addonsBilledAt(dates?.cutoff_label, { firstWeekRate: !!promoResult?.valid })}
+                    {addonsBilledAt(dates?.cutoff_label, { firstWeekRate: promoPct > 0 })}
                   </p>
                   <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
                 </div>

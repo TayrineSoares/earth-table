@@ -7,7 +7,15 @@
 const supabase = require('../../supabase/db');
 const { getAllCategories } = require('./category');
 const { getAllProducts } = require('./product');
-const { getSignupDates, getEditWeek, getChargeDeadline, torontoYmd } = require('./subscriptionWeek');
+const {
+  getSignupDates,
+  getEditWeek,
+  getChargeDeadline,
+  torontoYmd,
+  getTargetSundayYmd,
+  sundayLabelFromYmd,
+  nextOpenSunday,
+} = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
   constructor(status, message) {
@@ -262,6 +270,7 @@ async function listMine(userId) {
     .select(`
       id, status, plan_id, label, delivery, delivery_postal_code, pickup_time_slot, special_note,
       pending_plan_id, pending_status, pause_reason, paused_at, created_at, stripe_payment_method_id,
+      first_promo_percent, first_promo_applied, first_promo_code,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents ),
       pending_plan:subscription_plans!subscriptions_pending_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
@@ -282,6 +291,24 @@ async function listMine(userId) {
 
   const cardMap = await cardsByPaymentMethodId(subs.map((row) => row.stripe_payment_method_id));
 
+  const promoCodes = [...new Set(
+    subs.map((row) => String(row.first_promo_code || '').toUpperCase()).filter(Boolean)
+  )];
+  const referralCodes = new Set();
+  if (promoCodes.length) {
+    const { data: partnerRows, error: partnerErr } = await supabase
+      .from('partners')
+      .select('referral_code')
+      .in('referral_code', promoCodes);
+    if (partnerErr) {
+      console.warn('[subscriptions] partner code lookup failed:', partnerErr.message);
+    } else {
+      for (const row of partnerRows || []) {
+        referralCodes.add(String(row.referral_code || '').toUpperCase());
+      }
+    }
+  }
+
   const bySub = {};
   for (const cycle of cycles || []) {
     if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
@@ -298,6 +325,16 @@ async function listMine(userId) {
       .filter((item) => item.kind === 'plan')
       .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
+    const earliestYmd = list
+      .map((row) => row.delivery_date)
+      .filter(Boolean)
+      .sort()[0] || null;
+    const shown = editCycle || display;
+    const storedPct = Number(shown?.promo_percent) || 0;
+    const firstWeekPct = Number(sub.first_promo_percent) || 0;
+    const addonPromoPercent = storedPct > 0
+      ? storedPct
+      : (shown && earliestYmd && String(shown.delivery_date) === String(earliestYmd) ? firstWeekPct : 0);
     const { stripe_payment_method_id: _pm, ...publicSub } = sub;
     void _pm;
     return {
@@ -309,13 +346,37 @@ async function listMine(userId) {
       charge,
       can_edit: sub.status === 'active',
       meals_need_update: sub.status === 'active' && mealCount > 0 && planMeals !== mealCount,
+      addon_promo_percent: addonPromoPercent,
+      first_promo_kind: sub.first_promo_code
+        ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
+        : null,
     };
   });
+}
+
+function adminWeekMeta(now = new Date(), settings = {}) {
+  const dates = getSignupDates(now, settings || {});
+  const thisSunday = getTargetSundayYmd(now, settings || {});
+  const nextSunday = dates.cutoff_passed
+    && dates.first_delivery_date
+    && dates.first_delivery_date !== thisSunday
+    ? dates.first_delivery_date
+    : nextOpenSunday(thisSunday);
+  return {
+    cutoff_passed: dates.cutoff_passed,
+    cutoff_at: dates.cutoff_at,
+    cutoff_label: dates.cutoff_label,
+    this_sunday: thisSunday,
+    this_sunday_label: sundayLabelFromYmd(thisSunday),
+    next_sunday: nextSunday,
+    next_sunday_label: sundayLabelFromYmd(nextSunday),
+  };
 }
 
 async function listAll() {
   const settings = await getSettings();
   const now = new Date();
+  const meta = adminWeekMeta(now, settings || {});
   const { data, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -329,7 +390,7 @@ async function listAll() {
   if (error) throw error;
 
   const subs = data || [];
-  if (!subs.length) return [];
+  if (!subs.length) return { meta, subscriptions: [] };
 
   const userIds = [...new Set(subs.map((row) => row.user_id).filter(Boolean))];
   const { data: users, error: userErr } = await supabase
@@ -363,20 +424,29 @@ async function listAll() {
     bySub[cycle.subscription_id].push(cycle);
   }
 
-  return subs.map((sub) => {
+  const kitchenFor = (cycle) => (cycle?.order_id ? byOrder[cycle.order_id] || null : null);
+
+  const subscriptions = subs.map((sub) => {
     const list = bySub[sub.id] || [];
-    const display = pickDisplayCycle(list, now);
+    const thisCycle = list.find((row) => row.delivery_date === meta.this_sunday) || null;
+    const nextCycle = list.find((row) => row.delivery_date === meta.next_sunday) || null;
+    const display = thisCycle || nextCycle || pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, display);
-    const kitchen = display?.order_id ? byOrder[display.order_id] || null : null;
     return {
       ...sub,
       customer: byUser[sub.user_id] || null,
+      this_cycle: thisCycle,
+      next_cycle: nextCycle,
+      this_kitchen: kitchenFor(thisCycle),
+      next_kitchen: kitchenFor(nextCycle),
       cycle: display,
-      kitchen,
+      kitchen: kitchenFor(display),
       week,
       charge: getChargeDeadline(now, settings || {}, week.delivery_date),
     };
   });
+
+  return { meta, subscriptions };
 }
 
 async function getOwnedSubscription(userId, subscriptionId) {

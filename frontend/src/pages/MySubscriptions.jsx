@@ -9,9 +9,10 @@ import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
   fetchSubscriptionPlans,
-  formatCutoffWeekdayTime,
   formatPickupSlot,
   formatPlanPrice,
+  applyPromoPercent,
+  firstWeekCodeLabel,
   mealsAWeek,
   titleCaseName,
   updateSubscriptionFulfillment,
@@ -28,6 +29,7 @@ import {
   howItWorksCharge,
   howItWorksMeals,
   howItWorksPause,
+  CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
   pausedBanner,
   resumeByCharge,
@@ -603,6 +605,10 @@ const MySubscriptions = ({ user }) => {
               (sum, item) => sum + (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0),
               0
             )
+            const extrasPromoPct = Number(row.addon_promo_percent) || Number(cycle.promo_percent) || 0
+            const extrasDueCents = extrasPromoPct > 0
+              ? applyPromoPercent(extrasCents, extrasPromoPct)
+              : extrasCents
             const isDelivery = !!cycle.delivery
             const ymd = cycle.delivery_date || cycle.pickup_date || row.week?.delivery_date
             const canEdit = Boolean(row.can_edit)
@@ -641,8 +647,8 @@ const MySubscriptions = ({ user }) => {
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
-            const mealsBy = formatCutoffWeekdayTime(row.week?.cutoff_at || cycle.cutoff_at, 'Thu 5:00 PM ET')
-            const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 9:00 AM ET')
+            const mealsBy = row.week?.cutoff_label || MEAL_LOCK_BY
+            const pauseBy = row.charge?.charge_label || CHARGE_DAY_TIME
             const expiry = cardExpiryState(row.card)
 
             return (
@@ -686,6 +692,14 @@ const MySubscriptions = ({ user }) => {
                         <span>Extras this week</span>
                         <span>{formatPlanPrice(extrasCents)} · charged {mealsBy}</span>
                       </div>
+                      {extrasDueCents !== extrasCents ? (
+                        <div className="my-sub-extras-summary">
+                          <span>
+                            {firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind) || 'First-week discount'} · first week only
+                          </span>
+                          <span>-{formatPlanPrice(extrasCents - extrasDueCents)}</span>
+                        </div>
+                      ) : null}
                     </>
                   ) : (
                     <p className="my-sub-empty-extras">No extras this week.</p>

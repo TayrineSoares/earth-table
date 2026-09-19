@@ -99,9 +99,24 @@ const fetchMySubscriptions = async (userId) => {
   }));
 };
 
+const titleCaseAdminRow = (row) => ({
+  ...row,
+  cycle: titleCaseCycle(row.cycle),
+  this_cycle: titleCaseCycle(row.this_cycle),
+  next_cycle: titleCaseCycle(row.next_cycle),
+});
+
 const fetchAdminSubscriptions = async () => {
   const res = await fetch('/api/subscriptions/admin');
-  return parseJson(res);
+  const data = await parseJson(res);
+  if (Array.isArray(data)) {
+    return { meta: {}, subscriptions: data.map(titleCaseAdminRow) };
+  }
+  const subscriptions = Array.isArray(data?.subscriptions) ? data.subscriptions : [];
+  return {
+    meta: data?.meta || {},
+    subscriptions: subscriptions.map(titleCaseAdminRow),
+  };
 };
 
 const fetchSubscriptionDates = async () => {
@@ -178,6 +193,23 @@ const mealsAWeek = (count) => {
   return n === 1 ? '1 meal a week' : `${n} meals a week`;
 };
 
+/** Pre-tax cents after a first-week promo/referral. Delivery is never passed in. Matches backend floor. */
+const applyPromoPercent = (cents, percent) => {
+  const raw = Math.max(0, Number(cents) || 0);
+  const pct = Number(percent) || 0;
+  if (pct <= 0) return raw;
+  return Math.floor((raw * (100 - pct)) / 100);
+};
+
+/** "Referral (TAYRINE15)" or "Promo (SAVE20)" — same wording as checkout. */
+const firstWeekCodeLabel = (code, kind) => {
+  const c = String(code || '').toUpperCase();
+  if (!c) return '';
+  if (kind === 'promo') return `Promo (${c})`;
+  if (kind === 'referral') return `Referral (${c})`;
+  return c;
+};
+
 /** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
 const formatPickupSlot = (slot) => {
   const parts = String(slot || '').split('-');
@@ -198,9 +230,9 @@ const formatPickupSlot = (slot) => {
 const ET = { timeZone: 'America/Toronto' };
 
 const formatCutoffShort = (iso) => {
-  if (!iso) return 'Thu · 5:00 PM ET';
+  if (!iso) return MEAL_LOCK_BY;
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return 'Thu · 5:00 PM ET';
+  if (Number.isNaN(d.getTime())) return MEAL_LOCK_BY;
   const label = d.toLocaleString('en-US', {
     ...ET,
     weekday: 'short',
@@ -213,7 +245,7 @@ const formatCutoffShort = (iso) => {
 };
 
 /** "Thu 5:00 PM ET" — weekday + time, no calendar date. */
-const formatCutoffWeekdayTime = (iso, fallback = 'Thu 5:00 PM ET') => {
+const formatCutoffWeekdayTime = (iso, fallback = MEAL_LOCK_BY) => {
   if (!iso) return fallback;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return fallback;
@@ -299,6 +331,8 @@ export {
   startCardSetup,
   fetchCardSetup,
   mealsAWeek,
+  applyPromoPercent,
+  firstWeekCodeLabel,
   titleCaseName,
   formatPickupSlot,
   formatCutoffShort,
