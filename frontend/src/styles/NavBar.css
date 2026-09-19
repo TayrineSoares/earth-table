@@ -213,8 +213,8 @@
     margin: 0;
     padding: 0;
     width: auto;
-    max-width: 720px;
-    gap: 20px;
+    max-width: 760px;
+    gap: 28px;
     align-items: center;
     height: 39px;
     justify-content: center;
@@ -318,10 +318,10 @@
     margin: 0;
     padding: 0;
     width: auto;
-    max-width: 720px;
+    max-width: 840px;
     justify-content: center;
     align-items: center;
-    gap: 38px;
+    gap: 52px;
     height: 39px;
   }
 
