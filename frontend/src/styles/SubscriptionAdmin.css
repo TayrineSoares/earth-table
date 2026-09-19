@@ -177,12 +177,12 @@
 }
 
 .sub-admin-banner.is-open {
-  background: #FEE8D4;
-  border: 2px solid #EDA413;
+  background: #FFF3D6;
+  border: 2px solid #E8D44A;
 }
 
 .sub-admin-banner.is-locked {
-  background: #FFFBF3;
+  background: #EAF3DC;
   border: 2px solid #ABC586;
 }
 
@@ -433,8 +433,8 @@
   }
 
   .sub-admin-print-provisional {
-    background: #FEE8D4;
-    border: 3px solid #EDA413;
+    background: #FFF3D6;
+    border: 3px solid #E8D44A;
     padding: 20px 22px;
     margin: 0 0 24px;
   }
