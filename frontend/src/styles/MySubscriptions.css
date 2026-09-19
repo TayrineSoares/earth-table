@@ -2,7 +2,8 @@
 .my-subscriptions-page .general-text,
 .my-subscriptions-page .pickup-label,
 .my-subscriptions-page .order-history-empty-copy,
-.my-subscriptions-page .order-history-button {
+.my-subscriptions-page .order-history-button,
+.my-subscriptions-page .order-history-cta {
   font-variant: normal;
 }
 
@@ -468,6 +469,19 @@
   border-top: 1px solid #D9C7B0;
 }
 
+.my-sub-notes-edit {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #D9C7B0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-notes-edit .special-note-container {
+  max-width: 100%;
+}
+
 .my-sub-fulfill-radios {
   display: flex;
   flex-wrap: wrap;
@@ -526,7 +540,9 @@
   .my-sub-primary,
   .my-sub-text-link,
   .my-sub-plan-list .order-history-button,
-  .my-sub-fulfillment .order-history-button {
+  .my-sub-fulfillment .order-history-button,
+  .my-subscriptions-page .order-history-empty .order-history-button,
+  .my-subscriptions-page .order-history-empty .order-history-cta {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -568,10 +584,15 @@
   .my-sub-meals,
   .my-sub-aside,
   .my-sub-fulfillment,
+  .my-sub-notes-edit,
   .my-sub-fulfillment .special-note-input,
+  .my-sub-notes-edit .special-note-input,
+  .my-sub-notes-edit .order-history-button,
   .my-sub-status-note,
   .my-sub-card-expiry,
-  .my-sub-fee-line {
+  .my-sub-fee-line,
+  .my-subscriptions-page .order-history-empty .order-history-button,
+  .my-subscriptions-page .order-history-empty .order-history-cta {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -590,5 +611,12 @@
   .my-sub-line-image {
     width: 48px;
     height: 48px;
+  }
+
+  .my-subscriptions-page .order-history-empty .order-history-button,
+  .my-subscriptions-page .order-history-empty .order-history-cta {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }

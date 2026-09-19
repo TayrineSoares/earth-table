@@ -107,6 +107,11 @@
   margin: 0 0 8px;
 }
 
+.sub-admin-notes {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
 @media (max-width: 1366px) {
   .sub-admin-h2 {
     font-size: 22px;
@@ -127,7 +132,8 @@
   }
 
   .sub-admin-desc-edit .promo-input,
-  .sub-admin-price-input {
+  .sub-admin-price-input,
+  .sub-admin-notes {
     width: 100%;
     min-width: 0;
     max-width: 100%;

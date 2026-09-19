@@ -1043,6 +1043,7 @@ function renderSubscriptionWelcomeEmail({
   pickupSlot,
   cutoffLabel,
   subscriptionId,
+  notes,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1051,6 +1052,7 @@ function renderSubscriptionWelcomeEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
   const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const note = String(notes || '').trim() || '—';
 
   const subject = `Welcome to weekly plans — your first box is ${sunday}`;
 
@@ -1061,6 +1063,7 @@ function renderSubscriptionWelcomeEmail({
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
+        ${kvRow("Notes", note)}
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
       ${ctaLink(mealsHref, "Choose this week's meals →")}
@@ -1078,6 +1081,7 @@ Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are bill
 
 Plan: ${planWeek}
 This Sunday: ${fulfillment}
+Notes: ${note}
 Change your meals by: ${cutoff}
 
 Choose this week's meals: ${mealsHref}
@@ -1171,6 +1175,7 @@ function renderSubscriptionUpdatedEmail({
   appliesTo,
   meals,
   addons,
+  notes,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1178,6 +1183,7 @@ function renderSubscriptionUpdatedEmail({
   const sundayDate = sundayDatePart(sunday);
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const note = String(notes || '').trim() || '—';
   const thisSunday = appliesTo !== 'next_week';
   const timing = thisSunday
     ? `These changes apply to this Sunday, ${sundayDate}.`
@@ -1198,6 +1204,7 @@ function renderSubscriptionUpdatedEmail({
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("That Sunday", fulfillment)}
+        ${kvRow("Notes", note)}
         ${kvRow("Change meals by", cutoff, { last: true })}
       `))}
       ${h2("Meals")}
@@ -1219,6 +1226,7 @@ ${timing}
 
 Plan: ${planWeek}
 That Sunday: ${fulfillment}
+Notes: ${note}
 Change meals by: ${cutoff}
 
 Meals

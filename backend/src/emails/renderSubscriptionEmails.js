@@ -85,8 +85,8 @@ function planSummaryCard({
     ${kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`)}
     ${kvRow('Next box', nextBoxValue({ delivery, pickupSlot, fulfillmentDate }))}
     ${delivery
-      ? `${kvRow('Delivery Address', deliveryLoc)}${kvRow('Notes', note || deliveryLoc)}`
-      : `${kvRow('Address', loc || PICKUP_ADDRESS)}${note ? kvRow('Notes', note) : ''}`}
+      ? `${kvRow('Delivery Address', deliveryLoc)}${kvRow('Notes', note || '—')}`
+      : `${kvRow('Address', loc || PICKUP_ADDRESS)}${kvRow('Notes', note || '—')}`}
     ${kvRow('Change meals by', cutoffDateTime, { last: true })}
   `));
 }
@@ -101,10 +101,9 @@ function planSummaryText(opts) {
     `Next box: ${nextBoxValue(opts)}`,
   ];
   if (opts.delivery) {
-    lines.push(`Delivery Address: ${deliveryLoc}`, `Notes: ${note || deliveryLoc}`);
+    lines.push(`Delivery Address: ${deliveryLoc}`, `Notes: ${note || '—'}`);
   } else {
-    lines.push(`Address: ${loc || PICKUP_ADDRESS}`);
-    if (note) lines.push(`Notes: ${note}`);
+    lines.push(`Address: ${loc || PICKUP_ADDRESS}`, `Notes: ${note || '—'}`);
   }
   lines.push(`Change meals by: ${opts.cutoffDateTime}`);
   return lines.join('\n');
@@ -272,6 +271,7 @@ function renderSubscriptionUpdatedEmail({
   meals,
   addons,
   subscriptionId,
+  notes,
 } = {}) {
   const vars = {
     firstName: firstName || 'there',
@@ -283,6 +283,7 @@ function renderSubscriptionUpdatedEmail({
   const subject = fill(c.subject, vars);
   const preview = fill(c.preview, vars);
   const manageHref = appUrl(`/my-subscriptions/${subscriptionId || ''}`);
+  const note = String(notes || '').trim() || '—';
   const list = [
     itemLinesHtml(meals) || '—',
     itemLinesHtml(addons) ? `<br/>${itemLinesHtml(addons)}` : '',
@@ -291,6 +292,9 @@ function renderSubscriptionUpdatedEmail({
       ${eyebrow('Weekly subscription')}
       ${h1(fill(c.heading, vars))}
       ${intro(c.intro)}
+      ${card(kvTable(`
+        ${kvRow('Notes', note, { last: true })}
+      `))}
       <p style="margin:0 0 24px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${list}</p>
       ${bodyP(fill(c.until, vars))}
       ${ctaLink(manageHref, CTA.manage)}
@@ -299,6 +303,7 @@ function renderSubscriptionUpdatedEmail({
     mdText(fill(c.heading, vars)),
     '',
     c.intro,
+    `Notes: ${note}`,
     itemLinesText(meals) || '—',
     itemLinesText(addons) || '',
     '',

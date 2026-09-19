@@ -96,6 +96,7 @@ const MySubscriptions = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [dialog, setDialog] = useState(null)
   const [editingId, setEditingId] = useState(null)
+  const [notesEditingId, setNotesEditingId] = useState(null)
   const [changingId, setChangingId] = useState(null)
   const [savingId, setSavingId] = useState(null)
   const [fulfillment, setFulfillment] = useState('pickup')
@@ -259,11 +260,19 @@ const MySubscriptions = ({ user }) => {
     const isDelivery = !!cycle.delivery
     const locked = row.week?.delivery_date || cycle.delivery_date || ''
     setEditingId(row.id)
+    setNotesEditingId(null)
     setFulfillment(isDelivery ? 'delivery' : 'pickup')
     setPickupDate(locked)
     setPickupTime(cycle.pickup_time_slot || '')
     setDeliveryDate(locked)
     setPostalCode(cycle.delivery_postal_code || '')
+    setSpecialNote(cycle.special_note || row.special_note || '')
+  }
+
+  const startNotesEdit = (row) => {
+    const cycle = row.edit_cycle || row.cycle || {}
+    setNotesEditingId(row.id)
+    setEditingId(null)
     setSpecialNote(cycle.special_note || row.special_note || '')
   }
 
@@ -274,6 +283,38 @@ const MySubscriptions = ({ user }) => {
         quoteStatus === 'ok' &&
         deliveryFeeCents > 0 &&
         specialNote.trim().length >= 8
+
+  const persistNotes = async (row) => {
+    const isDelivery = !!(row.edit_cycle || row.cycle || {}).delivery
+    if (isDelivery && specialNote.trim().length < 8) {
+      setDialog({
+        icon: 'alert',
+        title: 'One more step',
+        body: 'Add your full delivery address in Notes.',
+        primaryLabel: 'Got it',
+      })
+      return
+    }
+    setSavingId(row.id)
+    try {
+      await updateSubscriptionFulfillment(user.id, row.id, {
+        notes_only: true,
+        special_note: specialNote,
+      })
+      await load()
+      setNotesEditingId(null)
+    } catch (err) {
+      console.error(err)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not save notes',
+        body: err.message || 'Try again in a moment.',
+        primaryLabel: 'OK',
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const persistFulfillment = async (row) => {
     setSavingId(row.id)
@@ -287,6 +328,7 @@ const MySubscriptions = ({ user }) => {
       })
       await load()
       setEditingId(null)
+      setNotesEditingId(null)
     } catch (err) {
       console.error(err)
       setDialog({
@@ -511,7 +553,9 @@ const MySubscriptions = ({ user }) => {
       <div className="page-wrapper my-sub-shell">
         {!user?.id ? (
           <>
-            <h1 className="my-sub-h1">My plans</h1>
+            <div className="my-sub-page-header">
+              <h1 className="my-sub-h1">My plans</h1>
+            </div>
             <div className="order-history-empty">
               <p className="order-history-empty-copy">Sign in to see your weekly plans.</p>
               <Link to="/login?next=/my-subscriptions" className="order-history-button">Log in</Link>
@@ -519,10 +563,14 @@ const MySubscriptions = ({ user }) => {
           </>
         ) : !rows.length ? (
           <>
-            <h1 className="my-sub-h1">My plans</h1>
+            <div className="my-sub-page-header">
+              <h1 className="my-sub-h1">My plans</h1>
+            </div>
             <div className="order-history-empty">
-              <p className="order-history-empty-copy">No current subscriptions available.</p>
-              <Link to="/subscribe-and-save" className="order-history-button">Subscribe &amp; Save</Link>
+              <p className="order-history-empty-copy">
+                You don&apos;t have a weekly plan yet — choose your meals and we&apos;ll pack a box every Sunday.
+              </p>
+              <Link to="/subscribe-and-save" className="order-history-cta">Subscribe &amp; Save</Link>
             </div>
           </>
         ) : (
@@ -580,9 +628,9 @@ const MySubscriptions = ({ user }) => {
             const statusChipClass = isPaused || pending
               ? 'my-sub-status my-sub-status--paused'
               : 'my-sub-status my-sub-status--active'
-            const note = String(cycle.special_note || '').trim()
+            const note = String(cycle.special_note || row.special_note || '').trim()
             const location = isDelivery
-              ? (note || cycle.delivery_postal_code || '—')
+              ? (cycle.delivery_postal_code || '—')
               : PICKUP_ADDRESS
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
@@ -655,6 +703,23 @@ const MySubscriptions = ({ user }) => {
                       <DetailRow label="Next box">{shortWeekdayDate(ymd)}</DetailRow>
                       <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
                       <DetailRow label="Location">{location}</DetailRow>
+                      <DetailRow label="Notes">
+                        {note || 'None'}
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="my-sub-edit-link"
+                            disabled={savingId === row.id}
+                            onClick={() => (
+                              notesEditingId === row.id
+                                ? setNotesEditingId(null)
+                                : startNotesEdit(row)
+                            )}
+                          >
+                            {notesEditingId === row.id ? 'Close' : 'Edit'}
+                          </button>
+                        ) : null}
+                      </DetailRow>
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
                       <DetailRow label="Pause or cancel by">{pauseBy}</DetailRow>
                       <DetailRow label="Card on file">
@@ -755,6 +820,34 @@ const MySubscriptions = ({ user }) => {
                       </button>
                     </div>
                   </div>
+
+                  {notesEditingId === row.id && canEdit ? (
+                    <div className="my-sub-notes-edit">
+                      <div className="special-note-container">
+                        <label htmlFor={`sub-notes-${row.id}`} className="general-text">Notes</label>
+                        <textarea
+                          className="special-note-input"
+                          id={`sub-notes-${row.id}`}
+                          value={specialNote}
+                          onChange={(e) => setSpecialNote(e.target.value)}
+                          placeholder={
+                            isDelivery
+                              ? 'Delivery address, allergies, special instructions...'
+                              : 'Allergies, special instructions...'
+                          }
+                          rows="4"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="order-history-button"
+                        disabled={savingId === row.id || (isDelivery && specialNote.trim().length < 8)}
+                        onClick={() => persistNotes(row)}
+                      >
+                        {savingId === row.id ? 'Saving…' : 'Save notes'}
+                      </button>
+                    </div>
+                  ) : null}
 
                   {changingId === row.id && canEdit && otherPlans.length ? (
                     <div className="my-sub-plan-list">

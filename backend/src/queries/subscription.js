@@ -473,11 +473,16 @@ async function sendBoxUpdatedNow(userId, sub, cycle, week) {
   }));
   const msg = renderSubscriptionUpdatedEmail({
     firstName: user.first_name,
+    mealCount: sub.subscription_plans?.meal_count,
+    delivery: !!cycle.delivery,
     deliveryLabel: week.delivery_label,
+    pickupSlot: cycle.pickup_time_slot,
     cutoffLabel: week.cutoff_label,
     meals,
     addons,
     subscriptionId: sub.id,
+    notes: cycle.special_note,
+    appliesTo: week.applies_to,
   });
   await sendCustomerEmail({ to: email, msg });
 }
@@ -694,8 +699,32 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
 
-  const delivery = !!body.delivery;
   const specialNote = String(body.special_note || '').trim() || null;
+
+  if (body.notes_only) {
+    if (cycle.delivery && (!specialNote || specialNote.length < 8)) {
+      throw new SubscriptionError(400, 'Please enter your full delivery address.');
+    }
+    const { error: subErr } = await supabase
+      .from('subscriptions')
+      .update({ special_note: specialNote })
+      .eq('id', sub.id);
+    if (subErr) throw subErr;
+    const { error: cycleErr } = await supabase
+      .from('subscription_cycles')
+      .update({ special_note: specialNote })
+      .eq('id', cycle.id);
+    if (cycleErr) throw cycleErr;
+    const updated = { ...cycle, special_note: specialNote };
+    try {
+      await notifyCustomerUpdate(userId, sub, updated, week);
+    } catch (err) {
+      console.warn('[subscriptions] notes update email failed:', err.message);
+    }
+    return { ok: true, cycle: updated };
+  }
+
+  const delivery = !!body.delivery;
   const pickupSlot = String(body.pickup_time_slot || '').trim();
   const wasPickup = !cycle.delivery;
 

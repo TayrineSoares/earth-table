@@ -146,6 +146,7 @@ const SubscriberAdmin = () => {
                 const fulfillment = cycle.delivery
                   ? `Delivery${cycle.delivery_postal_code ? ` · ${cycle.delivery_postal_code}` : ''}`
                   : `Pickup${cycle.pickup_time_slot ? ` · ${formatPickupSlot(cycle.pickup_time_slot)}` : ''}`;
+                const noteText = String(cycle.special_note || row.special_note || '').trim() || '—';
 
                 return (
                   <Fragment key={row.id}>
@@ -186,12 +187,12 @@ const SubscriberAdmin = () => {
                       <tr>
                         <td colSpan={6}>
                           <div className="sub-admin-details">
-                            {cycle.special_note ? (
-                              <p>
-                                <strong>Notes:</strong>{' '}
-                                <span style={{ whiteSpace: 'pre-wrap' }}>{cycle.special_note}</span>
-                              </p>
-                            ) : null}
+                            <p>
+                              <strong>Notes:</strong>{' '}
+                              <span className={noteText === '—' ? 'sub-admin-muted sub-admin-notes' : 'sub-admin-notes'}>
+                                {noteText}
+                              </span>
+                            </p>
                             <p><strong>Meals</strong></p>
                             {meals.length ? (
                               <ul>
