@@ -30,39 +30,6 @@
   margin: 0;
 }
 
-.order-history-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 24px;
-}
-
-.order-history-filter {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: var(--body-font);
-  font-weight: 500;
-  font-size: 15px;
-  color: #757575;
-  -webkit-text-fill-color: #757575;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.order-history-filter.is-active {
-  color: #000;
-  -webkit-text-fill-color: #000;
-  text-decoration: underline;
-  text-decoration-color: #EDA413;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 10px;
-}
-
 .order-history-list {
   display: flex;
   flex-direction: column;
@@ -631,7 +598,6 @@ a.order-item-link:hover .order-item-name {
   footer,
   .checkout-page-header-image,
   .order-history-header,
-  .order-history-filters,
   .order-card--collapsed,
   .order-history-cta,
   .order-text-link,

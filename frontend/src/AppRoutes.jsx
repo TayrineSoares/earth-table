@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -54,9 +54,18 @@ const AppRoutes = ({
     && location.pathname !== '/subscribe/confirmation';
   const onSubscribeCart = location.pathname === '/subscribe/cart';
 
+  const prevPathRef = useRef(null);
+
   // SPA pages keep the previous scroll; meals → add-ons would stay mid-catalog.
+  // Menu category tabs only change the listing path — keep the scroll position.
   useEffect(() => {
+    const prev = prevPathRef.current;
+    prevPathRef.current = location.pathname;
     if (location.hash) return;
+    const isMenuListing = (path) => (
+      path === '/products/category' || path.startsWith('/products/category/')
+    );
+    if (prev && isMenuListing(prev) && isMenuListing(location.pathname)) return;
     window.scrollTo(0, 0);
   }, [location.pathname, location.hash]);
 

@@ -17,7 +17,7 @@ function moneyLabel(cents) {
   return `$${(n / 100).toFixed(2)}`
 }
 
-function QtyAndTrash({ quantity, onMinus, onPlus, plusDisabled = false, onRemove, name }) {
+function QtyAndTrash({ quantity, onMinus, onPlus, plusDisabled = false, minusDisabled = false, onRemove, name }) {
   return (
     <span className="cart-popup-item-quantity">
       QTY:
@@ -26,6 +26,7 @@ function QtyAndTrash({ quantity, onMinus, onPlus, plusDisabled = false, onRemove
           type="button"
           onClick={onMinus}
           className="cart-popup-add-remove-button"
+          disabled={minusDisabled}
           aria-label={`Decrease ${name}`}
         >
           -
@@ -82,6 +83,7 @@ function SubscribeCartPopup({
   }
 
   const goNext = () => {
+    setIsMinimized(true)
     if (onAddons) {
       navigate('/subscribe/cart')
       return
@@ -122,6 +124,7 @@ function SubscribeCartPopup({
                         onMinus={() => bumpSubMeal(item, -1)}
                         onPlus={() => bumpSubMeal(item, 1)}
                         plusDisabled={mealCount >= subCart.mealCount}
+                        minusDisabled={mealCount <= subCart.mealCount}
                         onRemove={() => bumpSubMeal(item, -lineQty(subCart.meals, item.id))}
                       />
                     </div>

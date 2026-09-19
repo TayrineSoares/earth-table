@@ -579,25 +579,7 @@ async function createKitchenOrder(sub, cycle, sunday) {
 }
 
 async function applyPendingAfterLock(sub) {
-  if (sub.pending_status === 'cancelled') {
-    await supabase
-      .from('subscriptions')
-      .update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        pending_status: null,
-        pending_plan_id: null,
-        stripe_payment_method_id: null,
-        label: null,
-        special_note: null,
-        delivery_postal_code: null,
-        pickup_time_slot: null,
-        pause_reason: null,
-      })
-      .eq('id', sub.id);
-    return { cancelled: true };
-  }
-  if (sub.pending_status === 'paused') {
+  if (sub.pending_status === 'cancelled' || sub.pending_status === 'paused') {
     await supabase
       .from('subscriptions')
       .update({

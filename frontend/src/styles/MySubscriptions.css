@@ -526,6 +526,7 @@
   .my-sub-aside {
     position: static;
     top: auto;
+    order: -1;
   }
 }
 

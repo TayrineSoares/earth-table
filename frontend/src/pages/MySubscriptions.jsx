@@ -9,7 +9,7 @@ import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
   fetchSubscriptionPlans,
-  formatCutoffShort,
+  formatCutoffWeekdayTime,
   formatPickupSlot,
   formatPlanPrice,
   mealsAWeek,
@@ -292,10 +292,11 @@ const MySubscriptions = ({ user }) => {
   }
 
   const persistStatus = async (row, action) => {
+    const apiAction = action === 'cancel' ? 'pause' : action
     setSavingId(row.id)
     setDialog(null)
     try {
-      const result = await updateSubscriptionStatus(user.id, row.id, action)
+      const result = await updateSubscriptionStatus(user.id, row.id, apiAction)
       await load()
       setChangingId(null)
       if (result?.pending && result?.message) {
@@ -338,11 +339,14 @@ const MySubscriptions = ({ user }) => {
       cancel: beforeWed
         ? {
           title: 'Cancel this plan?',
-          body: `This Sunday, ${sunday}, will be skipped. Your plan, meals, and saved card are removed. Start a new plan any time from Subscribe & Save.`,
+          body: [
+            `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
+            'Resume by Wednesday 5:00 PM for that week\'s box.',
+          ],
         }
         : {
           title: 'Cancel after this Sunday?',
-          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be cancelled starting the following week.`,
+          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will stay on file starting the following week — resume any time.`,
         },
       resume: {
         title: 'Resume this plan?',
@@ -574,8 +578,8 @@ const MySubscriptions = ({ user }) => {
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
-            const mealsBy = formatCutoffShort(row.week?.cutoff_at || cycle.cutoff_at)
-            const pauseBy = formatCutoffShort(row.charge?.charge_at)
+            const mealsBy = formatCutoffWeekdayTime(row.week?.cutoff_at || cycle.cutoff_at, 'Thu 5:00 PM ET')
+            const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 5:00 PM ET')
 
             return (
               <section key={row.id} className="my-sub-plan">

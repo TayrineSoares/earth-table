@@ -114,9 +114,6 @@ const SubscribeAddons = ({ subCart, bumpSubAddon }) => {
               {extraLine}
             </p>
             <div className="subscribe-flow-bar-actions">
-              <button type="button" className="subscribe-text-button" onClick={goToCart}>
-                Skip
-              </button>
               <button type="button" className="subscribe-select-button" onClick={goToCart}>
                 Continue
               </button>

@@ -246,62 +246,11 @@ async function resumeSubscription(userId, subscriptionId) {
   return { ok: true, status: 'active', pending: false, week, charge };
 }
 
-function cancelledWipe() {
-  return {
-    status: 'cancelled',
-    cancelled_at: new Date().toISOString(),
-    pending_status: null,
-    pending_plan_id: null,
-    stripe_payment_method_id: null,
-    label: null,
-    special_note: null,
-    delivery_postal_code: null,
-    pickup_time_slot: null,
-    pause_reason: null,
-  };
-}
-
 async function cancelSubscription(userId, subscriptionId) {
-  const sub = await getOwnedSubscription(userId, subscriptionId);
-  if (sub.status === 'cancelled') {
-    return { ok: true, status: 'cancelled', pending: false };
-  }
-
-  const { week, charge, cycle } = await currentCycleFor(sub);
-  const skipThisSunday = charge.before_wednesday && sub.status === 'active';
-
-  if (!skipThisSunday) {
-    return applyPendingStatus(userId, sub, 'cancelled', week, charge);
-  }
-
-  if (cycle && Number(cycle.plan_paid_cents) > 0) {
-    try {
-      await refundSkip(cycle, sub.id);
-    } catch (err) {
-      console.warn('[subscriptions] cancel refund failed; deferring to next week:', err.message);
-      return applyPendingStatus(userId, sub, 'cancelled', week, charge);
-    }
-  }
-  await skipOpenCycle(cycle);
-
-  const { error } = await supabase
-    .from('subscriptions')
-    .update(cancelledWipe())
-    .eq('id', sub.id);
-  if (error) throw error;
-
-  try {
-    await notifyManage(userId, {
-      kind: 'cancel_now',
-      mealCount: sub.subscription_plans?.meal_count,
-      deliveryLabel: week.delivery_label,
-      chargeLabel: charge.charge_label,
-    });
-  } catch (err) {
-    console.warn('[subscriptions] cancel email failed:', err.message);
-  }
-
-  return { ok: true, status: 'cancelled', pending: false, skipped: true, week, charge };
+  // Same as pause: skip this Sunday when we still can, keep card and plan
+  // until they resume. The Cancel button is a different conversation, not
+  // a different outcome.
+  return pauseSubscription(userId, subscriptionId);
 }
 
 async function claimCutoffRun(weekKey, job) {

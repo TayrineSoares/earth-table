@@ -234,6 +234,11 @@
   border: none;
 }
 
+.cart-popup-add-remove-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .cart-popup-item-total-price {
   font-family: var(--body-font);
   font-weight: 400;

@@ -38,13 +38,14 @@ function formatLockedDateLabel(yyyyMmDd) {
   return `${weekday}, ${month} ${ordinal}`
 }
 
-function CartQtyStepper({ name, quantity, onMinus, onPlus, plusDisabled = false }) {
+function CartQtyStepper({ name, quantity, onMinus, onPlus, plusDisabled = false, minusDisabled = false }) {
   return (
     <div className="subscribe-cart-qty">
       <button
         type="button"
         className="checkout-cart-popup-remove-button"
         onClick={onMinus}
+        disabled={minusDisabled}
         aria-label={`Decrease ${name}`}
       >
         -
@@ -638,6 +639,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                       onMinus={() => bumpSubMeal(item, -1)}
                       onPlus={() => bumpSubMeal(item, 1)}
                       plusDisabled={totalQty(subCart.meals) >= subCart.mealCount}
+                      minusDisabled={totalQty(subCart.meals) <= subCart.mealCount}
                     />
                   </p>
                 </div>
