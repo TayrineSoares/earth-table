@@ -427,7 +427,10 @@ async function createSubscriptionCheckout(body = {}) {
     {
       price_data: {
         currency: 'cad',
-        product_data: { name: `${plan.name} weekly plan (includes tax)` },
+        product_data: {
+          name: `${plan.name} weekly plan (includes tax)`,
+          description: `Add-ons will be charged at ${dates.cutoff_label} if they are still on the box.`,
+        },
         unit_amount: Math.max(0, Math.round(planDiscounted * HST)),
       },
       quantity: 1,
