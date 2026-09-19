@@ -211,6 +211,12 @@ function renderOwnerSubscriptionEmail({
   notes,
   address,
   chargeLabel,
+  discountCode,
+  discountKind,
+  discountLabel,
+  planSavedCents,
+  addonSavedCents,
+  addonRegularCents,
 } = {}) {
   const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Customer';
   const vars = {
@@ -227,15 +233,32 @@ function renderOwnerSubscriptionEmail({
   const paidLabel = `${formatDollars(paidCents)} including HST`;
   const addonHtml = itemLinesHtml(addons);
   const renews = chargeLabel || PAUSE_CANCEL_BY;
+  const planOff = Math.max(0, Number(planSavedCents) || 0);
+  const addonOff = Math.max(0, Number(addonSavedCents) || 0);
+  const addonRegular = Math.max(0, Number(addonRegularCents) || 0);
+  const code = String(discountCode || '').toUpperCase();
+  const codeLabel = discountLabel
+    || (code
+      ? `${discountKind === 'promo' ? 'Promo' : discountKind === 'referral' ? 'Referral' : 'Code'} (${code})`
+      : 'First-week discount');
   const html = ownerWrap(`
       ${eyebrow('New subscription')}
       ${h1(c.heading)}
       ${h2(`${fullName} — ${mealCount} meals a week`)}
       ${intro(`Subscribed ${subscribedAtLabel || 'just now'}. First box: <strong>${vars.fulfillmentDate}.</strong>`)}
       ${card(kvTable(`
-        ${kvRow('Plan', `${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`)}
+        ${kvRow('Regular price', `${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`)}
+        ${planOff > 0 ? kvRow(`${codeLabel} · first week only`, `−${formatDollars(planOff)}`) : ''}
+        ${addonRegular > 0
+          ? kvRow(
+            'Add-ons (cutoff)',
+            addonOff > 0
+              ? `${formatDollars(addonRegular)} regular · ${codeLabel} −${formatDollars(addonOff)}`
+              : formatDollars(addonRegular)
+          )
+          : ''}
         ${kvRow('Next box', nextBoxValue({ delivery, pickupSlot, fulfillmentDate: vars.fulfillmentDate }))}
-        ${kvRow('First payment', paidLabel)}
+        ${kvRow('Paid today', paidLabel, { highlight: planOff > 0 || addonOff > 0 })}
         ${kvRow('Renews', renews)}
         ${kvRow('Customer', `${email || '—'} · ${formatPhone(phone)}`)}
         ${delivery
@@ -250,9 +273,15 @@ function renderOwnerSubscriptionEmail({
   const text = [
     subject,
     `Subscribed ${subscribedAtLabel || 'just now'}. First box: ${vars.fulfillmentDate}.`,
-    `Plan — ${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`,
+    `Regular price — ${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`,
+    planOff > 0 ? `Discount — ${codeLabel} · first week only −${formatDollars(planOff)}` : null,
+    addonRegular > 0
+      ? (addonOff > 0
+        ? `Add-ons (cutoff) — ${formatDollars(addonRegular)} regular · ${codeLabel} −${formatDollars(addonOff)}`
+        : `Add-ons (cutoff) — ${formatDollars(addonRegular)}`)
+      : null,
     `Next box — ${nextBoxValue({ delivery, pickupSlot, fulfillmentDate: vars.fulfillmentDate })}`,
-    `First payment — ${paidLabel}`,
+    `Paid today — ${paidLabel}`,
     `Renews — ${renews}`,
     `Customer — ${email || '—'} · ${formatPhone(phone)}`,
     delivery
@@ -263,7 +292,7 @@ function renderOwnerSubscriptionEmail({
     itemLinesText(meals) || '—',
     addonHtml ? `\nExtras\n${itemLinesText(addons)}` : '',
     `\n${CTA.viewSubscription}: ${adminHref()}`,
-  ].join('\n');
+  ].filter((line) => line != null).join('\n');
   return { subject, html, text };
 }
 

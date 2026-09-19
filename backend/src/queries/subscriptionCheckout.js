@@ -794,16 +794,18 @@ async function completeSubscriptionSignup(session) {
     user,
   });
 
+  const addonItems = cart.addons || [];
+  const savings = firstWeekSavedCents({
+    planPriceCents: cart.plan_price_cents,
+    planPaidCents: cart.plan_paid_cents,
+    addonItems,
+    percent: promoPercent,
+  });
+  const discountKind = discount?.kind || null;
+  const discountLabel = firstWeekDiscountLabel(discount?.code, discountKind);
+
   if (email) {
     try {
-      const addonItems = cart.addons || [];
-      const savings = firstWeekSavedCents({
-        planPriceCents: cart.plan_price_cents,
-        planPaidCents: cart.plan_paid_cents,
-        addonItems,
-        percent: promoPercent,
-      });
-      const discountKind = discount?.kind || null;
       const msg = renderSubscriptionWelcomeEmail({
         firstName: user?.first_name || '',
         mealCount: cart.meal_count,
@@ -819,7 +821,7 @@ async function completeSubscriptionSignup(session) {
         meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
         discountCode: discount?.code || null,
         discountKind,
-        discountLabel: firstWeekDiscountLabel(discount?.code, discountKind),
+        discountLabel,
         discountSavedCents: savings.savedCents,
       });
       await sendEmail({
@@ -855,6 +857,13 @@ async function completeSubscriptionSignup(session) {
         phone: paidSession.customer_details?.phone || user?.phone_number,
         notes: draft.special_note,
         address: delivery ? draft.special_note : undefined,
+        deliveryFeeCents: Number(cart.delivery_fee_cents) || 0,
+        discountCode: discount?.code || null,
+        discountKind,
+        discountLabel,
+        planSavedCents: savings.planOff,
+        addonSavedCents: savings.addonOff,
+        addonRegularCents: savings.addonFull,
       });
       await sendEmail({
         to: ownerTo,

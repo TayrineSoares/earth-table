@@ -1124,10 +1124,18 @@ function renderOwnerSubscriptionEmail({
   paidCents,
   chargeId,
   meals,
+  addons,
   cutoffLabel,
   email,
   phone,
   notes,
+  deliveryFeeCents,
+  discountCode,
+  discountKind,
+  discountLabel,
+  planSavedCents,
+  addonSavedCents,
+  addonRegularCents,
 } = {}) {
   const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Customer';
   const planWeek = mealsAWeek(mealCount);
@@ -1135,10 +1143,57 @@ function renderOwnerSubscriptionEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const mealHtml = itemLinesHtml(meals) || '—';
   const mealText = itemLinesText(meals) || '—';
+  const addonHtml = itemLinesHtml(addons);
+  const addonText = itemLinesText(addons);
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const paid = formatDollars(paidCents);
   const stripeRef = chargeId || '—';
   const note = String(notes || '').trim() || '—';
+  const planOff = Math.max(0, Number(planSavedCents) || 0);
+  const addonOff = Math.max(0, Number(addonSavedCents) || 0);
+  const addonRegular = Math.max(0, Number(addonRegularCents) || 0);
+  const deliveryFee = Math.max(0, Number(deliveryFeeCents) || 0);
+  const code = String(discountCode || '').toUpperCase();
+  const codeLabel = discountLabel
+    || (code
+      ? `${discountKind === 'promo' ? 'Promo' : discountKind === 'referral' ? 'Referral' : 'Code'} (${code})`
+      : 'First-week discount');
+  const hasDiscount = planOff > 0 || addonOff > 0;
+
+  const moneyRows = hasDiscount
+    ? `${kvRow('Regular price', `${formatDollars(planPriceCents)}/week + HST`)}
+        ${planOff > 0 ? kvRow(`${codeLabel} · first week only`, `−${formatDollars(planOff)}`) : ''}
+        ${deliveryFee > 0 ? kvRow('Delivery', `${formatDollars(deliveryFee)} + HST`) : ''}
+        ${addonRegular > 0
+          ? kvRow(
+            'Add-ons (cutoff)',
+            addonOff > 0
+              ? `${formatDollars(addonRegular)} regular · ${codeLabel} −${formatDollars(addonOff)}`
+              : `${formatDollars(addonRegular)} billed at cutoff`
+          )
+          : ''}
+        ${kvRow('Paid today', `${paid} including HST${stripeRef !== '—' ? ` · Stripe ${stripeRef}` : ''}`, { last: true, highlight: true })}`
+    : `${kvRow('Plan', `${planWeek} — ${formatDollars(planPriceCents)}/week + HST`)}
+        ${deliveryFee > 0 ? kvRow('Delivery', `${formatDollars(deliveryFee)} + HST`) : ''}
+        ${kvRow('First payment', `${paid} paid · Stripe ${stripeRef}`, { last: true })}`;
+
+  const moneyText = hasDiscount
+    ? [
+      `Regular price: ${formatDollars(planPriceCents)}/week + HST`,
+      planOff > 0 ? `Discount: ${codeLabel} · first week only −${formatDollars(planOff)}` : null,
+      deliveryFee > 0 ? `Delivery: ${formatDollars(deliveryFee)} + HST` : null,
+      addonRegular > 0
+        ? (addonOff > 0
+          ? `Add-ons (cutoff): ${formatDollars(addonRegular)} regular · ${codeLabel} −${formatDollars(addonOff)}`
+          : `Add-ons (cutoff): ${formatDollars(addonRegular)}`)
+        : null,
+      `Paid today: ${paid} including HST${stripeRef !== '—' ? ` · Stripe ${stripeRef}` : ''}`,
+    ].filter(Boolean).join('\n')
+    : [
+      `Plan: ${planWeek} — ${formatDollars(planPriceCents)}/week + HST`,
+      deliveryFee > 0 ? `Delivery: ${formatDollars(deliveryFee)} + HST` : null,
+      `First payment: ${paid} paid · Stripe ${stripeRef}`,
+    ].filter(Boolean).join('\n');
 
   const subject = `New subscription — ${fullName} — ${planWeek}`;
 
@@ -1147,12 +1202,12 @@ function renderOwnerSubscriptionEmail({
       ${h1(`${fullName} — ${planWeek}`)}
       ${intro(`Subscribed ${subscribedAtLabel || 'just now'}. First box: ${sunday}.`)}
       ${card(kvTable(`
-        ${kvRow("Plan", `${planWeek} — ${formatDollars(planPriceCents)}/week`)}
         ${kvRow("Fulfillment", fulfillment)}
-        ${kvRow("First payment", `${paid} paid · Stripe ${stripeRef}`, { last: true })}
+        ${moneyRows}
       `))}
       ${h2("Meals selected")}
       <p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${mealHtml}</p>
+      ${addonHtml ? `${h2("Add-ons")}<p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${addonHtml}</p>` : ''}
       <p style="margin:0 0 24px; font-size:13px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};">Maybe change by ${cutoff}</p>
       ${card(kvTable(`
         ${kvRow("Customer", `${email || '—'} · ${formatPhone(phone)}`)}
@@ -1168,12 +1223,12 @@ ${fullName} — ${planWeek}
 Subscribed ${subscribedAtLabel || 'just now'}.
 First box: ${sunday}.
 
-Plan: ${planWeek} — ${formatDollars(planPriceCents)}/week
 Fulfillment: ${fulfillment}
-First payment: ${paid} paid · Stripe ${stripeRef}
+${moneyText}
 
 Meals selected
 ${mealText}
+${addonHtml ? `\nAdd-ons\n${addonText}\n` : ''}
 Maybe change by ${cutoff}
 
 Customer: ${email || '—'} · ${formatPhone(phone)}
