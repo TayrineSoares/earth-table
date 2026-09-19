@@ -29,7 +29,7 @@ const PICKUP_ADDRESS = '77 Woodstream Blvd, Vaughan, ON L4L 7Y7';
 const DELIVERY_WINDOW = '11:00 AM – 6:00 PM';
 
 const CTA = {
-  manage: 'Manage my plan',
+  manage: 'Manage my subscription',
   changeMeals: 'Change my meals',
   addExtras: 'Add extras',
   resume: 'Resume my plan',

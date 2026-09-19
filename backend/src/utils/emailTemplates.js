@@ -1050,7 +1050,7 @@ function renderSubscriptionWelcomeEmail({
   const planPhrase = mealPlanPhrase(mealCount);
   const sunday = deliveryLabel || 'Sunday';
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
-  const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
+  const manageHref = appUrl(`/my-subscriptions/${subscriptionId || ''}`);
   const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
   const note = String(notes || '').trim() || '—';
 
@@ -1066,7 +1066,7 @@ function renderSubscriptionWelcomeEmail({
         ${kvRow("Notes", note)}
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
-      ${ctaLink(mealsHref, "Choose this week's meals →")}
+      ${ctaLink(manageHref, "Manage my subscription")}
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before the Thursday cutoff.</p>
   `, {
@@ -1084,7 +1084,7 @@ This Sunday: ${fulfillment}
 Notes: ${note}
 Change your meals by: ${cutoff}
 
-Choose this week's meals: ${mealsHref}
+Manage my subscription: ${manageHref}
 
 Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
 
