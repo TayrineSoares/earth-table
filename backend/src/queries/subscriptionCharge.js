@@ -1,5 +1,6 @@
 /**
- * Weekly jobs: Wednesday plan+delivery charge, Thursday extras + kitchen lock.
+ * Weekly jobs: Wednesday 9:00 AM ET plan+delivery charge + receipt email,
+ * Thursday 5:00 PM ET extras + kitchen lock.
  * Safe to re-run: already-paid cycles and locked rows are skipped.
  */
 
@@ -19,7 +20,6 @@ const {
 const {
   sendCustomerEmail,
   sendOwnerEmail,
-  emailPrefOn,
   cardForPaymentMethod,
   declineReasonFrom,
 } = require('../emails/sendSubscriptionMail');
@@ -347,7 +347,6 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
 async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
-  if (!emailPrefOn(user, 'wednesday_reminder')) return;
   const labeled = await sluggedItems(cycle.subscription_cycle_items);
   const charged = !!chargeResult?.charged;
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;

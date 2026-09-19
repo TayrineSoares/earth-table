@@ -1243,7 +1243,7 @@ function renderSubscriptionManageEmail({
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
-  const charge = chargeLabel || 'Wednesday at 5:00 PM ET';
+  const charge = chargeLabel || 'Wednesday at 9:00 AM ET';
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
 
@@ -1331,7 +1331,7 @@ function renderSubscriptionHolidaySkipEmail({
   const name = firstName || 'there';
   const skipped = skippedSunday || 'this Sunday';
   const next = nextSunday || 'the next Sunday';
-  const charge = chargeLabel || 'Wednesday at 5:00 PM ET';
+  const charge = chargeLabel || 'Wednesday at 9:00 AM ET';
   const subject = owner
     ? `Holiday skip — no boxes ${skipped}`
     : `No box this Sunday — next delivery is ${next}`;
@@ -1426,6 +1426,8 @@ function renderSubscriptionWednesdayEmail({
   meals,
   addons,
   subscriptionId,
+  cardBrand,
+  last4,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1437,25 +1439,29 @@ function renderSubscriptionWednesdayEmail({
   const chargeLines = charged
     ? receiptLines({ planCents, deliveryCents, chargedCents })
     : [];
+  const cardLine = charged && last4
+    ? `${cardBrand || 'Card'} •••• ${last4}`
+    : '';
+  const chargedLabel = cardLine ? `Charged to ${cardLine}` : 'Charged to your card';
 
   const introText = charged
-    ? `We charged your card for this week's plan and delivery. You have until tomorrow to change meals and add extras — cutoff is ${cutoff}. Add-ons still on the box then are billed at cutoff.`
-    : `Plan and delivery for this Sunday are already paid. You have until tomorrow to change meals and add extras — cutoff is ${cutoff}. Add-ons still on the box then are billed at cutoff.`;
+    ? `This is your receipt for this week's plan and delivery${cardLine ? `, charged to ${cardLine}` : ''}. You can still change meals and extras until ${cutoff}. Add-ons still on the box then are billed at cutoff.`
+    : `Plan and delivery for this Sunday are already paid. You can still change meals and extras until ${cutoff}. Add-ons still on the box then are billed at cutoff.`;
 
   const subject = charged
-    ? `Your card was charged — meals and extras until tomorrow`
-    : `This Sunday's box — meals and extras until tomorrow`;
+    ? `Receipt — ${planWeek} charged for ${sunday}`
+    : `This Sunday's box — meals and extras until ${cutoff}`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
-      ${h1(`This week's box, ${name}`)}
+      ${h1(charged ? `Your receipt, ${name}` : `This week's box, ${name}`)}
       ${intro(introText)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
         ${kvRow("Change meals by", cutoff, { last: true })}
       `))}
-      ${charged ? `${h2("Charged today")}${moneyReceiptHtml(chargeLines, "Charged to your card", chargedCents)}` : ''}
+      ${charged ? `${h2("Receipt")}${moneyReceiptHtml(chargeLines, chargedLabel, chargedCents)}` : ''}
       ${h2("Meals")}
       ${itemListHtml(meals, 'None yet — pick them before cutoff and we will have them ready.')}
       ${h2("Add-ons")}
@@ -1468,7 +1474,7 @@ function renderSubscriptionWednesdayEmail({
     title: subject,
   });
 
-  const text = `This week's box, ${name}
+  const text = `${charged ? `Your receipt, ${name}` : `This week's box, ${name}`}
 
 ${introText}
 
@@ -1476,7 +1482,7 @@ Plan: ${planWeek}
 This Sunday: ${fulfillment}
 Change meals by: ${cutoff}
 
-${charged ? `Charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
+${charged ? `Receipt\n${moneyReceiptText(chargeLines, chargedLabel, chargedCents)}\n\n` : ''}Meals
 ${itemLinesText(meals) || 'None yet — pick them before cutoff.'}
 
 Add-ons
@@ -1570,7 +1576,7 @@ function renderSubscriptionPriceEmail({
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const subject = `Your ${planWeek} is now ${formatDollars(newPriceCents)}/week`;
-  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next Wednesday charge — this Sunday stays at the amount already billed if you already paid.`;
+  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next Wednesday 9:00 AM ET charge — this Sunday stays at the amount already billed if you already paid.`;
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`Price update, ${name}`)}

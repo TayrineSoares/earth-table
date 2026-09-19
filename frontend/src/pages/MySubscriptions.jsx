@@ -23,6 +23,14 @@ import {
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import {
+  HOW_IT_WORKS_CHARGE,
+  HOW_IT_WORKS_MEALS,
+  HOW_IT_WORKS_PAUSE,
+  MEAL_LOCK_BY,
+  PAUSED_BANNER,
+  RESUME_BY_CHARGE,
+} from '../helpers/subscriptionCadence'
 import { clearEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
@@ -329,7 +337,7 @@ const MySubscriptions = ({ user }) => {
           title: 'Pause this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            'Resume by Wednesday 5:00 PM for that week\'s box.',
+            RESUME_BY_CHARGE,
           ],
         }
         : {
@@ -341,7 +349,7 @@ const MySubscriptions = ({ user }) => {
           title: 'Cancel this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            'Resume by Wednesday 5:00 PM for that week\'s box.',
+            RESUME_BY_CHARGE,
           ],
         }
         : {
@@ -377,7 +385,7 @@ const MySubscriptions = ({ user }) => {
         setDialog({
           icon: 'mail',
           title: 'Pick this week\'s meals',
-          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before Thursday 5:00 PM.`,
+          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before ${MEAL_LOCK_BY}.`,
           primaryLabel: 'Choose meals',
           primaryTo: `/my-subscriptions/${row.id}/meals`,
         })
@@ -402,7 +410,7 @@ const MySubscriptions = ({ user }) => {
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: beforeWed
-        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before Thursday 5:00 PM.`
+        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${MEAL_LOCK_BY}.`
         : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
       primaryLabel: 'Change plan',
       secondaryLabel: 'Never mind',
@@ -457,11 +465,11 @@ const MySubscriptions = ({ user }) => {
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
+        HOW_IT_WORKS_CHARGE,
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        'Pause or cancel by Wednesday, no fees.',
+        HOW_IT_WORKS_PAUSE,
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
+        HOW_IT_WORKS_MEALS,
       ],
       hint: (
         <>
@@ -549,13 +557,13 @@ const MySubscriptions = ({ user }) => {
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const statusNote = isPaused || pending === 'paused'
-              ? 'This plan is paused. Your last meals and card stay on file. Resume by Wednesday 5:00 PM to get that Sunday\'s box.'
+              ? PAUSED_BANNER
               : pending === 'cancelled'
                 ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                 : row.week?.applies_to === 'next_week'
                   ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                   : row.meals_need_update
-                    ? `Pick exactly ${mealCount} meals for this Sunday before Thursday 5:00 PM.`
+                    ? `Pick exactly ${mealCount} meals for this Sunday before ${MEAL_LOCK_BY}.`
                     : pendingPlan
                       ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
                       : ''
@@ -579,7 +587,7 @@ const MySubscriptions = ({ user }) => {
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
             const mealsBy = formatCutoffWeekdayTime(row.week?.cutoff_at || cycle.cutoff_at, 'Thu 5:00 PM ET')
-            const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 5:00 PM ET')
+            const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 9:00 AM ET')
 
             return (
               <section key={row.id} className="my-sub-plan">

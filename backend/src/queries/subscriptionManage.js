@@ -1,6 +1,6 @@
 /**
  * Pause / resume / cancel / change plan.
- * Wednesday 5pm is the deadline for this Sunday; after that the change waits.
+ * Wednesday 9:00 AM ET is the deadline for this Sunday; after that the change waits.
  */
 
 const supabase = require('../../supabase/db');
@@ -190,7 +190,7 @@ async function resumeSubscription(userId, subscriptionId) {
       const { retryFailedCharge } = require('./subscriptionCharge');
       const retried = await retryFailedCharge(sub);
       if (!retried?.ok) {
-        throw new SubscriptionError(402, 'We still could not charge this week. Update your card before Thursday 5:00 PM or email hello@earthtableco.ca.');
+        throw new SubscriptionError(402, 'We still could not charge this week. Update your card before Thursday 5:00 PM ET or email hello@earthtableco.ca.');
       }
     } catch (err) {
       if (err instanceof SubscriptionError) throw err;

@@ -1,7 +1,7 @@
 /**
  * Subscription plans, customer subscriptions, and open-cycle edits.
  * First-week payment lives in subscriptionCheckout.js.
- * Recurring Wednesday charge / Thursday lock is not built yet.
+ * Recurring Wednesday 9:00 AM ET charge / Thursday 5:00 PM ET lock.
  */
 
 const supabase = require('../../supabase/db');

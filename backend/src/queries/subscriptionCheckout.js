@@ -318,7 +318,7 @@ async function createSubscriptionCheckout(body = {}) {
     line_items: lineItems,
     custom_text: {
       submit: {
-        message: 'Today you pay the weekly plan and delivery. Add-ons are charged Thursday if they are still on this Sunday\'s box.',
+        message: 'Today you pay the weekly plan and delivery. After this week we charge plan and delivery Wednesday at 9:00 AM ET and email a receipt. Add-ons still on the box Thursday at 5:00 PM ET are billed then.',
       },
     },
     success_url: `${frontendUrl()}/subscribe/confirmation?session_id={CHECKOUT_SESSION_ID}`,
@@ -666,7 +666,7 @@ async function createCardSetupCheckout(userId, subscriptionId) {
     cancel_url: `${frontendUrl()}/my-subscriptions`,
     custom_text: {
       submit: {
-        message: 'This saves a card for your Earth Table weekly plan. We charge it each week for your meals and delivery. Extras are billed Thursday if you added any.',
+        message: 'This saves a card for your Earth Table weekly plan. We charge plan and delivery every Wednesday at 9:00 AM ET and email a receipt. Extras are billed Thursday at 5:00 PM ET if you added any.',
       },
     },
     metadata: {

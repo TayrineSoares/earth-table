@@ -142,7 +142,7 @@ const SubscribeAndSave = () => {
             </section>
 
             <p className="subscribe-cutoff-pill">
-              Order by Thursday, 5:00 PM EST. Delivered the following Sunday.
+              Order by Thursday, 5:00 PM ET. Delivered the following Sunday.
             </p>
 
             <section

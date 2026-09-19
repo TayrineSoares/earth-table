@@ -265,7 +265,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 </div>
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Meal Selection Cutoff</span>
-                  <span className="subscribe-confirm-row-value">Every Thursday 5:00pm EST</span>
+                  <span className="subscribe-confirm-row-value">Every Thursday 5:00 PM ET</span>
                 </div>
               </div>
 
