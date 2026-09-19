@@ -318,10 +318,12 @@ function listItems(order) {
 }
 
 function itemParts(p) {
+  const qty = Number(p.quantity) || 1;
+  const unit = Number(p.unit_price_cents) || 0;
   return {
     name: p.slug ?? p.name ?? "Item",
-    qty: p.quantity ?? 1,
-    price: formatMoney(p.unit_price_cents ?? 0),
+    qty,
+    price: formatMoney(unit * qty),
   };
 }
 
@@ -329,7 +331,7 @@ function itemsHtml(order) {
   const rows = listItems(order)
     .map((p) => {
       const { name, qty, price } = itemParts(p);
-      return rowHtml(`${qty} × ${name}`, price);
+      return rowHtml(`${name} × ${qty}`, price);
     })
     .join("");
   return kvTable(rows || rowHtml("Items", "—", true));
@@ -338,7 +340,7 @@ function itemsHtml(order) {
 function itemsText(order) {
   const rows = listItems(order).map((p) => {
     const { name, qty, price } = itemParts(p);
-    return `- ${qty}x ${name} @ ${price}`;
+    return `- ${name} × ${qty} — ${price}`;
   });
   return rows.join("\n") || "(no items)";
 }
