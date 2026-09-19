@@ -4,7 +4,7 @@ import "../styles/Footer.css";
 import blackLogo from "../assets/images/blackLogo.png";
 
 const navLinks = [
-  { to: "/subscribe-and-save", label: "Subscribe & Save" },
+  { to: "/subscribe-and-save", label: "Weekly Plans" },
   { to: "/products/category", label: "Menu" },
   { to: "/products/category/28", label: "Custom meals" },
   { to: "/about", label: "About" },

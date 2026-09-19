@@ -14,9 +14,9 @@ const Navbar = ({ user, onLogout, cart }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const links = [
-    { to: "/about", label: "ABOUT" },
     { to: "/products/category", label: "MENU" },
-    { to: "/subscribe-and-save", label: "SUBSCRIBE & SAVE" },
+    { to: "/subscribe-and-save", label: "WEEKLY PLANS" },
+    { to: "/about", label: "ABOUT" },
     { to: "/contact", label: "CONTACT" },
   ];
 
