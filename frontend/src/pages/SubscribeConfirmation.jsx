@@ -141,8 +141,13 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const lockLabel = dates.cutoff_label || MEAL_LOCK_BY
   const discount = payload?.discount || null
   const savedCents = Number(discount?.saved_cents) || 0
+  const planOffCents = Number(discount?.plan_saved_cents) || 0
+  const addonOffCents = Number(discount?.addon_saved_cents) || 0
+  const addonRegularCents = Number(discount?.addon_regular_cents) || 0
   const discountLabel = discount?.label
     || firstWeekCodeLabel(discount?.code || sub.first_promo_code, discount?.kind || sub.first_promo_kind)
+  const planDiscountCents = planOffCents || (addonOffCents ? 0 : savedCents)
+  const showAddonDiscount = addonOffCents > 0 || addonRegularCents > 0
   const heading = firstName
     ? `Your weekly plan is set, ${firstName}`
     : 'Your weekly plan is set'
@@ -253,10 +258,10 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                   <span className="subscribe-confirm-row-label">Price</span>
                   <span className="subscribe-confirm-row-value">{price}/week + hst</span>
                 </div>
-                {savedCents > 0 && discountLabel ? (
+                {planDiscountCents > 0 && discountLabel ? (
                   <div className="subscribe-confirm-row">
                     <span className="subscribe-confirm-row-label">{discountLabel} · first week only</span>
-                    <span className="subscribe-confirm-row-value">−{formatPlanPrice(savedCents)}</span>
+                    <span className="subscribe-confirm-row-value">−{formatPlanPrice(planDiscountCents)}</span>
                   </div>
                 ) : null}
                 <div className="subscribe-confirm-row">
@@ -268,6 +273,28 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                   <span className="subscribe-confirm-row-value">{lockLabel}</span>
                 </div>
               </div>
+
+              {showAddonDiscount ? (
+                <div className="subscribe-confirm-card-details subscribe-confirm-card-addons">
+                  <p className="subscribe-confirm-card-label">Add-ons</p>
+                  {addonRegularCents > 0 ? (
+                    <div className="subscribe-confirm-row">
+                      <span className="subscribe-confirm-row-label">Add-ons</span>
+                      <span className="subscribe-confirm-row-value">{formatPlanPrice(addonRegularCents)}</span>
+                    </div>
+                  ) : null}
+                  {addonOffCents > 0 && discountLabel ? (
+                    <div className="subscribe-confirm-row">
+                      <span className="subscribe-confirm-row-label">{discountLabel} · first week only</span>
+                      <span className="subscribe-confirm-row-value">−{formatPlanPrice(addonOffCents)}</span>
+                    </div>
+                  ) : null}
+                  <div className="subscribe-confirm-row">
+                    <span className="subscribe-confirm-row-label">Billed</span>
+                    <span className="subscribe-confirm-row-value">{lockLabel}</span>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="subscribe-confirm-card-fulfill">
                 <p className="subscribe-confirm-card-heading">{isDelivery ? 'Delivery' : 'Pickup'}</p>

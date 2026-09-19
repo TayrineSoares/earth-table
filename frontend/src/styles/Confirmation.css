@@ -398,6 +398,10 @@
   min-width: 0;
 }
 
+.subscribe-confirm-card-addons {
+  border-top: 1px solid #D9C7B0;
+}
+
 .subscribe-confirm-card-fulfill {
   background-color: #FFFBF3;
   border-top: 1px solid #D9C7B0;

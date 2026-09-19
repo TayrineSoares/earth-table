@@ -170,6 +170,12 @@ const subMail = {
   notes: 'No nut allergy flagged · Dairy: OK',
   appliesTo: 'this_sunday',
   address: '12 Bartlett Ave, Toronto',
+  discountCode: 'TAYRINE15',
+  discountKind: 'referral',
+  discountLabel: 'Referral (TAYRINE15)',
+  planSavedCents: 9000,
+  addonSavedCents: 2750,
+  addonRegularCents: 5500,
 };
 write('09-subscription-welcome.html', renderSubscriptionWelcomeEmail(subMail).html);
 write('10-subscription-owner.html', renderOwnerSubscriptionEmail(subMail).html);

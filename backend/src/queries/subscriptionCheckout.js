@@ -593,6 +593,7 @@ async function loadSignupPayload(subscriptionId) {
         saved_cents: savings.savedCents,
         plan_saved_cents: savings.planOff,
         addon_saved_cents: savings.addonOff,
+        addon_regular_cents: savings.addonFull,
         label: firstWeekDiscountLabel(sub.first_promo_code, discountKind),
       }
     : null;
@@ -819,10 +820,14 @@ async function completeSubscriptionSignup(session) {
         address: delivery ? draft.special_note : undefined,
         notes: draft.special_note,
         meals: (cart.meals || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
+        addons: (cart.addons || []).map((item) => ({ slug: item.slug, quantity: item.quantity })),
         discountCode: discount?.code || null,
         discountKind,
         discountLabel,
         discountSavedCents: savings.savedCents,
+        planSavedCents: savings.planOff,
+        addonSavedCents: savings.addonOff,
+        addonRegularCents: savings.addonFull,
       });
       await sendEmail({
         to: email,

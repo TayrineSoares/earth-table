@@ -1040,10 +1040,14 @@ function renderSubscriptionWelcomeEmail({
   chargeLabel,
   subscriptionId,
   notes,
+  addons,
   discountCode,
   discountKind,
   discountLabel,
   discountSavedCents,
+  planSavedCents,
+  addonSavedCents,
+  addonRegularCents,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1054,17 +1058,29 @@ function renderSubscriptionWelcomeEmail({
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const charge = chargeLabel || PAUSE_CANCEL_BY;
   const note = String(notes || '').trim() || '—';
-  const saved = Math.max(0, Number(discountSavedCents) || 0);
+  const planOff = Math.max(0, Number(planSavedCents) || 0);
+  const addonOff = Math.max(0, Number(addonSavedCents) || 0);
+  const addonRegular = Math.max(0, Number(addonRegularCents) || 0);
+  const saved = planOff + addonOff || Math.max(0, Number(discountSavedCents) || 0);
   const code = String(discountCode || '').toUpperCase();
   const savingsLabel = discountLabel
     || (code ? `${discountKind === 'promo' ? 'Promo' : discountKind === 'referral' ? 'Referral' : 'Code'} (${code})` : '');
-  const savingsLine = saved > 0 && (code || savingsLabel)
+  const label = savingsLabel || code;
+  const savingsLine = saved > 0 && label
     ? `You saved ${formatDollars(saved)} this first week with ${code || savingsLabel}. Later weeks are regular price.`
     : '';
-
-  const discountRows = saved > 0
-    ? `${planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : ''}${kvRow(`${savingsLabel || code} · first week only`, `−${formatDollars(saved)}`)}`
-    : (planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : '');
+  const planDiscountRow = planOff > 0 && label
+    ? kvRow(`${label} · first week only`, `−${formatDollars(planOff)}`)
+    : (planOff === 0 && addonOff === 0 && saved > 0 && label
+      ? kvRow(`${label} · first week only`, `−${formatDollars(saved)}`)
+      : '');
+  const addonHtml = itemLinesHtml(addons);
+  const showAddons = addonRegular > 0 || addonOff > 0 || !!addonHtml;
+  const addonRows = [
+    addonRegular > 0 ? kvRow('Add-ons', formatDollars(addonRegular)) : '',
+    addonOff > 0 && label ? kvRow(`${label} · first week only`, `−${formatDollars(addonOff)}`) : '',
+    kvRow('Billed', cutoff, { last: true }),
+  ].join('');
 
   const subject = `Welcome to weekly plans — your first box is ${sunday}`;
 
@@ -1075,11 +1091,13 @@ function renderSubscriptionWelcomeEmail({
       ${savingsLine ? `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT};">${savingsLine}</p>` : ''}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
-        ${discountRows}
+        ${planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : ''}
+        ${planDiscountRow}
         ${kvRow("This Sunday", fulfillment)}
         ${kvRow("Notes", note)}
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
+      ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : ''}
       ${ctaLink(manageHref, "Manage my subscription")}
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before ${charge} to skip a Sunday, or before ${cutoff} to change this week's box.</p>
@@ -1089,15 +1107,19 @@ function renderSubscriptionWelcomeEmail({
     title: subject,
   });
 
+  const addonText = showAddons
+    ? `\nAdd-ons\n${itemLinesText(addons) || ''}${addonRegular > 0 ? `\nAdd-ons: ${formatDollars(addonRegular)}` : ''}${addonOff > 0 && label ? `\n${label} · first week only: −${formatDollars(addonOff)}` : ''}\nBilled: ${cutoff}\n`
+    : '';
+
   const text = `You're all set, ${name}
 
 Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed ${cutoff} if they are still on the box.
 ${savingsLine ? `\n${savingsLine}\n` : ''}
-Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceCents)}/week + HST` : ''}${saved > 0 ? `\n${savingsLabel || code} · first week only: −${formatDollars(saved)}` : ''}
+Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceCents)}/week + HST` : ''}${planOff > 0 && label ? `\n${label} · first week only: −${formatDollars(planOff)}` : (planOff === 0 && addonOff === 0 && saved > 0 && label ? `\n${label} · first week only: −${formatDollars(saved)}` : '')}
 This Sunday: ${fulfillment}
 Notes: ${note}
 Change your meals by: ${cutoff}
-
+${addonText}
 Manage my subscription: ${manageHref}
 
 Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
