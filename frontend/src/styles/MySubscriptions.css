@@ -313,6 +313,23 @@
   opacity: 0.45;
 }
 
+.my-sub-card-expiry {
+  font-family: var(--body-font);
+  font-size: 14px;
+  line-height: 1.4;
+  color: #757575;
+  margin: 10px 0 0;
+  text-align: left;
+  text-wrap: pretty;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-card-expiry--alert {
+  color: #c0392b;
+}
+
 .my-sub-card-actions {
   display: flex;
   flex-direction: column;
@@ -553,6 +570,7 @@
   .my-sub-fulfillment,
   .my-sub-fulfillment .special-note-input,
   .my-sub-status-note,
+  .my-sub-card-expiry,
   .my-sub-fee-line {
     width: 100%;
     max-width: 100%;

@@ -24,6 +24,7 @@ import {
 } from '../helpers/subscriptionHelpers'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import {
+  cardExpiryState,
   HOW_IT_WORKS_CHARGE,
   HOW_IT_WORKS_MEALS,
   HOW_IT_WORKS_PAUSE,
@@ -588,6 +589,7 @@ const MySubscriptions = ({ user }) => {
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
             const mealsBy = formatCutoffWeekdayTime(row.week?.cutoff_at || cycle.cutoff_at, 'Thu 5:00 PM ET')
             const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 9:00 AM ET')
+            const expiry = cardExpiryState(row.card)
 
             return (
               <section key={row.id} className="my-sub-plan">
@@ -666,6 +668,16 @@ const MySubscriptions = ({ user }) => {
                           Edit
                         </button>
                       </DetailRow>
+                      {expiry ? (
+                        <DetailRow label="Expires">{expiry.label}</DetailRow>
+                      ) : null}
+                      {expiry?.note ? (
+                        <p
+                          className={`my-sub-card-expiry${expiry.kind === 'expired' ? ' my-sub-card-expiry--alert' : ''}`}
+                        >
+                          {expiry.note}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="my-sub-card-actions">

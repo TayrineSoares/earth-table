@@ -1232,20 +1232,54 @@ ${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@
   return { subject, html, text };
 }
 
-function renderSubscriptionManageEmail({
-  kind,
-  firstName,
-  mealCount,
-  nextMealCount,
-  deliveryLabel,
-  chargeLabel,
-} = {}) {
+function renderSubscriptionManageEmail(payload = {}) {
+  const {
+    kind,
+    firstName,
+    mealCount,
+    nextMealCount,
+    deliveryLabel,
+    chargeLabel,
+    cardBrand,
+    last4,
+    expMonth,
+    expYear,
+  } = payload;
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
   const charge = chargeLabel || 'Wednesday at 9:00 AM ET';
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
+
+  if (kind === 'card_expiry') {
+    const month = String(expMonth || '').padStart(2, '0');
+    const label = expYear ? `${month}/${expYear}` : '';
+    const brand = String(cardBrand || 'card');
+    const niceBrand = brand.charAt(0).toUpperCase() + brand.slice(1);
+    const cardOnFile = `${niceBrand} •••• ${last4 || '••••'}`;
+    const subject = `This card expires ${label}`;
+    const note = `This card expires ${label}. Update it before then and nothing on your plan changes.`;
+    const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1('Your card is expiring')}
+      ${card(kvTable(`
+        ${kvRow('Card on file', cardOnFile)}
+        ${kvRow('Expires', label || '—', { last: true })}
+      `))}
+      ${intro(note)}
+      ${ctaLink(manageHref, 'My Subscriptions →')}
+    `, { preheader: note, replyOk: true, title: subject });
+    const text = `Your card is expiring
+
+Card on file: ${cardOnFile}
+Expires: ${label}
+
+${note}
+
+My Subscriptions: ${manageHref}`;
+    return { subject, html, text };
+  }
 
   const copy = {
     pause_now: {

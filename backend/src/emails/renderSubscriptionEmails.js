@@ -359,7 +359,9 @@ function renderSubscriptionManageEmail({
     difference,
     nextChargeDate: nextChargeDate || chargeLabel,
     effectiveDate: effectiveDate || sunday,
-    expMonth,
+    expMonth: expMonth != null && expMonth !== ''
+      ? String(expMonth).padStart(2, '0')
+      : '',
     expYear,
   };
 
@@ -504,14 +506,23 @@ function renderSubscriptionManageEmail({
 
   if (kind === 'card_expiry') {
     const c = COPY.cardExpiry;
+    const subject = fill(c.subject, vars);
+    const preview = fill(c.preview, vars);
+    const note = fill(c.intro, vars);
+    const cardOnFile = `${vars.cardBrand} •••• ${vars.last4}`;
+    const expires = vars.expYear ? `${vars.expMonth}/${vars.expYear}` : '';
     const html = customerWrap(`
       ${eyebrow('Weekly subscription')}
       ${h1(c.heading)}
-      ${intro(fill(c.intro, vars).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))}
+      ${card(kvTable(`
+        ${kvRow('Card on file', cardOnFile)}
+        ${kvRow('Expires', expires || '—', { last: true })}
+      `))}
+      ${intro(note)}
       ${ctaLink(manageHref, CTA.manage)}
-    `, { subject: c.subject, preview: c.preview });
-    const text = `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\n${CTA.manage}: ${manageHref}`;
-    return { subject: c.subject, html, text };
+    `, { subject, preview });
+    const text = `${c.heading}\n\nCard on file: ${cardOnFile}\nExpires: ${expires}\n\n${mdText(note)}\n\n${CTA.manage}: ${manageHref}`;
+    return { subject, html, text };
   }
 
   return {

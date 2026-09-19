@@ -19,6 +19,7 @@ const CADENCE = {
   PAUSE_NUDGE_HOUR: 9,
   PAUSE_NUDGE_WEEKS: [1, 4],
   UPDATE_DEBOUNCE_MS: 60 * 60 * 1000,
+  // Monday 9:00 AM ET with the pause reminder. Email once per card in this window.
   CARD_EXPIRY_DAYS: 30,
 };
 
@@ -154,10 +155,10 @@ const COPY = {
     after: 'Switch back to delivery any time before the Thursday cutoff.',
   },
   cardExpiry: {
-    subject: 'Your card expires next month',
-    preview: 'Update it now so your Sunday boxes keep coming.',
+    subject: 'This card expires {expMonth}/{expYear}',
+    preview: 'Update it before then and nothing on your plan changes.',
     heading: 'Your card is expiring',
-    intro: 'The card on your weekly plan — {cardBrand} •••• {last4} — expires **{expMonth}/{expYear}**. Update it before then and nothing on your plan changes.',
+    intro: 'This card expires {expMonth}/{expYear}. Update it before then and nothing on your plan changes.',
   },
   holiday: {
     subject: 'No box this Sunday — next delivery is {nextSunday}',

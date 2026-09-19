@@ -240,6 +240,8 @@ async function cardsByPaymentMethodId(ids) {
       map[id] = {
         brand: String(pm.card.brand || 'card'),
         last4,
+        expMonth: pm.card.exp_month || null,
+        expYear: pm.card.exp_year || null,
       };
     } catch (err) {
       console.warn('[subscriptions] card lookup failed:', err.message);
@@ -534,6 +536,7 @@ async function flushDebouncedEmails(now = new Date()) {
   return { ok: true, sent };
 }
 
+/** Monday 9:00 AM ET cron: email once if the saved card expires within CARD_EXPIRY_DAYS. */
 async function runCardExpiryNotices(now = new Date()) {
   const { getUserByAuthId } = require('./user');
   const { renderSubscriptionManageEmail } = require('../utils/emailTemplates');

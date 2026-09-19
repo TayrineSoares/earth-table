@@ -32,3 +32,33 @@ export const RESUME_BY_CHARGE =
 
 export const PAUSED_BANNER =
   'This plan is paused. Your last meals and card stay on file. Resume by Wednesday at 9:00 AM ET to get that Sunday\'s box.'
+
+export const CARD_EXPIRY_DAYS = 30
+
+export function cardExpiryLabel(card) {
+  if (!card?.expMonth || !card?.expYear) return ''
+  return `${String(card.expMonth).padStart(2, '0')}/${card.expYear}`
+}
+
+/** Match the weekly card-expiry email window (30 days, once per card). */
+export function cardExpiryState(card, now = new Date()) {
+  const label = cardExpiryLabel(card)
+  if (!label) return null
+  const expires = new Date(card.expYear, card.expMonth, 0, 23, 59, 59)
+  if (expires.getTime() < now.getTime()) {
+    return {
+      kind: 'expired',
+      label,
+      note: `This card expired ${label}. Update it so Sunday boxes keep coming.`,
+    }
+  }
+  const horizon = now.getTime() + CARD_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+  if (expires.getTime() <= horizon) {
+    return {
+      kind: 'soon',
+      label,
+      note: `This card expires ${label}. Update it before then and nothing on your plan changes.`,
+    }
+  }
+  return { kind: 'ok', label, note: null }
+}
