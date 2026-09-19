@@ -14,7 +14,7 @@ function formatMoneyHst(cents) {
 }
 
 const { mealsAWeek, mealPlanPhrase, formatFulfillmentLine } = require('../queries/subscriptionWeek');
-const { PAUSE_CANCEL_BY, MEAL_LOCK_BY } = require('../emails/subscriptionEmailSpec');
+const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, PICKUP_ADDRESS } = require('../emails/subscriptionEmailSpec');
 
 function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -1469,26 +1469,69 @@ function renderSubscriptionHolidaySkipEmail({
   return { subject, html, text };
 }
 
+function boxMealCount(row) {
+  const n = Number(row?.mealCount);
+  if (n > 0) return n;
+  const fromItems = (row?.meals || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  return fromItems > 0 ? fromItems : '—';
+}
+
 function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
-  const count = boxes.length;
+  const pickup = boxes.filter((row) => !row.delivery);
+  const delivery = boxes.filter((row) => row.delivery);
+  const ordered = [...pickup, ...delivery];
+  const count = ordered.length;
   const subject = `Weekly boxes locked — ${sunday || 'Sunday'} (${count})`;
-  const linesHtml = boxes.length
-    ? boxes.map((row) => `<p style="margin:0 0 8px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${row.name} — ${row.plan} — ${row.fulfillment}</p>`).join('')
-    : `<p style="margin:0; font-size:14px; color:${C_MUTED}; font-family:${FONT};">None.</p>`;
-  const linesText = boxes.length
-    ? boxes.map((row) => `- ${row.name} — ${row.plan} — ${row.fulfillment}`).join('\n')
-    : '- None';
+  const block = (row, i) => {
+    const name = String(row.name || '').trim() || 'Customer';
+    const meals = boxMealCount(row);
+    const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
+    const start = row.windowStart || '—';
+    const end = row.windowEnd || '—';
+    const notes = String(row.notes || '').trim();
+    const extras = itemLinesHtml(row.extras);
+    const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
+    const boxLine = `${method} ${sunday || 'Sunday'}, ${start} – ${end}`;
+    const place = row.delivery
+      ? `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Delivery Address:</strong> ${loc}</p>
+      <p style="margin:0 0 10px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes || loc}</p>`
+      : `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${PICKUP_ADDRESS}</p>
+      ${notes ? `<p style="margin:0 0 10px; padding:8px 10px; background-color:${C_CREAM}; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes}</p>` : ''}`;
+    return `
+    <div style="margin:0 0 24px; padding:16px 0; border-top:1px solid ${C_LINE};">
+      <p style="margin:0 0 8px; font-size:16px; font-weight:700; color:${C_INK}; font-family:${FONT};">${i}. ${name} — ${meals} meals</p>
+      <p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${boxLine}</p>
+      <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}</p>
+      ${place}
+      <p style="margin:0 0 6px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${itemLinesHtml(row.meals) || '—'}</p>
+      ${extras ? `<p style="margin:0; font-size:13px; font-style:italic; color:${C_MUTED}; font-family:${FONT};">Extras: ${extras}</p>` : ''}
+    </div>`;
+  };
   const html = wrapEmail(`
       ${eyebrow("Kitchen")}
       ${h1(`${count} weekly box${count === 1 ? '' : 'es'} for ${sunday || 'Sunday'}`)}
-      ${intro('Meals are locked. These rows are on the Subscriptions tab, not Orders.')}
-      ${card(linesHtml)}
+      ${intro(`Meals are locked. These rows are on the Subscriptions tab, not Orders. <strong>${count} plan${count === 1 ? '' : 's'}</strong> · ${pickup.length} pickup, ${delivery.length} delivery.`)}
+      ${ordered.map((row, i) => block(row, i + 1)).join('') || `<p style="margin:0; font-size:14px; color:${C_MUTED}; font-family:${FONT};">None.</p>`}
   `, {
     preheader: subject,
     replyOk: true,
     title: subject,
   });
-  const text = `${subject}\n\n${linesText}\n`;
+  const textLines = ordered.map((row, i) => {
+    const notes = String(row.notes || '').trim();
+    const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
+    const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
+    return [
+      `${i + 1}. ${String(row.name || '').trim() || 'Customer'} — ${boxMealCount(row)} meals`,
+      `${method} ${sunday || 'Sunday'}, ${row.windowStart || '—'} – ${row.windowEnd || '—'}`,
+      `${formatPhone(row.phone)} · ${row.email || '—'}`,
+      row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
+      row.delivery ? `Notes: ${notes || loc}` : (notes ? `Notes: ${notes}` : ''),
+      itemLinesText(row.meals) || '—',
+      row.extras?.length ? `Extras: ${itemLinesText(row.extras)}` : '',
+    ].filter(Boolean).join('\n');
+  });
+  const text = `${subject}\n\n${count} plan${count === 1 ? '' : 's'} · ${pickup.length} pickup, ${delivery.length} delivery\n\n${textLines.join('\n\n') || 'None.'}\n`;
   return { subject, html, text };
 }
 
