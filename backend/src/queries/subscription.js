@@ -227,16 +227,37 @@ function pickDisplayCycle(cycles, now = new Date()) {
 }
 
 const CYCLE_ITEM_SELECT = `
-  id, product_id, quantity, unit_price_cents, kind,
+  id, cycle_id, product_id, quantity, unit_price_cents, kind,
   products ( id, slug, image_url, is_available )
 `;
 
 const CYCLE_SELECT = `
   id, subscription_id, status, order_id, cutoff_at, delivery_date, pickup_date, delivery,
   delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
-  plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
-  subscription_cycle_items ( ${CYCLE_ITEM_SELECT} )
+  plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents
 `;
+
+async function attachCycleItems(cycles) {
+  const rows = cycles || [];
+  if (!rows.length) return rows;
+  const ids = rows.map((row) => row.id).filter(Boolean);
+  const { data, error } = await supabase
+    .from('subscription_cycle_items')
+    .select(CYCLE_ITEM_SELECT)
+    .in('cycle_id', ids);
+  if (error) throw error;
+  const byCycle = {};
+  for (const item of data || []) {
+    const key = String(item.cycle_id);
+    if (!ids.some((id) => String(id) === key)) continue;
+    if (!byCycle[key]) byCycle[key] = [];
+    byCycle[key].push(item);
+  }
+  return rows.map((cycle) => ({
+    ...cycle,
+    subscription_cycle_items: byCycle[String(cycle.id)] || [],
+  }));
+}
 
 async function cardsByPaymentMethodId(ids) {
   const unique = [...new Set((ids || []).filter(Boolean))];
@@ -288,6 +309,7 @@ async function listMine(userId) {
     .select(CYCLE_SELECT)
     .in('subscription_id', ids);
   if (cycleErr) throw cycleErr;
+  const cyclesWithItems = await attachCycleItems(cycles);
 
   const cardMap = await cardsByPaymentMethodId(subs.map((row) => row.stripe_payment_method_id));
 
@@ -310,7 +332,7 @@ async function listMine(userId) {
   }
 
   const bySub = {};
-  for (const cycle of cycles || []) {
+  for (const cycle of cyclesWithItems || []) {
     if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
     bySub[cycle.subscription_id].push(cycle);
   }
@@ -406,8 +428,9 @@ async function listAll() {
     .select(CYCLE_SELECT)
     .in('subscription_id', ids);
   if (cycleErr) throw cycleErr;
+  const cyclesWithItems = await attachCycleItems(cycles);
 
-  const orderIds = [...new Set((cycles || []).map((row) => row.order_id).filter(Boolean))];
+  const orderIds = [...new Set((cyclesWithItems || []).map((row) => row.order_id).filter(Boolean))];
   let byOrder = {};
   if (orderIds.length) {
     const { data: kitchen, error: kitchenErr } = await supabase
@@ -419,7 +442,7 @@ async function listAll() {
   }
 
   const bySub = {};
-  for (const cycle of cycles || []) {
+  for (const cycle of cyclesWithItems || []) {
     if (!bySub[cycle.subscription_id]) bySub[cycle.subscription_id] = [];
     bySub[cycle.subscription_id].push(cycle);
   }

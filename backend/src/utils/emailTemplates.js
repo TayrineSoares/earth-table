@@ -1500,7 +1500,9 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
   const delivery = boxes.filter((row) => row.delivery);
   const ordered = [...pickup, ...delivery];
   const count = ordered.length;
-  const subject = `Weekly boxes locked — ${sunday || 'Sunday'} (${count})`;
+  const orderIds = ordered.map((row) => row.orderId).filter(Boolean);
+  const orderTag = orderIds.length ? ` · #${orderIds.join(', #')}` : '';
+  const subject = `Weekly boxes locked — ${sunday || 'Sunday'} (${count})${orderTag}`;
   const block = (row, i) => {
     const name = String(row.name || '').trim() || 'Customer';
     const meals = boxMealCount(row);
@@ -1511,6 +1513,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
     const extrasHtml = itemLinesHtml(row.extras, 'Add-on');
     const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
     const boxLine = `${method} ${sunday || 'Sunday'}, ${start} – ${end}`;
+    const orderLine = row.orderId ? ` · order #${row.orderId}` : '';
     const place = row.delivery
       ? `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Delivery Address:</strong> ${loc}</p>
       <p style="margin:0 0 10px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes || loc}</p>`
@@ -1520,7 +1523,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
     <div style="margin:0 0 24px; padding:16px 0; border-top:1px solid ${C_LINE};">
       <p style="margin:0 0 8px; font-size:16px; font-weight:700; color:${C_INK}; font-family:${FONT};">${i}. ${name} — ${meals} meals</p>
       <p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${boxLine}</p>
-      <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}</p>
+      <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}${orderLine}</p>
       ${place}
       <p style="margin:0 0 10px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${itemLinesHtml(row.meals, 'Meal') || '—'}</p>
       ${extrasHtml ? `<p style="margin:0; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};"><strong>Extras:</strong><br/>${extrasHtml}</p>` : ''}
@@ -1543,7 +1546,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
     return [
       `${i + 1}. ${String(row.name || '').trim() || 'Customer'} — ${boxMealCount(row)} meals`,
       `${method} ${sunday || 'Sunday'}, ${row.windowStart || '—'} – ${row.windowEnd || '—'}`,
-      `${formatPhone(row.phone)} · ${row.email || '—'}`,
+      `${formatPhone(row.phone)} · ${row.email || '—'}${row.orderId ? ` · order #${row.orderId}` : ''}`,
       row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
       row.delivery ? `Notes: ${notes || loc}` : (notes ? `Notes: ${notes}` : ''),
       itemLinesText(row.meals, 'Meal') || '—',
@@ -1764,6 +1767,46 @@ Questions? Reply to this email or write to hello@earthtableco.ca.`;
   return { subject, html, text };
 }
 
+function brandLabel(brand) {
+  const raw = String(brand || 'card').trim();
+  if (!raw) return 'Card';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function renderOwnerPaymentFailedEmail({
+  customerName,
+  amount,
+  fulfillmentDate,
+  cardBrand,
+  last4,
+  declineReason,
+  dateTime,
+  cutoffDateTime,
+} = {}) {
+  const name = customerName || 'Customer';
+  const paid = amount || formatDollars(0);
+  const when = fulfillmentDate || 'this Sunday';
+  const subject = `Payment failed — ${name}, ${paid}`;
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1('Payment failed')}
+      ${intro(`<strong>${name} — ${paid} for ${when}</strong>`)}
+      ${card(kvTable(`
+        ${kvRow('Card', `${brandLabel(cardBrand)} •••• ${last4 || '••••'}`)}
+        ${kvRow('Declined', `${declineReason || 'card_declined'} · ${dateTime || ''}`, { last: true })}
+      `))}
+      ${intro("The plan is paused until they add a new card. This Sunday's box will not go out.")}
+      ${cutoffDateTime ? intro(`Meal lock / last retry: ${cutoffDateTime}`) : ''}
+      ${ctaLink(appUrl('/admin'), 'View subscription →')}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `${subject}\n\n${name} — ${paid} for ${when}\n${brandLabel(cardBrand)} •••• ${last4 || '••••'} · declined (${declineReason || 'card_declined'}) · ${dateTime || ''}\nThe plan is paused until they add a new card. This Sunday's box will not go out.\n`;
+  return { subject, html, text };
+}
+
 function renderSubscriptionPriceEmail({
   firstName,
   mealCount,
@@ -1793,6 +1836,7 @@ function renderSubscriptionPriceEmail({
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
+  formatDollars,
   renderOwnerOrderEmail,
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
@@ -1805,6 +1849,7 @@ module.exports = {
   renderSubscriptionManageEmail,
   renderSubscriptionHolidaySkipEmail,
   renderOwnerThursdayLockEmail,
+  renderOwnerPaymentFailedEmail,
   renderSubscriptionWednesdayEmail,
   renderSubscriptionThursdayEmail,
   renderSubscriptionPriceEmail,

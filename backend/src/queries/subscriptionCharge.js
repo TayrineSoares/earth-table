@@ -5,7 +5,7 @@
  */
 
 const supabase = require('../../supabase/db');
-const { createOrderWithProducts, getOrderByStripeSessionId } = require('./order');
+const { createOrderWithProducts } = require('./order');
 const { getUserByAuthId } = require('./user');
 const { getSettings, getPlanById } = require('./subscription');
 const {
@@ -64,17 +64,46 @@ async function emailedIdsFor(weekKey, job) {
 }
 
 async function sluggedItems(items) {
-  const ids = [...new Set((items || []).map((item) => item.product_id).filter(Boolean))];
+  const ids = [...new Set((items || []).map((item) => Number(item.product_id)).filter((id) => id > 0))];
   if (!ids.length) return [];
   const { data, error } = await supabase.from('products').select('id, slug').in('id', ids);
   if (error) throw error;
-  const names = new Map((data || []).map((row) => [row.id, row.slug]));
+  const names = new Map((data || []).map((row) => [Number(row.id), row.slug]));
   return (items || []).map((item) => ({
-    slug: names.get(item.product_id) || 'Item',
+    slug: names.get(Number(item.product_id)) || 'Item',
     quantity: item.quantity,
     unit_price_cents: item.unit_price_cents,
     kind: item.kind,
   }));
+}
+
+/**
+ * Kitchen/customer meal lists must not use PostgREST nested embeds.
+ * Those embeds can attach another cycle's items (or a leftover order's
+ * products) onto this row. Always load by this cycle's id, then keep only
+ * rows whose cycle_id matches.
+ */
+async function cycleItemsByCycleId(cycleId) {
+  const id = String(cycleId || '');
+  if (!id) return [];
+  const { data, error } = await supabase
+    .from('subscription_cycle_items')
+    .select('id, cycle_id, product_id, quantity, unit_price_cents, kind')
+    .eq('cycle_id', id);
+  if (error) throw error;
+  return (data || []).filter((item) => String(item.cycle_id) === id);
+}
+
+async function labeledItemsForCycle(cycleId) {
+  return sluggedItems(await cycleItemsByCycleId(cycleId));
+}
+
+async function withCycleItems(cycle) {
+  if (!cycle?.id) return cycle;
+  return {
+    ...cycle,
+    subscription_cycle_items: await cycleItemsByCycleId(cycle.id),
+  };
 }
 
 function itemsByKind(items, kind) {
@@ -170,11 +199,15 @@ function splitWin(delivery, pickupSlot) {
 
 async function ownerBoxFrom(sub, cycle) {
   const user = await getUserByAuthId(sub.user_id);
-  const labeled = await sluggedItems(cycle.subscription_cycle_items);
+  // Fresh query at send time, scoped to this cycle only — never nested
+  // embed, never another request's items, never a leftover kitchen order.
+  const labeled = await labeledItemsForCycle(cycle.id);
   const win = splitWin(!!cycle.delivery, cycle.pickup_time_slot);
   return {
     name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
     mealCount: sub.subscription_plans?.meal_count,
+    orderId: cycle.order_id || null,
+    cycleId: cycle.id,
     delivery: !!cycle.delivery,
     method: cycle.delivery ? 'Delivery' : 'Pickup',
     windowStart: win.start,
@@ -208,30 +241,24 @@ async function loadSubsForSunday() {
 async function cycleForSunday(subscriptionId, sunday) {
   const { data, error } = await supabase
     .from('subscription_cycles')
-    .select(`
-      *,
-      subscription_cycle_items ( id, product_id, quantity, unit_price_cents, kind )
-    `)
+    .select('*')
     .eq('subscription_id', subscriptionId)
     .eq('delivery_date', sunday)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return withCycleItems(data);
 }
 
 async function lastCycle(subscriptionId) {
   const { data, error } = await supabase
     .from('subscription_cycles')
-    .select(`
-      *,
-      subscription_cycle_items ( product_id, quantity, unit_price_cents, kind )
-    `)
+    .select('*')
     .eq('subscription_id', subscriptionId)
     .order('delivery_date', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return withCycleItems(data);
 }
 
 async function ensureCycle(sub, sunday, settings) {
@@ -260,10 +287,7 @@ async function ensureCycle(sub, sunday, settings) {
       addon_paid_cents: 0,
       promo_percent: 0,
     })
-    .select(`
-      *,
-      subscription_cycle_items ( id, product_id, quantity, unit_price_cents, kind )
-    `)
+    .select('*')
     .single();
   if (error) {
     if (error.code === '23505') return cycleForSunday(sub.id, sunday);
@@ -282,7 +306,7 @@ async function ensureCycle(sub, sunday, settings) {
     );
     return cycleForSunday(sub.id, sunday);
   }
-  return cycle;
+  return withCycleItems(cycle);
 }
 
 async function chargePlanDelivery(sub, cycle, sunday) {
@@ -379,7 +403,7 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
 async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
-  const labeled = await sluggedItems(cycle.subscription_cycle_items);
+  const labeled = await labeledItemsForCycle(cycle.id);
   const charged = !!chargeResult?.charged;
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const msg = renderSubscriptionWednesdayEmail({
@@ -405,12 +429,13 @@ async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
 async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
-  const labeled = await sluggedItems(cycle.subscription_cycle_items);
+  const items = await cycleItemsByCycleId(cycle.id);
+  const labeled = await sluggedItems(items);
   const chargedAddons = !!addonResult?.charged;
   const card = chargedAddons ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const due = chargedAddons ? (Number(addonResult.due) || 0) : 0;
   const chargedCents = chargedAddons ? (Number(addonResult.amount) || 0) : 0;
-  const raw = addonRawCents(cycle);
+  const raw = addonRawCents({ subscription_cycle_items: items });
   const pct = Number(cycle.promo_percent) || (chargedAddons ? await promoPercentForAddons(sub, cycle) : 0);
   const discountCents = chargedAddons && pct > 0 ? Math.max(0, raw - due) : 0;
   const discountKind = discountCents > 0
@@ -616,9 +641,42 @@ async function chargeAddons(sub, cycle, sunday) {
   return { charged: true, amount, due };
 }
 
+async function orderIdForThisCycle(cycle) {
+  const cycleId = cycle?.id;
+  if (!cycleId) return null;
+
+  const belongs = (row) => row && String(row.subscription_cycle_id) === String(cycleId);
+
+  if (cycle.order_id) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, subscription_cycle_id')
+      .eq('id', cycle.order_id)
+      .maybeSingle();
+    if (!error && belongs(data)) return data.id;
+  }
+
+  const { data: bySession, error: sessionErr } = await supabase
+    .from('orders')
+    .select('id, subscription_cycle_id')
+    .eq('stripe_session_id', `sub-cycle-${cycleId}`)
+    .maybeSingle();
+  if (!sessionErr && belongs(bySession)) return bySession.id;
+  return null;
+}
+
 async function createKitchenOrder(sub, cycle, sunday) {
-  if (cycle.order_id) return cycle.order_id;
-  const items = cycle.subscription_cycle_items || [];
+  const existingId = await orderIdForThisCycle(cycle);
+  if (existingId) {
+    cycle.order_id = existingId;
+    await supabase
+      .from('subscription_cycles')
+      .update({ order_id: existingId, status: 'locked' })
+      .eq('id', cycle.id);
+    return existingId;
+  }
+
+  const items = await cycleItemsByCycleId(cycle.id);
   const products = items.map((item) => ({
     id: item.product_id,
     quantity: item.quantity,
@@ -630,15 +688,6 @@ async function createKitchenOrder(sub, cycle, sunday) {
   }
 
   const sessionKey = `sub-cycle-${cycle.id}`;
-  const existing = await getOrderByStripeSessionId(sessionKey);
-  if (existing?.id) {
-    await supabase
-      .from('subscription_cycles')
-      .update({ order_id: existing.id, status: 'locked' })
-      .eq('id', cycle.id);
-    return existing.id;
-  }
-
   const user = await getUserByAuthId(sub.user_id);
   const planPaid = Number(cycle.plan_paid_cents) || 0;
   const addonPaid = Number(cycle.addon_paid_cents) || 0;
@@ -664,6 +713,7 @@ async function createKitchenOrder(sub, cycle, sunday) {
     subscription_cycle_id: cycle.id,
   });
 
+  cycle.order_id = order.id;
   await supabase
     .from('subscription_cycles')
     .update({ order_id: order.id, status: 'locked' })
@@ -730,7 +780,7 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
     if (error.code === '23505') return;
     throw error;
   }
-  const meals = (lockedCycle.subscription_cycle_items || []).filter((item) => item.kind === 'plan');
+  const meals = (await cycleItemsByCycleId(lockedCycle.id)).filter((item) => item.kind === 'plan');
   if (meals.length) {
     await supabase.from('subscription_cycle_items').insert(
       meals.map((item) => ({
@@ -771,7 +821,9 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       skipped += 1;
       continue;
     }
-    if (cycle.status === 'locked' && cycle.order_id) {
+    const linkedOrderId = await orderIdForThisCycle(cycle);
+    if (cycle.status === 'locked' && linkedOrderId) {
+      cycle.order_id = linkedOrderId;
       locked += 1;
       if (!emailedIds.has(sub.id)) {
         try {
@@ -791,6 +843,13 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
         boxLines.push(await ownerBoxFrom(sub, cycle));
       } catch (err) {
         console.warn('[subscriptions] Thursday owner row failed:', err.message);
+      }
+      if (sub.status !== 'paused' && sub.status !== 'cancelled') {
+        try {
+          await openNextWeek(sub, cycle, nextSunday, settings);
+        } catch (err) {
+          failures.push({ subscription_id: sub.id, error: `next: ${err.message || err}` });
+        }
       }
       continue;
     }
