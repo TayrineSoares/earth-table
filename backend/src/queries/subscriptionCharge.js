@@ -470,8 +470,14 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
       continue;
     }
     let cycle;
+    let weekSunday = sunday;
     try {
-      cycle = await ensureCycle(sub, sunday, settings);
+      cycle = await ensureCycle(sub, weekSunday, settings);
+      // Admin "run now" after Thursday lock: bill the newly opened week, not the locked one.
+      if (force && cycle && (cycle.status === 'locked' || cycle.status === 'skipped')) {
+        weekSunday = nextOpenSunday(weekSunday);
+        cycle = await ensureCycle(sub, weekSunday, settings);
+      }
     } catch (err) {
       failures.push({ subscription_id: sub.id, error: err.message || String(err) });
       continue;
@@ -486,7 +492,7 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
       already += 1;
     } else {
       try {
-        chargeResult = await chargePlanDelivery(sub, cycle, sunday);
+        chargeResult = await chargePlanDelivery(sub, cycle, weekSunday);
         if (chargeResult.charged) charged += 1;
         else already += 1;
         if (sub.pause_reason === 'payment_failed') {
@@ -502,14 +508,14 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
       } catch (err) {
         failures.push({ subscription_id: sub.id, error: err.message || String(err) });
         console.warn('[subscriptions] Wednesday charge failed:', sub.id, err.message);
-        await markPaymentFailed(sub, sunday, dates.cutoff_label, err);
+        await markPaymentFailed(sub, weekSunday, dates.cutoff_label, err);
         continue;
       }
     }
 
     if (!emailedIds.has(sub.id)) {
       try {
-        await sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult);
+        await sendWednesdayNotice(sub, cycle, weekSunday, dates, chargeResult);
         emailedIds.add(sub.id);
         emailed += 1;
       } catch (err) {
@@ -695,6 +701,7 @@ async function applyPendingAfterLock(sub) {
 async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
   if (sub.status === 'cancelled' || sub.pending_status === 'cancelled') return;
   if (sub.status === 'paused' || sub.pending_status === 'paused') return;
+  // Same helper as signup: test_lock_at still set → next week's test lock, not live Thursday.
   const dates = getSignupDates(new Date(), settings || {});
   const plan = await getPlanById(sub.plan_id);
   const delivery = !!lockedCycle.delivery;

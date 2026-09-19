@@ -6,8 +6,10 @@
  * If they subscribe after lock, first delivery is the Sunday after
  * next Thursday's lock.
  *
- * If admin set test_lock_at, that instant is used instead of Thursday 5pm
- * until it has passed, then we fall back to the live Thursday schedule.
+ * If admin set test_lock_at / test_charge_at, those instants replace
+ * Thursday 5pm / Wednesday 9am. They keep recurring every 7 days (same
+ * Toronto weekday and clock) until the overrides are cleared — signup,
+ * lock-opened cycles, and job targeting all use this, not the live schedule.
  * Plan charge is Wednesday 9:00 AM America/Toronto (not Thursday).
  *
  * No date library — Intl + a small nudge loop to map Toronto wall-clock
@@ -106,6 +108,20 @@ function thisWeekLockAt(now) {
   return torontoDate(shifted.year, shifted.month, shifted.day, LOCK_HOUR, LOCK_MINUTE);
 }
 
+function plusWeeksToronto(date, weeks) {
+  const p = torontoParts(date);
+  const next = addCalendarDays(p.year, p.month, p.day, 7 * weeks);
+  return torontoDate(next.year, next.month, next.day, p.hour, p.minute);
+}
+
+/** Same weekday and clock as `origin`, in the Toronto week that contains `now`. */
+function thisPeriodOccurrence(origin, now) {
+  const o = torontoParts(origin);
+  const n = torontoParts(now);
+  const shifted = addCalendarDays(n.year, n.month, n.day, o.weekday - n.weekday);
+  return torontoDate(shifted.year, shifted.month, shifted.day, o.hour, o.minute);
+}
+
 /** Wednesday 9:00 AM before a Sunday delivery (same calendar week). */
 function chargeAtForSunday(ymdStr) {
   const sunday = parseYmdToronto(ymdStr);
@@ -128,7 +144,9 @@ function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = nu
   const testRaw = settings && settings.test_charge_at;
   const testAt = testRaw ? new Date(testRaw) : null;
   const testValid = testAt && Number.isFinite(testAt.getTime());
-  const chargeAt = testValid ? testAt : chargeAtForSunday(deliveryDateYmd);
+  const chargeAt = testValid
+    ? thisPeriodOccurrence(testAt, now)
+    : chargeAtForSunday(deliveryDateYmd);
   return {
     before_wednesday: now.getTime() < chargeAt.getTime(),
     charge_at: chargeAt.toISOString(),
@@ -221,15 +239,13 @@ function getSignupDates(now = new Date(), settings = {}) {
   let cutoffPassed = false;
   let missedLockAt = null;
 
-  if (testLockValid && now.getTime() < testLockAt.getTime()) {
-    // Admin is simulating a lock later today/this week.
-    cutoffAt = testLockAt;
-    cutoffPassed = false;
-  } else if (testLockValid) {
-    // Test lock already fired — show the "passed" strip, next live Thursday.
-    cutoffPassed = true;
-    cutoffAt = nextLiveLockAt(now);
-    missedLockAt = testLockAt;
+  if (testLockValid) {
+    // Same weekday/clock as the override, this Toronto week — never live Thursday
+    // while the override is still set.
+    const thisPeriodLock = thisPeriodOccurrence(testLockAt, now);
+    cutoffPassed = now.getTime() >= thisPeriodLock.getTime();
+    cutoffAt = cutoffPassed ? plusWeeksToronto(thisPeriodLock, 1) : thisPeriodLock;
+    if (cutoffPassed) missedLockAt = thisPeriodLock;
   } else {
     const thisWeekLock = thisWeekLockAt(now);
     cutoffPassed = now.getTime() >= thisWeekLock.getTime();
