@@ -394,8 +394,11 @@ const SubscriberAdmin = () => {
             <span className="sub-admin-total-label">active subscriptions</span>
           </div>
           <div className="sub-admin-total">
-            <span className="sub-admin-total-value">{formatPlanPrice(totals.weeklyCents)}</span>
-            <span className="sub-admin-total-label">TOTAL</span>
+            <span className="sub-admin-total-value">
+              {formatPlanPrice(totals.weeklyCents)}
+              <span className="sub-admin-total-hst"> + hst</span>
+            </span>
+            <span className="sub-admin-total-label">total</span>
           </div>
           <div className="sub-admin-total">
             <span className="sub-admin-total-value">{totals.meals}</span>

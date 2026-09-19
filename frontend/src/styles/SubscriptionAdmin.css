@@ -256,12 +256,20 @@
   color: #000;
 }
 
-.sub-admin-total-label {
+.sub-admin-total-hst {
   font-family: var(--body-font);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 400;
   font-variant: small-caps;
   letter-spacing: 0.04em;
-  color: #BE7200;
+}
+
+.sub-admin-total-label {
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: #000;
   line-height: 1.3;
   overflow-wrap: break-word;
 }
