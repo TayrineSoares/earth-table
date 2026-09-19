@@ -88,18 +88,43 @@ function applyPromoPercent(cents, percent) {
   return Math.floor((raw * (100 - pct)) / 100);
 }
 
-function addonDueCents(cycle, promoPercent = 0) {
+function addonRawCents(cycle) {
   const items = cycle.subscription_cycle_items || [];
   let raw = 0;
   for (const item of items) {
     if (item.kind !== 'addon') continue;
     raw += (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0);
   }
+  return raw;
+}
+
+function addonDueCents(cycle, promoPercent = 0) {
+  const raw = addonRawCents(cycle);
   const already = Number(cycle.addon_paid_cents) || 0;
   const pct = Number(cycle.promo_percent) || Number(promoPercent) || 0;
   // Apply first-week percent to the extras total, then subtract what was already billed.
   const discounted = applyPromoPercent(raw, pct);
   return Math.max(0, discounted - already);
+}
+
+function firstWeekDiscountLabel(code, kind) {
+  const c = String(code || '').toUpperCase();
+  if (!c) return 'First-week discount · first week only';
+  const prefix = kind === 'referral' ? 'Referral' : 'Promo';
+  return `${prefix} (${c}) · first week only`;
+}
+
+async function firstWeekDiscountKind(code) {
+  const c = String(code || '').trim();
+  if (!c) return 'promo';
+  try {
+    const { getPartnerByCode } = require('./partner');
+    const partner = await getPartnerByCode(c);
+    return partner ? 'referral' : 'promo';
+  } catch (err) {
+    console.warn('[subscriptions] discount kind lookup failed:', err.message);
+    return 'promo';
+  }
 }
 
 /** First cycle keeps first_promo_percent; later weeks are full price even if the subscription still has that flag. */
@@ -172,7 +197,7 @@ async function loadSubsForSunday() {
       id, user_id, status, plan_id, pending_status, pending_plan_id, pause_reason,
       stripe_customer_id, stripe_payment_method_id, delivery, delivery_postal_code,
       pickup_time_slot, special_note,
-      first_promo_percent, first_promo_applied,
+      first_promo_percent, first_promo_applied, first_promo_code,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
     .in('status', ['active', 'paused']);
@@ -383,6 +408,17 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
   const labeled = await sluggedItems(cycle.subscription_cycle_items);
   const chargedAddons = !!addonResult?.charged;
   const card = chargedAddons ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
+  const due = chargedAddons ? (Number(addonResult.due) || 0) : 0;
+  const chargedCents = chargedAddons ? (Number(addonResult.amount) || 0) : 0;
+  const raw = addonRawCents(cycle);
+  const pct = Number(cycle.promo_percent) || (chargedAddons ? await promoPercentForAddons(sub, cycle) : 0);
+  const discountCents = chargedAddons && pct > 0 ? Math.max(0, raw - due) : 0;
+  const discountKind = discountCents > 0
+    ? await firstWeekDiscountKind(sub.first_promo_code)
+    : '';
+  const discountLabel = discountCents > 0
+    ? firstWeekDiscountLabel(sub.first_promo_code, discountKind)
+    : '';
   const msg = renderSubscriptionThursdayEmail({
     firstName: user.first_name,
     mealCount: sub.subscription_plans?.meal_count,
@@ -392,8 +428,10 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
     address: cycle.delivery ? cycle.special_note : undefined,
     notes: cycle.special_note,
     chargedAddons,
-    addonCents: chargedAddons ? (Number(addonResult.due) || 0) : 0,
-    chargedCents: chargedAddons ? (Number(addonResult.amount) || 0) : 0,
+    addonCents: discountCents > 0 ? raw : due,
+    discountCents,
+    discountLabel,
+    chargedCents,
     addonItems: itemsByKind(labeled, 'addon'),
     meals: itemsByKind(labeled, 'plan'),
     cardBrand: card?.brand,

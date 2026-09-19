@@ -60,7 +60,7 @@ const cycleItems = (cycle) => (
 );
 
 const itemLine = (item, fallback) => (
-  `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.products?.slug || fallback}`
+  `${item.products?.slug || fallback} x ${Number(item.quantity) || 1}`
 );
 
 const splitWindow = (delivery, pickupSlot) => {
@@ -131,9 +131,32 @@ const matchesSearch = (row, term) => {
   return hay.includes(term);
 };
 
-const patchKitchen = (kitchen, orderId, next) => (
-  kitchen?.id === orderId ? { ...kitchen, picked_up: next } : kitchen
-);
+const toPrintBoxes = (weekRows, cycleKey) => {
+  const boxes = weekRows.map((row) => {
+    const cycle = row[cycleKey] || {};
+    const items = cycleItems(cycle);
+    const win = splitWindow(!!cycle.delivery, cycle.pickup_time_slot);
+    const customer = row.customer || {};
+    return {
+      id: row.id,
+      name: customerName(customer),
+      mealCount: Number(row.subscription_plans?.meal_count) || 0,
+      delivery: !!cycle.delivery,
+      method: cycle.delivery ? 'Delivery' : 'Pickup',
+      windowStart: win.start,
+      windowEnd: win.end,
+      address: cycle.delivery
+        ? (cycle.special_note || cycle.delivery_postal_code || '—')
+        : PICKUP_ADDRESS,
+      phone: formatPhone(customer.phone_number),
+      email: customer.email || '—',
+      notes: cycleNote(row, cycle),
+      meals: items.filter((item) => item.kind === 'plan'),
+      extras: items.filter((item) => item.kind === 'addon'),
+    };
+  });
+  return [...boxes.filter((row) => !row.delivery), ...boxes.filter((row) => row.delivery)];
+};
 
 const SubscriberAdmin = () => {
   const [rows, setRows] = useState([]);
@@ -243,32 +266,11 @@ const SubscriberAdmin = () => {
     }));
   }, [visibleRows]);
 
-  const printBoxes = useMemo(() => {
-    const boxes = thisSundayActive.map((row) => {
-      const cycle = row.this_cycle || {};
-      const items = cycleItems(cycle);
-      const win = splitWindow(!!cycle.delivery, cycle.pickup_time_slot);
-      const customer = row.customer || {};
-      return {
-        id: row.id,
-        name: customerName(customer),
-        mealCount: Number(row.subscription_plans?.meal_count) || 0,
-        delivery: !!cycle.delivery,
-        method: cycle.delivery ? 'Delivery' : 'Pickup',
-        windowStart: win.start,
-        windowEnd: win.end,
-        address: cycle.delivery
-          ? (cycle.special_note || cycle.delivery_postal_code || '—')
-          : PICKUP_ADDRESS,
-        phone: formatPhone(customer.phone_number),
-        email: customer.email || '—',
-        notes: cycleNote(row, cycle),
-        meals: items.filter((item) => item.kind === 'plan'),
-        extras: items.filter((item) => item.kind === 'addon'),
-      };
-    });
-    return [...boxes.filter((row) => !row.delivery), ...boxes.filter((row) => row.delivery)];
-  }, [thisSundayActive]);
+  const printBoxes = useMemo(() => (
+    weekTab === 'next'
+      ? toPrintBoxes(nextSundayActive, 'next_cycle')
+      : toPrintBoxes(thisSundayActive, 'this_cycle')
+  ), [weekTab, thisSundayActive, nextSundayActive]);
 
   const handlePrint = () => {
     window.print();
@@ -284,17 +286,23 @@ const SubscriberAdmin = () => {
   }
 
   const cutoffPassed = Boolean(meta.cutoff_passed);
+  const weekLocked = weekTab === 'this' && cutoffPassed;
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);
-  const printSunday = meta.this_sunday_label || 'Sunday';
+  const printSunday = weekTab === 'next'
+    ? (meta.next_sunday_label || 'Sunday')
+    : (meta.this_sunday_label || 'Sunday');
+  const cutoffLabel = meta.cutoff_label || 'Thursday 5:00 PM';
+  const openTitle = 'Plans are not locked yet';
+  const openBody = `Please be mindful that meals and add-ons may still change by ${cutoffLabel}.`;
   const otherCount = rows.filter((row) => row.status !== 'active').length;
 
   return (
     <div className="promo-admin-container sub-admin-panel">
       <div className="sub-admin-screen">
-        <h1 className="promo-admin-title">Subscriptions</h1>
-
-        <div className="sub-admin-status-tabs" role="tablist" aria-label="Subscription status">
+        <div className="sub-admin-head">
+          <h1 className="promo-admin-title">Subscriptions</h1>
+          <div className="sub-admin-status-tabs" role="tablist" aria-label="Subscription status">
           <button
             type="button"
             role="tab"
@@ -320,35 +328,10 @@ const SubscriberAdmin = () => {
             Other ({otherCount})
           </button>
         </div>
+        </div>
 
         {statusTab === 'active' ? (
           <>
-            <div className={`sub-admin-banner ${cutoffPassed ? 'is-locked' : 'is-open'}`} role="status">
-              {cutoffPassed ? (
-                <>
-                  <p className="sub-admin-banner-title">Locked — this is what you cook</p>
-                  <p className="sub-admin-banner-text">
-                    Meals and add-ons are final for this week. Print the summary.
-                  </p>
-                  <button
-                    type="button"
-                    className="sub-admin-print-button"
-                    onClick={handlePrint}
-                  >
-                    Print the summary
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="sub-admin-banner-title">Open until Thursday 5:00 PM</p>
-                  <p className="sub-admin-banner-text">
-                    Meals and add-ons may still change, and new sign-ups can still join this week.
-                    Treat the list below as provisional until the cutoff.
-                  </p>
-                </>
-              )}
-            </div>
-
             <div className="sub-admin-status-tabs" role="tablist" aria-label="Cook week">
               <button
                 type="button"
@@ -375,6 +358,31 @@ const SubscriberAdmin = () => {
                 Next Sunday, {nextLabel} ({nextSundayActive.length})
               </button>
             </div>
+
+            <div className={`sub-admin-banner ${weekLocked ? 'is-locked' : 'is-open'}`} role="status">
+              <div className="sub-admin-banner-copy">
+                {weekLocked ? (
+                  <>
+                    <p className="sub-admin-banner-title">This week is locked</p>
+                    <p className="sub-admin-banner-text">
+                      Meals and add-ons are final for this week.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="sub-admin-banner-title">{openTitle}</p>
+                    <p className="sub-admin-banner-text">{openBody}</p>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                className="sub-admin-print-button"
+                onClick={handlePrint}
+              >
+                Print the summary
+              </button>
+            </div>
           </>
         ) : null}
 
@@ -387,11 +395,11 @@ const SubscriberAdmin = () => {
           </div>
           <div className="sub-admin-total">
             <span className="sub-admin-total-value">{formatPlanPrice(totals.weeklyCents)}</span>
-            <span className="sub-admin-total-label">per week</span>
+            <span className="sub-admin-total-label">TOTAL</span>
           </div>
           <div className="sub-admin-total">
             <span className="sub-admin-total-value">{totals.meals}</span>
-            <span className="sub-admin-total-label">meals this week</span>
+            <span className="sub-admin-total-label">meals this week (not including add-ons)</span>
           </div>
         </div>
 
@@ -492,7 +500,7 @@ const SubscriberAdmin = () => {
                                 const items = cycleItems(planCycle);
                                 const meals = items.filter((item) => item.kind === 'plan');
                                 const addons = items.filter((item) => item.kind === 'addon');
-                                const noteText = cycleNote(row, planCycle) || '—';
+                                const noteText = cycleNote(row, planCycle) || '-';
                                 const kitchen = kitchenForRow(row, statusTab, weekTab);
                                 const mealCount = Number(row.subscription_plans?.meal_count) || 0;
                                 return (
@@ -508,7 +516,7 @@ const SubscriberAdmin = () => {
                                     ) : null}
                                     <p>
                                       <strong>Notes:</strong>{' '}
-                                      <span className={noteText === '—' ? 'sub-admin-muted sub-admin-notes' : 'sub-admin-notes'}>
+                                      <span className={noteText === '-' ? 'sub-admin-muted sub-admin-notes' : 'sub-admin-notes'}>
                                         {noteText}
                                       </span>
                                     </p>
@@ -562,8 +570,16 @@ const SubscriberAdmin = () => {
       </div>
 
       <div className="sub-admin-print" aria-hidden="true">
+        {weekLocked ? null : (
+          <div className="sub-admin-print-provisional">
+            <p className="sub-admin-print-provisional-title">{openTitle}</p>
+            <p className="sub-admin-print-provisional-text">{openBody}</p>
+          </div>
+        )}
         <p className="sub-admin-print-kicker">Kitchen</p>
-        <h1 className="sub-admin-print-title">This Sunday&apos;s subscriptions — {printSunday}</h1>
+        <h1 className="sub-admin-print-title">
+          {weekTab === 'next' ? 'Next Sunday' : 'This Sunday'}&apos;s subscriptions — {printSunday}
+        </h1>
         <p className="sub-admin-print-intro">
           <strong>{printBoxes.length} plans</strong>
           {' · '}
@@ -579,28 +595,33 @@ const SubscriberAdmin = () => {
             </p>
             <p className="sub-admin-print-muted">{row.phone} · {row.email}</p>
             {row.delivery ? (
-              <>
-                <p><strong>Delivery Address:</strong> {row.address}</p>
-                <p><strong>Notes:</strong> {row.notes || row.address}</p>
-              </>
+              <p><strong>Delivery Address:</strong> {row.address}</p>
             ) : (
-              <>
-                <p>{PICKUP_ADDRESS}</p>
-                {row.notes ? (
-                  <p className="sub-admin-print-notes"><strong>Notes:</strong> {row.notes}</p>
-                ) : null}
-              </>
+              <p>{PICKUP_ADDRESS}</p>
             )}
-            <p>
-              {row.meals.length
-                ? row.meals.map((item) => itemLine(item, 'Meal')).join(', ')
-                : '—'}
+            <p className={row.notes ? 'sub-admin-print-notes' : undefined}>
+              <strong>Notes:</strong> {row.notes || '-'}
             </p>
+            <p><strong>Meals</strong></p>
+            {row.meals.length ? (
+              <ul>
+                {row.meals.map((item) => (
+                  <li key={item.id}>{itemLine(item, 'Meal')}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>-</p>
+            )}
+            <p><strong>Add-ons</strong></p>
             {row.extras.length ? (
-              <p className="sub-admin-print-extras">
-                Extras: {row.extras.map((item) => itemLine(item, 'Add-on')).join(', ')}
-              </p>
-            ) : null}
+              <ul className="sub-admin-print-extras">
+                {row.extras.map((item) => (
+                  <li key={item.id}>{itemLine(item, 'Add-on')}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sub-admin-print-extras">-</p>
+            )}
           </div>
         ))}
       </div>

@@ -764,7 +764,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
       <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${row.phone || '—'} · ${row.email || '—'}</p>
       ${place}
       <p style="margin:0 0 6px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${itemLinesHtml(row.meals) || '—'}</p>
-      ${extras ? `<p style="margin:0; font-size:13px; font-style:italic; color:${C_MUTED}; font-family:${FONT};">Extras: ${extras}</p>` : ''}
+      ${extras ? `<p style="margin:0; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};"><strong>Extras:</strong><br/>${extras}</p>` : ''}
     </div>`;
   };
   const html = ownerWrap(`
@@ -786,7 +786,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
       row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
       row.delivery ? `Notes: ${notes || loc}` : (notes ? `Notes: ${notes}` : ''),
       itemLinesText(row.meals) || '—',
-      row.extras?.length ? `Extras: ${itemLinesText(row.extras)}` : '',
+      row.extras?.length ? `Extras:\n${itemLinesText(row.extras)}` : '',
     ].filter(Boolean).join('\n');
   });
   const text = `${subject}\n\n${ordered.length} plans · ${pickupCount} pickup, ${deliveryCount} delivery\n\n${textLines.join('\n\n')}\n`;

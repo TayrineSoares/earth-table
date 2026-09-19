@@ -42,24 +42,21 @@ function formatPhone(phone) {
   return String(phone || '').trim() || '—';
 }
 
-function itemLinesHtml(items) {
-  return (items || [])
-    .map((item) => {
-      const name = item.slug || item.products?.slug || 'Item';
-      const qty = Number(item.quantity) || 1;
-      return qty > 1 ? `${name} × ${qty}` : name;
-    })
-    .join('<br/>');
+function itemLineName(item, fallback = 'Item') {
+  return item.slug || item.name || item.products?.slug || item.products?.name || fallback;
 }
 
-function itemLinesText(items) {
-  return (items || [])
-    .map((item) => {
-      const name = item.slug || item.products?.slug || 'Item';
-      const qty = Number(item.quantity) || 1;
-      return qty > 1 ? `${name} × ${qty}` : name;
-    })
-    .join('\n');
+function itemQtyLine(item, fallback = 'Item') {
+  const qty = Number(item.quantity) || 1;
+  return `${itemLineName(item, fallback)} x ${qty}`;
+}
+
+function itemLinesHtml(items, fallback) {
+  return (items || []).map((item) => itemQtyLine(item, fallback)).join('<br/>');
+}
+
+function itemLinesText(items, fallback) {
+  return (items || []).map((item) => itemQtyLine(item, fallback)).join('\n');
 }
 
 // helper so multi-line notes render nicely in HTML
@@ -1489,7 +1486,7 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
     const start = row.windowStart || '—';
     const end = row.windowEnd || '—';
     const notes = String(row.notes || '').trim();
-    const extras = itemLinesHtml(row.extras);
+    const extrasHtml = itemLinesHtml(row.extras, 'Add-on');
     const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
     const boxLine = `${method} ${sunday || 'Sunday'}, ${start} – ${end}`;
     const place = row.delivery
@@ -1503,8 +1500,8 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
       <p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${boxLine}</p>
       <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}</p>
       ${place}
-      <p style="margin:0 0 6px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${itemLinesHtml(row.meals) || '—'}</p>
-      ${extras ? `<p style="margin:0; font-size:13px; font-style:italic; color:${C_MUTED}; font-family:${FONT};">Extras: ${extras}</p>` : ''}
+      <p style="margin:0 0 10px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${itemLinesHtml(row.meals, 'Meal') || '—'}</p>
+      ${extrasHtml ? `<p style="margin:0; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};"><strong>Extras:</strong><br/>${extrasHtml}</p>` : ''}
     </div>`;
   };
   const html = wrapEmail(`
@@ -1527,18 +1524,24 @@ function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
       `${formatPhone(row.phone)} · ${row.email || '—'}`,
       row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
       row.delivery ? `Notes: ${notes || loc}` : (notes ? `Notes: ${notes}` : ''),
-      itemLinesText(row.meals) || '—',
-      row.extras?.length ? `Extras: ${itemLinesText(row.extras)}` : '',
+      itemLinesText(row.meals, 'Meal') || '—',
+      row.extras?.length ? `Extras:\n${itemLinesText(row.extras, 'Add-on')}` : '',
     ].filter(Boolean).join('\n');
   });
   const text = `${subject}\n\n${count} plan${count === 1 ? '' : 's'} · ${pickup.length} pickup, ${delivery.length} delivery\n\n${textLines.join('\n\n') || 'None.'}\n`;
   return { subject, html, text };
 }
 
+function receiptMoney(cents) {
+  const n = Number(cents) || 0;
+  if (n < 0) return `−${formatDollars(Math.abs(n))}`;
+  return formatDollars(n);
+}
+
 function moneyReceiptHtml(lines, totalLabel, totalCents) {
   const rows = (lines || []).map((line, i, all) => {
     const last = i === all.length - 1 && !totalLabel;
-    return kvRow(line.label, formatDollars(line.cents), { last });
+    return kvRow(line.label, receiptMoney(line.cents), { last });
   });
   if (totalLabel) {
     rows.push(kvRow(totalLabel, formatDollars(totalCents), { last: true, highlight: true }));
@@ -1547,7 +1550,7 @@ function moneyReceiptHtml(lines, totalLabel, totalCents) {
 }
 
 function moneyReceiptText(lines, totalLabel, totalCents) {
-  const body = (lines || []).map((line) => `${line.label}: ${formatDollars(line.cents)}`).join('\n');
+  const body = (lines || []).map((line) => `${line.label}: ${receiptMoney(line.cents)}`).join('\n');
   if (!totalLabel) return body;
   return `${body}\n${totalLabel}: ${formatDollars(totalCents)}`;
 }
@@ -1557,12 +1560,23 @@ function itemListHtml(items, emptyCopy) {
   return `<p style="margin:0 0 24px; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${html || emptyCopy}</p>`;
 }
 
-function receiptLines({ planCents, deliveryCents, addonCents, chargedCents }) {
+function receiptLines({
+  planCents,
+  deliveryCents,
+  addonCents,
+  chargedCents,
+  discountCents,
+  discountLabel,
+} = {}) {
   const lines = [];
+  const off = Math.max(0, Number(discountCents) || 0);
   if (planCents > 0) lines.push({ label: 'Plan', cents: planCents });
   if (deliveryCents > 0) lines.push({ label: 'Delivery', cents: deliveryCents });
   if (addonCents > 0) lines.push({ label: 'Add-ons', cents: addonCents });
-  const pretax = (Number(planCents) || 0) + (Number(deliveryCents) || 0) + (Number(addonCents) || 0);
+  if (off > 0) {
+    lines.push({ label: discountLabel || 'First-week discount · first week only', cents: -off });
+  }
+  const pretax = (Number(planCents) || 0) + (Number(deliveryCents) || 0) + (Number(addonCents) || 0) - off;
   const tax = Math.max(0, (Number(chargedCents) || 0) - pretax);
   if (tax > 0) lines.push({ label: 'HST', cents: tax });
   return lines;
@@ -1668,6 +1682,8 @@ function renderSubscriptionThursdayEmail({
   chargedAddons = false,
   addonCents = 0,
   chargedCents = 0,
+  discountCents = 0,
+  discountLabel,
   addonItems,
   meals,
 } = {}) {
@@ -1677,7 +1693,7 @@ function renderSubscriptionThursdayEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const postal = String(postalCode || '').trim();
   const chargeLines = chargedAddons
-    ? receiptLines({ addonCents, chargedCents })
+    ? receiptLines({ addonCents, chargedCents, discountCents, discountLabel })
     : [];
   const introText = `Your weekly box has been placed and cannot be modified. ${delivery
     ? 'It will be delivered in the window below.'
