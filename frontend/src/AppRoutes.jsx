@@ -136,7 +136,7 @@ const AppRoutes = ({
                                       />} 
                                     />
           <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/confirmation" element={<Confirmation clearCart={clearCart} />} />
+          <Route path="/confirmation" element={<Confirmation user={user} clearCart={clearCart} />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/register" element={<Register setUser={setUser} />} />
           <Route path="/profile/:auth_user_id" element={<Profile />} />

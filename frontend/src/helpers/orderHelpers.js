@@ -168,7 +168,9 @@ export const getDeliveryFeePreTaxCents = (order) => {
 };
 
 export const getOrderTotals = (order) => {
-  const items = Array.isArray(order?.order_products) ? order.order_products : [];
+  const items = Array.isArray(order?.order_products) && order.order_products.length
+    ? order.order_products
+    : (Array.isArray(order?.products) ? order.products : []);
   const storedSubtotal = Number(order?.item_subtotal_cents);
   const itemSubtotalCents = storedSubtotal > 0
     ? storedSubtotal

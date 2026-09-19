@@ -5,6 +5,14 @@ function formatMoney(cents) {
   return `$${dollars} CAD`;
 }
 
+function withHst(amount) {
+  return `${amount} + HST`;
+}
+
+function formatMoneyHst(cents) {
+  return withHst(formatMoney(cents));
+}
+
 const {
   mealsAWeek,
   mealPlanPhrase,
@@ -323,7 +331,7 @@ function itemParts(p) {
   return {
     name: p.slug ?? p.name ?? "Item",
     qty,
-    price: formatMoney(unit * qty),
+    price: formatMoneyHst(unit * qty),
   };
 }
 
