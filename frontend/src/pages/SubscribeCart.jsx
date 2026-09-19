@@ -16,6 +16,7 @@ import {
 } from '../helpers/subscriptionHelpers'
 import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
 import {
+  firstWeekPromoAppliedMessage,
   HOW_IT_WORKS_CHARGE,
   HOW_IT_WORKS_MEALS,
   HOW_IT_WORKS_PAUSE,
@@ -440,7 +441,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
             {promoResult?.valid ? (
               <div className="checkout-summary-subtotal">
                 <p className="subtotal">
-                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code})
+                  {promoResult.kind === 'referral' ? 'Referral' : 'Promo'} ({promoResult.code}) · first week only
                 </p>
                 <p className="subtotal">- ${(promoDiscountCents / 100).toFixed(2)}</p>
               </div>
@@ -481,7 +482,11 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   <p className="subtotal">{formatPlanPrice(dueTodayCents)}</p>
                 </div>
                 <div className="checkout-summary-subtotal">
-                  <p className="subtotal">Add-ons billed on cutoff date</p>
+                  <p className="subtotal">
+                    {promoResult?.valid
+                      ? 'Add-ons billed Thursday (first-week rate)'
+                      : 'Add-ons billed Thursday'}
+                  </p>
                   <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
                 </div>
               </>
@@ -596,7 +601,14 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   className={`promo-msg ${promoResult.valid ? 'promo-msg--ok' : 'promo-msg--err'}`}
                   aria-live="polite"
                 >
-                  {promoResult.message}
+                  {promoResult.valid
+                    ? firstWeekPromoAppliedMessage({
+                        label: promoResult.kind === 'referral' ? 'Referral' : 'Promo',
+                        code: promoResult.code,
+                        percent: promoResult.discountPercentage,
+                        isDelivery: fulfillment === 'delivery',
+                      })
+                    : promoResult.message}
                 </div>
               ) : null}
             </div>

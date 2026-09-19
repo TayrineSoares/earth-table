@@ -318,7 +318,11 @@ async function createSubscriptionCheckout(body = {}) {
     line_items: lineItems,
     custom_text: {
       submit: {
-        message: 'Today you pay the weekly plan and delivery. After this week we charge plan and delivery Wednesday at 9:00 AM ET and email a receipt. Add-ons still on the box Thursday at 5:00 PM ET are billed then.',
+        message: discountMeta
+          ? (delivery
+              ? 'Promo applied to this first week\'s plan and add-ons. Delivery is full price. Later weeks are regular price.'
+              : 'Promo applied to this first week\'s plan and add-ons. Later weeks are regular price.')
+          : 'Today you pay the weekly plan and delivery. After this week we charge plan and delivery Wednesday at 9:00 AM ET and email a receipt. Add-ons still on the box Thursday at 5:00 PM ET are billed then.',
       },
     },
     success_url: `${frontendUrl()}/subscribe/confirmation?session_id={CHECKOUT_SESSION_ID}`,

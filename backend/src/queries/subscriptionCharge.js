@@ -227,6 +227,7 @@ async function ensureCycle(sub, sunday, settings) {
       delivery_fee_cents: delivery ? (Number(src?.delivery_fee_cents) || 0) : 0,
       plan_paid_cents: 0,
       addon_paid_cents: 0,
+      promo_percent: 0,
     })
     .select(`
       *,
@@ -665,6 +666,7 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
       delivery_fee_cents: delivery ? (Number(lockedCycle.delivery_fee_cents) || 0) : 0,
       plan_paid_cents: 0,
       addon_paid_cents: 0,
+      promo_percent: 0,
     })
     .select('id')
     .single();

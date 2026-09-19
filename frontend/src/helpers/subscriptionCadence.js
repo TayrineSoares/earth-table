@@ -21,6 +21,12 @@ export const HOW_IT_WORKS_PAUSE =
 export const HOW_IT_WORKS_MEALS =
   'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday 5:00 PM ET cutoff.'
 
+/** Shown only after a promo/referral code validates. Delivery sentence is pickup-safe. */
+export function firstWeekPromoAppliedMessage({ label, code, percent, isDelivery }) {
+  const deliveryBit = isDelivery ? ' Delivery is full price.' : ''
+  return `${label} ${code}: ${percent}% off this first week's plan and add-ons.${deliveryBit} Later weeks are regular price.`
+}
+
 export const RESUME_BY_CHARGE =
   'Resume by Wednesday at 9:00 AM ET for that week\'s box.'
 

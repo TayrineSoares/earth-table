@@ -420,6 +420,7 @@ async function getOrCreateEditableCycle(sub) {
       delivery_fee_cents: src?.delivery ? (Number(src.delivery_fee_cents) || 0) : 0,
       plan_paid_cents: 0,
       addon_paid_cents: 0,
+      promo_percent: 0,
     })
     .select()
     .single();
