@@ -32,6 +32,7 @@ import {
   CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
   pausedBanner,
+  paymentFailedBanner,
   resumeByCharge,
 } from '../helpers/subscriptionCadence'
 import { clearEditCart } from '../helpers/subscriptionCart'
@@ -613,33 +614,40 @@ const MySubscriptions = ({ user }) => {
             const ymd = cycle.delivery_date || cycle.pickup_date || row.week?.delivery_date
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
+            const paymentFailedPause = isPaused && row.pause_reason === 'payment_failed'
             const pending = row.pending_status
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
-            const statusNote = isPaused || pending === 'paused'
-              ? pausedBanner(row.charge?.charge_label)
-              : pending === 'cancelled'
-                ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-                : row.week?.applies_to === 'next_week'
-                  ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
-                  : row.meals_need_update
-                    ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
-                    : pendingPlan
-                      ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
-                      : ''
+            const statusNote = paymentFailedPause
+              ? ''
+              : isPaused || pending === 'paused'
+                ? pausedBanner(row.charge?.charge_label)
+                : pending === 'cancelled'
+                  ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
+                  : row.week?.applies_to === 'next_week'
+                    ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
+                    : row.meals_need_update
+                      ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
+                      : pendingPlan
+                        ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
+                        : ''
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
             const otherPlans = plans.filter((planRow) => planRow.id !== row.plan_id)
             const statusLabel = pending === 'paused'
               ? 'Pausing'
               : pending === 'cancelled'
                 ? 'Cancelling'
-                : isPaused
-                  ? 'Paused'
-                  : 'Active'
-            const statusChipClass = isPaused || pending
-              ? 'my-sub-status my-sub-status--paused'
-              : 'my-sub-status my-sub-status--active'
+                : paymentFailedPause
+                  ? 'Payment failed'
+                  : isPaused
+                    ? 'Paused'
+                    : 'Active'
+            const statusChipClass = paymentFailedPause
+              ? 'my-sub-status my-sub-status--alert'
+              : isPaused || pending
+                ? 'my-sub-status my-sub-status--paused'
+                : 'my-sub-status my-sub-status--active'
             const note = String(cycle.special_note || row.special_note || '').trim()
             const location = isDelivery
               ? (cycle.delivery_postal_code || '—')
@@ -716,7 +724,21 @@ const MySubscriptions = ({ user }) => {
                       <p className="my-sub-card-price">
                         {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
                       </p>
-                      {statusNote ? <p className="my-sub-status-note">{statusNote}</p> : null}
+                      {paymentFailedPause ? (
+                        <div className="my-sub-status-note my-sub-status-note--alert" role="status">
+                          <p>{paymentFailedBanner()}</p>
+                          <button
+                            type="button"
+                            className="my-sub-edit-link"
+                            disabled={savingId === row.id}
+                            onClick={() => changeCard(row)}
+                          >
+                            Update your card
+                          </button>
+                        </div>
+                      ) : statusNote ? (
+                        <p className="my-sub-status-note">{statusNote}</p>
+                      ) : null}
                     </div>
 
                     <div className="my-sub-card-details">
@@ -746,7 +768,7 @@ const MySubscriptions = ({ user }) => {
                         {cardLabel(row.card)}
                         <button
                           type="button"
-                          className="my-sub-edit-link"
+                          className={`my-sub-edit-link${paymentFailedPause ? ' my-sub-edit-link--alert' : ''}`}
                           disabled={savingId === row.id}
                           onClick={() => changeCard(row)}
                         >

@@ -51,11 +51,17 @@ export function pausedBanner(chargeLabel) {
   return `This plan is paused. Your last meals and card stay on file. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
 
+/** Auto-pause after a declined Wednesday charge. Sunday/cutoff details stay on the email. */
+export function paymentFailedBanner() {
+  return 'Your subscription is paused because your last payment didn\'t go through. Update your card below to resume your subscription.'
+}
+
 export const HOW_IT_WORKS_CHARGE = howItWorksCharge()
 export const HOW_IT_WORKS_PAUSE = howItWorksPause()
 export const HOW_IT_WORKS_MEALS = howItWorksMeals()
 export const RESUME_BY_CHARGE = resumeByCharge()
 export const PAUSED_BANNER = pausedBanner()
+export const PAYMENT_FAILED_BANNER = paymentFailedBanner()
 
 /** Shown only after a promo/referral code validates. Delivery sentence is pickup-safe. */
 export function firstWeekPromoAppliedMessage({ label, code, percent, isDelivery }) {

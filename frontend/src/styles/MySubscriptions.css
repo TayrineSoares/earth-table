@@ -243,6 +243,12 @@
   border: 1px solid #D9C7B0;
 }
 
+.my-sub-status--alert {
+  color: #c0392b;
+  background: #fff6f4;
+  border: 1px solid #c0392b;
+}
+
 .my-sub-card-price {
   font-family: var(--body-font);
   font-size: 15px;
@@ -257,6 +263,35 @@
   color: #757575;
   margin: 10px 0 0;
   text-wrap: pretty;
+}
+
+.my-sub-status-note--alert {
+  color: #c0392b;
+  background: #fff6f4;
+  border: 1.5px solid #c0392b;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-status-note--alert p {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.my-sub-status-note--alert .my-sub-edit-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  margin-left: 0;
+  color: #c0392b;
+  -webkit-text-fill-color: #c0392b;
+  font-weight: 500;
 }
 
 .my-sub-card-details {
@@ -312,6 +347,12 @@
 .my-sub-edit-link:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.my-sub-edit-link--alert {
+  color: #c0392b;
+  -webkit-text-fill-color: #c0392b;
+  font-weight: 500;
 }
 
 .my-sub-card-expiry {
@@ -539,6 +580,7 @@
 
   .my-sub-primary,
   .my-sub-text-link,
+  .my-sub-status-note--alert .my-sub-edit-link,
   .my-sub-plan-list .order-history-button,
   .my-sub-fulfillment .order-history-button,
   .my-subscriptions-page .order-history-empty .order-history-button,
