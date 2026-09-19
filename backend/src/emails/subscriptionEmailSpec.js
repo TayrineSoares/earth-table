@@ -51,7 +51,7 @@ function fill(template, vars = {}) {
 const COPY = {
   welcome: {
     subject: 'Welcome to weekly plans — your first box is {fulfillmentDate}',
-    preview: 'Your {mealCount}-meal plan is active. Change your meals any time before Thursday.',
+    preview: 'Your {mealCount}-meal plan is active. Change your meals any time before {cutoffDateTime}.',
     heading: 'Welcome to weekly plans, {firstName}',
     intro: "Thank you for subscribing — we're so glad you're here. Your first box is **{fulfillmentDate}**.",
     body: 'Your {mealCount} meals are picked and paid for, so there\'s nothing you need to do. Until **{cutoffDateTime}** you can swap meals or add extras — smoothies, sides, snacks, anything on the menu.',
@@ -60,11 +60,11 @@ const COPY = {
   },
   wednesday: {
     subject: 'Pick your meals for Sunday — cutoff is tomorrow at 5 PM',
-    preview: 'Swap meals or add extras before Thursday at 5 PM ET.',
+    preview: 'Swap meals or add extras before {cutoffDateTime}.',
     heading: 'Your box for {fulfillmentDate}',
     intro: "You've got until **tomorrow, {cutoffDateTime}** to change anything. Here's what you're set for:",
     swap: "If you'd like something different this week, there's still time to swap.",
-    extras: "**Room for a little extra?** Add a smoothie, a side, a soup, or dessert to this week's box — they're charged with Thursday's lock.",
+    extras: "**Room for a little extra?** Add a smoothie, a side, a soup, or dessert to this week's box — they're charged at the {cutoffDateTime} lock.",
   },
   thursday: {
     subject: "Sunday's box is set",
@@ -84,18 +84,18 @@ const COPY = {
     preview: "No boxes and no charges until you're ready.",
     heading: 'Your plan is paused',
     intro: 'No boxes and no charges until you turn it back on. Your plan and meal preferences are saved exactly as they were.',
-    after: 'Come back any time — if you resume by Wednesday at 9:00 AM ET, you\'ll get that Sunday\'s box.',
+    after: 'Come back any time — if you resume by {chargeLabel}, you\'ll get that Sunday\'s box.',
   },
   pauseNext: {
     subject: 'Your weekly plan is paused',
     preview: "No boxes and no charges until you're ready.",
     heading: 'Your plan is paused',
     intro: 'This Sunday still goes out. After that, no boxes and no charges until you turn it back on. Your plan and meal preferences are saved exactly as they were.',
-    after: 'Come back any time — if you resume by Wednesday at 9:00 AM ET, you\'ll get that Sunday\'s box.',
+    after: 'Come back any time — if you resume by {chargeLabel}, you\'ll get that Sunday\'s box.',
   },
   pauseNudge: {
     subject: 'Want a box this Sunday?',
-    preview: "Resume by Wednesday at 9:00 AM ET and we'll have it ready.",
+    preview: "Resume by {chargeLabel} and we'll have it ready.",
     heading: 'Your plan is still paused',
     intro: "If you'd like meals this Sunday, resume by **{cutoffDateTime}** and we'll have your box ready.",
     after: "Not yet? No problem — nothing happens until you say so.",
@@ -145,14 +145,14 @@ const COPY = {
     preview: 'Starting with {fulfillmentDate}.',
     heading: "You've switched to delivery",
     intro: 'Starting with **{fulfillmentDate}**, your box comes to you:',
-    after: 'Switch back to pickup any time before the Thursday cutoff.',
+    after: 'Switch back to pickup any time before {cutoffDateTime}.',
   },
   fulfillmentPickup: {
     subject: "You're switched to pickup",
     preview: 'Starting with {fulfillmentDate}.',
     heading: "You've switched to pickup",
     intro: 'Starting with **{fulfillmentDate}**, your box will be labeled and waiting at:',
-    after: 'Switch back to delivery any time before the Thursday cutoff.',
+    after: 'Switch back to delivery any time before {cutoffDateTime}.',
   },
   cardExpiry: {
     subject: 'This card expires {expMonth}/{expYear}',
@@ -164,7 +164,7 @@ const COPY = {
     subject: 'No box this Sunday — next delivery is {nextSunday}',
     preview: '{skippedSunday} is a holiday, so there is no box and no charge.',
     heading: 'No box this Sunday, {firstName}',
-    intro: 'Sunday {skippedSunday} is a holiday, so there is no box and no charge. Your next delivery is **{nextSunday}**. Weekly billing stays on the usual Wednesday 9:00 AM ET schedule.',
+    intro: 'Sunday {skippedSunday} is a holiday, so there is no box and no charge. Your next delivery is **{nextSunday}**. Weekly billing stays on the usual {chargeLabel} schedule.',
   },
   ownerWelcome: {
     subject: 'New subscription — {customerName}, {mealCount} meals/week ({price})',

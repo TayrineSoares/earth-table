@@ -190,7 +190,7 @@ async function resumeSubscription(userId, subscriptionId) {
       const { retryFailedCharge } = require('./subscriptionCharge');
       const retried = await retryFailedCharge(sub);
       if (!retried?.ok) {
-        throw new SubscriptionError(402, 'We still could not charge this week. Update your card before Thursday 5:00 PM ET or email hello@earthtableco.ca.');
+        throw new SubscriptionError(402, `We still could not charge this week. Update your card before ${week.cutoff_label || 'the meal lock'} or email hello@earthtableco.ca.`);
       }
     } catch (err) {
       if (err instanceof SubscriptionError) throw err;
@@ -424,13 +424,14 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId) {
   }
 
   try {
-    await notifyManage(userId, {
-      kind: 'plan_now',
-      mealCount: nextCount,
-      nextMealCount: nextCount,
-      deliveryLabel: week.delivery_label,
-      chargeLabel: charge.charge_label,
-    });
+      await notifyManage(userId, {
+        kind: 'plan_now',
+        mealCount: nextCount,
+        nextMealCount: nextCount,
+        deliveryLabel: week.delivery_label,
+        chargeLabel: charge.charge_label,
+        cutoffLabel: week.cutoff_label,
+      });
   } catch (err) {
     console.warn('[subscriptions] plan-change email failed:', err.message);
   }

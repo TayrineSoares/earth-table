@@ -40,6 +40,7 @@ const {
   fill,
   PICKUP_ADDRESS,
   PAUSE_CANCEL_BY,
+  MEAL_LOCK_BY,
 } = require('./subscriptionEmailSpec');
 
 function customerWrap(inner, { subject, preview, replyOk = false }) {
@@ -209,6 +210,7 @@ function renderOwnerSubscriptionEmail({
   phone,
   notes,
   address,
+  chargeLabel,
 } = {}) {
   const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Customer';
   const vars = {
@@ -224,6 +226,7 @@ function renderOwnerSubscriptionEmail({
   const deliveryLoc = loc || note || '—';
   const paidLabel = `${formatDollars(paidCents)} including HST`;
   const addonHtml = itemLinesHtml(addons);
+  const renews = chargeLabel || PAUSE_CANCEL_BY;
   const html = ownerWrap(`
       ${eyebrow('New subscription')}
       ${h1(c.heading)}
@@ -233,7 +236,7 @@ function renderOwnerSubscriptionEmail({
         ${kvRow('Plan', `${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`)}
         ${kvRow('Next box', nextBoxValue({ delivery, pickupSlot, fulfillmentDate: vars.fulfillmentDate }))}
         ${kvRow('First payment', paidLabel)}
-        ${kvRow('Renews', 'Every Wednesday, 9:00 AM ET')}
+        ${kvRow('Renews', renews)}
         ${kvRow('Customer', `${email || '—'} · ${formatPhone(phone)}`)}
         ${delivery
           ? `${kvRow('Delivery Address', deliveryLoc)}${kvRow('Notes', note || deliveryLoc, { last: true })}`
@@ -250,7 +253,7 @@ function renderOwnerSubscriptionEmail({
     `Plan — ${mealCount} meals a week, ${formatDollars(planPriceCents)}/week + HST`,
     `Next box — ${nextBoxValue({ delivery, pickupSlot, fulfillmentDate: vars.fulfillmentDate })}`,
     `First payment — ${paidLabel}`,
-    'Renews — Every Wednesday, 9:00 AM ET',
+    `Renews — ${renews}`,
     `Customer — ${email || '—'} · ${formatPhone(phone)}`,
     delivery
       ? `Delivery Address — ${deliveryLoc}\nNotes — ${note || deliveryLoc}`
@@ -342,7 +345,7 @@ function renderSubscriptionManageEmail({
 } = {}) {
   const name = firstName || 'there';
   const sunday = fulfillmentDate || deliveryLabel || 'Sunday';
-  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
   const mealsHref = appUrl('/my-subscriptions');
   const menuHref = appUrl('/products/category');
@@ -363,6 +366,7 @@ function renderSubscriptionManageEmail({
     oldPrice,
     difference,
     nextChargeDate: nextChargeDate || chargeLabel,
+    chargeLabel: chargeLabel || PAUSE_CANCEL_BY,
     effectiveDate: effectiveDate || sunday,
     expMonth: expMonth != null && expMonth !== ''
       ? String(expMonth).padStart(2, '0')
@@ -378,9 +382,9 @@ function renderSubscriptionManageEmail({
       ${h1(c.heading)}
       ${intro(c.intro)}
       ${ctaLink(manageHref, CTA.resume)}
-      ${bodyP(c.after)}
+      ${bodyP(fill(c.after, vars))}
     `, { subject, preview: c.preview });
-    const text = `${c.heading}\n\n${c.intro}\n\n${CTA.resume}: ${manageHref}\n\n${c.after}`;
+    const text = `${c.heading}\n\n${c.intro}\n\n${CTA.resume}: ${manageHref}\n\n${fill(c.after, vars)}`;
     return { subject, html, text };
   }
 
@@ -393,7 +397,7 @@ function renderSubscriptionManageEmail({
       ${intro(fill(c.intro, vars).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))}
       ${ctaLink(manageHref, CTA.resume)}
       ${bodyP(c.after)}
-    `, { subject, preview: c.preview });
+    `, { subject, preview: fill(c.preview, vars) });
     const text = `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\n${CTA.resume}: ${manageHref}\n\n${c.after}`;
     return { subject, html, text };
   }
@@ -500,12 +504,12 @@ function renderSubscriptionManageEmail({
       ${h1(c.heading)}
       ${intro(fill(c.intro, vars).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))}
       ${card(kvTable(detail))}
-      ${bodyP(c.after)}
+      ${bodyP(fill(c.after, vars))}
       ${ctaLink(manageHref, CTA.manage)}
     `, { subject, preview: fill(c.preview, vars) });
     const text = toDelivery
-      ? `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\nNext box: ${boxLine}\nDelivery Address: ${loc}\nNotes: ${note || loc}\n\n${c.after}\n\n${CTA.manage}: ${manageHref}`
-      : `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\nNext box: ${boxLine}\nAddress: ${PICKUP_ADDRESS}\n\n${c.after}\n\n${CTA.manage}: ${manageHref}`;
+      ? `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\nNext box: ${boxLine}\nDelivery Address: ${loc}\nNotes: ${note || loc}\n\n${fill(c.after, vars)}\n\n${CTA.manage}: ${manageHref}`
+      : `${c.heading}\n\n${mdText(fill(c.intro, vars))}\n\nNext box: ${boxLine}\nAddress: ${PICKUP_ADDRESS}\n\n${fill(c.after, vars)}\n\n${CTA.manage}: ${manageHref}`;
     return { subject, html, text };
   }
 
@@ -544,12 +548,14 @@ function renderSubscriptionHolidaySkipEmail({
   firstName,
   skippedSunday,
   nextSunday,
+  chargeLabel,
   owner = false,
 } = {}) {
   const vars = {
     firstName: firstName || 'there',
     skippedSunday: skippedSunday || 'this Sunday',
     nextSunday: nextSunday || 'the next Sunday',
+    chargeLabel: chargeLabel || PAUSE_CANCEL_BY,
   };
   if (owner) {
     const c = COPY.ownerHoliday;
@@ -897,11 +903,13 @@ function renderSubscriptionPriceEmail({
   mealCount,
   oldPriceCents,
   newPriceCents,
+  chargeLabel,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
+  const charge = chargeLabel || PAUSE_CANCEL_BY;
   const subject = `Your ${planWeek} is now ${formatDollars(newPriceCents)}/week`;
-  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next Wednesday 9:00 AM ET charge — this Sunday stays at the amount already billed if you already paid.`;
+  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next ${charge} charge — this Sunday stays at the amount already billed if you already paid.`;
   const html = customerWrap(`
       ${eyebrow('Weekly subscription')}
       ${h1(`Price update, ${name}`)}

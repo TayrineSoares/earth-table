@@ -17,9 +17,10 @@ import {
 import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../helpers/subscriptionCart'
 import {
   firstWeekPromoAppliedMessage,
-  HOW_IT_WORKS_CHARGE,
-  HOW_IT_WORKS_MEALS,
-  HOW_IT_WORKS_PAUSE,
+  addonsBilledAt,
+  howItWorksCharge,
+  howItWorksMeals,
+  howItWorksPause,
 } from '../helpers/subscriptionCadence'
 
 const HST_RATE = 0.13
@@ -244,12 +245,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        HOW_IT_WORKS_CHARGE,
+        howItWorksCharge(dates?.charge_label, dates?.cutoff_label),
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        HOW_IT_WORKS_PAUSE,
+        howItWorksPause(dates?.charge_label),
         dates?.first_delivery_label ? `First delivery: ${dates.first_delivery_label}.` : null,
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        HOW_IT_WORKS_MEALS,
+        howItWorksMeals(dates?.cutoff_label),
       ].filter(Boolean),
       hint: (
         <>
@@ -483,9 +484,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                 </div>
                 <div className="checkout-summary-subtotal">
                   <p className="subtotal">
-                    {promoResult?.valid
-                      ? 'Add-ons billed Thursday (first-week rate)'
-                      : 'Add-ons billed Thursday'}
+                    {addonsBilledAt(dates?.cutoff_label, { firstWeekRate: !!promoResult?.valid })}
                   </p>
                   <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
                 </div>

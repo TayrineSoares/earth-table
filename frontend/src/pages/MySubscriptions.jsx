@@ -25,12 +25,12 @@ import {
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import {
   cardExpiryState,
-  HOW_IT_WORKS_CHARGE,
-  HOW_IT_WORKS_MEALS,
-  HOW_IT_WORKS_PAUSE,
+  howItWorksCharge,
+  howItWorksMeals,
+  howItWorksPause,
   MEAL_LOCK_BY,
-  PAUSED_BANNER,
-  RESUME_BY_CHARGE,
+  pausedBanner,
+  resumeByCharge,
 } from '../helpers/subscriptionCadence'
 import { clearEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
@@ -374,13 +374,14 @@ const MySubscriptions = ({ user }) => {
   const confirmStatus = (row, action) => {
     const beforeWed = row.charge?.before_wednesday !== false
     const sunday = sundayDatePart(row.week?.delivery_label)
+    const resumeBy = resumeByCharge(row.charge?.charge_label)
     const copy = {
       pause: beforeWed
         ? {
           title: 'Pause this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            RESUME_BY_CHARGE,
+            resumeBy,
           ],
         }
         : {
@@ -392,7 +393,7 @@ const MySubscriptions = ({ user }) => {
           title: 'Cancel this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            RESUME_BY_CHARGE,
+            resumeBy,
           ],
         }
         : {
@@ -425,10 +426,11 @@ const MySubscriptions = ({ user }) => {
       await load()
       setChangingId(null)
       if (result?.needs_meals) {
+        const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
         setDialog({
           icon: 'mail',
           title: 'Pick this week\'s meals',
-          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before ${MEAL_LOCK_BY}.`,
+          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before ${lockBy}.`,
           primaryLabel: 'Choose meals',
           primaryTo: `/my-subscriptions/${row.id}/meals`,
         })
@@ -449,11 +451,12 @@ const MySubscriptions = ({ user }) => {
   const confirmPlan = (row, plan) => {
     const beforeWed = row.charge?.before_wednesday !== false
     const sunday = sundayDatePart(row.week?.delivery_label)
+    const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: beforeWed
-        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${MEAL_LOCK_BY}.`
+        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${lockBy}.`
         : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
       primaryLabel: 'Change plan',
       secondaryLabel: 'Never mind',
@@ -501,18 +504,20 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
-  const openPlanDetails = () => {
+  const openPlanDetails = (row) => {
+    const chargeLabel = row?.charge?.charge_label
+    const cutoffLabel = row?.week?.cutoff_label
     setDialog({
       icon: 'alert',
       title: 'Subscription details',
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        HOW_IT_WORKS_CHARGE,
+        howItWorksCharge(chargeLabel, cutoffLabel),
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        HOW_IT_WORKS_PAUSE,
+        howItWorksPause(chargeLabel),
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        HOW_IT_WORKS_MEALS,
+        howItWorksMeals(cutoffLabel),
       ],
       hint: (
         <>
@@ -605,14 +610,15 @@ const MySubscriptions = ({ user }) => {
             const pending = row.pending_status
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
+            const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
             const statusNote = isPaused || pending === 'paused'
-              ? PAUSED_BANNER
+              ? pausedBanner(row.charge?.charge_label)
               : pending === 'cancelled'
                 ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                 : row.week?.applies_to === 'next_week'
                   ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                   : row.meals_need_update
-                    ? `Pick exactly ${mealCount} meals for this Sunday before ${MEAL_LOCK_BY}.`
+                    ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
                     : pendingPlan
                       ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
                       : ''
@@ -678,7 +684,7 @@ const MySubscriptions = ({ user }) => {
                       </ul>
                       <div className="my-sub-extras-summary">
                         <span>Extras this week</span>
-                        <span>{formatPlanPrice(extrasCents)} · charged Thursday</span>
+                        <span>{formatPlanPrice(extrasCents)} · charged {mealsBy}</span>
                       </div>
                     </>
                   ) : (
@@ -815,7 +821,7 @@ const MySubscriptions = ({ user }) => {
                     </div>
 
                     <div className="my-sub-card-terms">
-                      <button type="button" className="my-sub-text-link" onClick={openPlanDetails}>
+                      <button type="button" className="my-sub-text-link" onClick={() => openPlanDetails(row)}>
                         View plan details &amp; rules
                       </button>
                     </div>

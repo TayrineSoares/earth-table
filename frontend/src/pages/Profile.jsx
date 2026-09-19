@@ -336,7 +336,7 @@ const Profile = () => {
                 disabled={savingEmailPrefs || isLoading}
                 onChange={(e) => handleEmailPref('wednesday_reminder', e.target.checked)}
               />
-              <span>Wednesday meal reminder (plan charge still runs)</span>
+              <span>Meal reminder (plan charge still runs)</span>
             </label>
             <label className="profile-email-pref">
               <input

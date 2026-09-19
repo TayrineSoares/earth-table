@@ -11,6 +11,7 @@ import {
   fetchMySubscriptions,
   formatPlanPrice,
 } from '../helpers/subscriptionHelpers'
+import { MEAL_LOCK_BY } from '../helpers/subscriptionCadence'
 import {
   bumpMeal,
   emptyEditCart,
@@ -122,7 +123,7 @@ const SubscribeEditMeals = ({ user }) => {
   const exact = mealsExact(editCart)
   const atCap = need > 0 && picked >= need
   const sundayLabel = row?.week?.delivery_label || ''
-  const cutoffLabel = row?.week?.cutoff_label || 'Thursday at 5:00 PM'
+  const cutoffLabel = row?.week?.cutoff_label || MEAL_LOCK_BY
   const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
 
   const bump = (product, delta) => {

@@ -9,13 +9,13 @@ import {
   formatPickupSlot,
   formatPlanPrice,
 } from '../helpers/subscriptionHelpers'
+import { CHARGE_DAY_TIME, MEAL_LOCK_BY, howItWorksPause } from '../helpers/subscriptionCadence'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import '../styles/Cart.css'
 import '../styles/Confirmation.css'
 
 const POLL_MS = 1000
 const POLL_TRIES = 20
-const RENEWAL_DAY = 'Wednesday'
 
 /** "Sunday, September 27, 2026" -> "Sunday, September 27" */
 function sundayLabel(ymd) {
@@ -35,19 +35,6 @@ function splitWindow(label) {
     return { start: parts[0].trim(), end: parts.slice(1).join(' – ').trim() }
   }
   return { start: String(label || '—').trim(), end: '' }
-}
-
-/** First box is Sunday; next weekly charge is that week's Wednesday. */
-function wednesdayAfterSunday(ymd) {
-  const [y, m, d] = String(ymd || '').split('-').map(Number)
-  if (!y || !m || !d) return RENEWAL_DAY
-  const date = new Date(y, m - 1, d)
-  date.setDate(date.getDate() + 3)
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
 }
 
 export default function SubscribeConfirmation({ clearSubCart }) {
@@ -150,7 +137,10 @@ export default function SubscribeConfirmation({ clearSubCart }) {
   const note = String(cycle.special_note || '').trim()
   const postal = cycle.delivery_postal_code || customer.postal_code || ''
   const price = formatPlanPrice(plan.price_cents)
-  const nextChargeDate = wednesdayAfterSunday(ymd)
+  const dates = payload?.dates || {}
+  const chargeLabel = dates.charge_label || CHARGE_DAY_TIME
+  const lockLabel = dates.cutoff_label || cutoffDateTime || MEAL_LOCK_BY
+  const nextChargeDate = dates.charge_label || CHARGE_DAY_TIME
   const heading = firstName
     ? `Your weekly plan is set, ${firstName}`
     : 'Your weekly plan is set'
@@ -176,7 +166,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 <li className="subscribe-confirm-step">
                   <span className="subscribe-confirm-step-num" aria-hidden="true">01</span>
                   <div>
-                    <p className="subscribe-confirm-step-lead">Your meals are locked in Thursday.</p>
+                    <p className="subscribe-confirm-step-lead">Your meals are locked in until {lockLabel}.</p>
                     <p className="subscribe-confirm-step-body">
                       You&apos;ve picked all {mealCount || 'your meals'}, so there&apos;s nothing you need to do.
                       Until {cutoffDateTime} you can swap meals or add extras — smoothies, sides, snacks, anything on the menu — all from{' '}
@@ -212,8 +202,8 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                   <div>
                     <p className="subscribe-confirm-step-lead">It repeats, unless you say otherwise.</p>
                     <p className="subscribe-confirm-step-body">
-                      Don&apos;t have time to pick? We&apos;ll repeat last week&apos;s selection.
-                      Pause or cancel any time before Wednesday at 9:00 AM ET, no fees.
+                      Don&apos;t have time to pick? We&apos;ll repeat last week&apos;s selection.{' '}
+                      {howItWorksPause(chargeLabel)}
                     </p>
                   </div>
                 </li>
@@ -261,11 +251,11 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                 </div>
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Renews</span>
-                  <span className="subscribe-confirm-row-value">Every Wednesday at 9:00 AM ET</span>
+                  <span className="subscribe-confirm-row-value">{chargeLabel}</span>
                 </div>
                 <div className="subscribe-confirm-row">
                   <span className="subscribe-confirm-row-label">Meal Selection Cutoff</span>
-                  <span className="subscribe-confirm-row-value">Every Thursday 5:00 PM ET</span>
+                  <span className="subscribe-confirm-row-value">{lockLabel}</span>
                 </div>
               </div>
 

@@ -13,11 +13,8 @@ function formatMoneyHst(cents) {
   return withHst(formatMoney(cents));
 }
 
-const {
-  mealsAWeek,
-  mealPlanPhrase,
-  formatFulfillmentLine,
-} = require('../queries/subscriptionWeek');
+const { mealsAWeek, mealPlanPhrase, formatFulfillmentLine } = require('../queries/subscriptionWeek');
+const { PAUSE_CANCEL_BY, MEAL_LOCK_BY } = require('../emails/subscriptionEmailSpec');
 
 function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -1042,6 +1039,7 @@ function renderSubscriptionWelcomeEmail({
   deliveryLabel,
   pickupSlot,
   cutoffLabel,
+  chargeLabel,
   subscriptionId,
   notes,
 } = {}) {
@@ -1051,7 +1049,8 @@ function renderSubscriptionWelcomeEmail({
   const sunday = deliveryLabel || 'Sunday';
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const manageHref = appUrl(`/my-subscriptions/${subscriptionId || ''}`);
-  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
+  const charge = chargeLabel || PAUSE_CANCEL_BY;
   const note = String(notes || '').trim() || '—';
 
   const subject = `Welcome to weekly plans — your first box is ${sunday}`;
@@ -1059,7 +1058,7 @@ function renderSubscriptionWelcomeEmail({
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`You're all set, ${name}`)}
-      ${intro(`Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed Thursday if they are still on the box.`)}
+      ${intro(`Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed ${cutoff} if they are still on the box.`)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
@@ -1067,8 +1066,8 @@ function renderSubscriptionWelcomeEmail({
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
       ${ctaLink(manageHref, "Manage my subscription")}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before the Thursday cutoff.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before ${charge} to skip a Sunday, or before ${cutoff} to change this week's box.</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1077,7 +1076,7 @@ function renderSubscriptionWelcomeEmail({
 
   const text = `You're all set, ${name}
 
-Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed Thursday if they are still on the box.
+Your ${planPhrase} is confirmed. The plan and delivery are paid; extras are billed ${cutoff} if they are still on the box.
 
 Plan: ${planWeek}
 This Sunday: ${fulfillment}
@@ -1086,9 +1085,9 @@ Change your meals by: ${cutoff}
 
 Manage my subscription: ${manageHref}
 
-Haven't picked yet? Choose your meals before Thursday at 5:00 PM and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
+Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
 
-Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before the Thursday cutoff.
+Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before ${charge} to skip a Sunday, or before ${cutoff} to change this week's box.
 
 Questions? Reply to this email or write to hello@earthtableco.ca.`;
 
@@ -1118,7 +1117,7 @@ function renderOwnerSubscriptionEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const mealHtml = itemLinesHtml(meals) || '—';
   const mealText = itemLinesText(meals) || '—';
-  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const paid = formatDollars(paidCents);
   const stripeRef = chargeId || '—';
   const note = String(notes || '').trim() || '—';
@@ -1182,7 +1181,7 @@ function renderSubscriptionUpdatedEmail({
   const sunday = deliveryLabel || 'Sunday';
   const sundayDate = sundayDatePart(sunday);
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
-  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const note = String(notes || '').trim() || '—';
   const thisSunday = appliesTo !== 'next_week';
   const timing = thisSunday
@@ -1214,7 +1213,7 @@ function renderSubscriptionUpdatedEmail({
       ${thisSunday
         ? ''
         : `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">If you need a delivery change for this Sunday, email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER};">hello@earthtableco.ca</a>.</p>`}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Manage anything else in My Subscriptions before the Thursday cutoff.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Manage anything else in My Subscriptions before ${cutoff}.</p>
   `, {
     preheader: timing,
     replyOk: true,
@@ -1235,7 +1234,7 @@ ${mealText}
 Add-ons
 ${addonText || 'None this week.'}
 
-${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@earthtableco.ca.\n\n'}Manage anything else in My Subscriptions before the Thursday cutoff.`;
+${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@earthtableco.ca.\n\n'}Manage anything else in My Subscriptions before ${cutoff}.`;
 
   return { subject, html, text };
 }
@@ -1248,6 +1247,7 @@ function renderSubscriptionManageEmail(payload = {}) {
     nextMealCount,
     deliveryLabel,
     chargeLabel,
+    cutoffLabel,
     cardBrand,
     last4,
     expMonth,
@@ -1256,7 +1256,8 @@ function renderSubscriptionManageEmail(payload = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
-  const charge = chargeLabel || 'Wednesday at 9:00 AM ET';
+  const charge = chargeLabel || PAUSE_CANCEL_BY;
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
 
@@ -1318,7 +1319,7 @@ My Subscriptions: ${manageHref}`;
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
       heading: `We could not charge this week, ${name}`,
-      intro: `Your card was declined for this Sunday, ${sundayDatePart(sunday)}. Update it in My Subscriptions before Thursday 5:00 PM ET to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
+      intro: `Your card was declined for this Sunday, ${sundayDatePart(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
     },
     resume: {
       subject: `Your weekly plan is active again`,
@@ -1328,7 +1329,7 @@ My Subscriptions: ${manageHref}`;
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're now on a ${nextPlan}. This Sunday, ${sundayDatePart(sunday)}, uses the new count — pick that many meals before Thursday 5:00 PM.`,
+      intro: `You're now on a ${nextPlan}. This Sunday, ${sundayDatePart(sunday)}, uses the new count — pick that many meals before ${cutoff}.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
@@ -1373,7 +1374,7 @@ function renderSubscriptionHolidaySkipEmail({
   const name = firstName || 'there';
   const skipped = skippedSunday || 'this Sunday';
   const next = nextSunday || 'the next Sunday';
-  const charge = chargeLabel || 'Wednesday at 9:00 AM ET';
+  const charge = chargeLabel || PAUSE_CANCEL_BY;
   const subject = owner
     ? `Holiday skip — no boxes ${skipped}`
     : `No box this Sunday — next delivery is ${next}`;
@@ -1475,7 +1476,7 @@ function renderSubscriptionWednesdayEmail({
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
-  const cutoff = cutoffLabel || 'Thursday at 5:00 PM ET';
+  const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
   const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
   const chargeLines = charged
@@ -1614,11 +1615,13 @@ function renderSubscriptionPriceEmail({
   mealCount,
   oldPriceCents,
   newPriceCents,
+  chargeLabel,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
+  const charge = chargeLabel || PAUSE_CANCEL_BY;
   const subject = `Your ${planWeek} is now ${formatDollars(newPriceCents)}/week`;
-  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next Wednesday 9:00 AM ET charge — this Sunday stays at the amount already billed if you already paid.`;
+  const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next ${charge} charge — this Sunday stays at the amount already billed if you already paid.`;
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`Price update, ${name}`)}

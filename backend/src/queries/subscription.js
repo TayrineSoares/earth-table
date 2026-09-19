@@ -165,6 +165,8 @@ async function notifyPlanPriceChange(oldPlan, newPlan) {
     .eq('plan_id', newPlan.id)
     .in('status', ['active', 'paused']);
   if (error) throw error;
+  const settings = await getSettings();
+  const charge = getChargeDeadline(new Date(), settings || {});
   for (const row of subs || []) {
     try {
       const { getUserByAuthId } = require('./user');
@@ -175,6 +177,7 @@ async function notifyPlanPriceChange(oldPlan, newPlan) {
         mealCount: newPlan.meal_count,
         oldPriceCents: oldPlan.price_cents,
         newPriceCents: newPlan.price_cents,
+        chargeLabel: charge.charge_label,
       });
       await sendEmail({
         to: user.email,

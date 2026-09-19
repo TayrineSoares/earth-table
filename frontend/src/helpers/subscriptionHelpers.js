@@ -1,3 +1,5 @@
+import { MEAL_LOCK_BY } from './subscriptionCadence'
+
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -193,11 +195,14 @@ const formatPickupSlot = (slot) => {
   return `${fmt(parts[0].trim())} – ${fmt(parts[1].trim())}`;
 };
 
+const ET = { timeZone: 'America/Toronto' };
+
 const formatCutoffShort = (iso) => {
   if (!iso) return 'Thu · 5:00 PM ET';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'Thu · 5:00 PM ET';
   const label = d.toLocaleString('en-US', {
+    ...ET,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -212,8 +217,8 @@ const formatCutoffWeekdayTime = (iso, fallback = 'Thu 5:00 PM ET') => {
   if (!iso) return fallback;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return fallback;
-  const weekday = d.toLocaleString('en-US', { weekday: 'short' });
-  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const weekday = d.toLocaleString('en-US', { ...ET, weekday: 'short' });
+  const time = d.toLocaleString('en-US', { ...ET, hour: 'numeric', minute: '2-digit' });
   return `${weekday} ${time} ET`;
 };
 
@@ -227,7 +232,7 @@ const sundayDatePart = (label) => {
 const weekSaveCopy = (week, { deliveryFeeCents = 0, switchingToDelivery = false } = {}) => {
   const sunday = week?.delivery_label || 'Sunday';
   const sundayDate = sundayDatePart(sunday);
-  const cutoff = week?.cutoff_label || 'Thursday at 5:00 PM ET';
+  const cutoff = week?.cutoff_label || MEAL_LOCK_BY;
   const nextWeek = week?.applies_to === 'next_week' || week?.cutoff_passed;
   const fee = Number(deliveryFeeCents) || 0;
   const feeLine = switchingToDelivery && fee > 0

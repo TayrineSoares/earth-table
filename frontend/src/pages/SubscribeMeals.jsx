@@ -12,6 +12,7 @@ import {
   fetchSubscriptionDates,
   formatPlanPrice,
 } from '../helpers/subscriptionHelpers'
+import { MEAL_LOCK_BY } from '../helpers/subscriptionCadence'
 import {
   applyPlanToCart,
   lineQty,
@@ -92,7 +93,7 @@ const SubscribeMeals = ({ subCart, setSubCart, bumpSubMeal }) => {
   const exact = mealsExact(subCart)
   const atCap = need > 0 && picked >= need
   const sundayLabel = dates?.first_delivery_label || ''
-  const cutoffLabel = dates?.cutoff_label || 'Thursday at 5:00 PM'
+  const cutoffLabel = dates?.cutoff_label || MEAL_LOCK_BY
   const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
 
   const onContinue = () => {

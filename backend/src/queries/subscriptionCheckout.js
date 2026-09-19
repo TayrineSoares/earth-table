@@ -291,6 +291,8 @@ async function createSubscriptionCheckout(body = {}) {
         delivery_fee_cents: deliveryFeeCents,
         cutoff_at: dates.cutoff_at,
         cutoff_label: dates.cutoff_label,
+        charge_at: dates.charge_at,
+        charge_label: dates.charge_label,
         first_delivery_label: dates.first_delivery_label,
         discount: discountMeta,
         plan_paid_cents: planDiscounted,
@@ -322,7 +324,7 @@ async function createSubscriptionCheckout(body = {}) {
           ? (delivery
               ? 'Promo applied to this first week\'s plan and add-ons. Delivery is full price. Later weeks are regular price.'
               : 'Promo applied to this first week\'s plan and add-ons. Later weeks are regular price.')
-          : 'Today you pay the weekly plan and delivery. After this week we charge plan and delivery Wednesday at 9:00 AM ET and email a receipt. Add-ons still on the box Thursday at 5:00 PM ET are billed then.',
+          : `Today you pay the weekly plan and delivery. After this week we charge plan and delivery ${dates.charge_label} and email a receipt. Add-ons still on the box ${dates.cutoff_label} are billed then.`,
       },
     },
     success_url: `${frontendUrl()}/subscribe/confirmation?session_id={CHECKOUT_SESSION_ID}`,
@@ -393,10 +395,19 @@ async function loadSignupPayload(subscriptionId) {
     }
   }
 
+  let dates = null;
+  try {
+    const settings = await getSettings();
+    dates = getSignupDates(new Date(), settings || {});
+  } catch (err) {
+    console.warn('[subscriptions] signup dates failed:', err.message);
+  }
+
   return {
     ready: true,
     subscription: sub,
     cycle: cycle || null,
+    dates,
     customer: customer
       ? {
           first_name: customer.first_name,
@@ -572,6 +583,7 @@ async function completeSubscriptionSignup(session) {
         deliveryLabel: cart.first_delivery_label,
         pickupSlot: cart.pickup_time_slot,
         cutoffLabel: cart.cutoff_label,
+        chargeLabel: cart.charge_label,
         subscriptionId: sub.id,
         address: delivery ? draft.special_note : undefined,
         notes: draft.special_note,
@@ -661,6 +673,8 @@ async function createCardSetupCheckout(userId, subscriptionId) {
   if (!sub.stripe_customer_id) {
     throw new SubscriptionError(400, 'No card on file yet. Email hello@earthtableco.ca.');
   }
+  const settings = await getSettings();
+  const dates = getSignupDates(new Date(), settings || {});
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     mode: 'setup',
@@ -670,7 +684,7 @@ async function createCardSetupCheckout(userId, subscriptionId) {
     cancel_url: `${frontendUrl()}/my-subscriptions`,
     custom_text: {
       submit: {
-        message: 'This saves a card for your Earth Table weekly plan. We charge plan and delivery every Wednesday at 9:00 AM ET and email a receipt. Extras are billed Thursday at 5:00 PM ET if you added any.',
+        message: `This saves a card for your Earth Table weekly plan. We charge plan and delivery ${dates.charge_label} and email a receipt. Extras are billed ${dates.cutoff_label} if you added any.`,
       },
     },
     metadata: {

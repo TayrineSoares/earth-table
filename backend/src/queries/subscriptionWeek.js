@@ -252,12 +252,16 @@ function getSignupDates(now = new Date(), settings = {}) {
   }
 
   const deliveryParts = torontoParts(firstDeliveryAt);
+  const firstDeliveryYmd = ymd(deliveryParts.year, deliveryParts.month, deliveryParts.day);
+  const charge = getChargeDeadline(now, settings, firstDeliveryYmd);
 
   return {
     cutoff_at: cutoffAt.toISOString(),
     cutoff_passed: cutoffPassed,
     cutoff_label: formatCutoffLabel(cutoffAt),
-    first_delivery_date: ymd(deliveryParts.year, deliveryParts.month, deliveryParts.day),
+    charge_at: charge.charge_at,
+    charge_label: charge.charge_label,
+    first_delivery_date: firstDeliveryYmd,
     first_delivery_label: formatDeliveryLabel(firstDeliveryAt),
     locked_delivery_date: lockedDeliveryDate,
   };
