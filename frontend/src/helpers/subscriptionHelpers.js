@@ -207,6 +207,16 @@ const formatCutoffShort = (iso) => {
   return `${label.replace(/, (\d)/, ' · $1')} ET`;
 };
 
+/** "Thu 5:00 PM ET" — weekday + time, no calendar date. */
+const formatCutoffWeekdayTime = (iso, fallback = 'Thu 5:00 PM ET') => {
+  if (!iso) return fallback;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return fallback;
+  const weekday = d.toLocaleString('en-US', { weekday: 'short' });
+  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${weekday} ${time} ET`;
+};
+
 /** "Sunday, September 20" -> "September 20" when the sentence already says Sunday. */
 const sundayDatePart = (label) => {
   const raw = String(label || '').trim();
@@ -287,6 +297,7 @@ export {
   titleCaseName,
   formatPickupSlot,
   formatCutoffShort,
+  formatCutoffWeekdayTime,
   weekSaveCopy,
   sundayDatePart,
   formatPlanPrice,

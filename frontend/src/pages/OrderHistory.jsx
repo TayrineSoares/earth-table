@@ -28,11 +28,6 @@ import Lottie from "lottie-react";
 import checkoutImage from "../assets/images/checkoutImage.png";
 
 const ITEM_PREVIEW = 4;
-const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "upcoming", label: "Upcoming" },
-  { id: "past", label: "Past" },
-];
 
 const itemsOf = (order) =>
   Array.isArray(order?.order_products) ? order.order_products : [];
@@ -282,7 +277,6 @@ const OrderHistory = ({ user, addToCart }) => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(Boolean(user?.id));
-  const [filter, setFilter] = useState("all");
   const [detailsOpen, setDetailsOpen] = useState({});
   const [printId, setPrintId] = useState(null);
   const [dialog, setDialog] = useState(null);
@@ -333,11 +327,7 @@ const OrderHistory = ({ user, addToCart }) => {
     [orders]
   );
 
-  const visibleOrders = useMemo(() => {
-    if (filter === "upcoming") return orders.filter((order) => !isOrderCompleted(order));
-    if (filter === "past") return orders.filter((order) => isOrderCompleted(order));
-    return orders;
-  }, [orders, filter]);
+  const visibleOrders = orders;
 
   const isExpanded = (order) => {
     if (Object.prototype.hasOwnProperty.call(detailsOpen, order.id)) {
@@ -396,19 +386,12 @@ const OrderHistory = ({ user, addToCart }) => {
 
   const emptyCopy = !signedIn
     ? "Sign in to see your order history."
-    : !orders.length
-      ? "You haven't placed an order yet."
-      : filter === "upcoming"
-        ? "No upcoming orders."
-        : filter === "past"
-          ? "No past orders."
-          : "You haven't placed an order yet.";
+    : "You haven't placed an order yet.";
 
   const emptyCta = !signedIn
     ? { to: "/login?next=/orders", label: "Log in", outline: true }
     : { to: "/products/category", label: "Browse the menu", outline: false };
 
-  const showFilters = signedIn && orders.length > 0;
   const showEmpty = !signedIn || !visibleOrders.length;
 
   return (
@@ -420,22 +403,6 @@ const OrderHistory = ({ user, addToCart }) => {
       <div className="page-wrapper">
         <div className="order-history-header">
           <h1 className="order-history-title">Your orders</h1>
-          {showFilters && (
-            <div className="order-history-filters" role="tablist" aria-label="Filter orders">
-              {FILTERS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === item.id}
-                  className={`order-history-filter${filter === item.id ? " is-active" : ""}`}
-                  onClick={() => setFilter(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {showEmpty ? (

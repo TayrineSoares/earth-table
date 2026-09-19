@@ -788,7 +788,8 @@
   cursor: pointer;
 }
 
-.subscribe-cart-qty .checkout-cart-popup-add-button:disabled {
+.subscribe-cart-qty .checkout-cart-popup-add-button:disabled,
+.subscribe-cart-qty .checkout-cart-popup-remove-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

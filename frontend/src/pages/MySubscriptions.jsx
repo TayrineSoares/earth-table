@@ -9,7 +9,7 @@ import FeedbackDialog from '../components/FeedbackDialog'
 import {
   fetchMySubscriptions,
   fetchSubscriptionPlans,
-  formatCutoffShort,
+  formatCutoffWeekdayTime,
   formatPickupSlot,
   formatPlanPrice,
   mealsAWeek,
@@ -24,14 +24,6 @@ import {
 } from '../helpers/subscriptionHelpers'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import { clearEditCart } from '../helpers/subscriptionCart'
-import {
-  HOW_IT_WORKS_CHARGE,
-  HOW_IT_WORKS_MEALS,
-  HOW_IT_WORKS_PAUSE,
-  PAUSED_BANNER,
-  PAUSE_CANCEL_BY,
-  RESUME_BY_CHARGE,
-} from '../helpers/subscriptionCadence'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
@@ -300,10 +292,11 @@ const MySubscriptions = ({ user }) => {
   }
 
   const persistStatus = async (row, action) => {
+    const apiAction = action === 'cancel' ? 'pause' : action
     setSavingId(row.id)
     setDialog(null)
     try {
-      const result = await updateSubscriptionStatus(user.id, row.id, action)
+      const result = await updateSubscriptionStatus(user.id, row.id, apiAction)
       await load()
       setChangingId(null)
       if (result?.pending && result?.message) {
@@ -336,7 +329,7 @@ const MySubscriptions = ({ user }) => {
           title: 'Pause this plan?',
           body: [
             `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
-            RESUME_BY_CHARGE,
+            'Resume by Wednesday 5:00 PM for that week\'s box.',
           ],
         }
         : {
@@ -346,11 +339,14 @@ const MySubscriptions = ({ user }) => {
       cancel: beforeWed
         ? {
           title: 'Cancel this plan?',
-          body: `This Sunday, ${sunday}, will be skipped. Your plan, meals, and saved card are removed. Start a new plan any time from Subscribe & Save.`,
+          body: [
+            `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
+            'Resume by Wednesday 5:00 PM for that week\'s box.',
+          ],
         }
         : {
           title: 'Cancel after this Sunday?',
-          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be cancelled starting the following week.`,
+          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will stay on file starting the following week — resume any time.`,
         },
       resume: {
         title: 'Resume this plan?',
@@ -461,11 +457,11 @@ const MySubscriptions = ({ user }) => {
       asList: true,
       body: [
         'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        HOW_IT_WORKS_CHARGE,
+        'Your subscription is charged every Wednesday; add-ons are charged at the Thursday 5:00 PM EST lock cutoff for that week\'s box.',
         'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        HOW_IT_WORKS_PAUSE,
+        'Pause or cancel by Wednesday, no fees.',
         'Add-ons are for this week only. They do not repeat unless you add them again.',
-        HOW_IT_WORKS_MEALS,
+        'You can change meals, extras, and pickup or delivery in My Subscriptions until the Thursday cutoff.',
       ],
       hint: (
         <>
@@ -553,7 +549,7 @@ const MySubscriptions = ({ user }) => {
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const statusNote = isPaused || pending === 'paused'
-              ? PAUSED_BANNER
+              ? 'This plan is paused. Your last meals and card stay on file. Resume by Wednesday 5:00 PM to get that Sunday\'s box.'
               : pending === 'cancelled'
                 ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                 : row.week?.applies_to === 'next_week'
@@ -582,10 +578,8 @@ const MySubscriptions = ({ user }) => {
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
-            const mealsBy = formatCutoffShort(row.week?.cutoff_at || cycle.cutoff_at)
-            const pauseBy = row.charge?.charge_at
-              ? formatCutoffShort(row.charge.charge_at)
-              : (row.charge?.charge_label || PAUSE_CANCEL_BY)
+            const mealsBy = formatCutoffWeekdayTime(row.week?.cutoff_at || cycle.cutoff_at, 'Thu 5:00 PM ET')
+            const pauseBy = formatCutoffWeekdayTime(row.charge?.charge_at, 'Wed 5:00 PM ET')
 
             return (
               <section key={row.id} className="my-sub-plan">
