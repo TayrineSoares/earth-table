@@ -20,6 +20,9 @@ import '../styles/SubscriptionAdmin.css';
 
 const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, and mains.';
 
+// Flip to true (or set VITE_SHOW_SUB_TEST_TIMES=true) before more pre-launch testing.
+const SHOW_TEST_WEEK_TIMES = import.meta.env.VITE_SHOW_SUB_TEST_TIMES === 'true';
+
 const SubscriptionAdmin = () => {
   const [plans, setPlans] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -326,6 +329,8 @@ const SubscriptionAdmin = () => {
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
 
+      {SHOW_TEST_WEEK_TIMES ? (
+        <>
       <h2 className="sub-admin-h2">Test week times</h2>
       <p className="sub-admin-hint">
         Set these to times you can sit through (today → Friday). While they are set, the site uses them
@@ -386,6 +391,8 @@ const SubscriptionAdmin = () => {
         </button>
       </div>
       {jobNote ? <p className="sub-admin-hint">{jobNote}</p> : null}
+        </>
+      ) : null}
 
       <h2 className="sub-admin-h2">Create a plan</h2>
       <form className="promo-admin-form" onSubmit={handleCreate}>
