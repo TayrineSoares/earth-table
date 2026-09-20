@@ -355,7 +355,12 @@ async function listMine(userId) {
     const list = bySub[sub.id] || [];
     const hint = pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, hint);
-    // One cycle for meals, extras, next box, and fulfillment — same Sunday as week.
+    const thisSunday = getSignupDates(now, settings || {}).job_sunday;
+    const thisWeekCycle = (list || []).find((row) => (
+      String(row.delivery_date) === String(thisSunday) && row.status !== 'skipped'
+    )) || null;
+    // Meals/extras follow the editable week. After cutoff, this_week_date is the
+    // locked Sunday still in motion (Next box), when that cycle exists.
     const current = currentCycleForWeek(list, week, null);
     const shown = current || {
       delivery_date: week.delivery_date,
@@ -388,6 +393,7 @@ async function listMine(userId) {
       card: cardMap[sub.stripe_payment_method_id] || null,
       cycle: shown,
       edit_cycle: current,
+      this_week_date: thisWeekCycle?.delivery_date || null,
       week,
       charge,
       can_edit: sub.status === 'active',

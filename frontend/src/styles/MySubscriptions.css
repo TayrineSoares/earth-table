@@ -234,8 +234,8 @@
 }
 
 .my-sub-aside {
-  flex: 1 1 320px;
-  max-width: 380px;
+  flex: 1 1 380px;
+  max-width: 440px;
   position: sticky;
   top: 24px;
 }
@@ -377,7 +377,9 @@
   min-width: 0;
 }
 
-.my-sub-row-label--next {
+.my-sub-row--next,
+.my-sub-row--next .my-sub-row-label,
+.my-sub-row--next .my-sub-row-value {
   font-weight: 700;
 }
 

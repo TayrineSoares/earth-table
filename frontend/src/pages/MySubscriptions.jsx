@@ -95,10 +95,8 @@ function LineItem({ item, fallbackName, priceCents }) {
 
 function DetailRow({ label, emphasize, children }) {
   return (
-    <div className="my-sub-row">
-      <span className={emphasize ? 'my-sub-row-label my-sub-row-label--next' : 'my-sub-row-label'}>
-        {label}
-      </span>
+    <div className={emphasize ? 'my-sub-row my-sub-row--next' : 'my-sub-row'}>
+      <span className="my-sub-row-label">{label}</span>
       <span className="my-sub-row-value">{children}</span>
     </div>
   )
@@ -741,7 +739,11 @@ const MySubscriptions = ({ user }) => {
               ? applyPromoPercent(extrasCents, extrasPromoPct)
               : extrasCents
             const isDelivery = !!cycle.delivery
-            const ymd = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date
+            const cutoffPassed = row.week?.applies_to === 'next_week'
+            const showingFollowingWeek = cutoffPassed && Boolean(row.this_week_date)
+            const ymd = showingFollowingWeek
+              ? row.this_week_date
+              : (row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date)
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
             const paymentFailedPause = isPaused && row.pause_reason === 'payment_failed'
@@ -751,15 +753,16 @@ const MySubscriptions = ({ user }) => {
             const lockCadence = row.week?.cadence_label || MEAL_LOCK_BY
             const chargeCadence = row.charge?.cadence_label || CHARGE_DAY_TIME
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
-            // Same cycle the card is showing: after cutoff, meals/extras are next week's.
-            const showingNextWeek = row.week?.applies_to === 'next_week'
+            const followingWeekLabel = row.week?.delivery_label
+              ? `Following week, ${sundayDatePart(row.week.delivery_label)}`
+              : 'Following week'
             const statusNote = paymentFailedPause
               ? ''
               : isPaused || pending === 'paused'
                 ? pausedBanner(row.charge?.charge_label)
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-                  : showingNextWeek
+                  : cutoffPassed
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                     : row.meals_need_update
                       ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
@@ -805,21 +808,21 @@ const MySubscriptions = ({ user }) => {
                 extrasPromoLabel={firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)}
                 canEdit={canEdit}
                 subscriptionId={row.id}
-                mealsLabel={showingNextWeek ? 'Meals' : 'This week\'s meals'}
-                extrasLabel={showingNextWeek ? 'Extras' : 'This week\'s extras'}
-                extrasSummaryLabel={showingNextWeek ? 'Extras next week' : 'Extras this week'}
-                emptyMeals={showingNextWeek ? 'No meals selected next week.' : 'No meals selected this week.'}
-                emptyExtras={showingNextWeek ? 'No extras next week.' : 'No extras this week.'}
+                mealsLabel={showingFollowingWeek ? 'Meals' : 'Next box meals'}
+                extrasLabel={showingFollowingWeek ? 'Extras' : 'Next box extras'}
+                extrasSummaryLabel={showingFollowingWeek ? 'Extras following week' : 'Extras next box'}
+                emptyMeals={showingFollowingWeek ? 'No meals selected for the following week.' : 'No meals selected for next box.'}
+                emptyExtras={showingFollowingWeek ? 'No extras for the following week.' : 'No extras for next box.'}
                 lockCadence={lockCadence}
                 showEditLinks={canEdit}
-                showMealCount={!showingNextWeek}
+                showMealCount={!showingFollowingWeek}
               />
             )
 
             return (
               <section key={row.id} className="my-sub-plan">
                 <div className="my-sub-meals">
-                  {showingNextWeek ? (
+                  {showingFollowingWeek ? (
                     <>
                       <div className="my-sub-next-head">
                         <button
@@ -838,7 +841,7 @@ const MySubscriptions = ({ user }) => {
                             className={`my-sub-next-chevron${isNextOpen ? ' is-open' : ''}`}
                             aria-hidden="true"
                           />
-                          Next week
+                          {followingWeekLabel}
                         </button>
                         <div className="my-sub-section-head-actions">
                           <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
