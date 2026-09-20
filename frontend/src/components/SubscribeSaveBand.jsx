@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import '../styles/SubscribeSaveBand.css'
 
 const STATS = [
-  { value: 'From $18', label: 'per meal' },
+  { value: '$18', label: 'per meal' },
   { value: '10–20', label: 'meals a week' },
   { value: 'Every Sunday', label: 'delivery or pickup' },
 ]
@@ -16,7 +16,7 @@ const SubscribeSaveBand = () => (
           Eat well all week & save up to 30%
         </h2>
         <p className="subscribe-save-band-body">
-          Choose 10, 15, or 20 meals a week — organic, seed oil free, gluten free, cooked by Chef Selena. Delivered Sunday or ready for pickup.
+          Choose a plan with 10, 15, or 20 meals a week — organic, seed oil free, gluten free, cooked by Chef Selena.
         </p>
         <div className="subscribe-save-band-stats">
           {STATS.map((stat, index) => (
