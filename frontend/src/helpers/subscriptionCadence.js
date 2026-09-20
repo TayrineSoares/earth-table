@@ -52,7 +52,7 @@ export function subscriptionDetailsItems({
 
 /** Marketing page: standing weekly cadence, not this week's calendar dates. */
 export function howItWorksFlexible() {
-  return 'Update your meals and add-ons every week by Thursday at 5:00 PM ET. Need to pause or skip a week? Let us know by Wednesday morning. No long-term commitment.'
+  return 'Update your meals and add-ons every week by Thursday at 5:00 PM ET.'
 }
 
 /** Marketing page badge: standing weekly cadence, not this week's calendar date. */
