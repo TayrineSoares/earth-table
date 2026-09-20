@@ -40,7 +40,8 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [partner, setPartner] = useState(null);
   const [savingPayout, setSavingPayout] = useState(false);
-  const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
+  // Email prefs UI is hidden until weekly reminder mail is wired up.
+  // const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return "(not set)";
@@ -158,28 +159,29 @@ const Profile = () => {
     }
   };
 
-  const emailPrefs = user?.email_prefs && typeof user.email_prefs === 'object' ? user.email_prefs : {};
-  const wednesdayReminder = emailPrefs.wednesday_reminder !== false;
-  const pauseReminder = emailPrefs.pause_reminder !== false;
-
-  const handleEmailPref = async (key, value) => {
-    if (savingEmailPrefs) return;
-    setSavingEmailPrefs(true);
-    setError("");
-    try {
-      const updated = await patchUserProfile(auth_user_id, {
-        email_prefs: {
-          wednesday_reminder: key === 'wednesday_reminder' ? value : wednesdayReminder,
-          pause_reminder: key === 'pause_reminder' ? value : pauseReminder,
-        },
-      });
-      setUser(updated);
-    } catch (err) {
-      setError(err.message || 'Failed to update email preferences.');
-    } finally {
-      setSavingEmailPrefs(false);
-    }
-  };
+  // Email prefs UI is hidden until weekly reminder mail is wired up.
+  // const emailPrefs = user?.email_prefs && typeof user.email_prefs === 'object' ? user.email_prefs : {};
+  // const wednesdayReminder = emailPrefs.wednesday_reminder !== false;
+  // const pauseReminder = emailPrefs.pause_reminder !== false;
+  //
+  // const handleEmailPref = async (key, value) => {
+  //   if (savingEmailPrefs) return;
+  //   setSavingEmailPrefs(true);
+  //   setError("");
+  //   try {
+  //     const updated = await patchUserProfile(auth_user_id, {
+  //       email_prefs: {
+  //         wednesday_reminder: key === 'wednesday_reminder' ? value : wednesdayReminder,
+  //         pause_reminder: key === 'pause_reminder' ? value : pauseReminder,
+  //       },
+  //     });
+  //     setUser(updated);
+  //   } catch (err) {
+  //     setError(err.message || 'Failed to update email preferences.');
+  //   } finally {
+  //     setSavingEmailPrefs(false);
+  //   }
+  // };
 
   if (isLoading) {
     return (
@@ -324,6 +326,7 @@ const Profile = () => {
             </form>
           )}
 
+          {/* Email prefs UI is hidden until weekly reminder mail is wired up.
           <section className="profile-email-prefs">
             <h2 className="profile-partner-title">Weekly emails</h2>
             <p className="profile-email-prefs-lead">
@@ -348,6 +351,7 @@ const Profile = () => {
               <span>Reminder while your plan is paused</span>
             </label>
           </section>
+          */}
 
           {partner && (
             <section className="profile-partner">
