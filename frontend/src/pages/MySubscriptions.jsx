@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronDown, Lock } from 'lucide-react'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
@@ -42,6 +42,12 @@ import '../styles/MySubscriptions.css'
 
 const HST_RATE = 0.13
 const MINE_STORAGE_KEY = 'et-mine-cache'
+const SAVED_DIALOG = {
+  icon: 'mail',
+  title: 'Changes saved',
+  body: 'This week\'s box is updated.',
+  primaryLabel: 'OK',
+}
 
 let mineCache = { userId: null, rows: [], plans: [] }
 
@@ -275,6 +281,8 @@ function CycleItems({
 
 const MySubscriptions = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const userId = user?.id || null
   const cached = cacheFor(userId)
   const [rows, setRows] = useState(() => cached.rows || [])
@@ -358,6 +366,13 @@ const MySubscriptions = ({ user }) => {
       cancelled = true
     }
   }, [userId])
+
+  useEffect(() => {
+    if (!location.state?.saved) return undefined
+    setDialog(SAVED_DIALOG)
+    navigate('/my-subscriptions', { replace: true, state: {} })
+    return undefined
+  }, [location.state, navigate])
 
   const cardSession = searchParams.get('card_session')
   useEffect(() => {
@@ -521,6 +536,7 @@ const MySubscriptions = ({ user }) => {
       })
       await load()
       setNotesEditingId(null)
+      setDialog(SAVED_DIALOG)
     } catch (err) {
       console.error(err)
       setDialog({
@@ -547,6 +563,7 @@ const MySubscriptions = ({ user }) => {
       await load()
       setEditingId(null)
       setNotesEditingId(null)
+      setDialog(SAVED_DIALOG)
     } catch (err) {
       console.error(err)
       setDialog({

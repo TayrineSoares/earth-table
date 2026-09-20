@@ -11,7 +11,6 @@
     { "path": "/api/cron/pause-reminder", "schedule": "0 13 * * 1" },
     { "path": "/api/cron/subscription-charge", "schedule": "0 13 * * 3" },
     { "path": "/api/cron/subscription-lock", "schedule": "0 22 * * 4" },
-    { "path": "/api/cron/subscription-email-flush", "schedule": "0 13 * * *" },
     { "path": "/api/cron/subscription-card-expiry", "schedule": "0 13 * * 1" }
   ],
   "rewrites": [
