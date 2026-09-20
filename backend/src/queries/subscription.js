@@ -422,6 +422,15 @@ async function listMine(userId) {
       .map((row) => row.delivery_date)
       .filter(Boolean)
       .sort()[0] || null;
+    const firstCycle = (list || []).find((row) => String(row.delivery_date) === String(earliestYmd)) || null;
+    const today = torontoYmd(now);
+    // First delivery is week-1 onboarding only. After that Sunday, Next box covers it.
+    const showFirstDelivery = Boolean(
+      earliestYmd
+      && String(earliestYmd) >= today
+      && firstCycle
+      && firstCycle.status !== 'skipped'
+    );
     const storedPct = Number(shown?.promo_percent) || 0;
     const firstWeekPct = Number(sub.first_promo_percent) || 0;
     const addonPromoPercent = storedPct > 0
@@ -444,8 +453,8 @@ async function listMine(userId) {
       first_promo_kind: sub.first_promo_code
         ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
         : null,
-      first_delivery_date: earliestYmd,
-      first_delivery_label: earliestYmd ? sundayLabelFromYmd(earliestYmd) : '',
+      first_delivery_date: showFirstDelivery ? earliestYmd : null,
+      first_delivery_label: showFirstDelivery ? sundayLabelFromYmd(earliestYmd) : '',
     };
   });
 }

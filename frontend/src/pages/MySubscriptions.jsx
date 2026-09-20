@@ -694,7 +694,7 @@ const MySubscriptions = ({ user }) => {
       body: subscriptionDetailsItems({
         chargeLabel: row?.charge?.charge_label,
         cutoffLabel: row?.week?.cutoff_label,
-        firstDeliveryLabel: row?.first_delivery_label,
+        firstDeliveryLabel: row?.first_delivery_label || '',
       }),
       hint: (
         <>
