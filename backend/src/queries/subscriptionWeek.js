@@ -346,6 +346,14 @@ function torontoYmd(date = new Date()) {
   return ymd(p.year, p.month, p.day);
 }
 
+/** Upcoming Sunday including today — admin "This Sunday" stays today on Sunday. */
+function calendarThisSundayYmd(now = new Date()) {
+  const p = torontoParts(now);
+  const add = (7 - p.weekday) % 7;
+  const d = addCalendarDays(p.year, p.month, p.day, add);
+  return ymd(d.year, d.month, d.day);
+}
+
 function parseYmdToronto(ymdStr) {
   const [year, month, day] = String(ymdStr || '').split('-').map(Number);
   if (!year || !month || !day) return null;
@@ -545,6 +553,7 @@ module.exports = {
   formatDeliveryLabel,
   sundayLabelFromYmd,
   torontoYmd,
+  calendarThisSundayYmd,
   getTargetSundayYmd,
   nextOpenSunday,
   isYmdBlocked,

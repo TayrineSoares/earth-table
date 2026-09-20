@@ -12,6 +12,7 @@ const {
   getEditWeek,
   getChargeDeadline,
   torontoYmd,
+  calendarThisSundayYmd,
   sundayLabelFromYmd,
   nextOpenSunday,
   cutoffLabelForSunday,
@@ -674,12 +675,11 @@ async function listMine(userId) {
 
 function adminWeekMeta(now = new Date(), settings = {}) {
   const dates = getSignupDates(now, settings || {});
-  const thisSunday = dates.job_sunday;
-  const nextSunday = dates.cutoff_passed
-    && dates.first_delivery_date
-    && dates.first_delivery_date !== thisSunday
-    ? dates.first_delivery_date
-    : nextOpenSunday(thisSunday);
+  // Kitchen "This Sunday" is the calendar Sunday (today, when today is Sunday).
+  // job_sunday jumps to next week's cook date once Thursday lock has passed,
+  // which would hide today's boxes on Sunday itself.
+  const thisSunday = calendarThisSundayYmd(now);
+  const nextSunday = nextOpenSunday(thisSunday);
   return {
     cutoff_passed: dates.cutoff_passed,
     cutoff_at: dates.cutoff_at,
