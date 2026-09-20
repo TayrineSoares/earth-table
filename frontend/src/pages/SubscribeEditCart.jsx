@@ -84,7 +84,12 @@ const SubscribeEditCart = ({ user }) => {
   }, [user, subscriptionId, navigate])
 
   const addonCents = addonSubtotalCents(editCart)
-  const copy = weekSaveCopy(row?.week)
+  const copy = weekSaveCopy(row?.week, {
+    lockedPriorCycle: Boolean(
+      row?.this_week_cycle
+      && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
+    ),
+  })
 
   const persist = async () => {
     setSaving(true)

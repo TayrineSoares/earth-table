@@ -98,6 +98,7 @@ const fetchMySubscriptions = async (userId) => {
     ...row,
     cycle: titleCaseCycle(row.cycle),
     edit_cycle: titleCaseCycle(row.edit_cycle),
+    this_week_cycle: titleCaseCycle(row.this_week_cycle),
   }));
 };
 
@@ -263,11 +264,15 @@ const sundayDatePart = (label) => {
   return stripped || raw || 'this week';
 };
 
-const weekSaveCopy = (week, { deliveryFeeCents = 0, switchingToDelivery = false } = {}) => {
+const weekSaveCopy = (week, {
+  deliveryFeeCents = 0,
+  switchingToDelivery = false,
+  lockedPriorCycle = false,
+} = {}) => {
   const sunday = week?.delivery_label || 'Sunday';
   const sundayDate = sundayDatePart(sunday);
   const cutoff = week?.cutoff_label || MEAL_LOCK_BY;
-  const nextWeek = week?.applies_to === 'next_week' || week?.cutoff_passed;
+  const nextWeek = Boolean(lockedPriorCycle);
   const fee = Number(deliveryFeeCents) || 0;
   const feeLine = switchingToDelivery && fee > 0
     ? nextWeek

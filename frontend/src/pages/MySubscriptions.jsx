@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Lock } from 'lucide-react'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
@@ -102,6 +102,33 @@ function DetailRow({ label, emphasize, children }) {
   )
 }
 
+function cycleLineItems(cycle) {
+  const items = Array.isArray(cycle?.subscription_cycle_items)
+    ? cycle.subscription_cycle_items
+    : []
+  const meals = items.filter((item) => item.kind === 'plan')
+  const addons = items.filter((item) => item.kind === 'addon')
+  const mealQty = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+  const extrasCents = addons.reduce(
+    (sum, item) => sum + (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0),
+    0
+  )
+  const extrasPromoPct = Number(cycle?.promo_percent) || 0
+  const extrasDueCents = extrasPromoPct > 0
+    ? applyPromoPercent(extrasCents, extrasPromoPct)
+    : extrasCents
+  return { meals, addons, mealQty, extrasCents, extrasDueCents }
+}
+
+function LockedBadge() {
+  return (
+    <span className="my-sub-status my-sub-status--locked">
+      <Lock size={12} strokeWidth={2.5} aria-hidden="true" />
+      Locked
+    </span>
+  )
+}
+
 function CycleItems({
   meals,
   mealQty,
@@ -120,17 +147,23 @@ function CycleItems({
   lockCadence,
   showEditLinks,
   showMealCount,
+  showLockedBadge,
 }) {
+  const extrasOffCents = Math.max(0, (Number(extrasCents) || 0) - (Number(extrasDueCents) || 0))
+  const extrasChargedCents = Math.round((Number(extrasDueCents) || 0) * (1 + HST_RATE))
+  const extrasHstCents = Math.max(0, extrasChargedCents - (Number(extrasDueCents) || 0))
   return (
     <>
       <div className="my-sub-section-head">
         <p className="my-sub-section-label">{mealsLabel}</p>
-        {(showMealCount || (canEdit && showEditLinks)) ? (
+        {(showMealCount || showLockedBadge || (canEdit && showEditLinks)) ? (
           <div className="my-sub-section-head-actions">
             {showMealCount ? (
               <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
             ) : null}
-            {canEdit && showEditLinks ? (
+            {showLockedBadge ? (
+              <LockedBadge />
+            ) : canEdit && showEditLinks ? (
               <Link
                 className="my-sub-section-link"
                 to={`/my-subscriptions/${subscriptionId}/meals`}
@@ -154,7 +187,9 @@ function CycleItems({
 
       <div className="my-sub-section-head my-sub-section-head--extras">
         <p className="my-sub-section-label">{extrasLabel}</p>
-        {canEdit && showEditLinks ? (
+        {showLockedBadge ? (
+          <LockedBadge />
+        ) : canEdit && showEditLinks ? (
           <Link className="my-sub-section-link" to={`/my-subscriptions/${subscriptionId}/addons`}>
             Edit add-ons
           </Link>
@@ -172,18 +207,22 @@ function CycleItems({
               />
             ))}
           </ul>
-          <div className="my-sub-extras-summary">
-            <span>{extrasSummaryLabel}</span>
-            <span>{formatPlanPrice(extrasCents)} · charged {lockCadence}</span>
-          </div>
-          {extrasDueCents !== extrasCents ? (
+          {extrasOffCents > 0 ? (
             <div className="my-sub-extras-summary">
               <span>
                 {extrasPromoLabel || 'First-week discount'} · first week only
               </span>
-              <span>-{formatPlanPrice(extrasCents - extrasDueCents)}</span>
+              <span>-{formatPlanPrice(extrasOffCents)}</span>
             </div>
           ) : null}
+          <div className="my-sub-extras-summary">
+            <span>+ HST</span>
+            <span>{formatPlanPrice(extrasHstCents)}</span>
+          </div>
+          <div className="my-sub-extras-summary my-sub-extras-summary--total">
+            <span>{extrasSummaryLabel}</span>
+            <span>{formatPlanPrice(extrasChargedCents)} · charged {lockCadence}</span>
+          </div>
         </>
       ) : (
         <p className="my-sub-empty-extras">{emptyExtras}</p>
@@ -634,6 +673,10 @@ const MySubscriptions = ({ user }) => {
     const copy = weekSaveCopy(row.week, {
       deliveryFeeCents,
       switchingToDelivery: fulfillment === 'delivery' && !wasDelivery,
+      lockedPriorCycle: Boolean(
+        row.this_week_cycle
+        && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
+      ),
     })
     setDialog({
       icon: 'mail',
@@ -721,28 +764,28 @@ const MySubscriptions = ({ user }) => {
 
             {rows.map((row) => {
             const plan = row.subscription_plans || {}
-            // Same cycle as meals, extras, next box, and fulfillment.
+            // Open week (editable after cutoff). Locked next-box uses this_week_cycle.
             const cycle = row.cycle || {}
-            const items = Array.isArray(cycle.subscription_cycle_items)
-              ? cycle.subscription_cycle_items
-              : []
-            const meals = items.filter((item) => item.kind === 'plan')
-            const addons = items.filter((item) => item.kind === 'addon')
-            const mealQty = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+            const editLines = cycleLineItems({
+              ...cycle,
+              promo_percent: Number(row.addon_promo_percent) || Number(cycle.promo_percent) || 0,
+            })
+            const meals = editLines.meals
+            const addons = editLines.addons
+            const mealQty = editLines.mealQty
+            const extrasCents = editLines.extrasCents
+            const extrasDueCents = editLines.extrasDueCents
             const mealCount = Number(plan.meal_count) || 0
-            const extrasCents = addons.reduce(
-              (sum, item) => sum + (Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 0),
-              0
-            )
-            const extrasPromoPct = Number(row.addon_promo_percent) || Number(cycle.promo_percent) || 0
-            const extrasDueCents = extrasPromoPct > 0
-              ? applyPromoPercent(extrasCents, extrasPromoPct)
-              : extrasCents
             const isDelivery = !!cycle.delivery
-            const cutoffPassed = row.week?.applies_to === 'next_week'
-            const showingFollowingWeek = cutoffPassed && Boolean(row.this_week_date)
+            const lockedCycle = row.this_week_cycle
+            const nextBoxIsLocked = Boolean(
+              lockedCycle
+              && (lockedCycle.status === 'locked' || lockedCycle.status === 'skipped')
+            )
+            const lockedLines = nextBoxIsLocked ? cycleLineItems(lockedCycle) : null
+            const showingFollowingWeek = nextBoxIsLocked
             const ymd = showingFollowingWeek
-              ? row.this_week_date
+              ? (lockedCycle.delivery_date || row.this_week_date)
               : (row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date)
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
@@ -762,7 +805,7 @@ const MySubscriptions = ({ user }) => {
                 ? pausedBanner(row.charge?.charge_label)
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-                  : cutoffPassed
+                  : nextBoxIsLocked
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                     : row.meals_need_update
                       ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
@@ -797,7 +840,30 @@ const MySubscriptions = ({ user }) => {
             const expiry = cardExpiryState(row.card)
             const isNextOpen = Boolean(nextWeekOpen[row.id])
             const nextWeekPanelId = `next-week-${row.id}`
-            const cycleItems = (
+            const extrasPromoLabel = firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)
+            const nextBoxItems = (
+              <CycleItems
+                meals={showingFollowingWeek ? lockedLines.meals : meals}
+                mealQty={showingFollowingWeek ? lockedLines.mealQty : mealQty}
+                mealCount={mealCount}
+                addons={showingFollowingWeek ? lockedLines.addons : addons}
+                extrasCents={showingFollowingWeek ? lockedLines.extrasCents : extrasCents}
+                extrasDueCents={showingFollowingWeek ? lockedLines.extrasDueCents : extrasDueCents}
+                extrasPromoLabel={extrasPromoLabel}
+                canEdit={canEdit}
+                subscriptionId={row.id}
+                mealsLabel="Next box meals"
+                extrasLabel="Next box extras"
+                extrasSummaryLabel="Total"
+                emptyMeals="No meals selected for next box."
+                emptyExtras="No extras for next box."
+                lockCadence={lockCadence}
+                showEditLinks={!showingFollowingWeek && canEdit}
+                showMealCount
+                showLockedBadge={showingFollowingWeek}
+              />
+            )
+            const followingWeekItems = (
               <CycleItems
                 meals={meals}
                 mealQty={mealQty}
@@ -805,23 +871,24 @@ const MySubscriptions = ({ user }) => {
                 addons={addons}
                 extrasCents={extrasCents}
                 extrasDueCents={extrasDueCents}
-                extrasPromoLabel={firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)}
+                extrasPromoLabel={extrasPromoLabel}
                 canEdit={canEdit}
                 subscriptionId={row.id}
-                mealsLabel={showingFollowingWeek ? 'Meals' : 'Next box meals'}
-                extrasLabel={showingFollowingWeek ? 'Extras' : 'Next box extras'}
-                extrasSummaryLabel={showingFollowingWeek ? 'Extras following week' : 'Extras next box'}
-                emptyMeals={showingFollowingWeek ? 'No meals selected for the following week.' : 'No meals selected for next box.'}
-                emptyExtras={showingFollowingWeek ? 'No extras for the following week.' : 'No extras for next box.'}
+                mealsLabel="Meals"
+                extrasLabel="Extras"
+                extrasSummaryLabel="Total"
+                emptyMeals="No meals selected for the following week."
+                emptyExtras="No extras for the following week."
                 lockCadence={lockCadence}
                 showEditLinks={canEdit}
-                showMealCount={!showingFollowingWeek}
+                showMealCount
               />
             )
 
             return (
               <section key={row.id} className="my-sub-plan">
                 <div className="my-sub-meals">
+                  {nextBoxItems}
                   {showingFollowingWeek ? (
                     <>
                       <div className="my-sub-next-head">
@@ -845,23 +912,6 @@ const MySubscriptions = ({ user }) => {
                         </button>
                         <div className="my-sub-section-head-actions">
                           <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
-                          {canEdit && !isNextOpen ? (
-                            <>
-                              <Link
-                                className="my-sub-section-link"
-                                to={`/my-subscriptions/${row.id}/meals`}
-                                state={{ fresh: true }}
-                              >
-                                Edit meals
-                              </Link>
-                              <Link
-                                className="my-sub-section-link"
-                                to={`/my-subscriptions/${row.id}/addons`}
-                              >
-                                Edit add-ons
-                              </Link>
-                            </>
-                          ) : null}
                         </div>
                       </div>
                       <div
@@ -869,12 +919,10 @@ const MySubscriptions = ({ user }) => {
                         className="my-sub-next-panel"
                         hidden={!isNextOpen}
                       >
-                        {cycleItems}
+                        {followingWeekItems}
                       </div>
                     </>
-                  ) : (
-                    cycleItems
-                  )}
+                  ) : null}
                 </div>
 
                 <aside className="my-sub-aside">

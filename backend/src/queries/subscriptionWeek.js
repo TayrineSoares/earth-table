@@ -465,17 +465,34 @@ function cycleIsClosed(cycle) {
   return status === 'locked' || status === 'skipped';
 }
 
+function weekFromCycle(cycle, now, settings) {
+  const signup = getSignupDates(now, settings);
+  const sunday = cycle.delivery_date;
+  const lockAt = lockAtForSunday(sunday, settings);
+  const cutoffAt = lockAt || new Date(signup.cutoff_at);
+  // This cycle's own lock, not the calendar week's leftover Sunday.
+  const stillOpen = cycle.status === 'open' && now.getTime() < cutoffAt.getTime();
+  return {
+    applies_to: stillOpen ? 'this_sunday' : 'next_week',
+    cutoff_passed: !stillOpen,
+    cutoff_at: cutoffAt.toISOString(),
+    cutoff_label: formatCutoffLabel(cutoffAt),
+    cadence_label: formatCadenceLabel(cutoffAt),
+    delivery_date: sunday,
+    delivery_label: sundayLabelFromYmd(sunday),
+  };
+}
+
 /**
  * Which Sunday a My Subscriptions edit should hit.
- * Open cycle before cutoff: this Sunday.
- * After the clock cutoff, or once this Sunday's cycle is already locked/skipped
- * (admin force lock): next week's cycle (created on save if needed).
- *
- * Labels always come from getSignupDates so test_lock_at / test_charge_at stay
- * consistent, except after a force lock we use next Sunday's cutoff so copy
- * does not say "edit until" a lock that already ran.
+ * An open cycle is the target (status wins). Clock/calendar only fill in
+ * labels, or the next Sunday when every existing cycle is already closed.
  */
 function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
+  if (currentCycle && currentCycle.status === 'open' && currentCycle.delivery_date) {
+    return weekFromCycle(currentCycle, now, settings);
+  }
+
   const signup = getSignupDates(now, settings);
   const stillThisWeek = Boolean(
     currentCycle &&
@@ -485,25 +502,10 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
   );
 
   if (stillThisWeek) {
-    const sunday = currentCycle.delivery_date;
-    const sundayDate = parseYmdToronto(sunday);
-    return {
-      applies_to: 'this_sunday',
-      cutoff_passed: false,
-      cutoff_at: signup.cutoff_at,
-      cutoff_label: signup.cutoff_label,
-      cadence_label: signup.cadence_label,
-      delivery_date: sunday,
-      delivery_label: sundayDate ? formatDeliveryLabel(sundayDate) : signup.first_delivery_label,
-    };
+    return weekFromCycle(currentCycle, now, settings);
   }
 
-  const forceLockedThisSunday = Boolean(
-    cycleIsClosed(currentCycle)
-    && !signup.cutoff_passed
-    && currentCycle.delivery_date === signup.first_delivery_date
-  );
-  if (forceLockedThisSunday) {
+  if (cycleIsClosed(currentCycle) && currentCycle.delivery_date) {
     const nextSunday = nextOpenSunday(currentCycle.delivery_date);
     const nextLock = lockAtForSunday(nextSunday, settings);
     return {

@@ -241,8 +241,30 @@ function currentCycleForWeek(cycles, week, fallback = null) {
   return fallback;
 }
 
+/** Earliest locked/skipped box still due — the Sunday that is already in motion. */
+function nextBoxLockedCycle(cycles, now) {
+  const today = torontoYmd(now);
+  return [...(cycles || [])]
+    .filter((row) => (
+      row
+      && row.delivery_date
+      && String(row.delivery_date) >= today
+      && (row.status === 'locked' || row.status === 'skipped')
+    ))
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0] || null;
+}
+
+/** Earliest open week for this subscription — status, not calendar proximity. */
+function earliestOpenCycle(cycles) {
+  return [...(cycles || [])]
+    .filter((row) => row && row.status === 'open' && row.delivery_date)
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0] || null;
+}
+
 /** Prefer this cook Sunday's row so a force-locked cycle still informs getEditWeek. */
 function hintCycleForEdit(cycles, now, settings) {
+  const open = earliestOpenCycle(cycles);
+  if (open) return open;
   const thisSunday = getSignupDates(now, settings || {}).first_delivery_date;
   const thisCycle = (cycles || []).find((row) => String(row.delivery_date) === String(thisSunday));
   return thisCycle || pickDisplayCycle(cycles, now);
@@ -369,15 +391,17 @@ async function listMine(userId) {
 
   return subs.map((sub) => {
     const list = bySub[sub.id] || [];
-    const hint = hintCycleForEdit(list, now, settings || {});
+    const open = earliestOpenCycle(list);
+    const hint = open || hintCycleForEdit(list, now, settings || {});
     const week = getEditWeek(now, settings || {}, hint);
     const thisSunday = getSignupDates(now, settings || {}).job_sunday;
-    const thisWeekCycle = (list || []).find((row) => (
+    const lockedBox = nextBoxLockedCycle(list, now);
+    const thisWeekCycle = lockedBox || (list || []).find((row) => (
       String(row.delivery_date) === String(thisSunday) && row.status !== 'skipped'
     )) || null;
     // Meals/extras follow the editable week. After cutoff, this_week_date is the
     // locked Sunday still in motion (Next box), when that cycle exists.
-    const current = currentCycleForWeek(list, week, null);
+    const current = open || currentCycleForWeek(list, week, null);
     const shown = current || {
       delivery_date: week.delivery_date,
       pickup_date: sub.delivery ? null : week.delivery_date,
@@ -410,6 +434,7 @@ async function listMine(userId) {
       cycle: shown,
       edit_cycle: current,
       this_week_date: thisWeekCycle?.delivery_date || null,
+      this_week_cycle: thisWeekCycle,
       week,
       charge,
       can_edit: sub.status === 'active',
@@ -502,7 +527,7 @@ async function listAll() {
     const thisCycle = list.find((row) => row.delivery_date === meta.this_sunday) || null;
     const nextCycle = list.find((row) => row.delivery_date === meta.next_sunday) || null;
     const display = thisCycle || nextCycle || pickDisplayCycle(list, now);
-    const week = getEditWeek(now, settings || {}, hintCycleForEdit(list, now, settings || {}));
+    const week = getEditWeek(now, settings || {}, earliestOpenCycle(list) || hintCycleForEdit(list, now, settings || {}));
     return {
       ...sub,
       customer: byUser[sub.user_id] || null,
@@ -543,10 +568,13 @@ async function getOrCreateEditableCycle(sub) {
     .eq('subscription_id', sub.id);
   if (allErr) throw allErr;
   const hint = hintCycleForEdit(allCycles || [], now, settings || {});
-  let week = getEditWeek(now, settings || {}, hint);
+  const open = earliestOpenCycle(allCycles || []);
+  let week = getEditWeek(now, settings || {}, open || hint);
+  if (open) return { cycle: open, week };
+
   let existing = (allCycles || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
 
-  // Force lock can close this Sunday before cutoff_at. Never mutate locked/skipped.
+  // No open row yet. Never mutate locked/skipped; create the next Sunday instead.
   for (let i = 0; i < 4 && existing && existing.status !== 'open'; i += 1) {
     const nextSunday = nextOpenSunday(existing.delivery_date);
     week = {
