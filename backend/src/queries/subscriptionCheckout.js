@@ -692,7 +692,6 @@ async function completeSubscriptionSignup(session) {
   }
 
   const delivery = !!draft.delivery;
-  const sunday = draft.delivery_date;
   const discount = cart.discount || null;
   const promoPercent = Number(discount?.pct ?? discount?.percent ?? discount?.discountPercentage) || 0;
   let dates = {
@@ -701,6 +700,7 @@ async function completeSubscriptionSignup(session) {
     charge_at: cart.charge_at,
     charge_label: cart.charge_label,
     first_delivery_label: cart.first_delivery_label,
+    first_delivery_date: draft.delivery_date,
   };
   try {
     const settings = await getSettings();
@@ -708,6 +708,8 @@ async function completeSubscriptionSignup(session) {
   } catch (err) {
     console.warn('[subscriptions] live signup dates failed, using checkout snapshot:', err.message);
   }
+  // Live cutoff wins: a cart started before Thursday lock must not land on this Sunday.
+  const sunday = dates.first_delivery_date || draft.delivery_date;
 
   const { data: sub, error: subErr } = await supabase
     .from('subscriptions')

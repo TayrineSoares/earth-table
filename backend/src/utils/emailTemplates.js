@@ -1388,6 +1388,11 @@ My Subscriptions: ${manageHref}`;
       heading: `You're paused, ${name}`,
       intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume — we'll email you on Mondays in case you want a box this week.`,
     },
+    pause_first: {
+      subject: `Your weekly plan is paused — first box still runs`,
+      heading: `First box still goes out, ${name}`,
+      intro: `Your first box on ${sundayDatePart(sunday)} cannot be paused or cancelled, so it still goes out. Later weeks are paused until you resume. You can still change add-ons on that first box until Thursday at 5:00 PM ET.`,
+    },
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,

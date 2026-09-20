@@ -21,7 +21,7 @@ export function howItWorksCharge(chargeLabel, cutoffLabel) {
 }
 
 export function howItWorksPause(chargeLabel) {
-  return `Pause or cancel any time before ${chargeLabel || PAUSE_CANCEL_BY}, no fees.`
+  return `Your first box cannot be paused or cancelled. After that, pause or cancel any time before ${chargeLabel || PAUSE_CANCEL_BY}, no fees.`
 }
 
 export function howItWorksMeals(cutoffLabel) {
@@ -79,7 +79,10 @@ export function everyWeekBy(cadenceLabel, fallback) {
   return `every week by ${label}`
 }
 
-export function pausedBanner(chargeLabel) {
+export function pausedBanner(chargeLabel, { firstBoxLabel } = {}) {
+  if (firstBoxLabel) {
+    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Thursday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
+  }
   return `This plan is paused. Your last meals and card stay on file. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
 

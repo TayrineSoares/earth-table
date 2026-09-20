@@ -76,8 +76,8 @@ const SubscribeEditAddons = ({ user }) => {
         if (!found.can_edit) {
           setDialog({
             icon: 'alert',
-            title: 'This plan is paused',
-            body: 'Active plans can change extras from My Subscriptions.',
+            title: 'This box is locked',
+            body: 'Add-ons can be changed until Thursday at 5:00 PM ET while the box is still open.',
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',
           })

@@ -617,10 +617,22 @@ const MySubscriptions = ({ user }) => {
 
   const confirmStatus = (row, action) => {
     const beforeWed = row.charge?.before_wednesday !== false
+    const firstProtected = Boolean(row.first_box_protected)
+    const firstSunday = row.first_delivery_label
+      || sundayDatePart(row.week?.delivery_label)
+      || 'this Sunday'
     const sunday = sundayDatePart(row.week?.delivery_label)
     const resumeBy = resumeByCharge(row.charge?.charge_label)
     const copy = {
-      pause: beforeWed
+      pause: firstProtected
+        ? {
+          title: 'Pause after your first box?',
+          body: [
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET.`,
+            resumeBy,
+          ],
+        }
+        : beforeWed
         ? {
           title: 'Pause this plan?',
           body: [
@@ -632,7 +644,15 @@ const MySubscriptions = ({ user }) => {
           title: 'Pause after this Sunday?',
           body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be paused starting the following week.`,
         },
-      cancel: beforeWed
+      cancel: firstProtected
+        ? {
+          title: 'Cancel after your first box?',
+          body: [
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET. Later weeks stay on file until you resume.`,
+            resumeBy,
+          ],
+        }
+        : beforeWed
         ? {
           title: 'Cancel this plan?',
           body: [
@@ -650,7 +670,9 @@ const MySubscriptions = ({ user }) => {
           ? 'We\'ll charge the unpaid box to the card on file. If that succeeds, the plan is active again.'
           : row.pending_status
             ? `This Sunday still goes out, and the pending ${row.pending_status} will be cleared.`
-            : 'Your weekly plan will be active again and weekly charges resume.',
+            : row.first_box_protected
+              ? 'Your first box still goes out. Weekly charges resume for Sundays after that.'
+              : 'Your weekly plan will be active again and weekly charges resume.',
       },
     }[action]
     setDialog({
@@ -829,6 +851,13 @@ const MySubscriptions = ({ user }) => {
             const plan = row.subscription_plans || {}
             // Open week (editable after cutoff). Locked next-box uses this_week_cycle.
             const cycle = row.cycle || {}
+            const nextBoxCycle = row.next_box_cycle || row.this_week_cycle || null
+            const nextBoxLines = nextBoxCycle
+              ? cycleLineItems({
+                ...nextBoxCycle,
+                promo_percent: Number(row.addon_promo_percent) || Number(nextBoxCycle.promo_percent) || 0,
+              })
+              : null
             const editLines = cycleLineItems({
               ...cycle,
               promo_percent: Number(row.addon_promo_percent) || Number(cycle.promo_percent) || 0,
@@ -839,13 +868,13 @@ const MySubscriptions = ({ user }) => {
             const extrasCents = editLines.extrasCents
             const extrasDueCents = editLines.extrasDueCents
             const mealCount = Number(plan.meal_count) || 0
-            const isDelivery = !!cycle.delivery
+            const isDelivery = !!(nextBoxCycle || cycle).delivery
             const lockedCycle = row.this_week_cycle
             const nextBoxIsLocked = Boolean(
-              lockedCycle
-              && (lockedCycle.status === 'locked' || lockedCycle.status === 'skipped')
+              (nextBoxCycle || lockedCycle)
+              && (nextBoxCycle || lockedCycle).status === 'locked'
             )
-            const lockedLines = nextBoxIsLocked ? cycleLineItems(lockedCycle) : null
+            const lockedLines = nextBoxLines
             const showingFollowingWeek = nextBoxIsLocked
             const ymd = showingFollowingWeek
               ? (lockedCycle.delivery_date || row.this_week_date)
@@ -865,7 +894,9 @@ const MySubscriptions = ({ user }) => {
             const statusNote = paymentFailedPause
               ? ''
               : isPaused || pending === 'paused'
-                ? pausedBanner(row.charge?.charge_label)
+                ? pausedBanner(row.charge?.charge_label, {
+                  firstBoxLabel: row.first_box_protected ? row.first_delivery_label : '',
+                })
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                   : nextBoxIsLocked
@@ -891,13 +922,14 @@ const MySubscriptions = ({ user }) => {
               : isPaused || pending
                 ? 'my-sub-status my-sub-status--paused'
                 : 'my-sub-status my-sub-status--active'
-            const note = String(cycle.special_note || row.special_note || '').trim()
+            const boxForDetails = nextBoxCycle || cycle
+            const note = String(boxForDetails.special_note || row.special_note || '').trim()
             const location = isDelivery
-              ? (cycle.delivery_postal_code || '—')
+              ? (boxForDetails.delivery_postal_code || '—')
               : PICKUP_ADDRESS
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
-              : (formatPickupSlot(cycle.pickup_time_slot) || '—')
+              : (formatPickupSlot(boxForDetails.pickup_time_slot) || '—')
             const mealsBy = everyWeekBy(lockCadence)
             const pauseBy = everyWeekBy(chargeCadence)
             const expiry = cardExpiryState(row.card)
@@ -906,12 +938,12 @@ const MySubscriptions = ({ user }) => {
             const extrasPromoLabel = firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)
             const nextBoxItems = (
               <CycleItems
-                meals={showingFollowingWeek ? lockedLines.meals : meals}
-                mealQty={showingFollowingWeek ? lockedLines.mealQty : mealQty}
+                meals={nextBoxLines ? nextBoxLines.meals : meals}
+                mealQty={nextBoxLines ? nextBoxLines.mealQty : mealQty}
                 mealCount={mealCount}
-                addons={showingFollowingWeek ? lockedLines.addons : addons}
-                extrasCents={showingFollowingWeek ? lockedLines.extrasCents : extrasCents}
-                extrasDueCents={showingFollowingWeek ? lockedLines.extrasDueCents : extrasDueCents}
+                addons={nextBoxLines ? nextBoxLines.addons : addons}
+                extrasCents={nextBoxLines ? nextBoxLines.extrasCents : extrasCents}
+                extrasDueCents={nextBoxLines ? nextBoxLines.extrasDueCents : extrasDueCents}
                 extrasPromoLabel={extrasPromoLabel}
                 canEdit={canEdit}
                 subscriptionId={row.id}
@@ -983,6 +1015,24 @@ const MySubscriptions = ({ user }) => {
                         </button>
                         <div className="my-sub-section-head-actions">
                           <p className="my-sub-section-count">{followingMealQty} of {mealCount}</p>
+                          {canEdit ? (
+                            <>
+                              <Link
+                                className="my-sub-section-link"
+                                to={`/my-subscriptions/${row.id}/meals`}
+                                state={{ fresh: true }}
+                              >
+                                Edit meals
+                              </Link>
+                              <Link
+                                className="my-sub-section-link"
+                                to={`/my-subscriptions/${row.id}/addons`}
+                                state={{ fresh: true }}
+                              >
+                                Edit add-ons
+                              </Link>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -1030,7 +1080,11 @@ const MySubscriptions = ({ user }) => {
 
                     <div className="my-sub-card-details">
                       <DetailRow label="Next box" emphasize>
-                        {row.status === 'active' ? shortWeekdayDate(ymd) : '—'}
+                        {row.next_box_date
+                          ? shortWeekdayDate(row.next_box_date)
+                          : (row.status === 'active' || showingFollowingWeek || row.first_box_protected
+                            ? shortWeekdayDate(ymd)
+                            : '—')}
                       </DetailRow>
                       <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
                       <DetailRow label="Location">{location}</DetailRow>
@@ -1052,7 +1106,11 @@ const MySubscriptions = ({ user }) => {
                         ) : null}
                       </DetailRow>
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
-                      <DetailRow label="Pause or cancel by">{pauseBy}</DetailRow>
+                      <DetailRow label="Pause or cancel by">
+                        {row.first_box_protected
+                          ? `after your first box, ${pauseBy}`
+                          : pauseBy}
+                      </DetailRow>
                       <DetailRow label="Card on file">
                         {cardLabel(row.card)}
                         <button
@@ -1086,15 +1144,18 @@ const MySubscriptions = ({ user }) => {
                           >
                             {editingId === row.id ? 'Close pickup or delivery' : 'Change pickup or delivery'}
                           </button>
-                          <button
-                            type="button"
-                            className="my-sub-text-link"
-                            onClick={() => setChangingId(changingId === row.id ? null : row.id)}
-                          >
-                            {changingId === row.id ? 'Close plans' : 'Change plan'}
-                          </button>
+                          {!isPaused ? (
+                            <button
+                              type="button"
+                              className="my-sub-text-link"
+                              onClick={() => setChangingId(changingId === row.id ? null : row.id)}
+                            >
+                              {changingId === row.id ? 'Close plans' : 'Change plan'}
+                            </button>
+                          ) : null}
                         </>
-                      ) : (
+                      ) : null}
+                      {isPaused ? (
                         <button
                           type="button"
                           className="my-sub-primary"
@@ -1103,7 +1164,7 @@ const MySubscriptions = ({ user }) => {
                         >
                           Resume
                         </button>
-                      )}
+                      ) : null}
                     </div>
 
                     <div className="my-sub-card-danger">
@@ -1116,7 +1177,7 @@ const MySubscriptions = ({ user }) => {
                         >
                           Keep this Sunday
                         </button>
-                      ) : canEdit ? (
+                      ) : canEdit && !isPaused ? (
                         <button
                           type="button"
                           className="my-sub-danger-link"
@@ -1171,7 +1232,7 @@ const MySubscriptions = ({ user }) => {
                     </div>
                   ) : null}
 
-                  {changingId === row.id && canEdit && otherPlans.length ? (
+                  {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
                     <div className="my-sub-plan-list">
                       {otherPlans.map((planRow) => (
                         <button

@@ -12,8 +12,17 @@ const {
   getPlanById,
   getOwnedSubscription,
   getSettings,
+  firstBoxStillDue,
+  ensureFirstBoxCycle,
 } = require('./subscription');
-const { getEditWeek, getChargeDeadline, getSignupDates, torontoYmd } = require('./subscriptionWeek');
+const {
+  getEditWeek,
+  getChargeDeadline,
+  getSignupDates,
+  torontoYmd,
+  nextOpenSunday,
+  sundayLabelFromYmd,
+} = require('./subscriptionWeek');
 
 const HST = 1.13;
 
@@ -137,19 +146,69 @@ async function pauseSubscription(userId, subscriptionId) {
   }
 
   const { week, charge, cycle } = await currentCycleFor(sub);
+  const settings = await getSettings();
+  const now = new Date();
 
-  if (!charge.before_wednesday) {
+  // First box is charged at signup and always goes out. Pause later weeks only.
+  if (firstBoxStillDue(sub, settings || {}, now)) {
+    const firstYmd = getSignupDates(
+      sub.created_at ? new Date(sub.created_at) : now,
+      settings || {}
+    ).first_delivery_date;
+    const { data: rows, error: cycleErr } = await supabase
+      .from('subscription_cycles')
+      .select('*')
+      .eq('subscription_id', sub.id);
+    if (cycleErr) throw cycleErr;
+    await ensureFirstBoxCycle(sub, rows || [], settings || {}, now);
+    const nextSunday = nextOpenSunday(firstYmd);
+    const firstWeek = {
+      ...week,
+      delivery_date: firstYmd,
+      delivery_label: sundayLabelFromYmd(firstYmd) || week.delivery_label,
+    };
+    const nextCharge = getChargeDeadline(now, settings || {}, nextSunday);
+
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'paused',
+        pause_reason: 'manual',
+        paused_at: new Date().toISOString(),
+        pending_status: null,
+      })
+      .eq('id', sub.id);
+    if (error) throw error;
+
+    try {
+      await notifyManage(userId, {
+        kind: 'pause_first',
+        mealCount: sub.subscription_plans?.meal_count,
+        deliveryLabel: firstWeek.delivery_label,
+        chargeLabel: nextCharge.charge_label,
+      });
+    } catch (err) {
+      console.warn('[subscriptions] pause email failed:', err.message);
+    }
+
+    return {
+      ok: true,
+      status: 'paused',
+      pending: false,
+      first_box_kept: true,
+      week: firstWeek,
+      charge: nextCharge,
+    };
+  }
+
+  const alreadyPaid = Boolean(cycle && Number(cycle.plan_paid_cents) > 0);
+  const alreadyLocked = cycle?.status === 'locked';
+
+  // Paid or locked boxes still go out. Pause starts the following week.
+  if (!charge.before_wednesday || alreadyPaid || alreadyLocked) {
     return applyPendingStatus(userId, sub, 'paused', week, charge);
   }
 
-  if (cycle && Number(cycle.plan_paid_cents) > 0) {
-    try {
-      await refundSkip(cycle, sub.id);
-    } catch (err) {
-      console.warn('[subscriptions] pause refund failed; deferring to next week:', err.message);
-      return applyPendingStatus(userId, sub, 'paused', week, charge);
-    }
-  }
   await skipOpenCycle(cycle);
 
   const { error } = await supabase

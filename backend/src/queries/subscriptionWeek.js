@@ -145,7 +145,8 @@ function chargeAtForSunday(ymdStr) {
     return torontoDate(shifted.year, shifted.month, shifted.day, CHARGE_HOUR, CHARGE_MINUTE);
   }
   const p = torontoParts(sunday);
-  const wed = addCalendarDays(p.year, p.month, p.day, CHARGE_WEEKDAY - p.weekday);
+  // Sunday + 3 is the Wednesday after delivery. Step back 4 days, like lock's -3.
+  const wed = addCalendarDays(p.year, p.month, p.day, -4);
   return torontoDate(wed.year, wed.month, wed.day, CHARGE_HOUR, CHARGE_MINUTE);
 }
 

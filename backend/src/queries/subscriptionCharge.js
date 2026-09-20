@@ -7,7 +7,7 @@
 const supabase = require('../../supabase/db');
 const { createOrderWithProducts } = require('./order');
 const { getUserByAuthId } = require('./user');
-const { getSettings, getPlanById, copyPlanMealsIfEmpty } = require('./subscription');
+const { getSettings, getPlanById, copyPlanMealsIfEmpty, firstBoxSunday, firstBoxStillDue, reopenSkippedCycle } = require('./subscription');
 const {
   renderSubscriptionManageEmail,
   renderOwnerThursdayLockEmail,
@@ -834,14 +834,22 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
   const failures = [];
 
   for (const sub of subs) {
-    const cycle = await cycleForSunday(sub.id, sunday);
+    let cycle = await cycleForSunday(sub.id, sunday);
     if (!cycle) {
       skipped += 1;
       continue;
     }
     if (cycle.status === 'skipped') {
-      skipped += 1;
-      continue;
+      const firstYmd = firstBoxSunday(sub, settings || {}, now);
+      if (
+        firstBoxStillDue(sub, settings || {}, now)
+        && String(cycle.delivery_date) === String(firstYmd)
+      ) {
+        cycle = await reopenSkippedCycle(cycle);
+      } else {
+        skipped += 1;
+        continue;
+      }
     }
     const linkedOrderId = await orderIdForThisCycle(cycle);
     if (cycle.status === 'locked' && linkedOrderId) {

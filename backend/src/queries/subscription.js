@@ -17,6 +17,7 @@ const {
   cutoffLabelForSunday,
   cutoffAtForSunday,
   lockPassedForSunday,
+  lockAtForSunday,
 } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
@@ -243,16 +244,77 @@ function currentCycleForWeek(cycles, week, fallback = null) {
 }
 
 /** Earliest locked/skipped box still due — the Sunday that is already in motion. */
-function nextBoxLockedCycle(cycles, now) {
+function subscribedBeforeLock(createdAt, deliveryYmd, settings) {
+  const lockAt = lockAtForSunday(deliveryYmd, settings);
+  if (!lockAt) return true;
+  const created = createdAt ? new Date(createdAt) : null;
+  if (!created || !Number.isFinite(created.getTime())) return true;
+  return created.getTime() < lockAt.getTime();
+}
+
+async function reopenSkippedCycle(cycle) {
+  if (!cycle?.id || cycle.status !== 'skipped') return cycle;
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .update({ status: 'open' })
+    .eq('id', cycle.id)
+    .eq('status', 'skipped')
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    ...cycle,
+    ...(data || {}),
+    status: 'open',
+  };
+}
+
+async function reopenPaidSkippedCycle(cycle) {
+  if (!(Number(cycle?.plan_paid_cents) > 0)) return cycle;
+  return reopenSkippedCycle(cycle);
+}
+
+function firstBoxSunday(sub, settings, now = new Date()) {
+  const created = sub?.created_at ? new Date(sub.created_at) : now;
+  return getSignupDates(created, settings || {}).first_delivery_date || null;
+}
+
+function firstBoxStillDue(sub, settings, now = new Date()) {
+  const ymd = firstBoxSunday(sub, settings, now);
+  return Boolean(ymd && String(ymd) >= torontoYmd(now));
+}
+
+function canEditOpenBox(sub, settings, now = new Date()) {
+  if (sub.status === 'active') return true;
+  if (sub.status !== 'paused') return false;
+  const ymd = firstBoxSunday(sub, settings, now);
+  if (!ymd || String(ymd) < torontoYmd(now)) return false;
+  return !lockPassedForSunday(ymd, now, settings);
+}
+
+function upcomingReceivingCycles(cycles, now, createdAt, settings, firstBoxYmd) {
   const today = torontoYmd(now);
   return [...(cycles || [])]
     .filter((row) => (
       row
       && row.delivery_date
       && String(row.delivery_date) >= today
-      && (row.status === 'locked' || row.status === 'skipped')
+      && (
+        row.status !== 'skipped'
+        || Number(row.plan_paid_cents) > 0
+        || String(row.delivery_date) === String(firstBoxYmd || '')
+      )
+      && (
+        subscribedBeforeLock(createdAt, row.delivery_date, settings)
+        || String(row.delivery_date) === String(firstBoxYmd || '')
+      )
     ))
-    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0] || null;
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)));
+}
+
+function nextBoxLockedCycle(cycles, now, createdAt, settings, firstBoxYmd) {
+  return upcomingReceivingCycles(cycles, now, createdAt, settings, firstBoxYmd)
+    .find((row) => row.status === 'locked') || null;
 }
 
 /** Earliest open week for this subscription — status, not calendar proximity. */
@@ -369,6 +431,77 @@ async function copyPlanMealsIfEmpty(dest, src) {
   return attached[0] || dest;
 }
 
+async function ensureFirstBoxCycle(sub, cycles, settings, now = new Date()) {
+  const firstYmd = firstBoxSunday(sub, settings, now);
+  const today = torontoYmd(now);
+  if (!firstYmd || String(firstYmd) < today) {
+    return { firstYmd, cycle: null, cycles: cycles || [] };
+  }
+  let list = [...(cycles || [])];
+  let cycle = list.find((row) => String(row.delivery_date) === String(firstYmd)) || null;
+  const earliest = list
+    .slice()
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0] || null;
+  const src = [...list]
+    .filter((row) => row && String(row.id) !== String(cycle?.id || '') && planMealItems(row).length)
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0]
+    || earliest;
+
+  if (!cycle) {
+    const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+    const delivery = src ? !!src.delivery : !!sub.delivery;
+    const { data, error } = await supabase
+      .from('subscription_cycles')
+      .insert({
+        subscription_id: sub.id,
+        plan_id: sub.plan_id,
+        plan_price_cents: Number(plan?.price_cents) || Number(src?.plan_price_cents) || 0,
+        cutoff_at: cutoffAtForSunday(firstYmd, settings) || getSignupDates(now, settings || {}).cutoff_at,
+        delivery_date: firstYmd,
+        pickup_date: delivery ? null : firstYmd,
+        status: 'open',
+        delivery,
+        delivery_postal_code: src?.delivery_postal_code || sub.delivery_postal_code,
+        pickup_time_slot: src?.pickup_time_slot || sub.pickup_time_slot,
+        special_note: src?.special_note || sub.special_note,
+        delivery_fee_cents: delivery ? (Number(src?.delivery_fee_cents) || 0) : 0,
+        plan_paid_cents: Number(src?.plan_paid_cents) || 0,
+        addon_paid_cents: 0,
+        promo_percent: Number(src?.promo_percent) || Number(sub.first_promo_percent) || 0,
+      })
+      .select()
+      .single();
+    if (error) {
+      if (error.code !== '23505') throw error;
+      const { data: existing, error: findErr } = await supabase
+        .from('subscription_cycles')
+        .select(CYCLE_SELECT)
+        .eq('subscription_id', sub.id)
+        .eq('delivery_date', firstYmd)
+        .maybeSingle();
+      if (findErr) throw findErr;
+      cycle = existing || list.find((row) => String(row.delivery_date) === String(firstYmd)) || null;
+    } else {
+      cycle = data;
+    }
+    if (cycle && src) cycle = await copyPlanMealsIfEmpty(cycle, src);
+    const attached = cycle ? await attachCycleItems([cycle]) : [];
+    cycle = attached[0] || cycle;
+    if (cycle && !list.some((row) => String(row.id) === String(cycle.id))) list.push(cycle);
+  } else if (cycle.status === 'skipped') {
+    cycle = await reopenSkippedCycle(cycle);
+    if (src && String(src.id) !== String(cycle.id)) {
+      cycle = await copyPlanMealsIfEmpty(cycle, src);
+    }
+    list = list.map((row) => (String(row.id) === String(cycle.id) ? cycle : row));
+  } else if (src && String(src.id) !== String(cycle.id) && !planMealItems(cycle).length) {
+    cycle = await copyPlanMealsIfEmpty(cycle, src);
+    list = list.map((row) => (String(row.id) === String(cycle.id) ? cycle : row));
+  }
+
+  return { firstYmd, cycle, cycles: list };
+}
+
 async function cardsByPaymentMethodId(ids) {
   const unique = [...new Set((ids || []).filter(Boolean))];
   const map = {};
@@ -448,25 +581,49 @@ async function listMine(userId) {
   }
 
   return Promise.all(subs.map(async (sub) => {
-    const list = bySub[sub.id] || [];
+    const ensured = await ensureFirstBoxCycle(sub, bySub[sub.id] || [], settings || {}, now);
+    const list = ensured.cycles;
+    const firstYmd = ensured.firstYmd;
+    const firstDue = firstBoxStillDue(sub, settings || {}, now);
+    const editable = canEditOpenBox(sub, settings || {}, now);
     const open = earliestOpenCycle(list);
     const hint = open || hintCycleForEdit(list, now, settings || {});
     const week = getEditWeek(now, settings || {}, hint);
     const thisSunday = getSignupDates(now, settings || {}).job_sunday;
-    const lockedBox = nextBoxLockedCycle(list, now);
-    const thisWeekCycle = lockedBox || (list || []).find((row) => (
-      String(row.delivery_date) === String(thisSunday) && row.status !== 'skipped'
-    )) || null;
+    const receivingWeeks = upcomingReceivingCycles(list, now, sub.created_at, settings || {}, firstYmd);
+    let receiving = receivingWeeks[0] || ensured.cycle || null;
+    if (receiving?.status === 'skipped') {
+      receiving = String(receiving.delivery_date) === String(firstYmd)
+        ? await reopenSkippedCycle(receiving)
+        : await reopenPaidSkippedCycle(receiving);
+    }
+    const lockedBox = nextBoxLockedCycle(list, now, sub.created_at, settings || {}, firstYmd);
+    const thisWeekCycle = lockedBox
+      || receiving
+      || (list || []).find((row) => (
+        String(row.delivery_date) === String(thisSunday)
+        && row.status !== 'skipped'
+        && (
+          subscribedBeforeLock(sub.created_at, row.delivery_date, settings || {})
+          || String(row.delivery_date) === String(firstYmd)
+        )
+      )) || null;
     // Meals/extras follow the editable week. After cutoff, this_week_date is the
     // locked Sunday still in motion (Next box), when that cycle exists.
     let current = open || currentCycleForWeek(list, week, null);
-    const mealSource = previousCycleFromList(list, current) || thisWeekCycle;
+    const mealSource = previousCycleFromList(list, current)
+      || (list || []).find((row) => (
+        row
+        && String(row.id) !== String(current?.id || '')
+        && planMealItems(row).length
+      ))
+      || thisWeekCycle;
     if (current?.id && mealSource?.id) {
       current = await copyPlanMealsIfEmpty(current, mealSource);
     }
-    const shown = current || {
-      delivery_date: week.delivery_date,
-      pickup_date: sub.delivery ? null : week.delivery_date,
+    const shown = current || receiving || thisWeekCycle || {
+      delivery_date: week.delivery_date || firstYmd,
+      pickup_date: sub.delivery ? null : (week.delivery_date || firstYmd),
       delivery: !!sub.delivery,
       delivery_postal_code: sub.delivery_postal_code,
       pickup_time_slot: sub.pickup_time_slot,
@@ -474,29 +631,21 @@ async function listMine(userId) {
       promo_percent: 0,
       subscription_cycle_items: [],
     };
-    const charge = getChargeDeadline(now, settings || {}, week.delivery_date);
+    const chargeSunday = firstDue && sub.status === 'paused'
+      ? nextOpenSunday(firstYmd)
+      : (receiving?.delivery_date || week.delivery_date);
+    const charge = getChargeDeadline(now, settings || {}, chargeSunday);
     const planMeals = (shown.subscription_cycle_items || [])
       .filter((item) => item.kind === 'plan')
       .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
-    const earliestYmd = list
-      .map((row) => row.delivery_date)
-      .filter(Boolean)
-      .sort()[0] || null;
-    const firstCycle = (list || []).find((row) => String(row.delivery_date) === String(earliestYmd)) || null;
     const today = torontoYmd(now);
-    // First delivery is week-1 onboarding only. After that Sunday, Next box covers it.
-    const showFirstDelivery = Boolean(
-      earliestYmd
-      && String(earliestYmd) >= today
-      && firstCycle
-      && firstCycle.status !== 'skipped'
-    );
+    const showFirstDelivery = Boolean(firstYmd && String(firstYmd) >= today);
     const storedPct = Number(shown?.promo_percent) || 0;
     const firstWeekPct = Number(sub.first_promo_percent) || 0;
     const addonPromoPercent = storedPct > 0
       ? storedPct
-      : (shown && earliestYmd && String(shown.delivery_date) === String(earliestYmd) ? firstWeekPct : 0);
+      : (shown && firstYmd && String(shown.delivery_date) === String(firstYmd) ? firstWeekPct : 0);
     const { stripe_payment_method_id: _pm, ...publicSub } = sub;
     void _pm;
     return {
@@ -506,16 +655,19 @@ async function listMine(userId) {
       edit_cycle: current,
       this_week_date: thisWeekCycle?.delivery_date || null,
       this_week_cycle: thisWeekCycle,
+      next_box_date: receiving?.delivery_date || thisWeekCycle?.delivery_date || (firstDue ? firstYmd : null),
+      next_box_cycle: receiving || thisWeekCycle || ensured.cycle || null,
       week,
       charge,
-      can_edit: sub.status === 'active',
-      meals_need_update: sub.status === 'active' && mealCount > 0 && planMeals !== mealCount,
+      can_edit: editable,
+      meals_need_update: editable && mealCount > 0 && planMeals !== mealCount,
       addon_promo_percent: addonPromoPercent,
       first_promo_kind: sub.first_promo_code
         ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
         : null,
-      first_delivery_date: showFirstDelivery ? earliestYmd : null,
-      first_delivery_label: showFirstDelivery ? sundayLabelFromYmd(earliestYmd) : '',
+      first_box_protected: firstDue,
+      first_delivery_date: showFirstDelivery ? firstYmd : null,
+      first_delivery_label: showFirstDelivery ? sundayLabelFromYmd(firstYmd) : '',
     };
   }));
 }
@@ -642,15 +794,18 @@ async function getOrCreateEditableCycle(sub) {
     .select('*')
     .eq('subscription_id', sub.id);
   if (allErr) throw allErr;
-  const hint = hintCycleForEdit(allCycles || [], now, settings || {});
-  const open = earliestOpenCycle(allCycles || []);
+  const attached = await attachCycleItems(allCycles || []);
+  const ensured = await ensureFirstBoxCycle(sub, attached, settings || {}, now);
+  const list = ensured.cycles;
+  const hint = hintCycleForEdit(list, now, settings || {});
+  const open = earliestOpenCycle(list);
   let week = getEditWeek(now, settings || {}, open || hint);
   if (open) {
-    const src = previousCycleFromList(allCycles || [], open) || pickDisplayCycle(allCycles || [], now);
+    const src = previousCycleFromList(list, open) || pickDisplayCycle(list, now);
     return { cycle: await copyPlanMealsIfEmpty(open, src), week };
   }
 
-  let existing = (allCycles || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
+  let existing = (list || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
 
   // No open row yet. Never mutate locked/skipped; create the next Sunday instead.
   for (let i = 0; i < 4 && existing && existing.status !== 'open'; i += 1) {
@@ -664,16 +819,16 @@ async function getOrCreateEditableCycle(sub) {
       cutoff_at: cutoffAtForSunday(nextSunday, settings) || week.cutoff_at,
       cutoff_label: cutoffLabelForSunday(nextSunday, settings) || week.cutoff_label,
     };
-    existing = (allCycles || []).find((row) => String(row.delivery_date) === String(nextSunday)) || null;
+    existing = (list || []).find((row) => String(row.delivery_date) === String(nextSunday)) || null;
   }
   if (existing) {
     const openExisting = requireOpenCycle(existing);
-    const src = previousCycleFromList(allCycles || [], openExisting) || pickDisplayCycle(allCycles || [], now);
+    const src = previousCycleFromList(list, openExisting) || pickDisplayCycle(list, now);
     return { cycle: await copyPlanMealsIfEmpty(openExisting, src), week };
   }
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
-  const src = pickDisplayCycle(allCycles || [], now);
+  const src = pickDisplayCycle(list, now);
   const { data: cycle, error } = await supabase
     .from('subscription_cycles')
     .insert({
@@ -792,8 +947,9 @@ async function replaceCycleKindItems(cycleId, kind, resolved) {
 async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addons) {
   const { qtyLines, resolveLines } = require('./subscriptionCheckout');
   const sub = await getOwnedSubscription(userId, subscriptionId);
-  if (sub.status !== 'active') {
-    throw new SubscriptionError(400, 'This subscription is not active.');
+  const settings = await getSettings();
+  if (!canEditOpenBox(sub, settings || {})) {
+    throw new SubscriptionError(400, 'This box cannot be edited right now.');
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
   requireOpenCycle(cycle);
@@ -863,8 +1019,9 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
   const { PICKUP_SLOTS } = require('./subscriptionCheckout');
   const { getServerDeliveryQuote } = require('../lib/deliveryQuote');
   const sub = await getOwnedSubscription(userId, subscriptionId);
-  if (sub.status !== 'active') {
-    throw new SubscriptionError(400, 'This subscription is not active.');
+  const settings = await getSettings();
+  if (!canEditOpenBox(sub, settings || {})) {
+    throw new SubscriptionError(400, 'This box cannot be edited right now.');
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
   requireOpenCycle(cycle);
@@ -1156,4 +1313,9 @@ module.exports = {
   getOwnedSubscription,
   runCardExpiryNotices,
   copyPlanMealsIfEmpty,
+  firstBoxSunday,
+  firstBoxStillDue,
+  canEditOpenBox,
+  ensureFirstBoxCycle,
+  reopenSkippedCycle,
 };

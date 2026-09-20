@@ -52,9 +52,9 @@ const SubscribeEditCart = ({ user }) => {
         if (!found?.can_edit) {
           setDialog({
             icon: 'alert',
-            title: found ? 'This plan is paused' : 'Subscription not found',
+            title: found ? 'This box is locked' : 'Subscription not found',
             body: found
-              ? 'Active plans can change meals from My Subscriptions.'
+              ? 'Meals and add-ons can be changed until Thursday at 5:00 PM ET while the box is still open.'
               : 'That plan is not on this account.',
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',

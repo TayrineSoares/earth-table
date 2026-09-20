@@ -102,6 +102,7 @@ const fetchMySubscriptions = async (userId) => {
     cycle: titleCaseCycle(row.cycle),
     edit_cycle: titleCaseCycle(row.edit_cycle),
     this_week_cycle: titleCaseCycle(row.this_week_cycle),
+    next_box_cycle: titleCaseCycle(row.next_box_cycle),
   }));
 };
 

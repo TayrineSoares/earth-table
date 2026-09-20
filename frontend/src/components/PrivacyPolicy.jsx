@@ -26,15 +26,15 @@ const PrivacyPolicy = () => {
         <h3 className="et-terms__h3">Weekly subscriptions</h3>
         <ul className="et-terms__list">
           <li><strong>Plans:</strong> Recurring weekly meal plans (10, 15, or 20 meals). Advertised prices are pre-tax meals only. Checkout and weekly bills add 13% HST. Delivery, if you choose it, is extra at the same zone fees as à la carte, plus HST.</li>
-          <li><strong>First week:</strong> Plan and delivery (if any) are charged when you subscribe. Add-ons on that first box are billed later, at Thursday lock, if they are still on the box.</li>
+          <li><strong>First week:</strong> Plan and delivery (if any) are charged when you subscribe. That first box cannot be paused or cancelled. Add-ons on that first box are billed later, at Thursday lock, if they are still on the box. You can still change add-ons on the first box until <strong>Thursday at 5:00 PM ET</strong>.</li>
           <li><strong>Promo and referral codes:</strong> A valid code discounts your first week only, the plan charged at signup, and add-ons billed at that first Thursday lock. Delivery is not discounted. Later Wednesday charges are the regular plan price. Partner referral program terms (for partners issuing codes) are separate from this policy and available on request.</li>
           <li><strong>Weekly charge:</strong> After the first week, plan and delivery are charged every <strong>Wednesday at 9:00 AM ET</strong> to the card on file. We email a receipt at that same time.</li>
           <li><strong>Meal and add-on cutoff:</strong> Change meals, extras, pickup, or delivery until <strong>Thursday at 5:00 PM ET</strong>. Then extras still on the box are charged, the box is locked, and we email confirmation (with an extras receipt if anything was billed). Add-ons do not repeat the following week unless you add them again. If you do not pick meals before cutoff, we repeat last week’s selections.</li>
-          <li><strong>Pause or cancel:</strong> Pause or cancel in My Subscriptions before <strong>Wednesday at 9:00 AM ET</strong> to skip that Sunday’s charge. No fees. Your meals and saved card stay on file until you resume. After Wednesday 9:00 AM ET, that Sunday still goes out; the pause or cancel starts the following week.</li>
+          <li><strong>Pause or cancel:</strong> After your first box, pause or cancel in My Subscriptions before <strong>Wednesday at 9:00 AM ET</strong> to skip that Sunday’s charge. No fees. Your meals and saved card stay on file until you resume. After Wednesday 9:00 AM ET, that Sunday still goes out; the pause or cancel starts the following week. The first box charged at signup always goes out.</li>
           <li><strong>Failed payments:</strong> If Wednesday’s charge is declined, we pause the plan and email you. Update your card in My Subscriptions before Thursday at 5:00 PM ET to still receive that Sunday. If it is still unpaid at lock, that Sunday is skipped and the plan stays paused until you resume.</li>
           <li><strong>Holidays:</strong> We skip blocked Sundays (December 25, 26, 31, and January 1). That week is not charged and not delivered. We email you the next Sunday that will run.</li>
           <li><strong>Price changes:</strong> If we change a plan price, we email current subscribers. The new price applies at the next Wednesday 9:00 AM ET charge that is not already billed. Pause or cancel before that charge if you do not accept the new price.</li>
-          <li><strong>Refunds:</strong> A weekly box is non-refundable after Wednesday 9:00 AM ET for that cycle (or after you are charged at signup for the first week). Avoid a charge by pausing or cancelling before Wednesday 9:00 AM ET.</li>
+          <li><strong>Refunds:</strong> The first box charged at signup is non-refundable. Later weekly boxes are non-refundable after Wednesday 9:00 AM ET for that cycle. After the first box, avoid a later charge by pausing or cancelling before Wednesday 9:00 AM ET.</li>
         </ul>
 
         <h3 className="et-terms__h3">General</h3>
@@ -88,7 +88,7 @@ const PrivacyPolicy = () => {
           <li>Request correction or deletion of your personal information, subject to records we must keep for orders, taxes, or the law.</li>
           <li>Withdraw consent for uses that are not required to fulfill an order or subscription.</li>
           <li>Opt out of marketing communications under CASL.</li>
-          <li>Pause or cancel a subscription in My Subscriptions before Wednesday at 9:00 AM ET to skip that Sunday’s charge.</li>
+          <li>After your first box, pause or cancel a subscription in My Subscriptions before Wednesday at 9:00 AM ET to skip that Sunday’s charge. The first box cannot be paused or cancelled.</li>
         </ul>
         <p className="et-terms__p">
           To exercise these rights, contact us at:{" "}
