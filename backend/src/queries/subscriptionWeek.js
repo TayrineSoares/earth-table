@@ -378,6 +378,11 @@ function cutoffAtForSunday(ymdStr, settings = {}) {
   return at ? at.toISOString() : null;
 }
 
+function cutoffLabelForSunday(ymdStr, settings = {}) {
+  const at = lockAtForSunday(ymdStr, settings);
+  return at ? formatCutoffLabel(at) : '';
+}
+
 /** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
 function formatPickupSlot(slot) {
   const parts = String(slot || '').split('-');
@@ -518,6 +523,7 @@ module.exports = {
   isYmdBlocked,
   lockAtForSunday,
   cutoffAtForSunday,
+  cutoffLabelForSunday,
   lockPassedForSunday,
   pauseNudgeWeek,
 };

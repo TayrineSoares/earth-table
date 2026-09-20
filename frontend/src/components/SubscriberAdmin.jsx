@@ -93,6 +93,11 @@ const planLines = (plans) => {
   return [...byKey.values()];
 };
 
+const cycleIsClosed = (cycle) => {
+  const status = cycle?.status;
+  return status === 'locked' || status === 'skipped';
+};
+
 const cycleForRow = (row, statusTab, weekTab) => {
   if (statusTab === 'other') return row.cycle || row.this_cycle || row.next_cycle || null;
   return weekTab === 'next' ? (row.next_cycle || null) : (row.this_cycle || null);
@@ -285,14 +290,22 @@ const SubscriberAdmin = () => {
     );
   }
 
-  const cutoffPassed = Boolean(meta.cutoff_passed);
-  const weekLocked = weekTab === 'this' && cutoffPassed;
+  const cutoffLabel = (
+    (weekTab === 'next' ? meta.next_cutoff_label : meta.this_cutoff_label)
+    || meta.cutoff_label
+    || 'Thursday 5:00 PM'
+  );
+  const viewedActive = weekTab === 'next' ? nextSundayActive : thisSundayActive;
+  const viewedCycles = viewedActive
+    .map((row) => cycleForRow(row, statusTab, weekTab))
+    .filter(Boolean);
+  // Banner follows the selected Sunday's cycle rows, not the live/test clock.
+  const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);
   const printSunday = weekTab === 'next'
     ? (meta.next_sunday_label || 'Sunday')
     : (meta.this_sunday_label || 'Sunday');
-  const cutoffLabel = meta.cutoff_label || 'Thursday 5:00 PM';
   const openTitle = 'Plans are not locked yet';
   const openBody = `Please be mindful that meals and add-ons may still change by ${cutoffLabel}.`;
   const otherCount = rows.filter((row) => row.status !== 'active').length;
@@ -363,9 +376,13 @@ const SubscriberAdmin = () => {
               <div className="sub-admin-banner-copy">
                 {weekLocked ? (
                   <>
-                    <p className="sub-admin-banner-title">This week is locked</p>
+                    <p className="sub-admin-banner-title">
+                      {weekTab === 'next' ? 'Next week is locked' : 'This week is locked'}
+                    </p>
                     <p className="sub-admin-banner-text">
-                      Meals and add-ons are final for this week.
+                      {weekTab === 'next'
+                        ? 'Meals and add-ons are final for next week.'
+                        : 'Meals and add-ons are final for this week.'}
                     </p>
                   </>
                 ) : (

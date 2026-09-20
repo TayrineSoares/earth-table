@@ -14,6 +14,7 @@ const {
   torontoYmd,
   sundayLabelFromYmd,
   nextOpenSunday,
+  cutoffLabelForSunday,
 } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
@@ -413,8 +414,10 @@ function adminWeekMeta(now = new Date(), settings = {}) {
     cutoff_label: dates.cutoff_label,
     this_sunday: thisSunday,
     this_sunday_label: sundayLabelFromYmd(thisSunday),
+    this_cutoff_label: cutoffLabelForSunday(thisSunday, settings) || dates.cutoff_label,
     next_sunday: nextSunday,
     next_sunday_label: sundayLabelFromYmd(nextSunday),
+    next_cutoff_label: cutoffLabelForSunday(nextSunday, settings) || dates.cutoff_label,
   };
 }
 

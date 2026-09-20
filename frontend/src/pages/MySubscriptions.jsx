@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
@@ -103,6 +104,96 @@ function DetailRow({ label, emphasize, children }) {
   )
 }
 
+function CycleItems({
+  meals,
+  mealQty,
+  mealCount,
+  addons,
+  extrasCents,
+  extrasDueCents,
+  extrasPromoLabel,
+  canEdit,
+  subscriptionId,
+  mealsLabel,
+  extrasLabel,
+  extrasSummaryLabel,
+  emptyMeals,
+  emptyExtras,
+  lockCadence,
+  showEditLinks,
+  showMealCount,
+}) {
+  return (
+    <>
+      <div className="my-sub-section-head">
+        <p className="my-sub-section-label">{mealsLabel}</p>
+        {(showMealCount || (canEdit && showEditLinks)) ? (
+          <div className="my-sub-section-head-actions">
+            {showMealCount ? (
+              <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
+            ) : null}
+            {canEdit && showEditLinks ? (
+              <Link
+                className="my-sub-section-link"
+                to={`/my-subscriptions/${subscriptionId}/meals`}
+                state={{ fresh: true }}
+              >
+                Edit meals
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {meals.length ? (
+        <ul className="my-sub-lines">
+          {meals.map((item) => (
+            <LineItem key={item.id} item={item} fallbackName="Meal" />
+          ))}
+        </ul>
+      ) : (
+        <p className="my-sub-empty-extras">{emptyMeals}</p>
+      )}
+
+      <div className="my-sub-section-head my-sub-section-head--extras">
+        <p className="my-sub-section-label">{extrasLabel}</p>
+        {canEdit && showEditLinks ? (
+          <Link className="my-sub-section-link" to={`/my-subscriptions/${subscriptionId}/addons`}>
+            Edit add-ons
+          </Link>
+        ) : null}
+      </div>
+      {addons.length ? (
+        <>
+          <ul className="my-sub-lines">
+            {addons.map((item) => (
+              <LineItem
+                key={item.id}
+                item={item}
+                fallbackName="Extra"
+                priceCents={(Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 1)}
+              />
+            ))}
+          </ul>
+          <div className="my-sub-extras-summary">
+            <span>{extrasSummaryLabel}</span>
+            <span>{formatPlanPrice(extrasCents)} · charged {lockCadence}</span>
+          </div>
+          {extrasDueCents !== extrasCents ? (
+            <div className="my-sub-extras-summary">
+              <span>
+                {extrasPromoLabel || 'First-week discount'} · first week only
+              </span>
+              <span>-{formatPlanPrice(extrasCents - extrasDueCents)}</span>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="my-sub-empty-extras">{emptyExtras}</p>
+      )}
+    </>
+  )
+}
+
 const MySubscriptions = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const userId = user?.id || null
@@ -114,6 +205,7 @@ const MySubscriptions = ({ user }) => {
   const [editingId, setEditingId] = useState(null)
   const [notesEditingId, setNotesEditingId] = useState(null)
   const [changingId, setChangingId] = useState(null)
+  const [nextWeekOpen, setNextWeekOpen] = useState({})
   const [savingId, setSavingId] = useState(null)
   const [fulfillment, setFulfillment] = useState('pickup')
   const [pickupDate, setPickupDate] = useState('')
@@ -700,67 +792,85 @@ const MySubscriptions = ({ user }) => {
             const mealsBy = everyWeekBy(lockCadence)
             const pauseBy = everyWeekBy(chargeCadence)
             const expiry = cardExpiryState(row.card)
+            const isNextOpen = Boolean(nextWeekOpen[row.id])
+            const nextWeekPanelId = `next-week-${row.id}`
+            const cycleItems = (
+              <CycleItems
+                meals={meals}
+                mealQty={mealQty}
+                mealCount={mealCount}
+                addons={addons}
+                extrasCents={extrasCents}
+                extrasDueCents={extrasDueCents}
+                extrasPromoLabel={firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)}
+                canEdit={canEdit}
+                subscriptionId={row.id}
+                mealsLabel={showingNextWeek ? 'Meals' : 'This week\'s meals'}
+                extrasLabel={showingNextWeek ? 'Extras' : 'This week\'s extras'}
+                extrasSummaryLabel={showingNextWeek ? 'Extras next week' : 'Extras this week'}
+                emptyMeals={showingNextWeek ? 'No meals selected next week.' : 'No meals selected this week.'}
+                emptyExtras={showingNextWeek ? 'No extras next week.' : 'No extras this week.'}
+                lockCadence={lockCadence}
+                showEditLinks={canEdit}
+                showMealCount={!showingNextWeek}
+              />
+            )
 
             return (
               <section key={row.id} className="my-sub-plan">
                 <div className="my-sub-meals">
-                  <div className="my-sub-section-head">
-                    <p className="my-sub-section-label">
-                      {showingNextWeek ? 'Next week\'s meals' : 'This week\'s meals'}
-                    </p>
-                    <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
-                  </div>
-                  {meals.length ? (
-                    <ul className="my-sub-lines">
-                      {meals.map((item) => (
-                        <LineItem key={item.id} item={item} fallbackName="Meal" />
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="my-sub-empty-extras">
-                      {showingNextWeek ? 'No meals selected next week.' : 'No meals selected this week.'}
-                    </p>
-                  )}
-
-                  <div className="my-sub-section-head my-sub-section-head--extras">
-                    <p className="my-sub-section-label">
-                      {showingNextWeek ? 'Next week\'s extras' : 'This week\'s extras'}
-                    </p>
-                    {canEdit ? (
-                      <Link className="my-sub-section-link" to={`/my-subscriptions/${row.id}/addons`}>
-                        Edit extras
-                      </Link>
-                    ) : null}
-                  </div>
-                  {addons.length ? (
+                  {showingNextWeek ? (
                     <>
-                      <ul className="my-sub-lines">
-                        {addons.map((item) => (
-                          <LineItem
-                            key={item.id}
-                            item={item}
-                            fallbackName="Extra"
-                            priceCents={(Number(item.unit_price_cents) || 0) * (Number(item.quantity) || 1)}
+                      <div className="my-sub-next-head">
+                        <button
+                          type="button"
+                          className="my-sub-next-toggle"
+                          aria-expanded={isNextOpen}
+                          aria-controls={nextWeekPanelId}
+                          onClick={() => setNextWeekOpen((prev) => ({
+                            ...prev,
+                            [row.id]: !prev[row.id],
+                          }))}
+                        >
+                          <ChevronDown
+                            size={18}
+                            strokeWidth={2}
+                            className={`my-sub-next-chevron${isNextOpen ? ' is-open' : ''}`}
+                            aria-hidden="true"
                           />
-                        ))}
-                      </ul>
-                      <div className="my-sub-extras-summary">
-                        <span>{showingNextWeek ? 'Extras next week' : 'Extras this week'}</span>
-                        <span>{formatPlanPrice(extrasCents)} · charged {lockCadence}</span>
-                      </div>
-                      {extrasDueCents !== extrasCents ? (
-                        <div className="my-sub-extras-summary">
-                          <span>
-                            {firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind) || 'First-week discount'} · first week only
-                          </span>
-                          <span>-{formatPlanPrice(extrasCents - extrasDueCents)}</span>
+                          Next week
+                        </button>
+                        <div className="my-sub-section-head-actions">
+                          <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
+                          {canEdit && !isNextOpen ? (
+                            <>
+                              <Link
+                                className="my-sub-section-link"
+                                to={`/my-subscriptions/${row.id}/meals`}
+                                state={{ fresh: true }}
+                              >
+                                Edit meals
+                              </Link>
+                              <Link
+                                className="my-sub-section-link"
+                                to={`/my-subscriptions/${row.id}/addons`}
+                              >
+                                Edit add-ons
+                              </Link>
+                            </>
+                          ) : null}
                         </div>
-                      ) : null}
+                      </div>
+                      <div
+                        id={nextWeekPanelId}
+                        className="my-sub-next-panel"
+                        hidden={!isNextOpen}
+                      >
+                        {cycleItems}
+                      </div>
                     </>
                   ) : (
-                    <p className="my-sub-empty-extras">
-                      {showingNextWeek ? 'No extras next week.' : 'No extras this week.'}
-                    </p>
+                    cycleItems
                   )}
                 </div>
 
@@ -846,24 +956,6 @@ const MySubscriptions = ({ user }) => {
 
                     <div className="my-sub-card-actions">
                       {canEdit ? (
-                        <Link
-                          to={`/my-subscriptions/${row.id}/meals`}
-                          state={{ fresh: true }}
-                          className="my-sub-primary"
-                        >
-                          Edit plan's items
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          className="my-sub-primary"
-                          disabled={savingId === row.id}
-                          onClick={() => confirmStatus(row, 'resume')}
-                        >
-                          Resume
-                        </button>
-                      )}
-                      {canEdit ? (
                         <>
                           <button
                             type="button"
@@ -880,7 +972,16 @@ const MySubscriptions = ({ user }) => {
                             {changingId === row.id ? 'Close plans' : 'Change plan'}
                           </button>
                         </>
-                      ) : null}
+                      ) : (
+                        <button
+                          type="button"
+                          className="my-sub-primary"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmStatus(row, 'resume')}
+                        >
+                          Resume
+                        </button>
+                      )}
                     </div>
 
                     <div className="my-sub-card-danger">

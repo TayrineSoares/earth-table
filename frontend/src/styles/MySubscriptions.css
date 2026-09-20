@@ -90,6 +90,73 @@
   align-items: center;
 }
 
+.my-sub-section-head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  flex-shrink: 0;
+}
+
+.my-sub-next-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #D9C7B0;
+}
+
+.my-sub-next-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #BE7200;
+  -webkit-text-fill-color: #BE7200;
+  text-align: left;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.my-sub-next-toggle:focus,
+.my-sub-next-toggle:hover,
+.my-sub-next-toggle:active {
+  color: #BE7200;
+  -webkit-text-fill-color: #BE7200;
+}
+
+.my-sub-next-chevron {
+  flex-shrink: 0;
+  color: #BE7200;
+  transition: transform 0.15s ease;
+}
+
+.my-sub-next-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.my-sub-next-panel {
+  padding-top: 16px;
+}
+
+.my-sub-next-panel[hidden] {
+  display: none;
+}
+
 .my-sub-lines {
   list-style: none;
   margin: 0;
@@ -579,6 +646,14 @@
     max-width: 100%;
     box-sizing: border-box;
   }
+
+  .my-sub-next-head,
+  .my-sub-next-toggle,
+  .my-sub-next-panel {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 @media (max-width: 800px) {
@@ -623,11 +698,24 @@
   .my-sub-card-since,
   .my-sub-card-expiry,
   .my-sub-fee-line,
+  .my-sub-next-head,
+  .my-sub-next-toggle,
+  .my-sub-next-panel,
+  .my-sub-section-head-actions,
   .my-subscriptions-page .order-history-empty .order-history-button,
   .my-subscriptions-page .order-history-empty .order-history-cta {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+  }
+
+  .my-sub-section-head,
+  .my-sub-next-head {
+    align-items: flex-start;
+  }
+
+  .my-sub-section-head-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -646,7 +734,11 @@
   }
 
   .my-subscriptions-page .order-history-empty .order-history-button,
-  .my-subscriptions-page .order-history-empty .order-history-cta {
+  .my-subscriptions-page .order-history-empty .order-history-cta,
+  .my-sub-next-head,
+  .my-sub-next-toggle,
+  .my-sub-next-panel,
+  .my-sub-section-head-actions {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
