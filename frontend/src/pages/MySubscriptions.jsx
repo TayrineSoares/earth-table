@@ -232,7 +232,7 @@ function CycleItems({
         {showLockedBadge ? (
           <LockedBadge />
         ) : canEdit && showEditLinks ? (
-          <Link className="my-sub-section-link" to={`/my-subscriptions/${subscriptionId}/addons`}>
+          <Link className="my-sub-section-link" to={`/my-subscriptions/${subscriptionId}/addons`} state={{ fresh: true }}>
             Edit add-ons
           </Link>
         ) : null}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import '../styles/SubscribeAndSave.css'
 import '../styles/Products.css'
@@ -7,7 +7,10 @@ import '../styles/SubscribeFlow.css'
 import loadingAnimation from '../assets/loading.json'
 import FeedbackDialog from '../components/FeedbackDialog'
 import SubscribeCatalog from '../components/SubscribeCatalog'
-import { formatPlanPrice } from '../helpers/subscriptionHelpers'
+import {
+  fetchMySubscriptions,
+  formatPlanPrice,
+} from '../helpers/subscriptionHelpers'
 import {
   addonCategories,
   addonSubtotalCents,
@@ -16,6 +19,7 @@ import {
   lineQty,
   mealsExact,
   readEditCart,
+  seedEditCart,
   totalQty,
   writeEditCart,
 } from '../helpers/subscriptionCart'
@@ -23,6 +27,9 @@ import {
 const SubscribeEditAddons = ({ user }) => {
   const { subscriptionId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const userId = user?.id
+  const [startFresh] = useState(() => location.state?.fresh === true)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
@@ -31,22 +38,17 @@ const SubscribeEditAddons = ({ user }) => {
   const [dialog, setDialog] = useState(null)
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       navigate(`/login?next=${encodeURIComponent(`/my-subscriptions/${subscriptionId}/addons`)}`, { replace: true })
     }
-  }, [user, navigate, subscriptionId])
+  }, [userId, navigate, subscriptionId])
 
   useEffect(() => {
-    if (!user?.id) return undefined
-    const stored = readEditCart(user.id, subscriptionId)
-    if (!stored.subscriptionId || !mealsExact(stored)) {
-      navigate(`/my-subscriptions/${subscriptionId}/meals`, { replace: true })
-      return undefined
-    }
-    setEditCart(stored)
-
+    if (!userId) return undefined
     let cancelled = false
+
     Promise.all([
+      fetchMySubscriptions(userId),
       fetch('/api/products').then((res) => {
         if (!res.ok) throw new Error('Could not load products')
         return res.json()
@@ -57,8 +59,38 @@ const SubscribeEditAddons = ({ user }) => {
       }),
       fetch('/api/tags').then((res) => res.json()).catch(() => []),
     ])
-      .then(([nextProducts, nextCategories, nextTags]) => {
+      .then(([subs, nextProducts, nextCategories, nextTags]) => {
         if (cancelled) return
+        const found = (subs || []).find((item) => item.id === subscriptionId)
+        if (!found) {
+          setDialog({
+            icon: 'alert',
+            title: 'Subscription not found',
+            body: 'That plan is not on this account.',
+            primaryLabel: 'My Subscriptions',
+            primaryTo: '/my-subscriptions',
+          })
+          setIsLoading(false)
+          return
+        }
+        if (!found.can_edit) {
+          setDialog({
+            icon: 'alert',
+            title: 'This plan is paused',
+            body: 'Active plans can change extras from My Subscriptions.',
+            primaryLabel: 'My Subscriptions',
+            primaryTo: '/my-subscriptions',
+          })
+          setIsLoading(false)
+          return
+        }
+        const stored = readEditCart(userId, subscriptionId)
+        const source = found.edit_cycle || found.cycle
+        const nextCart = startFresh || stored.subscriptionId !== subscriptionId || !mealsExact(stored)
+          ? seedEditCart(found, source)
+          : stored
+        writeEditCart(userId, subscriptionId, nextCart)
+        setEditCart(nextCart)
         setProducts(nextProducts || [])
         setCategories(addonCategories(nextCategories || []))
         setAllTags(nextTags || [])
@@ -80,12 +112,12 @@ const SubscribeEditAddons = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [user, subscriptionId, navigate])
+  }, [userId, subscriptionId, startFresh])
 
   const bump = (product, delta) => {
     setEditCart((prev) => {
       const next = bumpAddon(prev, product, delta)
-      writeEditCart(user.id, subscriptionId, next)
+      writeEditCart(userId, subscriptionId, next)
       return next
     })
   }
