@@ -15,6 +15,10 @@ import {
   writeSubCart,
 } from './helpers/subscriptionCart';
 
+function sameAuthUser(a, b) {
+  return (a?.id || null) === (b?.id || null);
+}
+
 const App = () => {
   const [cart, setCart] = useState([]);
   const [showCartPopup, setShowCartPopup] = useState(false);
@@ -120,7 +124,7 @@ const App = () => {
     // 2. Then get user session asynchronously and load user cart if logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user || null;
-      setUser(currentUser);
+      setUser((prev) => (sameAuthUser(prev, currentUser) ? prev : currentUser));
 
       if (isALaCarteSuccess()) {
         setCart([]);
@@ -148,10 +152,17 @@ const App = () => {
       }
     });
   
-    // 3. Listen to auth state changes (login/logout)
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Keep the signed-in user through token refresh. A brief null session
+    // used to blank My Plans and refetch into an empty list.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user || null;
-      setUser(currentUser);
+      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
+        if (currentUser) {
+          setUser((prev) => (sameAuthUser(prev, currentUser) ? prev : currentUser));
+        }
+        return;
+      }
+      setUser((prev) => (sameAuthUser(prev, currentUser) ? prev : currentUser));
 
       if (isALaCarteSuccess()) {
         setCart([]);

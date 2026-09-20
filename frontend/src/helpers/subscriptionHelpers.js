@@ -89,9 +89,11 @@ const fetchSubscriptionPlan = async (planId) => {
 };
 
 const fetchMySubscriptions = async (userId) => {
-  const res = await fetch(`/api/subscriptions/mine/${userId}`);
+  const res = await fetch(`/api/subscriptions/mine/${userId}`, { cache: 'no-store' });
   const data = await parseJson(res);
-  if (!Array.isArray(data)) return data;
+  if (!Array.isArray(data)) {
+    throw new Error('Subscription request failed');
+  }
   return data.map((row) => ({
     ...row,
     cycle: titleCaseCycle(row.cycle),

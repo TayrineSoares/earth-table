@@ -192,6 +192,14 @@ async function resumeSubscription(userId, subscriptionId) {
       if (!retried?.ok) {
         throw new SubscriptionError(402, `We still could not charge this week. Update your card before ${week.cutoff_label || 'the meal lock'} or email hello@earthtableco.ca.`);
       }
+      return {
+        ok: true,
+        status: 'active',
+        pending: false,
+        week,
+        charge,
+        charged: !!retried.charged,
+      };
     } catch (err) {
       if (err instanceof SubscriptionError) throw err;
       throw new SubscriptionError(402, 'We still could not charge this week. Try another card or email hello@earthtableco.ca.');

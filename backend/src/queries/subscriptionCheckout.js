@@ -989,10 +989,16 @@ async function completeCardSetup(session) {
     const sub = await getOwnedSubscription(userId, subId);
     if (sub.pause_reason === 'payment_failed') {
       const { retryFailedCharge } = require('./subscriptionCharge');
-      await retryFailedCharge({ ...sub, stripe_payment_method_id: pmId, stripe_customer_id: customerId || sub.stripe_customer_id });
+      const retry = await retryFailedCharge({
+        ...sub,
+        stripe_payment_method_id: pmId,
+        stripe_customer_id: customerId || sub.stripe_customer_id,
+      });
+      return { ok: true, retry };
     }
   } catch (err) {
     console.warn('[subscriptions] retry after card update failed:', err.message);
+    return { ok: true, retry: { ok: false, reason: err.message || 'retry_failed' } };
   }
 
   return { ok: true };
@@ -1006,8 +1012,8 @@ async function getCardSetupBySessionId(sessionId) {
     throw new SubscriptionError(404, 'Card update not found.');
   }
   if (session.status !== 'complete') return { ready: false };
-  await completeCardSetup(session);
-  return { ready: true };
+  const result = await completeCardSetup(session);
+  return { ready: true, retry: result?.retry || null };
 }
 
 module.exports = {

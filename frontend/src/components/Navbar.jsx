@@ -43,7 +43,10 @@ const Navbar = ({ user, onLogout, cart }) => {
   }, [showAccountMenu]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) {
+      setIsAdmin(false)
+      return
+    }
 
     const checkAdmin = async () => {
       try {
@@ -54,7 +57,7 @@ const Navbar = ({ user, onLogout, cart }) => {
       }
     };
     checkAdmin();
-  }, [user]);
+  }, [user?.id]);
 
   return (
     <nav>

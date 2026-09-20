@@ -151,6 +151,7 @@ function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = nu
     before_wednesday: now.getTime() < chargeAt.getTime(),
     charge_at: chargeAt.toISOString(),
     charge_label: formatCutoffLabel(chargeAt),
+    cadence_label: formatCadenceLabel(chargeAt),
   };
 }
 
@@ -209,6 +210,24 @@ function formatCutoffLabel(date) {
   }
   const dayPeriod = map.dayPeriod || '';
   return `${map.weekday}, ${map.month} ${map.day} at ${map.hour}:${map.minute} ${dayPeriod} ET`.replace(/\s+/g, ' ').trim();
+}
+
+/** Standing weekly rule, no calendar date: "Saturday at 7:55 PM ET". */
+function formatCadenceLabel(date) {
+  if (!date || !Number.isFinite(date.getTime())) return '';
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'long',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  const map = {};
+  for (const part of fmt.formatToParts(date)) {
+    if (part.type !== 'literal') map[part.type] = part.value;
+  }
+  const dayPeriod = map.dayPeriod || '';
+  return `${map.weekday} at ${map.hour}:${map.minute} ${dayPeriod} ET`.replace(/\s+/g, ' ').trim();
 }
 
 function formatDeliveryLabel(date) {
@@ -275,6 +294,7 @@ function getSignupDates(now = new Date(), settings = {}) {
     cutoff_at: cutoffAt.toISOString(),
     cutoff_passed: cutoffPassed,
     cutoff_label: formatCutoffLabel(cutoffAt),
+    cadence_label: formatCadenceLabel(cutoffAt),
     charge_at: charge.charge_at,
     charge_label: charge.charge_label,
     first_delivery_date: firstDeliveryYmd,
@@ -314,6 +334,27 @@ function parseYmdToronto(ymdStr) {
   const [year, month, day] = String(ymdStr || '').split('-').map(Number);
   if (!year || !month || !day) return null;
   return torontoDate(year, month, day, 12, 0);
+}
+
+/** Kitchen lock for the Sunday box: Thursday 5pm (or the test-lock clock) before that Sunday. */
+function lockAtForSunday(ymdStr, settings = {}) {
+  const sunday = parseYmdToronto(ymdStr);
+  if (!sunday) return null;
+  const p = torontoParts(sunday);
+  const thu = addCalendarDays(p.year, p.month, p.day, -3);
+  const thursday = torontoDate(thu.year, thu.month, thu.day, 12, 0);
+  const testRaw = settings && settings.test_lock_at;
+  const testAt = testRaw ? new Date(testRaw) : null;
+  if (testAt && Number.isFinite(testAt.getTime())) {
+    return thisPeriodOccurrence(testAt, thursday);
+  }
+  return torontoDate(thu.year, thu.month, thu.day, LOCK_HOUR, LOCK_MINUTE);
+}
+
+function lockPassedForSunday(ymdStr, now = new Date(), settings = {}) {
+  const at = lockAtForSunday(ymdStr, settings);
+  if (!at) return false;
+  return now.getTime() >= at.getTime();
 }
 
 /** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
@@ -420,6 +461,7 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
       cutoff_passed: false,
       cutoff_at: signup.cutoff_at,
       cutoff_label: signup.cutoff_label,
+      cadence_label: signup.cadence_label,
       delivery_date: sunday,
       delivery_label: sundayDate ? formatDeliveryLabel(sundayDate) : signup.first_delivery_label,
     };
@@ -430,6 +472,7 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
     cutoff_passed: signup.cutoff_passed,
     cutoff_at: signup.cutoff_at,
     cutoff_label: signup.cutoff_label,
+    cadence_label: signup.cadence_label,
     delivery_date: signup.first_delivery_date,
     delivery_label: signup.first_delivery_label,
   };
@@ -452,5 +495,6 @@ module.exports = {
   getTargetSundayYmd,
   nextOpenSunday,
   isYmdBlocked,
+  lockPassedForSunday,
   pauseNudgeWeek,
 };

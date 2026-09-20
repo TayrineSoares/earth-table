@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
@@ -23,7 +23,7 @@ import {
   sundayDatePart,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
-import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import { DELIVERY_WINDOW, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import {
   cardExpiryState,
   howItWorksCharge,
@@ -42,17 +42,13 @@ import '../styles/MySubscriptions.css'
 
 const HST_RATE = 0.13
 
+let mineCache = { userId: null, rows: [], plans: [] }
+
 const cardLabel = (card) => {
   if (!card?.last4) return 'No card on file'
   const brand = String(card.brand || 'card')
   const nice = brand.charAt(0).toUpperCase() + brand.slice(1)
   return `${nice} •••• ${card.last4}`
-}
-
-/** "Sunday, September 27, 2026" -> "Sunday, September 27" */
-function sundayLabel(ymd) {
-  const full = formatYmdLong(ymd)
-  return full.replace(/, \d{4}$/, '') || 'Sunday'
 }
 
 function shortWeekdayDate(ymd) {
@@ -62,6 +58,18 @@ function shortWeekdayDate(ymd) {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+  })
+}
+
+function subscribedSince(iso) {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'America/Toronto',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
   })
 }
 
@@ -83,10 +91,12 @@ function LineItem({ item, fallbackName, priceCents }) {
   )
 }
 
-function DetailRow({ label, children }) {
+function DetailRow({ label, emphasize, children }) {
   return (
     <div className="my-sub-row">
-      <span className="my-sub-row-label">{label}</span>
+      <span className={emphasize ? 'my-sub-row-label my-sub-row-label--next' : 'my-sub-row-label'}>
+        {label}
+      </span>
       <span className="my-sub-row-value">{children}</span>
     </div>
   )
@@ -94,9 +104,11 @@ function DetailRow({ label, children }) {
 
 const MySubscriptions = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [rows, setRows] = useState([])
-  const [plans, setPlans] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const userId = user?.id || null
+  const cached = mineCache.userId === userId ? mineCache : null
+  const [rows, setRows] = useState(() => cached?.rows || [])
+  const [plans, setPlans] = useState(() => cached?.plans || [])
+  const [isLoading, setIsLoading] = useState(() => !cached?.rows?.length)
   const [dialog, setDialog] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [notesEditingId, setNotesEditingId] = useState(null)
@@ -112,38 +124,46 @@ const MySubscriptions = ({ user }) => {
   const [quoteStatus, setQuoteStatus] = useState('idle')
   const [specialNote, setSpecialNote] = useState('')
 
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+
   const load = async () => {
-    if (!user?.id) {
-      setRows([])
-      setIsLoading(false)
-      return
-    }
-    const data = await fetchMySubscriptions(user.id)
-    setRows(Array.isArray(data) ? data : [])
+    if (!userId) return
+    const data = await fetchMySubscriptions(userId)
+    if (!Array.isArray(data)) return
+    mineCache = { ...mineCache, userId, rows: data }
+    setRows(data)
   }
 
   useEffect(() => {
-    let cancelled = false
-    setIsLoading(true)
-    if (!user?.id) {
-      setRows([])
-      setIsLoading(false)
-      return undefined
+    if (!userId) {
+      const timer = window.setTimeout(() => {
+        mineCache = { userId: null, rows: [], plans: [] }
+        setRows([])
+        setPlans([])
+        setIsLoading(false)
+      }, 400)
+      return () => window.clearTimeout(timer)
     }
+    let cancelled = false
+    const hasRows = mineCache.userId === userId && mineCache.rows.length > 0
+    if (!hasRows) setIsLoading(true)
     Promise.all([
-      fetchMySubscriptions(user.id),
-      fetchSubscriptionPlans({ activeOnly: true }).catch(() => []),
+      fetchMySubscriptions(userId),
+      fetchSubscriptionPlans({ activeOnly: true }).catch(() => mineCache.plans || []),
     ])
       .then(([data, nextPlans]) => {
-        if (!cancelled) {
-          setRows(Array.isArray(data) ? data : [])
-          setPlans(Array.isArray(nextPlans) ? nextPlans : [])
+        if (cancelled) return
+        if (Array.isArray(data)) {
+          const plansList = Array.isArray(nextPlans) ? nextPlans : []
+          mineCache = { userId, rows: data, plans: plansList }
+          setRows(data)
+          setPlans(plansList)
         }
       })
       .catch((err) => {
         console.error(err)
-        if (!cancelled) {
-          setRows([])
+        if (!cancelled && !rowsRef.current.length) {
           setDialog({
             icon: 'alert',
             title: 'Could not load subscriptions',
@@ -158,21 +178,37 @@ const MySubscriptions = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [userId])
 
+  const cardSession = searchParams.get('card_session')
   useEffect(() => {
-    const sessionId = searchParams.get('card_session')
-    if (!sessionId || !user?.id) return undefined
+    const sessionId = cardSession
+    if (!sessionId || !userId) return undefined
     let cancelled = false
     fetchCardSetup(sessionId)
       .then((result) => {
         if (cancelled || !result?.ready) return
         setSearchParams({}, { replace: true })
         return load().then(() => {
+          const retry = result.retry
+          let title = 'Card updated'
+          let body = 'This weekly plan will use the new card for the next charge.'
+          if (retry?.charged) {
+            title = 'You\'re back on'
+            body = 'We charged this box to your new card. The plan is active again.'
+          } else if (retry && retry.ok === false) {
+            title = 'Card saved, payment still failed'
+            body = retry.reason
+              ? `Your card is on file, but we still could not charge this week (${retry.reason}). Try another card or email hello@earthtableco.ca.`
+              : 'Your card is on file, but we still could not charge this week. Try another card or email hello@earthtableco.ca.'
+          } else if (retry?.ok) {
+            title = 'You\'re back on'
+            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Wednesday if this week\'s cutoff has already passed.'
+          }
           setDialog({
-            icon: 'mail',
-            title: 'Card updated',
-            body: 'This weekly plan will use the new card for the next charge.',
+            icon: retry && retry.ok === false ? 'alert' : 'mail',
+            title,
+            body,
             primaryLabel: 'OK',
           })
         })
@@ -191,7 +227,7 @@ const MySubscriptions = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [searchParams, user])
+  }, [cardSession, userId])
 
   useEffect(() => {
     const unlock = () => setSavingId(null)
@@ -360,6 +396,15 @@ const MySubscriptions = ({ user }) => {
           body: result.message,
           primaryLabel: 'OK',
         })
+      } else if (action === 'resume' && row.pause_reason === 'payment_failed') {
+        setDialog({
+          icon: 'mail',
+          title: 'You\'re back on',
+          body: result?.charged
+            ? 'We charged this box to the card on file. The plan is active again.'
+            : 'The plan is active again.',
+          primaryLabel: 'OK',
+        })
       }
     } catch (err) {
       console.error(err)
@@ -404,10 +449,12 @@ const MySubscriptions = ({ user }) => {
           body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will stay on file starting the following week — resume any time.`,
         },
       resume: {
-        title: 'Resume this plan?',
-        body: row.pending_status
-          ? `This Sunday still goes out, and the pending ${row.pending_status} will be cleared.`
-          : 'Your weekly plan will be active again and weekly charges resume.',
+        title: row.pause_reason === 'payment_failed' ? 'Charge this box now?' : 'Resume this plan?',
+        body: row.pause_reason === 'payment_failed'
+          ? 'We\'ll charge the unpaid box to the card on file. If that succeeds, the plan is active again.'
+          : row.pending_status
+            ? `This Sunday still goes out, and the pending ${row.pending_status} will be cleared.`
+            : 'Your weekly plan will be active again and weekly charges resume.',
       },
     }[action]
     setDialog({
@@ -535,7 +582,7 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
-  if (isLoading) {
+  if (isLoading && !rows.length) {
     return (
       <div
         className="loading-container"
@@ -545,12 +592,6 @@ const MySubscriptions = ({ user }) => {
       </div>
     )
   }
-
-  const nextBoxYmd = rows
-    .map((row) => row.cycle?.delivery_date || row.cycle?.pickup_date || row.week?.delivery_date)
-    .filter(Boolean)
-    .sort()[0]
-  const nextBoxLong = sundayLabel(nextBoxYmd)
 
   return (
     <div className="order-history-page my-subscriptions-page">
@@ -585,11 +626,6 @@ const MySubscriptions = ({ user }) => {
           <>
             <div className="my-sub-page-header">
               <h1 className="my-sub-h1">My plans</h1>
-              {nextBoxYmd ? (
-                <p className="my-sub-next-box">
-                  Your next box is <strong>{nextBoxLong}</strong>
-                </p>
-              ) : null}
             </div>
 
             {rows.map((row) => {
@@ -724,6 +760,11 @@ const MySubscriptions = ({ user }) => {
                       <p className="my-sub-card-price">
                         {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
                       </p>
+                      {row.created_at ? (
+                        <p className="my-sub-card-since">
+                          Subscribed since {subscribedSince(row.created_at)}
+                        </p>
+                      ) : null}
                       {paymentFailedPause ? (
                         <div className="my-sub-status-note my-sub-status-note--alert" role="status">
                           <p>{paymentFailedBanner()}</p>
@@ -742,7 +783,9 @@ const MySubscriptions = ({ user }) => {
                     </div>
 
                     <div className="my-sub-card-details">
-                      <DetailRow label="Next box">{shortWeekdayDate(ymd)}</DetailRow>
+                      <DetailRow label="Next box" emphasize>
+                        {row.status === 'active' ? shortWeekdayDate(ymd) : '—'}
+                      </DetailRow>
                       <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
                       <DetailRow label="Location">{location}</DetailRow>
                       <DetailRow label="Notes">

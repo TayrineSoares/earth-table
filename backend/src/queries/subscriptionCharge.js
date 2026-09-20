@@ -32,6 +32,7 @@ const {
   sundayLabelFromYmd,
   formatPickupSlot,
   formatTorontoStamp,
+  lockPassedForSunday,
 } = require('./subscriptionWeek');
 const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
 
@@ -345,7 +346,7 @@ async function chargePlanDelivery(sub, cycle, sunday) {
       cycle_id: cycle.id,
     },
   }, {
-    idempotencyKey: `sub-plan-${cycle.id}-${sunday}`,
+    idempotencyKey: `sub-plan-${cycle.id}-${sunday}-${sub.stripe_payment_method_id}`,
   });
   const patch = {
     plan_paid_cents: planCents,
@@ -931,24 +932,66 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
   return { ok: true, sunday, ...stats, failures };
 }
 
-async function retryFailedCharge(sub) {
-  if (!sub || sub.pause_reason !== 'payment_failed') return { ok: false };
-  const settings = await getSettings();
-  const sunday = getTargetSundayYmd(new Date(), settings || {});
-  const dates = getSignupDates(new Date(), settings || {});
-  if (dates.cutoff_passed) return { ok: false, reason: 'lock_passed' };
-  const cycle = await cycleForSunday(sub.id, sunday);
-  if (!cycle || Number(cycle.plan_paid_cents) > 0) return { ok: false };
-  await chargePlanDelivery(sub, cycle, sunday);
-  await supabase
+async function unpauseAfterPayment(subId) {
+  const { error } = await supabase
     .from('subscriptions')
     .update({
       status: 'active',
       pause_reason: null,
       resumed_at: new Date().toISOString(),
     })
-    .eq('id', sub.id);
-  return { ok: true };
+    .eq('id', subId);
+  if (error) throw error;
+}
+
+/** Soonest open unpaid cycle whose kitchen lock has not passed. */
+async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Date()) {
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .eq('status', 'open')
+    .order('delivery_date', { ascending: true });
+  if (error) throw error;
+  for (const row of data || []) {
+    if (Number(row.plan_paid_cents) > 0) continue;
+    if (lockPassedForSunday(row.delivery_date, now, settings)) continue;
+    return { cycle: await withCycleItems(row), sunday: row.delivery_date };
+  }
+  return null;
+}
+
+async function retryFailedCharge(sub) {
+  if (!sub) return { ok: false, reason: 'missing' };
+  if (sub.pause_reason !== 'payment_failed') {
+    return { ok: true, skipped: true, charged: false, reason: 'not_failed' };
+  }
+  const settings = await getSettings();
+  const now = new Date();
+  const dates = getSignupDates(now, settings || {});
+  const found = await findChargeableUnpaidCycle(sub.id, settings || {}, now);
+  if (!found) {
+    await unpauseAfterPayment(sub.id);
+    return { ok: true, charged: false, reason: 'no_open_unpaid' };
+  }
+  try {
+    const chargeResult = await chargePlanDelivery(sub, found.cycle, found.sunday);
+    await unpauseAfterPayment(sub.id);
+    try {
+      await sendWednesdayNotice(sub, found.cycle, found.sunday, dates, chargeResult);
+    } catch (err) {
+      console.warn('[subscriptions] retry receipt email failed:', err.message);
+    }
+    return {
+      ok: true,
+      charged: !!chargeResult.charged,
+      sunday: found.sunday,
+      amount: chargeResult.amount || 0,
+    };
+  } catch (err) {
+    console.warn('[subscriptions] retry after card update failed:', sub.id, err.message);
+    return { ok: false, charged: false, reason: err.message || 'card_declined', sunday: found.sunday };
+  }
 }
 
 module.exports = {
