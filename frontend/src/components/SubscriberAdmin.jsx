@@ -299,8 +299,13 @@ const SubscriberAdmin = () => {
   const viewedCycles = viewedActive
     .map((row) => cycleForRow(row, statusTab, weekTab))
     .filter(Boolean);
-  // Banner follows the selected Sunday's cycle rows, not the live/test clock.
-  const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
+  // Cycle status when that Sunday has boxes; otherwise the selected Sunday's cutoff.
+  const clockLocked = weekTab === 'next'
+    ? Boolean(meta.next_cutoff_passed)
+    : Boolean(meta.this_cutoff_passed ?? meta.cutoff_passed);
+  const weekLocked = viewedCycles.length > 0
+    ? viewedCycles.every(cycleIsClosed)
+    : clockLocked;
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);
   const printSunday = weekTab === 'next'
