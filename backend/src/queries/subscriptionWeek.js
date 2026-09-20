@@ -460,21 +460,26 @@ function pauseNudgeWeek(pausedAt, now = new Date()) {
   return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
 }
 
+function cycleIsClosed(cycle) {
+  const status = cycle?.status;
+  return status === 'locked' || status === 'skipped';
+}
+
 /**
  * Which Sunday a My Subscriptions edit should hit.
- * Before the current lock (including test_lock_at): this Sunday's open cycle.
- * After cutoff: next week's cycle (created on save if needed).
+ * Open cycle before cutoff: this Sunday.
+ * After the clock cutoff, or once this Sunday's cycle is already locked/skipped
+ * (admin force lock): next week's cycle (created on save if needed).
  *
  * Labels always come from getSignupDates so test_lock_at / test_charge_at stay
- * consistent. Never format cycle.cutoff_at here — that snapshot can be the
- * live Thursday even when settings override the lock.
+ * consistent, except after a force lock we use next Sunday's cutoff so copy
+ * does not say "edit until" a lock that already ran.
  */
 function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
   const signup = getSignupDates(now, settings);
   const stillThisWeek = Boolean(
     currentCycle &&
-    currentCycle.status !== 'locked' &&
-    currentCycle.status !== 'skipped' &&
+    currentCycle.status === 'open' &&
     !signup.cutoff_passed &&
     currentCycle.delivery_date === signup.first_delivery_date
   );
@@ -490,6 +495,25 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
       cadence_label: signup.cadence_label,
       delivery_date: sunday,
       delivery_label: sundayDate ? formatDeliveryLabel(sundayDate) : signup.first_delivery_label,
+    };
+  }
+
+  const forceLockedThisSunday = Boolean(
+    cycleIsClosed(currentCycle)
+    && !signup.cutoff_passed
+    && currentCycle.delivery_date === signup.first_delivery_date
+  );
+  if (forceLockedThisSunday) {
+    const nextSunday = nextOpenSunday(currentCycle.delivery_date);
+    const nextLock = lockAtForSunday(nextSunday, settings);
+    return {
+      applies_to: 'next_week',
+      cutoff_passed: true,
+      cutoff_at: nextLock ? nextLock.toISOString() : signup.cutoff_at,
+      cutoff_label: nextLock ? formatCutoffLabel(nextLock) : signup.cutoff_label,
+      cadence_label: nextLock ? formatCadenceLabel(nextLock) : signup.cadence_label,
+      delivery_date: nextSunday,
+      delivery_label: sundayLabelFromYmd(nextSunday),
     };
   }
 

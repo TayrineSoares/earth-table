@@ -15,6 +15,7 @@ const {
   sundayLabelFromYmd,
   nextOpenSunday,
   cutoffLabelForSunday,
+  cutoffAtForSunday,
 } = require('./subscriptionWeek');
 
 class SubscriptionError extends Error {
@@ -240,6 +241,21 @@ function currentCycleForWeek(cycles, week, fallback = null) {
   return fallback;
 }
 
+/** Prefer this cook Sunday's row so a force-locked cycle still informs getEditWeek. */
+function hintCycleForEdit(cycles, now, settings) {
+  const thisSunday = getSignupDates(now, settings || {}).first_delivery_date;
+  const thisCycle = (cycles || []).find((row) => String(row.delivery_date) === String(thisSunday));
+  return thisCycle || pickDisplayCycle(cycles, now);
+}
+
+function requireOpenCycle(cycle) {
+  if (cycle && cycle.status === 'open') return cycle;
+  throw new SubscriptionError(
+    400,
+    'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.'
+  );
+}
+
 const CYCLE_ITEM_SELECT = `
   id, cycle_id, product_id, quantity, unit_price_cents, kind,
   products ( id, slug, image_url, is_available )
@@ -353,7 +369,7 @@ async function listMine(userId) {
 
   return subs.map((sub) => {
     const list = bySub[sub.id] || [];
-    const hint = pickDisplayCycle(list, now);
+    const hint = hintCycleForEdit(list, now, settings || {});
     const week = getEditWeek(now, settings || {}, hint);
     const thisSunday = getSignupDates(now, settings || {}).job_sunday;
     const thisWeekCycle = (list || []).find((row) => (
@@ -486,7 +502,7 @@ async function listAll() {
     const thisCycle = list.find((row) => row.delivery_date === meta.this_sunday) || null;
     const nextCycle = list.find((row) => row.delivery_date === meta.next_sunday) || null;
     const display = thisCycle || nextCycle || pickDisplayCycle(list, now);
-    const week = getEditWeek(now, settings || {}, display);
+    const week = getEditWeek(now, settings || {}, hintCycleForEdit(list, now, settings || {}));
     return {
       ...sub,
       customer: byUser[sub.user_id] || null,
@@ -520,19 +536,34 @@ async function getOwnedSubscription(userId, subscriptionId) {
 
 async function getOrCreateEditableCycle(sub) {
   const settings = await getSettings();
+  const now = new Date();
   const { data: allCycles, error: allErr } = await supabase
     .from('subscription_cycles')
     .select('*')
     .eq('subscription_id', sub.id);
   if (allErr) throw allErr;
-  const current = pickDisplayCycle(allCycles || [], new Date());
-  const week = getEditWeek(new Date(), settings || {}, current);
+  const hint = hintCycleForEdit(allCycles || [], now, settings || {});
+  let week = getEditWeek(now, settings || {}, hint);
+  let existing = (allCycles || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
 
-  const existing = (allCycles || []).find((row) => row.delivery_date === week.delivery_date);
-  if (existing) return { cycle: existing, week };
+  // Force lock can close this Sunday before cutoff_at. Never mutate locked/skipped.
+  for (let i = 0; i < 4 && existing && existing.status !== 'open'; i += 1) {
+    const nextSunday = nextOpenSunday(existing.delivery_date);
+    week = {
+      ...week,
+      applies_to: 'next_week',
+      cutoff_passed: true,
+      delivery_date: nextSunday,
+      delivery_label: sundayLabelFromYmd(nextSunday),
+      cutoff_at: cutoffAtForSunday(nextSunday, settings) || week.cutoff_at,
+      cutoff_label: cutoffLabelForSunday(nextSunday, settings) || week.cutoff_label,
+    };
+    existing = (allCycles || []).find((row) => String(row.delivery_date) === String(nextSunday)) || null;
+  }
+  if (existing) return { cycle: requireOpenCycle(existing), week };
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
-  const src = current;
+  const src = pickDisplayCycle(allCycles || [], now);
   const { data: cycle, error } = await supabase
     .from('subscription_cycles')
     .insert({
@@ -750,6 +781,7 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
     throw new SubscriptionError(400, 'This subscription is not active.');
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
+  requireOpenCycle(cycle);
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
 
   const mealLines = qtyLines(meals);
@@ -826,6 +858,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     throw new SubscriptionError(400, 'This subscription is not active.');
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
+  requireOpenCycle(cycle);
 
   const specialNote = String(body.special_note || '').trim() || null;
 
