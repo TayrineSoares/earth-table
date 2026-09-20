@@ -7,9 +7,11 @@
  * next Thursday's lock.
  *
  * If admin set test_lock_at / test_charge_at, those instants replace
- * Thursday 5pm / Wednesday 9am. They keep recurring every 7 days (same
- * Toronto weekday and clock) until the overrides are cleared — signup,
- * lock-opened cycles, and job targeting all use this, not the live schedule.
+ * Thursday 5pm / Wednesday 9am. A stored instant that is still in the
+ * future is used as-is (do not pull next Saturday onto this Saturday).
+ * After it has passed, the same Toronto weekday and clock repeats every
+ * 7 days until the overrides are cleared. Signup, My Plans, emails, admin
+ * buttons, and cron jobs all read getSignupDates / getTargetSundayYmd.
  * Plan charge is Wednesday 9:00 AM America/Toronto (not Thursday).
  *
  * No date library — Intl + a small nudge loop to map Toronto wall-clock
@@ -122,6 +124,18 @@ function thisPeriodOccurrence(origin, now) {
   return torontoDate(shifted.year, shifted.month, shifted.day, o.hour, o.minute);
 }
 
+/**
+ * Admin test_lock_at / test_charge_at.
+ * If the stored instant is still ahead, keep it — mapping a future Saturday
+ * onto this week's Saturday made Run Thursday lock target this Sunday while
+ * the only open cycle was next Sunday. Once it has passed, same weekday/clock
+ * in the Toronto week that contains `now`.
+ */
+function overrideOccurrence(origin, now) {
+  if (now.getTime() < origin.getTime()) return origin;
+  return thisPeriodOccurrence(origin, now);
+}
+
 /** Wednesday 9:00 AM before a Sunday delivery (same calendar week). */
 function chargeAtForSunday(ymdStr) {
   const sunday = parseYmdToronto(ymdStr);
@@ -145,7 +159,7 @@ function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = nu
   const testAt = testRaw ? new Date(testRaw) : null;
   const testValid = testAt && Number.isFinite(testAt.getTime());
   const chargeAt = testValid
-    ? thisPeriodOccurrence(testAt, now)
+    ? overrideOccurrence(testAt, now)
     : chargeAtForSunday(deliveryDateYmd);
   return {
     before_wednesday: now.getTime() < chargeAt.getTime(),
@@ -259,9 +273,8 @@ function getSignupDates(now = new Date(), settings = {}) {
   let missedLockAt = null;
 
   if (testLockValid) {
-    // Same weekday/clock as the override, this Toronto week — never live Thursday
-    // while the override is still set.
-    const thisPeriodLock = thisPeriodOccurrence(testLockAt, now);
+    // Stored future lock stays on that calendar day; only recur after it passes.
+    const thisPeriodLock = overrideOccurrence(testLockAt, now);
     cutoffPassed = now.getTime() >= thisPeriodLock.getTime();
     cutoffAt = cutoffPassed ? plusWeeksToronto(thisPeriodLock, 1) : thisPeriodLock;
     if (cutoffPassed) missedLockAt = thisPeriodLock;
@@ -289,6 +302,9 @@ function getSignupDates(now = new Date(), settings = {}) {
   const deliveryParts = torontoParts(firstDeliveryAt);
   const firstDeliveryYmd = ymd(deliveryParts.year, deliveryParts.month, deliveryParts.day);
   const charge = getChargeDeadline(now, settings, firstDeliveryYmd);
+  const locked = lockedDeliveryDate;
+  // Jobs lock/charge this Sunday until cutoff, then the Sunday that just locked.
+  const jobSunday = cutoffPassed && locked ? locked : firstDeliveryYmd;
 
   return {
     cutoff_at: cutoffAt.toISOString(),
@@ -299,15 +315,14 @@ function getSignupDates(now = new Date(), settings = {}) {
     charge_label: charge.charge_label,
     first_delivery_date: firstDeliveryYmd,
     first_delivery_label: formatDeliveryLabel(firstDeliveryAt),
-    locked_delivery_date: lockedDeliveryDate,
+    locked_delivery_date: locked,
+    job_sunday: jobSunday,
   };
 }
 
-/** Sunday the weekly jobs should act on: this Sunday until lock, then the Sunday that just locked. */
+/** Sunday the weekly jobs should act on. Same value as getSignupDates().job_sunday. */
 function getTargetSundayYmd(now = new Date(), settings = {}) {
-  const dates = getSignupDates(now, settings);
-  if (dates.cutoff_passed && dates.locked_delivery_date) return dates.locked_delivery_date;
-  return dates.first_delivery_date;
+  return getSignupDates(now, settings).job_sunday;
 }
 
 /** Next cook Sunday after `ymdStr`, skipping Dec 25/26/31 and Jan 1. */
@@ -355,6 +370,12 @@ function lockPassedForSunday(ymdStr, now = new Date(), settings = {}) {
   const at = lockAtForSunday(ymdStr, settings);
   if (!at) return false;
   return now.getTime() >= at.getTime();
+}
+
+/** ISO cutoff for a given cook Sunday (test_lock_at weekday/clock when set). */
+function cutoffAtForSunday(ymdStr, settings = {}) {
+  const at = lockAtForSunday(ymdStr, settings);
+  return at ? at.toISOString() : null;
 }
 
 /** "10:00-13:00" -> "10:00 AM – 1:00 PM" */
@@ -495,6 +516,8 @@ module.exports = {
   getTargetSundayYmd,
   nextOpenSunday,
   isYmdBlocked,
+  lockAtForSunday,
+  cutoffAtForSunday,
   lockPassedForSunday,
   pauseNudgeWeek,
 };

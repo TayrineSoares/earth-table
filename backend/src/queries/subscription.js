@@ -12,7 +12,6 @@ const {
   getEditWeek,
   getChargeDeadline,
   torontoYmd,
-  getTargetSundayYmd,
   sundayLabelFromYmd,
   nextOpenSunday,
 } = require('./subscriptionWeek');
@@ -402,7 +401,7 @@ async function listMine(userId) {
 
 function adminWeekMeta(now = new Date(), settings = {}) {
   const dates = getSignupDates(now, settings || {});
-  const thisSunday = getTargetSundayYmd(now, settings || {});
+  const thisSunday = dates.job_sunday;
   const nextSunday = dates.cutoff_passed
     && dates.first_delivery_date
     && dates.first_delivery_date !== thisSunday

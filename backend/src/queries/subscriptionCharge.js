@@ -26,13 +26,13 @@ const {
 const {
   getSignupDates,
   getChargeDeadline,
-  getTargetSundayYmd,
   nextOpenSunday,
   isYmdBlocked,
   sundayLabelFromYmd,
   formatPickupSlot,
   formatTorontoStamp,
   lockPassedForSunday,
+  cutoffAtForSunday,
 } = require('./subscriptionWeek');
 const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
 
@@ -265,7 +265,6 @@ async function lastCycle(subscriptionId) {
 async function ensureCycle(sub, sunday, settings) {
   const existing = await cycleForSunday(sub.id, sunday);
   if (existing) return existing;
-  const dates = getSignupDates(new Date(), settings || {});
   const src = await lastCycle(sub.id);
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const delivery = src ? !!src.delivery : !!sub.delivery;
@@ -275,7 +274,7 @@ async function ensureCycle(sub, sunday, settings) {
       subscription_id: sub.id,
       plan_id: sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || Number(src?.plan_price_cents) || 0,
-      cutoff_at: dates.cutoff_at,
+      cutoff_at: cutoffAtForSunday(sunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
       delivery_date: sunday,
       pickup_date: delivery ? null : sunday,
       status: 'open',
@@ -469,7 +468,7 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
 async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
   const settings = await getSettings();
   const dates = getSignupDates(now, settings || {});
-  const sunday = getTargetSundayYmd(now, settings || {});
+  const sunday = dates.job_sunday;
   const charge = getChargeDeadline(now, settings || {}, sunday);
   if (!force && charge.before_wednesday) {
     return { ok: true, skipped: true, reason: 'before_charge', sunday };
@@ -752,8 +751,6 @@ async function applyPendingAfterLock(sub) {
 async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
   if (sub.status === 'cancelled' || sub.pending_status === 'cancelled') return;
   if (sub.status === 'paused' || sub.pending_status === 'paused') return;
-  // Same helper as signup: test_lock_at still set → next week's test lock, not live Thursday.
-  const dates = getSignupDates(new Date(), settings || {});
   const plan = await getPlanById(sub.plan_id);
   const delivery = !!lockedCycle.delivery;
   const { data: next, error } = await supabase
@@ -762,7 +759,7 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
       subscription_id: sub.id,
       plan_id: sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || Number(lockedCycle.plan_price_cents) || 0,
-      cutoff_at: dates.cutoff_at,
+      cutoff_at: cutoffAtForSunday(nextSunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
       delivery_date: nextSunday,
       pickup_date: delivery ? null : nextSunday,
       status: 'open',
@@ -801,7 +798,7 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
   if (!force && !dates.cutoff_passed) {
     return { ok: true, skipped: true, reason: 'before_lock' };
   }
-  const sunday = getTargetSundayYmd(now, settings || {});
+  const sunday = dates.job_sunday;
   const nextSunday = nextOpenSunday(sunday);
   const subs = await loadSubsForSunday();
   const boxLines = [];

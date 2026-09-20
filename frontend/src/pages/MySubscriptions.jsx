@@ -659,13 +659,15 @@ const MySubscriptions = ({ user }) => {
             const lockCadence = row.week?.cadence_label || MEAL_LOCK_BY
             const chargeCadence = row.charge?.cadence_label || CHARGE_DAY_TIME
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
+            // Same cycle the card is showing: after cutoff, meals/extras are next week's.
+            const showingNextWeek = row.week?.applies_to === 'next_week'
             const statusNote = paymentFailedPause
               ? ''
               : isPaused || pending === 'paused'
                 ? pausedBanner(row.charge?.charge_label)
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-                  : row.week?.applies_to === 'next_week'
+                  : showingNextWeek
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                     : row.meals_need_update
                       ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
@@ -703,7 +705,9 @@ const MySubscriptions = ({ user }) => {
               <section key={row.id} className="my-sub-plan">
                 <div className="my-sub-meals">
                   <div className="my-sub-section-head">
-                    <p className="my-sub-section-label">This week&apos;s meals</p>
+                    <p className="my-sub-section-label">
+                      {showingNextWeek ? 'Next week\'s meals' : 'This week\'s meals'}
+                    </p>
                     <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
                   </div>
                   {meals.length ? (
@@ -713,14 +717,18 @@ const MySubscriptions = ({ user }) => {
                       ))}
                     </ul>
                   ) : (
-                    <p className="my-sub-empty-extras">No meals selected this week.</p>
+                    <p className="my-sub-empty-extras">
+                      {showingNextWeek ? 'No meals selected next week.' : 'No meals selected this week.'}
+                    </p>
                   )}
 
                   <div className="my-sub-section-head my-sub-section-head--extras">
-                    <p className="my-sub-section-label">This week&apos;s extras</p>
+                    <p className="my-sub-section-label">
+                      {showingNextWeek ? 'Next week\'s extras' : 'This week\'s extras'}
+                    </p>
                     {canEdit ? (
                       <Link className="my-sub-section-link" to={`/my-subscriptions/${row.id}/addons`}>
-                        Add extras
+                        Edit extras
                       </Link>
                     ) : null}
                   </div>
@@ -737,7 +745,7 @@ const MySubscriptions = ({ user }) => {
                         ))}
                       </ul>
                       <div className="my-sub-extras-summary">
-                        <span>Extras this week</span>
+                        <span>{showingNextWeek ? 'Extras next week' : 'Extras this week'}</span>
                         <span>{formatPlanPrice(extrasCents)} · charged {lockCadence}</span>
                       </div>
                       {extrasDueCents !== extrasCents ? (
@@ -750,7 +758,9 @@ const MySubscriptions = ({ user }) => {
                       ) : null}
                     </>
                   ) : (
-                    <p className="my-sub-empty-extras">No extras this week.</p>
+                    <p className="my-sub-empty-extras">
+                      {showingNextWeek ? 'No extras next week.' : 'No extras this week.'}
+                    </p>
                   )}
                 </div>
 
@@ -841,7 +851,7 @@ const MySubscriptions = ({ user }) => {
                           state={{ fresh: true }}
                           className="my-sub-primary"
                         >
-                          Edit meals
+                          Edit plan's items
                         </Link>
                       ) : (
                         <button
