@@ -7,7 +7,7 @@
 const supabase = require('../../supabase/db');
 const { createOrderWithProducts } = require('./order');
 const { getUserByAuthId } = require('./user');
-const { getSettings, getPlanById } = require('./subscription');
+const { getSettings, getPlanById, copyPlanMealsIfEmpty } = require('./subscription');
 const {
   renderSubscriptionManageEmail,
   renderOwnerThursdayLockEmail,
@@ -262,9 +262,25 @@ async function lastCycle(subscriptionId) {
   return withCycleItems(data);
 }
 
+async function previousCycle(subscriptionId, beforeYmd) {
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .lt('delivery_date', beforeYmd)
+    .order('delivery_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return withCycleItems(data);
+}
+
 async function ensureCycle(sub, sunday, settings) {
   const existing = await cycleForSunday(sub.id, sunday);
-  if (existing) return existing;
+  if (existing) {
+    const src = await previousCycle(sub.id, existing.delivery_date);
+    return src ? copyPlanMealsIfEmpty(existing, src) : existing;
+  }
   const src = await lastCycle(sub.id);
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const delivery = src ? !!src.delivery : !!sub.delivery;
@@ -290,7 +306,11 @@ async function ensureCycle(sub, sunday, settings) {
     .select('*')
     .single();
   if (error) {
-    if (error.code === '23505') return cycleForSunday(sub.id, sunday);
+    if (error.code === '23505') {
+      const existing = await cycleForSunday(sub.id, sunday);
+      const from = await previousCycle(sub.id, sunday);
+      return from && existing ? copyPlanMealsIfEmpty(existing, from) : existing;
+    }
     throw error;
   }
   const meals = (src?.subscription_cycle_items || []).filter((item) => item.kind === 'plan');
@@ -775,7 +795,11 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
     .select('id')
     .single();
   if (error) {
-    if (error.code === '23505') return;
+    if (error.code === '23505') {
+      const existing = await cycleForSunday(sub.id, nextSunday);
+      if (existing) await copyPlanMealsIfEmpty(existing, lockedCycle);
+      return;
+    }
     throw error;
   }
   const meals = (await cycleItemsByCycleId(lockedCycle.id)).filter((item) => item.kind === 'plan');

@@ -926,10 +926,18 @@ const MySubscriptions = ({ user }) => {
                 showLockedBadge={showingFollowingWeek}
               />
             )
+            const followingUsesRepeat = Boolean(
+              showingFollowingWeek
+              && lockedLines
+              && !meals.length
+              && lockedLines.meals.length
+            )
+            const followingMeals = followingUsesRepeat ? lockedLines.meals : meals
+            const followingMealQty = followingUsesRepeat ? lockedLines.mealQty : mealQty
             const followingWeekItems = (
               <CycleItems
-                meals={meals}
-                mealQty={mealQty}
+                meals={followingMeals}
+                mealQty={followingMealQty}
                 mealCount={mealCount}
                 addons={addons}
                 extrasCents={extrasCents}
@@ -974,7 +982,7 @@ const MySubscriptions = ({ user }) => {
                           {followingWeekLabel}
                         </button>
                         <div className="my-sub-section-head-actions">
-                          <p className="my-sub-section-count">{mealQty} of {mealCount}</p>
+                          <p className="my-sub-section-count">{followingMealQty} of {mealCount}</p>
                         </div>
                       </div>
                       <div

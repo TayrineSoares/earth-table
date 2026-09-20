@@ -312,6 +312,63 @@ async function attachCycleItems(cycles) {
   }));
 }
 
+function planMealItems(cycle) {
+  return (cycle?.subscription_cycle_items || []).filter((item) => item.kind === 'plan');
+}
+
+function previousCycleFromList(cycles, dest) {
+  if (!dest?.id) return null;
+  return [...(cycles || [])]
+    .filter((row) => (
+      row
+      && row.id
+      && String(row.id) !== String(dest.id)
+      && String(row.delivery_date || '') < String(dest.delivery_date || '')
+    ))
+    .sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
+}
+
+/** Open following-week boxes start as last week's meals. Add-ons never carry. */
+async function copyPlanMealsIfEmpty(dest, src) {
+  if (!dest?.id || !src?.id || String(dest.id) === String(src.id) || dest.status !== 'open') {
+    return dest;
+  }
+  let destMeals = planMealItems(dest);
+  if (!destMeals.length) {
+    const { data, error } = await supabase
+      .from('subscription_cycle_items')
+      .select('id, cycle_id, product_id, quantity, unit_price_cents, kind')
+      .eq('cycle_id', dest.id)
+      .eq('kind', 'plan');
+    if (error) throw error;
+    destMeals = (data || []).filter((item) => String(item.cycle_id) === String(dest.id));
+  }
+  if (destMeals.length) {
+    if (planMealItems(dest).length) return dest;
+    const extras = (dest.subscription_cycle_items || []).filter((item) => item.kind !== 'plan');
+    return { ...dest, subscription_cycle_items: [...destMeals, ...extras] };
+  }
+  const { data: srcMeals, error: srcErr } = await supabase
+    .from('subscription_cycle_items')
+    .select('product_id, quantity, unit_price_cents, kind')
+    .eq('cycle_id', src.id)
+    .eq('kind', 'plan');
+  if (srcErr) throw srcErr;
+  if (!srcMeals || !srcMeals.length) return dest;
+  const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
+    srcMeals.map((item) => ({
+      cycle_id: dest.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price_cents: item.unit_price_cents,
+      kind: 'plan',
+    }))
+  );
+  if (copyErr) throw copyErr;
+  const attached = await attachCycleItems([dest]);
+  return attached[0] || dest;
+}
+
 async function cardsByPaymentMethodId(ids) {
   const unique = [...new Set((ids || []).filter(Boolean))];
   const map = {};
@@ -390,7 +447,7 @@ async function listMine(userId) {
     bySub[cycle.subscription_id].push(cycle);
   }
 
-  return subs.map((sub) => {
+  return Promise.all(subs.map(async (sub) => {
     const list = bySub[sub.id] || [];
     const open = earliestOpenCycle(list);
     const hint = open || hintCycleForEdit(list, now, settings || {});
@@ -402,7 +459,11 @@ async function listMine(userId) {
     )) || null;
     // Meals/extras follow the editable week. After cutoff, this_week_date is the
     // locked Sunday still in motion (Next box), when that cycle exists.
-    const current = open || currentCycleForWeek(list, week, null);
+    let current = open || currentCycleForWeek(list, week, null);
+    const mealSource = previousCycleFromList(list, current) || thisWeekCycle;
+    if (current?.id && mealSource?.id) {
+      current = await copyPlanMealsIfEmpty(current, mealSource);
+    }
     const shown = current || {
       delivery_date: week.delivery_date,
       pickup_date: sub.delivery ? null : week.delivery_date,
@@ -456,7 +517,7 @@ async function listMine(userId) {
       first_delivery_date: showFirstDelivery ? earliestYmd : null,
       first_delivery_label: showFirstDelivery ? sundayLabelFromYmd(earliestYmd) : '',
     };
-  });
+  }));
 }
 
 function adminWeekMeta(now = new Date(), settings = {}) {
@@ -584,7 +645,10 @@ async function getOrCreateEditableCycle(sub) {
   const hint = hintCycleForEdit(allCycles || [], now, settings || {});
   const open = earliestOpenCycle(allCycles || []);
   let week = getEditWeek(now, settings || {}, open || hint);
-  if (open) return { cycle: open, week };
+  if (open) {
+    const src = previousCycleFromList(allCycles || [], open) || pickDisplayCycle(allCycles || [], now);
+    return { cycle: await copyPlanMealsIfEmpty(open, src), week };
+  }
 
   let existing = (allCycles || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
 
@@ -602,7 +666,11 @@ async function getOrCreateEditableCycle(sub) {
     };
     existing = (allCycles || []).find((row) => String(row.delivery_date) === String(nextSunday)) || null;
   }
-  if (existing) return { cycle: requireOpenCycle(existing), week };
+  if (existing) {
+    const openExisting = requireOpenCycle(existing);
+    const src = previousCycleFromList(allCycles || [], openExisting) || pickDisplayCycle(allCycles || [], now);
+    return { cycle: await copyPlanMealsIfEmpty(openExisting, src), week };
+  }
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const src = pickDisplayCycle(allCycles || [], now);
@@ -1087,4 +1155,5 @@ module.exports = {
   updateOpenCycleFulfillment,
   getOwnedSubscription,
   runCardExpiryNotices,
+  copyPlanMealsIfEmpty,
 };

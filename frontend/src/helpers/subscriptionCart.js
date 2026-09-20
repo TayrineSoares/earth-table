@@ -138,13 +138,15 @@ function clearEditCart(userId, subscriptionId) {
 /** Start an edit draft from the cycle they can still change. */
 function seedEditCart(sub, cycle) {
   const plan = sub?.subscription_plans || {};
+  const fromCycle = seedLinesFromCycle(cycle, 'plan');
+  const fromLastBox = seedLinesFromCycle(sub?.this_week_cycle, 'plan');
   return {
     subscriptionId: sub.id,
     planId: sub.plan_id,
     planName: plan.name || '',
     mealCount: Number(plan.meal_count) || 0,
     priceCents: Number(plan.price_cents) || 0,
-    meals: seedLinesFromCycle(cycle, 'plan'),
+    meals: fromCycle.length ? fromCycle : fromLastBox,
     addons: seedLinesFromCycle(cycle, 'addon'),
   };
 }
