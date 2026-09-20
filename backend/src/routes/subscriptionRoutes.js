@@ -64,6 +64,7 @@ router.get('/plans/:id', async (req, res) => {
 
 router.get('/mine/:userId', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const rows = await listMine(req.params.userId);
     res.json(rows);
   } catch (err) {

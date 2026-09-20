@@ -31,6 +31,7 @@ import {
   howItWorksPause,
   CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
+  everyWeekBy,
   pausedBanner,
   paymentFailedBanner,
   resumeByCharge,
@@ -630,6 +631,7 @@ const MySubscriptions = ({ user }) => {
 
             {rows.map((row) => {
             const plan = row.subscription_plans || {}
+            // Same cycle as meals, extras, next box, and fulfillment.
             const cycle = row.cycle || {}
             const items = Array.isArray(cycle.subscription_cycle_items)
               ? cycle.subscription_cycle_items
@@ -647,13 +649,15 @@ const MySubscriptions = ({ user }) => {
               ? applyPromoPercent(extrasCents, extrasPromoPct)
               : extrasCents
             const isDelivery = !!cycle.delivery
-            const ymd = cycle.delivery_date || cycle.pickup_date || row.week?.delivery_date
+            const ymd = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
             const paymentFailedPause = isPaused && row.pause_reason === 'payment_failed'
             const pending = row.pending_status
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
+            const lockCadence = row.week?.cadence_label || MEAL_LOCK_BY
+            const chargeCadence = row.charge?.cadence_label || CHARGE_DAY_TIME
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
             const statusNote = paymentFailedPause
               ? ''
@@ -691,8 +695,8 @@ const MySubscriptions = ({ user }) => {
             const windowLabel = isDelivery
               ? DELIVERY_WINDOW
               : (formatPickupSlot(cycle.pickup_time_slot) || '—')
-            const mealsBy = row.week?.cutoff_label || MEAL_LOCK_BY
-            const pauseBy = row.charge?.charge_label || CHARGE_DAY_TIME
+            const mealsBy = everyWeekBy(lockCadence)
+            const pauseBy = everyWeekBy(chargeCadence)
             const expiry = cardExpiryState(row.card)
 
             return (
@@ -734,7 +738,7 @@ const MySubscriptions = ({ user }) => {
                       </ul>
                       <div className="my-sub-extras-summary">
                         <span>Extras this week</span>
-                        <span>{formatPlanPrice(extrasCents)} · charged {mealsBy}</span>
+                        <span>{formatPlanPrice(extrasCents)} · charged {lockCadence}</span>
                       </div>
                       {extrasDueCents !== extrasCents ? (
                         <div className="my-sub-extras-summary">

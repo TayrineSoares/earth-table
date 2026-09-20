@@ -222,8 +222,22 @@ function pickDisplayCycle(cycles, now = new Date()) {
   const upcoming = rows
     .filter((row) => row.delivery_date && String(row.delivery_date) >= today)
     .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)));
+  // Skip already-locked / skipped weeks when a later open box exists.
+  // Otherwise Sep 20 locked beats Sep 27 open just because it is sooner.
+  const editable = upcoming.filter((row) => row.status !== 'locked' && row.status !== 'skipped');
+  if (editable.length) return editable[0];
   if (upcoming.length) return upcoming[0];
   return rows.sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
+}
+
+/** The week My Plans should show: getEditWeek's Sunday, not the locked leftover. */
+function currentCycleForWeek(cycles, week, fallback = null) {
+  const sunday = week?.delivery_date;
+  if (sunday) {
+    const match = (cycles || []).find((row) => String(row.delivery_date) === String(sunday));
+    if (match) return match;
+  }
+  return fallback;
 }
 
 const CYCLE_ITEM_SELECT = `
@@ -339,11 +353,22 @@ async function listMine(userId) {
 
   return subs.map((sub) => {
     const list = bySub[sub.id] || [];
-    const display = pickDisplayCycle(list, now);
-    const week = getEditWeek(now, settings || {}, display);
-    const editCycle = list.find((row) => row.delivery_date === week.delivery_date) || null;
+    const hint = pickDisplayCycle(list, now);
+    const week = getEditWeek(now, settings || {}, hint);
+    // One cycle for meals, extras, next box, and fulfillment — same Sunday as week.
+    const current = currentCycleForWeek(list, week, null);
+    const shown = current || {
+      delivery_date: week.delivery_date,
+      pickup_date: sub.delivery ? null : week.delivery_date,
+      delivery: !!sub.delivery,
+      delivery_postal_code: sub.delivery_postal_code,
+      pickup_time_slot: sub.pickup_time_slot,
+      special_note: sub.special_note,
+      promo_percent: 0,
+      subscription_cycle_items: [],
+    };
     const charge = getChargeDeadline(now, settings || {}, week.delivery_date);
-    const planMeals = ((editCycle || display || {}).subscription_cycle_items || [])
+    const planMeals = (shown.subscription_cycle_items || [])
       .filter((item) => item.kind === 'plan')
       .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
@@ -351,7 +376,6 @@ async function listMine(userId) {
       .map((row) => row.delivery_date)
       .filter(Boolean)
       .sort()[0] || null;
-    const shown = editCycle || display;
     const storedPct = Number(shown?.promo_percent) || 0;
     const firstWeekPct = Number(sub.first_promo_percent) || 0;
     const addonPromoPercent = storedPct > 0
@@ -362,8 +386,8 @@ async function listMine(userId) {
     return {
       ...publicSub,
       card: cardMap[sub.stripe_payment_method_id] || null,
-      cycle: display,
-      edit_cycle: editCycle,
+      cycle: shown,
+      edit_cycle: current,
       week,
       charge,
       can_edit: sub.status === 'active',

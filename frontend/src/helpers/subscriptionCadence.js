@@ -47,6 +47,14 @@ export function resumeByCharge(chargeLabel) {
   return `Resume by ${chargeLabel || PAUSE_CANCEL_BY} for that week's box.`
 }
 
+/** Standing weekly deadline: "every week by Saturday at 7:55 PM ET". */
+export function everyWeekBy(cadenceLabel, fallback) {
+  const label = String(cadenceLabel || fallback || '').trim()
+  if (!label) return ''
+  if (/^every week by /i.test(label)) return label
+  return `every week by ${label}`
+}
+
 export function pausedBanner(chargeLabel) {
   return `This plan is paused. Your last meals and card stay on file. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
