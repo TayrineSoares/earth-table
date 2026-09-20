@@ -213,6 +213,7 @@ alter table public.users
   add column if not exists email_prefs jsonb not null default '{"wednesday_reminder":true,"pause_reminder":true}'::jsonb;
 
 create table if not exists public.subscription_email_debounce (
+  -- Unused: box-updated mail was replaced by in-app confirmation. Rows may still exist.
   subscription_id uuid primary key references public.subscriptions (id) on delete cascade,
   kind text not null default 'box_updated',
   send_at timestamptz not null,

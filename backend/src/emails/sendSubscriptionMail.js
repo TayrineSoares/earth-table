@@ -1,5 +1,4 @@
 const { sendEmail, ownerNotificationEmails } = require('../utils/email');
-const { CADENCE } = require('./subscriptionEmailSpec');
 
 function emailPrefOn(user, key) {
   const prefs = user?.email_prefs && typeof user.email_prefs === 'object' ? user.email_prefs : {};
@@ -57,10 +56,6 @@ function declineReasonFrom(err) {
   return err?.decline_code || err?.code || err?.raw?.decline_code || err?.raw?.code || 'card_declined';
 }
 
-function debounceMs() {
-  return CADENCE.UPDATE_DEBOUNCE_MS;
-}
-
 module.exports = {
   emailPrefOn,
   monitoredFrom,
@@ -68,5 +63,4 @@ module.exports = {
   sendOwnerEmail,
   cardForPaymentMethod,
   declineReasonFrom,
-  debounceMs,
 };

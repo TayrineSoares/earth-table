@@ -102,7 +102,7 @@ const SubscribeEditCart = ({ user }) => {
         editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
       )
       clearEditCart(user.id, subscriptionId)
-      navigate('/my-subscriptions')
+      navigate('/my-subscriptions', { state: { saved: true } })
     } catch (err) {
       console.error(err)
       setSaving(false)

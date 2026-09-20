@@ -647,101 +647,6 @@ async function getOrCreateEditableCycle(sub) {
   return { cycle, week };
 }
 
-async function loadCycleItems(cycleId) {
-  const { data, error } = await supabase
-    .from('subscription_cycle_items')
-    .select('id, product_id, quantity, unit_price_cents, kind, products ( slug )')
-    .eq('cycle_id', cycleId);
-  if (error) throw error;
-  return data || [];
-}
-
-async function sendBoxUpdatedNow(userId, sub, cycle, week) {
-  const { getUserByAuthId } = require('./user');
-  const { renderSubscriptionUpdatedEmail } = require('../utils/emailTemplates');
-  const { sendCustomerEmail } = require('../emails/sendSubscriptionMail');
-  const user = await getUserByAuthId(userId);
-  const email = user?.email;
-  if (!email) return;
-  const items = await loadCycleItems(cycle.id);
-  const meals = items.filter((item) => item.kind === 'plan').map((item) => ({
-    slug: item.products?.slug,
-    quantity: item.quantity,
-  }));
-  const addons = items.filter((item) => item.kind === 'addon').map((item) => ({
-    slug: item.products?.slug,
-    quantity: item.quantity,
-  }));
-  const msg = renderSubscriptionUpdatedEmail({
-    firstName: user.first_name,
-    mealCount: sub.subscription_plans?.meal_count,
-    delivery: !!cycle.delivery,
-    deliveryLabel: week.delivery_label,
-    pickupSlot: cycle.pickup_time_slot,
-    cutoffLabel: week.cutoff_label,
-    meals,
-    addons,
-    subscriptionId: sub.id,
-    notes: cycle.special_note,
-    appliesTo: week.applies_to,
-  });
-  await sendCustomerEmail({ to: email, msg });
-}
-
-async function notifyCustomerUpdate(userId, sub, cycle, week) {
-  const { CADENCE } = require('../emails/subscriptionEmailSpec');
-  const sendAt = new Date(Date.now() + CADENCE.UPDATE_DEBOUNCE_MS).toISOString();
-  const { error } = await supabase.from('subscription_email_debounce').upsert({
-    subscription_id: sub.id,
-    kind: 'box_updated',
-    send_at: sendAt,
-    payload: { userId, cycleId: cycle.id },
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'subscription_id' });
-  if (error) {
-    console.warn('[subscriptions] debounce queue failed:', error.message);
-    await sendBoxUpdatedNow(userId, sub, cycle, week);
-  }
-}
-
-async function flushDebouncedEmails(now = new Date()) {
-  const { data, error } = await supabase
-    .from('subscription_email_debounce')
-    .select('*')
-    .lte('send_at', now.toISOString());
-  if (error) {
-    console.warn('[subscriptions] debounce flush failed:', error.message);
-    return { ok: false, error: error.message };
-  }
-  let sent = 0;
-  for (const row of data || []) {
-    const { data: taken } = await supabase
-      .from('subscription_email_debounce')
-      .delete()
-      .eq('subscription_id', row.subscription_id)
-      .eq('updated_at', row.updated_at)
-      .select('payload')
-      .maybeSingle();
-    if (!taken) continue;
-    try {
-      const sub = await getOwnedSubscription(row.payload.userId, row.subscription_id);
-      const settings = await getSettings();
-      const { data: cycle } = await supabase
-        .from('subscription_cycles')
-        .select('*')
-        .eq('id', row.payload.cycleId)
-        .maybeSingle();
-      if (!cycle) continue;
-      const week = getEditWeek(now, settings || {}, cycle);
-      await sendBoxUpdatedNow(row.payload.userId, sub, cycle, week);
-      sent += 1;
-    } catch (err) {
-      console.warn('[subscriptions] debounce send failed:', err.message);
-    }
-  }
-  return { ok: true, sent };
-}
-
 /** Monday 9:00 AM ET cron: email once if the saved card expires within CARD_EXPIRY_DAYS. */
 async function runCardExpiryNotices(now = new Date()) {
   const { getUserByAuthId } = require('./user');
@@ -850,12 +755,6 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
   const resolvedAddons = addonLines.length ? await resolveLines(addonLines, { kind: 'addon' }) : [];
   await replaceCycleKindItems(cycle.id, 'addon', resolvedAddons);
 
-  try {
-    await notifyCustomerUpdate(userId, sub, cycle, week);
-  } catch (err) {
-    console.warn('[subscriptions] update email failed:', err.message);
-  }
-
   return { ok: true, week };
 }
 
@@ -919,11 +818,6 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
       .eq('id', cycle.id);
     if (cycleErr) throw cycleErr;
     const updated = { ...cycle, special_note: specialNote };
-    try {
-      await notifyCustomerUpdate(userId, sub, updated, week);
-    } catch (err) {
-      console.warn('[subscriptions] notes update email failed:', err.message);
-    }
     return { ok: true, cycle: updated };
   }
 
@@ -1192,6 +1086,5 @@ module.exports = {
   replaceOpenCyclePlanAndAddons,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
-  flushDebouncedEmails,
   runCardExpiryNotices,
 };
