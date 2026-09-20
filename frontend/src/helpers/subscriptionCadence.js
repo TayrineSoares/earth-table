@@ -50,12 +50,14 @@ export function subscriptionDetailsItems({
   ].filter(Boolean)
 }
 
-export function howItWorksFlexible(chargeLabel, cutoffLabel) {
-  return `Update your meals and add-ons up to ${cutoffLabel || MEAL_LOCK_BY}. Need to pause or skip a week? Let us know by ${chargeLabel || PAUSE_CANCEL_BY}. No long-term commitment.`
+/** Marketing page: standing weekly cadence, not this week's calendar dates. */
+export function howItWorksFlexible() {
+  return 'Update your meals and add-ons every week by Thursday at 5:00 PM ET. Need to pause or skip a week? Let us know by Wednesday morning. No long-term commitment.'
 }
 
-export function orderByCutoff(cutoffLabel) {
-  return `Order by ${cutoffLabel || MEAL_LOCK_BY}. Delivered the following Sunday.`
+/** Marketing page badge: standing weekly cadence, not this week's calendar date. */
+export function orderByCutoff() {
+  return 'Order by Thursday 5:00 PM ET. Delivered the following Sunday.'
 }
 
 export function addonsBilledAt(cutoffLabel, { firstWeekRate = false } = {}) {

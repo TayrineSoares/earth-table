@@ -29,13 +29,12 @@ const HOW_IT_WORKS = [
     title: 'Delivery or pickup',
     body: 'Every Sunday: Delivered to your door, or ready for pickup at our location.',
   },
+  {
+    icon: RefreshCw,
+    title: 'Change it up',
+    body: howItWorksFlexible(),
+  },
 ]
-
-const changeItUpStep = (dates) => ({
-  icon: RefreshCw,
-  title: 'Change it up',
-  body: howItWorksFlexible(dates?.charge_label, dates?.cutoff_label),
-})
 
 const SubscribeAndSave = () => {
   const location = useLocation()
@@ -83,8 +82,7 @@ const SubscribeAndSave = () => {
   }, [isLoading, location.hash])
 
   const savePercent = dates && dates.save_up_to_percent
-  const howSteps = [...HOW_IT_WORKS, changeItUpStep(dates)]
-  const cutoffPill = orderByCutoff(dates?.cutoff_label)
+  const cutoffPill = orderByCutoff()
 
   const sortedPlans = [...plans].sort((a, b) => {
     const aMain = a.meal_count >= 10 ? 0 : 1
@@ -132,7 +130,7 @@ const SubscribeAndSave = () => {
                 <h2 id="subscribe-how-heading">How it works</h2>
               </div>
               <div className="subscribe-how-steps">
-                {howSteps.map((step) => {
+                {HOW_IT_WORKS.map((step) => {
                   const Icon = step.icon
                   return (
                     <article className="subscribe-how-step" key={step.title}>
