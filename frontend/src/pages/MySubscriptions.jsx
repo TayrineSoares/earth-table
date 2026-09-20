@@ -27,9 +27,7 @@ import {
 import { DELIVERY_WINDOW, PICKUP_ADDRESS } from '../helpers/orderHelpers'
 import {
   cardExpiryState,
-  howItWorksCharge,
-  howItWorksMeals,
-  howItWorksPause,
+  subscriptionDetailsItems,
   CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
   everyWeekBy,
@@ -689,20 +687,15 @@ const MySubscriptions = ({ user }) => {
   }
 
   const openPlanDetails = (row) => {
-    const chargeLabel = row?.charge?.charge_label
-    const cutoffLabel = row?.week?.cutoff_label
     setDialog({
       icon: 'alert',
       title: 'Subscription details',
       asList: true,
-      body: [
-        'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        howItWorksCharge(chargeLabel, cutoffLabel),
-        'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        howItWorksPause(chargeLabel),
-        'Add-ons are for this week only. They do not repeat unless you add them again.',
-        howItWorksMeals(cutoffLabel),
-      ],
+      body: subscriptionDetailsItems({
+        chargeLabel: row?.charge?.charge_label,
+        cutoffLabel: row?.week?.cutoff_label,
+        firstDeliveryLabel: row?.first_delivery_label,
+      }),
       hint: (
         <>
           All subscription information, rules, and terms are in the{' '}

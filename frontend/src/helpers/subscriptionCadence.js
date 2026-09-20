@@ -28,6 +28,28 @@ export function howItWorksMeals(cutoffLabel) {
   return `You can change meals, extras, and pickup or delivery in My Subscriptions until the ${cutoffLabel || MEAL_LOCK_BY} cutoff.`
 }
 
+export function howItWorksFirstDelivery(firstDeliveryLabel) {
+  const label = String(firstDeliveryLabel || '').trim()
+  return label ? `First delivery: ${label}.` : null
+}
+
+/** Shared copy for the Subscription details panel (checkout + My Subscriptions). */
+export function subscriptionDetailsItems({
+  chargeLabel,
+  cutoffLabel,
+  firstDeliveryLabel,
+} = {}) {
+  return [
+    'Every plan lets you choose any combination of bowls, salads, and main plates.',
+    howItWorksCharge(chargeLabel, cutoffLabel),
+    'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
+    howItWorksPause(chargeLabel),
+    howItWorksFirstDelivery(firstDeliveryLabel),
+    'Add-ons are for this week only. They do not repeat unless you add them again.',
+    howItWorksMeals(cutoffLabel),
+  ].filter(Boolean)
+}
+
 export function howItWorksFlexible(chargeLabel, cutoffLabel) {
   return `Update your meals and add-ons up to ${cutoffLabel || MEAL_LOCK_BY}. Need to pause or skip a week? Let us know by ${chargeLabel || PAUSE_CANCEL_BY}. No long-term commitment.`
 }

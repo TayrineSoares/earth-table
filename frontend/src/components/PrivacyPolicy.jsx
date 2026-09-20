@@ -27,7 +27,7 @@ const PrivacyPolicy = () => {
         <ul className="et-terms__list">
           <li><strong>Plans:</strong> Recurring weekly meal plans (10, 15, or 20 meals). Advertised prices are pre-tax meals only. Checkout and weekly bills add 13% HST. Delivery, if you choose it, is extra at the same zone fees as à la carte, plus HST.</li>
           <li><strong>First week:</strong> Plan and delivery (if any) are charged when you subscribe. Add-ons on that first box are billed later, at Thursday lock, if they are still on the box.</li>
-          <li><strong>Promo and referral codes:</strong> A valid code discounts your first week only — the plan charged at signup, and add-ons billed at that first Thursday lock. Delivery is not discounted. Later Wednesday charges are the regular plan price.</li>
+          <li><strong>Promo and referral codes:</strong> A valid code discounts your first week only, the plan charged at signup, and add-ons billed at that first Thursday lock. Delivery is not discounted. Later Wednesday charges are the regular plan price. Partner referral program terms (for partners issuing codes) are separate from this policy and available on request.</li>
           <li><strong>Weekly charge:</strong> After the first week, plan and delivery are charged every <strong>Wednesday at 9:00 AM ET</strong> to the card on file. We email a receipt at that same time.</li>
           <li><strong>Meal and add-on cutoff:</strong> Change meals, extras, pickup, or delivery until <strong>Thursday at 5:00 PM ET</strong>. Then extras still on the box are charged, the box is locked, and we email confirmation (with an extras receipt if anything was billed). Add-ons do not repeat the following week unless you add them again. If you do not pick meals before cutoff, we repeat last week’s selections.</li>
           <li><strong>Pause or cancel:</strong> Pause or cancel in My Subscriptions before <strong>Wednesday at 9:00 AM ET</strong> to skip that Sunday’s charge. No fees. Your meals and saved card stay on file until you resume. After Wednesday 9:00 AM ET, that Sunday still goes out; the pause or cancel starts the following week.</li>
@@ -39,8 +39,12 @@ const PrivacyPolicy = () => {
 
         <h3 className="et-terms__h3">General</h3>
         <ul className="et-terms__list">
+          <li><strong>Eligibility:</strong> You must be at least the age of majority in your province (18 in Ontario) and able to enter a binding contract to create an account, place an order, or subscribe. This service is not directed at children.</li>
           <li><strong>Product availability:</strong> Menu items are subject to availability. If something is unavailable, we will notify you and suggest alternatives when we can.</li>
           <li><strong>Allergies and notes:</strong> Tell us about allergies or dietary restrictions in Special Instructions. We cannot guarantee against cross-contamination.</li>
+          <li><strong>Limitation of liability:</strong> To the extent permitted by law, our liability for any order or subscription is limited to the amount you paid for that order or box. We are not liable for indirect, incidental, or consequential damages, including reactions to allergens not disclosed to us in Special Instructions.</li>
+          <li><strong>Account suspension:</strong> We may suspend or close an account for suspected fraud, repeated payment failures, or misuse of the service.</li>
+          <li><strong>Governing law:</strong> These Terms are governed by the laws of the Province of Ontario and the federal laws of Canada applicable in Ontario.</li>
           <li><strong>Agreement:</strong> By creating an account, placing an order, or subscribing, you agree to these Terms &amp; Conditions.</li>
         </ul>
 
@@ -72,6 +76,7 @@ const PrivacyPolicy = () => {
           <li><strong>Geocoding:</strong> We may send the postal code you enter to a geocoding provider (for example Geoapify) to estimate distance and the delivery fee.</li>
           <li><strong>Couriers:</strong> If you chose delivery, we may share your name, phone, and delivery address with a courier (for example Uber Courier) only to complete that delivery.</li>
           <li>Analytics providers may receive anonymized or aggregated data.</li>
+          <li><strong>International data transfers:</strong> Some of our service providers (including payment, hosting, and analytics providers) may store or process your information outside Canada, including in the United States. Where this happens, your information is subject to the laws of that jurisdiction.</li>
         </ul>
 
         <h3 className="et-terms__h3">Your Rights</h3>

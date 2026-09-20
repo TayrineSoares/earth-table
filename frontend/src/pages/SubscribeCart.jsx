@@ -20,9 +20,7 @@ import { addonSubtotalCents, mealALaCarteCents, mealsExact, totalQty } from '../
 import {
   firstWeekPromoAppliedMessage,
   addonsBilledAt,
-  howItWorksCharge,
-  howItWorksMeals,
-  howItWorksPause,
+  subscriptionDetailsItems,
 } from '../helpers/subscriptionCadence'
 
 const HST_RATE = 0.13
@@ -244,15 +242,11 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       icon: 'alert',
       title: 'Subscription details',
       asList: true,
-      body: [
-        'Every plan lets you choose any combination of bowls, salads, and main plates.',
-        howItWorksCharge(dates?.charge_label, dates?.cutoff_label),
-        'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-        howItWorksPause(dates?.charge_label),
-        dates?.first_delivery_label ? `First delivery: ${dates.first_delivery_label}.` : null,
-        'Add-ons are for this week only. They do not repeat unless you add them again.',
-        howItWorksMeals(dates?.cutoff_label),
-      ].filter(Boolean),
+      body: subscriptionDetailsItems({
+        chargeLabel: dates?.charge_label,
+        cutoffLabel: dates?.cutoff_label,
+        firstDeliveryLabel: dates?.first_delivery_label,
+      }),
       hint: (
         <>
           All subscription information, rules, and terms are in the{' '}

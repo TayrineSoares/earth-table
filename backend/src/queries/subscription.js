@@ -444,6 +444,8 @@ async function listMine(userId) {
       first_promo_kind: sub.first_promo_code
         ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
         : null,
+      first_delivery_date: earliestYmd,
+      first_delivery_label: earliestYmd ? sundayLabelFromYmd(earliestYmd) : '',
     };
   });
 }
