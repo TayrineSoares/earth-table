@@ -162,7 +162,11 @@ const App = () => {
         }
         return;
       }
-      setUser((prev) => (sameAuthUser(prev, currentUser) ? prev : currentUser));
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      } else if (currentUser) {
+        setUser((prev) => (sameAuthUser(prev, currentUser) ? prev : currentUser));
+      }
 
       if (isALaCarteSuccess()) {
         setCart([]);

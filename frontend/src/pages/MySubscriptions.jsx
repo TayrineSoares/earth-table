@@ -41,8 +41,52 @@ import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
 
 const HST_RATE = 0.13
+const MINE_STORAGE_KEY = 'et-mine-cache'
 
 let mineCache = { userId: null, rows: [], plans: [] }
+
+function readStoredMine(userId) {
+  if (!userId) return null
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(`${MINE_STORAGE_KEY}:${userId}`) || 'null')
+    if (parsed?.userId === userId && Array.isArray(parsed.rows) && parsed.rows.length) {
+      return parsed
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function writeMineCache(next) {
+  mineCache = {
+    userId: next.userId || null,
+    rows: Array.isArray(next.rows) ? next.rows : [],
+    plans: Array.isArray(next.plans) ? next.plans : [],
+  }
+  if (!mineCache.userId) return
+  try {
+    const key = `${MINE_STORAGE_KEY}:${mineCache.userId}`
+    if (mineCache.rows.length) {
+      sessionStorage.setItem(key, JSON.stringify(mineCache))
+    } else {
+      sessionStorage.removeItem(key)
+    }
+  } catch {
+    /* private mode */
+  }
+}
+
+function cacheFor(userId) {
+  if (!userId) return { userId: null, rows: [], plans: [] }
+  if (mineCache.userId === userId) return mineCache
+  const stored = readStoredMine(userId)
+  if (stored) {
+    mineCache = stored
+    return stored
+  }
+  return { userId, rows: [], plans: [] }
+}
 
 const cardLabel = (card) => {
   if (!card?.last4) return 'No card on file'
@@ -232,10 +276,14 @@ function CycleItems({
 const MySubscriptions = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const userId = user?.id || null
-  const cached = mineCache.userId === userId ? mineCache : null
-  const [rows, setRows] = useState(() => cached?.rows || [])
-  const [plans, setPlans] = useState(() => cached?.plans || [])
-  const [isLoading, setIsLoading] = useState(() => !cached?.rows?.length)
+  const cached = cacheFor(userId)
+  const [rows, setRows] = useState(() => cached.rows || [])
+  const [plans, setPlans] = useState(() => cached.plans || [])
+  const [isLoading, setIsLoading] = useState(() => Boolean(userId) && !cached.rows?.length)
+  const [fetchedUserId, setFetchedUserId] = useState(() => (
+    cached.rows?.length && cached.userId === userId ? userId : null
+  ))
+  const [authWait, setAuthWait] = useState(() => !userId)
   const [dialog, setDialog] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [notesEditingId, setNotesEditingId] = useState(null)
@@ -254,27 +302,35 @@ const MySubscriptions = ({ user }) => {
 
   const rowsRef = useRef(rows)
   rowsRef.current = rows
+  const fetchedRef = useRef(fetchedUserId)
+  fetchedRef.current = fetchedUserId
+
+  const applyMine = (data, plansList) => {
+    if (!Array.isArray(data)) return
+    writeMineCache({
+      userId,
+      rows: data,
+      plans: Array.isArray(plansList) ? plansList : mineCache.plans,
+    })
+    setRows(data)
+    if (Array.isArray(plansList)) setPlans(plansList)
+    setFetchedUserId(userId)
+  }
 
   const load = async () => {
     if (!userId) return
     const data = await fetchMySubscriptions(userId)
-    if (!Array.isArray(data)) return
-    mineCache = { ...mineCache, userId, rows: data }
-    setRows(data)
+    applyMine(data)
   }
 
   useEffect(() => {
     if (!userId) {
-      const timer = window.setTimeout(() => {
-        mineCache = { userId: null, rows: [], plans: [] }
-        setRows([])
-        setPlans([])
-        setIsLoading(false)
-      }, 400)
+      const timer = window.setTimeout(() => setAuthWait(true), 400)
       return () => window.clearTimeout(timer)
     }
+    setAuthWait(false)
     let cancelled = false
-    const hasRows = mineCache.userId === userId && mineCache.rows.length > 0
+    const hasRows = cacheFor(userId).rows.length > 0
     if (!hasRows) setIsLoading(true)
     Promise.all([
       fetchMySubscriptions(userId),
@@ -282,16 +338,11 @@ const MySubscriptions = ({ user }) => {
     ])
       .then(([data, nextPlans]) => {
         if (cancelled) return
-        if (Array.isArray(data)) {
-          const plansList = Array.isArray(nextPlans) ? nextPlans : []
-          mineCache = { userId, rows: data, plans: plansList }
-          setRows(data)
-          setPlans(plansList)
-        }
+        applyMine(data, nextPlans)
       })
       .catch((err) => {
         console.error(err)
-        if (!cancelled && !rowsRef.current.length) {
+        if (!cancelled && !rowsRef.current.length && fetchedRef.current !== userId) {
           setDialog({
             icon: 'alert',
             title: 'Could not load subscriptions',
@@ -709,7 +760,9 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
-  if (isLoading && !rows.length) {
+  const waitingForAuth = !userId && !authWait
+  const waitingForMine = Boolean(userId) && !rows.length && fetchedUserId !== userId
+  if ((isLoading && !rows.length) || waitingForAuth || waitingForMine) {
     return (
       <div
         className="loading-container"
@@ -727,7 +780,7 @@ const MySubscriptions = ({ user }) => {
       </div>
 
       <div className="page-wrapper my-sub-shell">
-        {!user?.id ? (
+        {!userId ? (
           <>
             <div className="my-sub-page-header">
               <h1 className="my-sub-h1">My plans</h1>
@@ -737,7 +790,7 @@ const MySubscriptions = ({ user }) => {
               <Link to="/login?next=/my-subscriptions" className="order-history-button">Log in</Link>
             </div>
           </>
-        ) : !rows.length ? (
+        ) : fetchedUserId === userId && !rows.length ? (
           <>
             <div className="my-sub-page-header">
               <h1 className="my-sub-h1">My plans</h1>
