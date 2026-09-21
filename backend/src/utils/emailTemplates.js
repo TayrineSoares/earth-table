@@ -42,6 +42,17 @@ function thisSundayPhrase(label) {
   return `this Sunday, ${part}`;
 }
 
+function ThisSundayPhrase(label) {
+  const phrase = thisSundayPhrase(label);
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+}
+
+function nextSundayPhrase(label) {
+  const part = sundayDatePart(label);
+  if (!part || /^sunday$/i.test(part) || /^this week$/i.test(part)) return 'next Sunday';
+  return `next Sunday, ${part}`;
+}
+
 function formatPhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
@@ -1283,14 +1294,13 @@ function renderSubscriptionUpdatedEmail({
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = deliveryLabel || 'Sunday';
-  const sundayDate = sundayDatePart(sunday);
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const note = String(notes || '').trim() || '—';
   const thisSunday = appliesTo !== 'next_week';
   const timing = thisSunday
-    ? `These changes apply to this Sunday, ${sundayDate}.`
-    : `This week's cutoff has passed, so these changes apply to next Sunday, ${sundayDate} only. This Sunday's box is already locked.`;
+    ? `These changes apply to ${thisSundayPhrase(sunday)}.`
+    : `This week's cutoff has passed, so these changes apply to ${nextSundayPhrase(sunday)} only. This Sunday's box is already locked.`;
   const mealHtml = itemLinesHtml(meals) || '—';
   const addonHtml = itemLinesHtml(addons);
   const mealText = itemLinesText(meals) || '—';
@@ -1357,6 +1367,8 @@ function renderSubscriptionManageEmail(payload = {}) {
     last4,
     expMonth,
     expYear,
+    address,
+    pickupSlot,
   } = payload;
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1365,6 +1377,37 @@ function renderSubscriptionManageEmail(payload = {}) {
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
+
+  if (kind === 'fulfillment_delivery' || kind === 'fulfillment_pickup') {
+    const toDelivery = kind === 'fulfillment_delivery';
+    const fulfillment = formatFulfillmentLine({
+      delivery: toDelivery,
+      deliveryLabel: sunday,
+      pickupSlot,
+    });
+    const loc = toDelivery ? (String(address || '').trim() || '—') : PICKUP_ADDRESS;
+    const subject = toDelivery ? "You're switched to delivery" : "You're switched to pickup";
+    const heading = toDelivery ? "You've switched to delivery" : "You've switched to pickup";
+    const introText = toDelivery
+      ? `Starting with ${sunday}, your box comes to you:`
+      : `Starting with ${sunday}, your box will be labeled and waiting at:`;
+    const after = `Switch back to ${toDelivery ? 'pickup' : 'delivery'} any time before ${cutoff}.`;
+    const detail = toDelivery
+      ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
+      : `${kvRow('Next box', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: true })}`;
+    const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1(heading)}
+      ${intro(introText)}
+      ${card(kvTable(detail))}
+      ${intro(after)}
+      ${ctaLink(manageHref, 'My Subscriptions →')}
+    `, { preheader: subject, replyOk: true, title: subject });
+    const text = toDelivery
+      ? `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nDelivery Address: ${loc}\nNotes: ${loc}\n\n${after}\n\nMy Subscriptions: ${manageHref}`
+      : `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nAddress: ${PICKUP_ADDRESS}\n\n${after}\n\nMy Subscriptions: ${manageHref}`;
+    return { subject, html, text };
+  }
 
   if (kind === 'card_expiry') {
     const month = String(expMonth || '').padStart(2, '0');
@@ -1399,27 +1442,27 @@ My Subscriptions: ${manageHref}`;
     pause_now: {
       subject: `Your weekly plan is paused until you resume`,
       heading: `You're paused, ${name}`,
-      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume.`,
+      intro: `${ThisSundayPhrase(sunday)} will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume.`,
     },
     pause_first: {
       subject: `Your weekly plan is paused — first box still runs`,
       heading: `First box still goes out, ${name}`,
-      intro: `Your first box on ${sundayDatePart(sunday)} cannot be paused or cancelled, so it still goes out. Later weeks are paused until you resume. You can still change add-ons on that first box until Thursday at 5:00 PM ET.`,
+      intro: `Your first box on ${sunday} cannot be paused or cancelled, so it still goes out. Later weeks are paused until you resume. You can still change add-ons on that first box until Thursday at 5:00 PM ET.`,
     },
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume.`,
+      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume.`,
     },
     cancel_now: {
       subject: `Your weekly plan is cancelled`,
       heading: `You're cancelled, ${name}`,
-      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your plan, meals, and saved card are removed. You can start fresh any time from Subscribe & Save.`,
+      intro: `${ThisSundayPhrase(sunday)} will not go out. Your plan, meals, and saved card are removed. You can start fresh any time from Subscribe & Save.`,
     },
     cancel_next: {
       subject: `Your weekly plan is cancelled — this Sunday still runs`,
       heading: `This Sunday still goes out, ${name}`,
-      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is cancelled starting the following week — meals and card are not kept after that. Start a new plan any time from Subscribe & Save.`,
+      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is cancelled starting the following week — meals and card are not kept after that. Start a new plan any time from Subscribe & Save.`,
     },
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,
@@ -1439,12 +1482,12 @@ My Subscriptions: ${manageHref}`;
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're now on a ${nextPlan}. This Sunday, ${sundayDatePart(sunday)}, uses the new count — pick that many meals before ${cutoff}.`,
+      intro: `You're now on a ${nextPlan}. ${ThisSundayPhrase(sunday)} uses the new count — pick that many meals before ${cutoff}.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
       heading: `This Sunday stays as-is, ${name}`,
-      intro: `This Sunday, ${sundayDatePart(sunday)}, stays on your ${planWeek}. The ${nextPlan} starts the following week.`,
+      intro: `${ThisSundayPhrase(sunday)} stays on your ${planWeek}. The ${nextPlan} starts the following week.`,
     },
   }[kind] || {
     subject: 'Your weekly plan',
@@ -1495,8 +1538,8 @@ function renderSubscriptionHolidaySkipEmail({
     : `No box this Sunday — next delivery is ${next}`;
   const heading = owner ? `Holiday skip` : `No box this Sunday, ${name}`;
   const bodyText = owner
-    ? `Sunday ${skipped} is a holiday. No weekly boxes go out and no one is charged. Next Sunday that runs is ${next}.`
-    : `Sunday ${skipped} is a holiday, so there is no box and no charge. Your next delivery is ${next}. Weekly billing stays on the usual ${charge} schedule.`;
+    ? `${skipped} is a holiday. No weekly boxes go out and no one is charged. Next Sunday that runs is ${next}.`
+    : `${skipped} is a holiday, so there is no box and no charge. Your next delivery is ${next}. Weekly billing stays on the usual ${charge} schedule.`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
@@ -1731,6 +1774,8 @@ function renderSubscriptionThursdayEmail({
   deliveryLabel,
   pickupSlot,
   postalCode,
+  address,
+  notes,
   chargedAddons = false,
   addonCents = 0,
   chargedCents = 0,
@@ -1744,6 +1789,10 @@ function renderSubscriptionThursdayEmail({
   const sunday = deliveryLabel || 'Sunday';
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const postal = String(postalCode || '').trim();
+  const note = String(notes || '').trim();
+  const loc = delivery
+    ? (String(address || note || postal || '').trim() || '—')
+    : PICKUP_ADDRESS;
   const chargeLines = chargedAddons
     ? receiptLines({ addonCents, chargedCents, discountCents, discountLabel })
     : [];
@@ -1752,16 +1801,15 @@ function renderSubscriptionThursdayEmail({
     : 'Pick it up in the window below.'}`;
 
   const subject = `This Sunday's box is locked — ${sunday}`;
+  const fulfillRows = delivery
+    ? `${kvRow('Plan', planWeek)}${kvRow('Delivery', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', note || loc, { last: true })}`
+    : `${kvRow('Plan', planWeek)}${kvRow('Pickup', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: !note && !postal })}${note ? kvRow('Notes', note, { last: !postal }) : ''}${postal ? kvRow('Postal code', postal, { last: true }) : ''}`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`This Sunday is locked, ${name}`)}
       ${intro(introText)}
-      ${card(kvTable(`
-        ${kvRow("Plan", planWeek)}
-        ${kvRow(delivery ? "Delivery" : "Pickup", fulfillment, { last: !postal })}
-        ${postal ? kvRow("Postal code", postal, { last: true }) : ''}
-      `))}
+      ${card(kvTable(fulfillRows))}
       ${chargedAddons ? `${h2("Add-ons charged today")}${moneyReceiptHtml(chargeLines, "Charged to your card", chargedCents)}` : ''}
       ${h2("Meals")}
       ${itemListHtml(meals, '—')}
@@ -1780,7 +1828,7 @@ ${introText}
 
 Plan: ${planWeek}
 ${delivery ? 'Delivery' : 'Pickup'}: ${fulfillment}
-${postal ? `Postal code: ${postal}\n` : ''}
+${delivery ? `Delivery Address: ${loc}\nNotes: ${note || loc}\n` : `Address: ${PICKUP_ADDRESS}\n${note ? `Notes: ${note}\n` : ''}${postal ? `Postal code: ${postal}\n` : ''}`}
 ${chargedAddons ? `Add-ons charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
 ${itemLinesText(meals) || '—'}
 
@@ -1798,6 +1846,42 @@ function brandLabel(brand) {
   const raw = String(brand || 'card').trim();
   if (!raw) return 'Card';
   return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function renderOwnerFulfillmentEmail({
+  customerName,
+  oldMethod,
+  newMethod,
+  fulfillmentDate,
+  address,
+  windowStart,
+  windowEnd,
+} = {}) {
+  const name = customerName || 'Customer';
+  const when = fulfillmentDate || 'this Sunday';
+  const method = newMethod === 'delivery' ? 'Delivery' : 'Pickup';
+  const start = windowStart || '—';
+  const end = windowEnd || '—';
+  const loc = newMethod === 'delivery' ? (String(address || '').trim() || '—') : PICKUP_ADDRESS;
+  const subject = `Switched to ${newMethod || 'pickup'} — ${name}, ${when}`;
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1('Fulfillment changed')}
+      ${intro(`<strong>${name}</strong> — ${oldMethod || 'pickup'} → <strong>${newMethod || 'pickup'}</strong>`)}
+      ${card(kvTable(`
+        ${kvRow('Next box', `${method} ${when}, ${start} – ${end}`)}
+        ${newMethod === 'delivery'
+          ? `${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
+          : `${kvRow('Address', PICKUP_ADDRESS, { last: true })}`}
+      `))}
+      ${ctaLink(appUrl('/admin'), 'View subscription →')}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}\n${method} ${when}, ${start} – ${end}\n${newMethod === 'delivery' ? `Delivery Address: ${loc}\nNotes: ${loc}` : `Address: ${PICKUP_ADDRESS}`}\n`;
+  return { subject, html, text };
 }
 
 function renderOwnerPaymentFailedEmail({
@@ -1877,6 +1961,7 @@ module.exports = {
   renderSubscriptionHolidaySkipEmail,
   renderOwnerThursdayLockEmail,
   renderOwnerPaymentFailedEmail,
+  renderOwnerFulfillmentEmail,
   renderSubscriptionWednesdayEmail,
   renderSubscriptionThursdayEmail,
   renderSubscriptionPriceEmail,

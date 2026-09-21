@@ -1127,6 +1127,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
           firstName: user.first_name,
           fulfillmentDate: week.delivery_label,
           deliveryLabel: week.delivery_label,
+          cutoffLabel: week.cutoff_label,
           address: delivery ? specialNote : PICKUP_ADDRESS,
           pickupSlot,
         });

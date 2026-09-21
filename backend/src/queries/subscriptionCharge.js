@@ -475,7 +475,8 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
     delivery: !!cycle.delivery,
     deliveryLabel: sundayLabelFromYmd(sunday),
     pickupSlot: cycle.pickup_time_slot,
-    address: cycle.delivery ? cycle.special_note : undefined,
+    postalCode: cycle.delivery_postal_code,
+    address: cycle.delivery ? (cycle.special_note || cycle.delivery_postal_code) : undefined,
     notes: cycle.special_note,
     chargedAddons,
     addonCents: discountCents > 0 ? raw : due,
@@ -607,6 +608,7 @@ async function skipHolidayWeek(sunday, chargeLabel) {
         firstName: user.first_name,
         skippedSunday: sundayLabelFromYmd(sunday),
         nextSunday,
+        chargeLabel,
       });
       await sendCustomerEmail({ to: user.email, msg });
       emailed += 1;
