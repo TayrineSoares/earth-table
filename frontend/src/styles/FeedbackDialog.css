@@ -9,6 +9,10 @@
   z-index: 9999;
 }
 
+.feedback-dialog-overlay.is-busy {
+  cursor: wait;
+}
+
 .feedback-dialog {
   width: 100%;
   max-width: 460px;
@@ -152,6 +156,16 @@
   background-color: #d69410;
 }
 
+.feedback-dialog-primary:disabled,
+.feedback-dialog-primary:disabled:hover,
+.feedback-dialog-primary:disabled:focus {
+  background-color: #EDA413;
+  opacity: 0.72;
+  cursor: wait;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
 .feedback-dialog-secondary {
   font-family: var(--body-font);
   font-weight: 400;
@@ -165,6 +179,11 @@
   border: none;
   cursor: pointer;
   padding: 0;
+}
+
+.feedback-dialog-secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 @media (max-width: 768px) {

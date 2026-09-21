@@ -9,21 +9,23 @@ const ICONS = {
   alert: CircleAlert,
 };
 
-function DialogAction({ to, className, onClick, children }) {
-  if (to) return <Link className={className} to={to}>{children}</Link>;
+function DialogAction({ to, className, onClick, children, disabled }) {
+  if (to && !disabled) return <Link className={className} to={to}>{children}</Link>;
   return (
-    <button type="button" className={className} onClick={onClick}>
+    <button type="button" className={className} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );
 }
 
 const FeedbackDialog = ({ dialog, onClose }) => {
+  const busy = Boolean(dialog?.busy);
+
   useEffect(() => {
     if (!dialog) return;
 
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !busy) onClose();
     };
     document.addEventListener('keydown', onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -33,7 +35,7 @@ const FeedbackDialog = ({ dialog, onClose }) => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [dialog, onClose]);
+  }, [dialog, busy, onClose]);
 
   if (!dialog) return null;
 
@@ -41,14 +43,17 @@ const FeedbackDialog = ({ dialog, onClose }) => {
 
   return (
     <div
-      className="feedback-dialog-overlay"
+      className={`feedback-dialog-overlay${busy ? ' is-busy' : ''}`}
       role="presentation"
-      onClick={onClose}
+      onClick={() => {
+        if (!busy) onClose();
+      }}
     >
       <div
         className={`feedback-dialog${Array.isArray(dialog.body) ? ' feedback-dialog--stacked' : ''}${dialog.asList ? ' feedback-dialog--list' : ''}`}
         role="dialog"
         aria-modal="true"
+        aria-busy={busy}
         aria-labelledby="feedback-dialog-title"
         aria-describedby="feedback-dialog-body"
         onClick={(e) => e.stopPropagation()}
@@ -81,7 +86,9 @@ const FeedbackDialog = ({ dialog, onClose }) => {
           <DialogAction
             className="feedback-dialog-primary"
             to={dialog.primaryTo}
+            disabled={busy}
             onClick={() => {
+              if (busy) return;
               if (typeof dialog.onPrimary === 'function') {
                 dialog.onPrimary();
                 return;
@@ -95,7 +102,10 @@ const FeedbackDialog = ({ dialog, onClose }) => {
             <DialogAction
               className="feedback-dialog-secondary"
               to={dialog.secondaryTo}
-              onClick={onClose}
+              disabled={busy}
+              onClick={() => {
+                if (!busy) onClose();
+              }}
             >
               {dialog.secondaryLabel}
             </DialogAction>

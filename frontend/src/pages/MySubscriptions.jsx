@@ -111,6 +111,12 @@ function shortWeekdayDate(ymd) {
   })
 }
 
+function statusBusyLabel(action) {
+  if (action === 'cancel') return 'Cancelling…'
+  if (action === 'pause') return 'Pausing…'
+  return 'Resuming…'
+}
+
 function subscribedSince(iso) {
   if (!iso) return ''
   const date = new Date(iso)
@@ -298,6 +304,8 @@ const MySubscriptions = ({ user }) => {
   const [changingId, setChangingId] = useState(null)
   const [nextWeekOpen, setNextWeekOpen] = useState({})
   const [savingId, setSavingId] = useState(null)
+  const [statusBusy, setStatusBusy] = useState(null)
+  const statusLockRef = useRef(false)
   const [fulfillment, setFulfillment] = useState('pickup')
   const [pickupDate, setPickupDate] = useState('')
   const [pickupTime, setPickupTime] = useState('')
@@ -578,9 +586,17 @@ const MySubscriptions = ({ user }) => {
   }
 
   const persistStatus = async (row, action) => {
+    if (statusLockRef.current) return
+    statusLockRef.current = true
     const apiAction = action === 'cancel' ? 'pause' : action
+    const busyLabel = statusBusyLabel(action)
     setSavingId(row.id)
-    setDialog(null)
+    setStatusBusy({ id: row.id, action })
+    setDialog((prev) => ({
+      ...(prev || { icon: 'mail', title: busyLabel }),
+      busy: true,
+      primaryLabel: busyLabel,
+    }))
     try {
       const result = await updateSubscriptionStatus(user.id, row.id, apiAction)
       await load()
@@ -601,6 +617,8 @@ const MySubscriptions = ({ user }) => {
             : 'The plan is active again.',
           primaryLabel: 'OK',
         })
+      } else {
+        setDialog(null)
       }
     } catch (err) {
       console.error(err)
@@ -611,11 +629,14 @@ const MySubscriptions = ({ user }) => {
         primaryLabel: 'OK',
       })
     } finally {
+      statusLockRef.current = false
       setSavingId(null)
+      setStatusBusy(null)
     }
   }
 
   const confirmStatus = (row, action) => {
+    if (savingId || statusLockRef.current) return
     const beforeWed = row.charge?.before_wednesday !== false
     const firstProtected = Boolean(row.first_box_protected)
     const firstSunday = row.first_delivery_label
@@ -1162,7 +1183,9 @@ const MySubscriptions = ({ user }) => {
                           disabled={savingId === row.id}
                           onClick={() => confirmStatus(row, 'resume')}
                         >
-                          Resume
+                          {statusBusy?.id === row.id && statusBusy.action === 'resume'
+                            ? 'Resuming…'
+                            : 'Resume'}
                         </button>
                       ) : null}
                     </div>
@@ -1175,7 +1198,9 @@ const MySubscriptions = ({ user }) => {
                           disabled={savingId === row.id}
                           onClick={() => confirmStatus(row, 'resume')}
                         >
-                          Keep this Sunday
+                          {statusBusy?.id === row.id && statusBusy.action === 'resume'
+                            ? 'Resuming…'
+                            : 'Keep this Sunday'}
                         </button>
                       ) : canEdit && !isPaused ? (
                         <button
@@ -1184,7 +1209,9 @@ const MySubscriptions = ({ user }) => {
                           disabled={savingId === row.id}
                           onClick={() => confirmStatus(row, 'pause')}
                         >
-                          Pause plan
+                          {statusBusy?.id === row.id && statusBusy.action === 'pause'
+                            ? 'Pausing…'
+                            : 'Pause plan'}
                         </button>
                       ) : null}
                       <button
@@ -1193,7 +1220,9 @@ const MySubscriptions = ({ user }) => {
                         disabled={savingId === row.id}
                         onClick={() => confirmStatus(row, 'cancel')}
                       >
-                        Cancel plan
+                        {statusBusy?.id === row.id && statusBusy.action === 'cancel'
+                          ? 'Cancelling…'
+                          : 'Cancel plan'}
                       </button>
                     </div>
 
@@ -1340,7 +1369,12 @@ const MySubscriptions = ({ user }) => {
           </>
         )}
       </div>
-      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
+      <FeedbackDialog
+        dialog={dialog}
+        onClose={() => {
+          if (!dialog?.busy) setDialog(null)
+        }}
+      />
     </div>
   )
 }
