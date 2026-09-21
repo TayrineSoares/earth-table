@@ -1060,7 +1060,6 @@ function renderSubscriptionWelcomeEmail({
   deliveryLabel,
   pickupSlot,
   cutoffLabel,
-  chargeLabel,
   subscriptionId,
   notes,
   addons,
@@ -1079,7 +1078,6 @@ function renderSubscriptionWelcomeEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const manageHref = appUrl(`/my-subscriptions/${subscriptionId || ''}`);
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
-  const charge = chargeLabel || PAUSE_CANCEL_BY;
   const note = String(notes || '').trim() || '—';
   const planOff = Math.max(0, Number(planSavedCents) || 0);
   const addonOff = Math.max(0, Number(addonSavedCents) || 0);
@@ -1123,7 +1121,7 @@ function renderSubscriptionWelcomeEmail({
       ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : ''}
       ${ctaLink(manageHref, "Manage my subscription")}
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before ${charge} to skip a Sunday, or before ${cutoff} to change this week's box.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals or switch between pickup and delivery in My Subscriptions before ${cutoff} to change this week's box.</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1147,7 +1145,7 @@ Manage my subscription: ${manageHref}
 
 Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
 
-Your plan renews every week automatically. Swap meals, switch between pickup and delivery, skip a week, or pause anytime in My Subscriptions — just before ${charge} to skip a Sunday, or before ${cutoff} to change this week's box.
+Your plan renews every week automatically. Swap meals or switch between pickup and delivery in My Subscriptions before ${cutoff} to change this week's box.
 
 Questions? Reply to this email or write to hello@earthtableco.ca.`;
 
@@ -1477,7 +1475,7 @@ My Subscriptions: ${manageHref}`;
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,
-      intro: `Your ${planWeek} is active again. Weekly boxes stay on until you pause or cancel. Pause by ${charge} to skip a Sunday.`,
+      intro: `Your ${planWeek} is active again. Weekly boxes continue each week.`,
     },
     plan_now: {
       subject: `You're on a ${nextPlan}`,
