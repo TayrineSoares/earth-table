@@ -503,7 +503,11 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
             </div>
 
             <div className="special-note-container">
-              <label htmlFor="special-note" className="general-text">Special Instructions </label>
+              <label htmlFor="special-note" className="general-text">
+                {fulfillment === 'delivery'
+                  ? 'Special Instructions + Delivery Address'
+                  : 'Special Instructions'}
+              </label>
               <textarea
                 className="special-note-input"
                 id="special-note"
