@@ -25,6 +25,7 @@ import {
   ProductDetail,
   OrderHistory,
   AuthCallback,
+  Unsubscribe,
 
 } from './pages/index.js';
 import CartPopup from './components/CartPopup.jsx';
@@ -150,6 +151,7 @@ const AppRoutes = ({
             />
           } />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
     

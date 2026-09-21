@@ -191,6 +191,7 @@ write('12b-subscription-paused-next.html', renderSubscriptionManageEmail({
 write('12c-subscription-pause-nudge.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'pause_nudge',
+  unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
 write('12d-subscription-resume.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -258,10 +259,12 @@ write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
   chargedCents: 21234,
   cardBrand: 'visa',
   last4: '4242',
+  unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
 write('13b-subscription-wednesday-paid.html', renderSubscriptionWednesdayEmail({
   ...subMail,
   charged: false,
+  unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
 write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
   ...subMail,

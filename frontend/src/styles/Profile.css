@@ -167,40 +167,6 @@
   margin: 0 0 1rem;
 }
 
-.profile-email-prefs {
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid #EEDCC0;
-  max-width: 720px;
-}
-
-.profile-email-prefs-lead {
-  margin: 0 0 1rem;
-  font-family: var(--body-font);
-  font-size: 15px;
-  line-height: 1.5;
-  color: #333;
-}
-
-.profile-email-pref {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  margin: 0 0 8px;
-  font-family: var(--body-font);
-  font-size: 16px;
-  color: #1A1A1A;
-  cursor: pointer;
-}
-
-.profile-email-pref input {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  accent-color: #EDA413;
-}
-
 .profile-partner-rates {
   margin: 0 0 1.5rem;
   max-width: 36rem;
@@ -352,11 +318,6 @@
     font-size: 24px;
   }
 
-  .profile-email-prefs-lead,
-  .profile-email-pref {
-    font-size: 16px;
-  }
-
   .profile-partner-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -433,11 +394,6 @@
 
   .profile-partner-title {
     font-size: 22px;
-  }
-
-  .profile-email-prefs {
-    margin-top: 1.75rem;
-    padding-top: 1.5rem;
   }
 }
 

@@ -22,6 +22,7 @@ const {
   sendOwnerEmail,
   cardForPaymentMethod,
   declineReasonFrom,
+  emailPrefOn,
 } = require('../emails/sendSubscriptionMail');
 const {
   getSignupDates,
@@ -35,6 +36,7 @@ const {
   cutoffAtForSunday,
 } = require('./subscriptionWeek');
 const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
+const { unsubscribeUrl } = require('../emails/unsubscribeToken');
 
 const HST = 1.13;
 
@@ -423,6 +425,7 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
 async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
+  if (!emailPrefOn(user, 'wednesday_reminder')) return;
   const labeled = await labeledItemsForCycle(cycle.id);
   const charged = !!chargeResult?.charged;
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
@@ -442,6 +445,7 @@ async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
     subscriptionId: sub.id,
     cardBrand: card?.brand,
     last4: card?.last4,
+    unsubscribeHref: unsubscribeUrl(sub.user_id),
   });
   await sendCustomerEmail({ to: user.email, msg });
 }

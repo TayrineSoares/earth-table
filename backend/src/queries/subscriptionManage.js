@@ -7,6 +7,9 @@ const supabase = require('../../supabase/db');
 const { sendEmail } = require('../utils/email');
 const { renderSubscriptionManageEmail } = require('../utils/emailTemplates');
 const { getUserByAuthId } = require('./user');
+const { emailPrefOn } = require('../emails/sendSubscriptionMail');
+const { unsubscribeUrl } = require('../emails/unsubscribeToken');
+const { CADENCE } = require('../emails/subscriptionEmailSpec');
 const {
   SubscriptionError,
   getPlanById,
@@ -22,6 +25,7 @@ const {
   torontoYmd,
   nextOpenSunday,
   sundayLabelFromYmd,
+  pauseNudgeWeek,
 } = require('./subscriptionWeek');
 
 const HST = 1.13;
@@ -122,10 +126,14 @@ async function applyPendingStatus(userId, sub, pending, week, charge) {
 async function notifyManage(userId, payload) {
   const user = await getUserByAuthId(userId);
   const email = user?.email;
-  if (!email) return;
+  if (!email) return false;
+  if (payload.kind === 'pause_nudge' && !emailPrefOn(user, 'pause_reminder')) {
+    return false;
+  }
   const msg = renderSubscriptionManageEmail({
     ...payload,
     firstName: user.first_name,
+    unsubscribeHref: payload.kind === 'pause_nudge' ? unsubscribeUrl(userId) : undefined,
   });
   await sendEmail({
     to: email,
@@ -134,6 +142,7 @@ async function notifyManage(userId, payload) {
     text: msg.text,
     replyTo: 'hello@earthtableco.ca',
   });
+  return true;
 }
 
 async function pauseSubscription(userId, subscriptionId) {
@@ -341,24 +350,32 @@ async function sendPauseReminders(now = new Date()) {
   const { data: paused, error } = await supabase
     .from('subscriptions')
     .select(`
-      id, user_id,
+      id, user_id, paused_at, created_at,
       subscription_plans!subscriptions_plan_id_fkey ( meal_count )
     `)
     .eq('status', 'paused');
   if (error) throw error;
 
+  const nudgeWeeks = CADENCE.PAUSE_NUDGE_WEEKS || [1, 4];
   const rows = paused || [];
   let emailed = 0;
+  let skipped = 0;
   const failures = [];
   for (const row of rows) {
+    const week = pauseNudgeWeek(row.paused_at || row.created_at, now);
+    if (!nudgeWeeks.includes(week)) {
+      skipped += 1;
+      continue;
+    }
     try {
-      await notifyManage(row.user_id, {
+      const sent = await notifyManage(row.user_id, {
         kind: 'pause_nudge',
         mealCount: row.subscription_plans?.meal_count,
         deliveryLabel: signup.first_delivery_label,
         chargeLabel: charge.charge_label,
       });
-      emailed += 1;
+      if (sent) emailed += 1;
+      else skipped += 1;
     } catch (err) {
       failures.push(err.message || String(err));
       console.warn('[subscriptions] pause reminder failed:', err.message);
@@ -369,12 +386,12 @@ async function sendPauseReminders(now = new Date()) {
     .from('cutoff_runs')
     .update({
       finished_at: new Date().toISOString(),
-      stats: { emailed, failed: failures.length },
+      stats: { emailed, failed: failures.length, skipped },
     })
     .eq('week_key', weekKey)
     .eq('job', 'pause_reminder');
 
-  return { ok: true, week_key: weekKey, emailed, failed: failures.length };
+  return { ok: true, week_key: weekKey, emailed, failed: failures.length, skipped };
 }
 
 async function changeSubscriptionPlan(userId, subscriptionId, planId) {

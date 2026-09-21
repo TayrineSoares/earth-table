@@ -29,6 +29,7 @@ const promoRouter = require('./src/routes/promoRoutes');
 const partnerRouter = require('./src/routes/partnerRoutes');
 const cronRouter = require('./src/routes/cronRoutes');
 const subscriptionRouter = require('./src/routes/subscriptionRoutes');
+const emailRouter = require('./src/routes/emailRoutes');
 const { getUserByAuthId } = require('./src/queries/user');
 const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
 
@@ -701,6 +702,8 @@ app.use('/subscriptions', subscriptionRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/cron', cronRouter);
 app.use('/api/cron', cronRouter);
+app.use('/email', emailRouter);
+app.use('/api/email', emailRouter);
 
 app.post('/delivery/quote', deliveryQuote);
 app.post('/api/delivery/quote', deliveryQuote);

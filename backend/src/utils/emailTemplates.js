@@ -134,10 +134,14 @@ function spacer(px = 24) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td style="height:${px}px; line-height:${px}px; font-size:1px;">&nbsp;</td></tr></table>`;
 }
 
-function wrapEmail(inner, { preheader, replyOk, title } = {}) {
+function wrapEmail(inner, { preheader, replyOk, title, unsubscribeHref } = {}) {
   const footerCopy = replyOk
     ? `Questions? Reply to this email or write to <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>.`
     : `Questions? Email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>. Please do not reply to this email.`;
+  const unsub = String(unsubscribeHref || '').trim();
+  const unsubLine = unsub
+    ? `<p style="margin:12px 0 0; font-size:12px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};"><a href="${unsub.replace(/"/g, '&quot;')}" style="color:${C_AMBER}; text-decoration:underline;">Unsubscribe from reminder emails</a></p>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -181,6 +185,7 @@ function wrapEmail(inner, { preheader, replyOk, title } = {}) {
             <td bgcolor="${C_CREAM}" style="padding:22px 28px 28px; background-color:${C_CREAM}; font-family:${FONT};">
               <p style="margin:0 0 6px; font-size:13px; line-height:1.5; color:${C_INK}; font-family:${FONT};">Earth Table Co</p>
               <p style="margin:0; font-size:12px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};">${footerCopy}</p>
+              ${unsubLine}
             </td>
           </tr>
         </table>
@@ -1386,7 +1391,7 @@ My Subscriptions: ${manageHref}`;
     pause_now: {
       subject: `Your weekly plan is paused until you resume`,
       heading: `You're paused, ${name}`,
-      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume — we'll email you on Mondays in case you want a box this week.`,
+      intro: `This Sunday, ${sundayDatePart(sunday)}, will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume.`,
     },
     pause_first: {
       subject: `Your weekly plan is paused — first box still runs`,
@@ -1396,7 +1401,7 @@ My Subscriptions: ${manageHref}`;
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume. We'll email you on Mondays in case you want a box that week.`,
+      intro: `The payment cutoff for this week has passed, so this Sunday, ${sundayDatePart(sunday)}, still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume.`,
     },
     cancel_now: {
       subject: `Your weekly plan is cancelled`,
@@ -1411,7 +1416,7 @@ My Subscriptions: ${manageHref}`;
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,
       heading: `We saved your plan, ${name}`,
-      intro: `Your ${planWeek} is still paused, with your meals and card on file. Resume in My Subscriptions by ${charge} if you want a box this Sunday. We'll keep inviting you back on Mondays until you resume or cancel.`,
+      intro: `Your ${planWeek} is still paused, with your meals and card on file. Resume in My Subscriptions by ${charge} if you want a box this Sunday.`,
     },
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
@@ -1439,6 +1444,8 @@ My Subscriptions: ${manageHref}`;
     intro: 'Your weekly plan was updated.',
   };
 
+  const unsubscribeHref = kind === 'pause_nudge' ? payload.unsubscribeHref : '';
+
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(copy.heading)}
@@ -1448,6 +1455,7 @@ My Subscriptions: ${manageHref}`;
     preheader: copy.subject,
     replyOk: true,
     title: copy.subject,
+    unsubscribeHref,
   });
 
   const text = `${copy.heading}
@@ -1456,7 +1464,9 @@ ${copy.intro}
 
 My Subscriptions: ${manageHref}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Reply to this email or write to hello@earthtableco.ca.${unsubscribeHref ? `
+
+Unsubscribe from reminder emails: ${unsubscribeHref}` : ''}`;
 
   return { subject: copy.subject, html, text };
 }
@@ -1631,6 +1641,7 @@ function renderSubscriptionWednesdayEmail({
   subscriptionId,
   cardBrand,
   last4,
+  unsubscribeHref,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1675,6 +1686,7 @@ function renderSubscriptionWednesdayEmail({
     preheader: introText,
     replyOk: true,
     title: subject,
+    unsubscribeHref,
   });
 
   const text = `${charged ? `Your receipt, ${name}` : `This week's box, ${name}`}
@@ -1694,7 +1706,9 @@ ${itemLinesText(addons) || 'None yet.'}
 Manage this week's meals: ${mealsHref}
 My Subscriptions: ${manageHref}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Reply to this email or write to hello@earthtableco.ca.${unsubscribeHref ? `
+
+Unsubscribe from reminder emails: ${unsubscribeHref}` : ''}`;
 
   return { subject, html, text };
 }
