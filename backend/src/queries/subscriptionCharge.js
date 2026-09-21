@@ -396,6 +396,7 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
       kind: 'payment_failed',
       mealCount: sub.subscription_plans?.meal_count,
       fulfillmentDate,
+      deliveryLabel: fulfillmentDate,
       cutoffLabel,
       planPrice,
       card,

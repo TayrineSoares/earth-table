@@ -31,8 +31,15 @@ function ctaLink(href, label) {
 
 function sundayDatePart(label) {
   const raw = String(label || '').trim();
-  const stripped = raw.replace(/^Sunday,\s*/i, '').trim();
+  const stripped = raw.replace(/^Sunday,?\s*/i, '').trim();
   return stripped || raw || 'this week';
+}
+
+/** "this Sunday" or "this Sunday, September 20" — never "this Sunday, Sunday". */
+function thisSundayPhrase(label) {
+  const part = sundayDatePart(label);
+  if (!part || /^sunday$/i.test(part) || /^this week$/i.test(part)) return 'this Sunday';
+  return `this Sunday, ${part}`;
 }
 
 function formatPhone(phone) {
@@ -1343,6 +1350,7 @@ function renderSubscriptionManageEmail(payload = {}) {
     mealCount,
     nextMealCount,
     deliveryLabel,
+    fulfillmentDate,
     chargeLabel,
     cutoffLabel,
     cardBrand,
@@ -1352,7 +1360,7 @@ function renderSubscriptionManageEmail(payload = {}) {
   } = payload;
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
-  const sunday = deliveryLabel || 'Sunday';
+  const sunday = fulfillmentDate || deliveryLabel || 'Sunday';
   const charge = chargeLabel || PAUSE_CANCEL_BY;
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
@@ -1421,7 +1429,7 @@ My Subscriptions: ${manageHref}`;
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
       heading: `We could not charge this week, ${name}`,
-      intro: `Your card was declined for this Sunday, ${sundayDatePart(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
+      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
     },
     resume: {
       subject: `Your weekly plan is active again`,
