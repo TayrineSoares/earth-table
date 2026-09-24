@@ -891,12 +891,19 @@ const MySubscriptions = ({ user }) => {
             const mealCount = Number(plan.meal_count) || 0
             const isDelivery = !!(nextBoxCycle || cycle).delivery
             const lockedCycle = row.this_week_cycle
-            const nextBoxIsLocked = Boolean(
+            const statusLocked = Boolean(
               (nextBoxCycle || lockedCycle)
               && (nextBoxCycle || lockedCycle).status === 'locked'
             )
+            const boxDate = (nextBoxCycle || cycle).delivery_date
+            const clockLocked = Boolean(
+              row.week?.cutoff_passed
+              && boxDate
+              && String(row.week.delivery_date) === String(boxDate)
+            )
+            const nextBoxIsLocked = statusLocked || clockLocked
             const lockedLines = nextBoxLines
-            const showingFollowingWeek = nextBoxIsLocked
+            const showingFollowingWeek = statusLocked
             const ymd = showingFollowingWeek
               ? (lockedCycle.delivery_date || row.this_week_date)
               : (row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date)
@@ -920,7 +927,7 @@ const MySubscriptions = ({ user }) => {
                 })
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
-                  : nextBoxIsLocked
+                  : statusLocked
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                     : row.meals_need_update
                       ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
@@ -974,9 +981,9 @@ const MySubscriptions = ({ user }) => {
                 emptyMeals="No meals selected for next box."
                 emptyExtras="No extras for next box."
                 lockCadence={lockCadence}
-                showEditLinks={!showingFollowingWeek && canEdit}
+                showEditLinks={!nextBoxIsLocked && canEdit}
                 showMealCount
-                showLockedBadge={showingFollowingWeek}
+                showLockedBadge={nextBoxIsLocked}
               />
             )
             const followingUsesRepeat = Boolean(

@@ -799,8 +799,12 @@ async function getOrCreateEditableCycle(sub) {
   const list = ensured.cycles;
   const hint = hintCycleForEdit(list, now, settings || {});
   const open = earliestOpenCycle(list);
-  let week = getEditWeek(now, settings || {}, open || hint);
-  if (open) {
+  const clockOpen = open && !lockPassedForSunday(open.delivery_date, now, settings || {})
+    ? open
+    : null;
+  const hintForWeek = clockOpen || (hint && hint.status !== 'open' ? hint : null);
+  let week = getEditWeek(now, settings || {}, hintForWeek);
+  if (clockOpen) {
     const src = previousCycleFromList(list, open) || pickDisplayCycle(list, now);
     return { cycle: await copyPlanMealsIfEmpty(open, src), week };
   }
