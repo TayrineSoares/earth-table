@@ -406,18 +406,30 @@ select.admin-control {
   color: #000;
 }
 
+.admin-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #EDA413;
+}
+
 .admin-form-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  margin: 0 0 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #EDA413;
+  margin: 0;
+  padding: 0;
+  border: none;
   font-family: var(--heading-font);
   font-size: 28px;
   font-weight: 400;
   color: #3a3a3a;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .admin-form-title-note {
@@ -425,6 +437,41 @@ select.admin-control {
   font-size: 14px;
   font-weight: 400;
   color: #757575;
+}
+
+.admin-form-close {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -4px -8px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #757575;
+  cursor: pointer;
+}
+
+.admin-form-close:hover,
+.admin-form-close:focus-visible {
+  color: #000;
+  background-color: #FEE8D4;
+  outline: none;
+}
+
+.admin-form-close:active {
+  background-color: #EDA413;
+  color: #000;
+}
+
+.admin-form-close:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .admin-field {
