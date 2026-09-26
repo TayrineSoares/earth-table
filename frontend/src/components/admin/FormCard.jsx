@@ -8,6 +8,7 @@ const FormCard = forwardRef(function FormCard({
   onSubmit,
   onCancel,
   submitLabel,
+  submitDisabled = false,
   children,
 }, ref) {
   return (
@@ -18,10 +19,10 @@ const FormCard = forwardRef(function FormCard({
       </h2>
       {children}
       <div className="admin-form-actions">
-        <AdminButton type="submit" variant="primary" size="md">
+        <AdminButton type="submit" variant="primary" size="md" disabled={submitDisabled}>
           {submitLabel}
         </AdminButton>
-        <AdminButton type="button" variant="secondary" size="md" onClick={onCancel}>
+        <AdminButton type="button" variant="secondary" size="md" onClick={onCancel} disabled={submitDisabled}>
           Cancel
         </AdminButton>
       </div>

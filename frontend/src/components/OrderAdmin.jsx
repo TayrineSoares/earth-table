@@ -8,6 +8,7 @@ import {
 } from '../helpers/orderHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import '../styles/OrderAdmin.css';
+import '../styles/AdminShared.css';
 
 const HST_RATE = 0.13;
 
@@ -170,7 +171,10 @@ const OrderAdmin = () => {
   return (
     <div className="order-admin-page">
       <h1>Order Admin</h1>
-      <br />
+      <p className="admin-tab-lead">
+        Everyday orders placed on the website (not weekly subscription boxes — those are under Subscriptions).
+        Search for a customer or order, open the details, and mark it picked up when it’s ready.
+      </p>
 
       <input
         className="user-search-input"

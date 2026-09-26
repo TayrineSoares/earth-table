@@ -26,37 +26,6 @@
   margin: 1.5rem 0 0.75rem;
 }
 
-.admin-create-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 2rem;
-}
-
-.toggle-form-button {
-  background-color: #FEE8D4;
-  color: #000;
-  -webkit-text-fill-color: #000;
-  font-family: var(--body-font);
-  font-weight: 500;
-  font-size: 15px;
-  font-variant: small-caps;
-  line-height: 100%;
-  letter-spacing: 0.04em;
-  border: none;
-  border-radius: 15px;
-  padding: 8px 12px;
-  min-height: 44px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.toggle-form-button:active {
-  transform: scale(0.98);
-  background-color: #EDA413;
-  color: #000;
-  -webkit-text-fill-color: #000;
-}
-
 .sub-admin-inline {
   display: flex;
   flex-wrap: wrap;
@@ -371,12 +340,6 @@
 }
 
 @media (max-width: 768px) {
-  .admin-create-actions,
-  .toggle-form-button {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
   .sub-admin-desc-edit {
     flex-direction: column;
     align-items: stretch;

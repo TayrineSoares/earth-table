@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import AdminTabLoading from './AdminTabLoading';
+import AdminToolbar from './admin/AdminToolbar';
+import AdminButton from './admin/AdminButton';
+import Badge from './admin/Badge';
+import FormCard from './admin/FormCard';
+import FormField from './admin/FormField';
 import {
   fetchSubscriptionPlans,
   createSubscriptionPlan,
@@ -17,6 +22,7 @@ import {
 } from '../helpers/subscriptionHelpers';
 import '../styles/PromoAdmin.css';
 import '../styles/SubscriptionAdmin.css';
+import '../styles/AdminShared.css';
 
 const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, and mains.';
 
@@ -324,9 +330,9 @@ const SubscriptionAdmin = () => {
   return (
     <div className="promo-admin-container">
       <h1 className="promo-admin-title">Weekly Plans</h1>
-      <p className="sub-admin-lead">
-        Catalog for Subscribe &amp; Save. The description on each plan is the copy on the public cards.
-        Name and meal count cannot change after create. Price emails to existing subscribers will send in a later phase — the confirm still warns you now.
+      <p className="admin-tab-lead">
+        These are the weekly meal plans customers choose on Subscribe &amp; Save.
+        You can change the price and description anytime; the plan name and meal count stay fixed once created.
       </p>
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
@@ -358,111 +364,127 @@ const SubscriptionAdmin = () => {
               onChange={(e) => setTestLock(e.target.value)}
             />
           </label>
-          <button className="promo-submit-button" type="submit" disabled={savingSettings}>
+          <AdminButton type="submit" variant="primary" size="md" disabled={savingSettings}>
             {savingSettings ? 'Saving…' : 'Save test times'}
-          </button>
-          <button
-            className="promo-delete-button"
+          </AdminButton>
+          <AdminButton
             type="button"
+            variant="secondary"
+            size="md"
             onClick={handleClearTestTimes}
             disabled={savingSettings || (!settings?.test_charge_at && !settings?.test_lock_at)}
           >
             Use live Wednesday 9am / Thursday 5pm
-          </button>
+          </AdminButton>
         </div>
       </form>
       <p className="sub-admin-hint">
         Run charge / lock yourself while testing. Live cron is Wednesday 9:00 AM and Thursday 5:00 PM America/Toronto (13:00 / 22:00 UTC).
       </p>
       <div className="sub-admin-inline" style={{ marginBottom: '1rem' }}>
-        <button
-          className="promo-submit-button"
+        <AdminButton
           type="button"
+          variant="primary"
+          size="md"
           disabled={!!jobBusy}
           onClick={() => handleRunJob('charge')}
         >
           {jobBusy === 'charge' ? 'Running…' : 'Run Wednesday charge'}
-        </button>
-        <button
-          className="promo-submit-button"
+        </AdminButton>
+        <AdminButton
           type="button"
+          variant="primary"
+          size="md"
           disabled={!!jobBusy}
           onClick={() => handleRunJob('lock')}
         >
           {jobBusy === 'lock' ? 'Running…' : 'Run Thursday lock'}
-        </button>
+        </AdminButton>
       </div>
       {jobNote ? <p className="sub-admin-hint">{jobNote}</p> : null}
         </>
       ) : null}
 
-      <div className="admin-create-actions">
-        <button
-          type="button"
-          className="toggle-form-button"
-          onClick={() => setShowForm((prev) => !prev)}
-        >
-          {showForm ? 'Close Form' : 'Add New Plan'}
-        </button>
-      </div>
+      <AdminToolbar
+        showSearch={false}
+        actionLabel={showForm ? 'Close Form' : 'Add New Plan'}
+        onAction={() => {
+          if (showForm) {
+            setShowForm(false);
+            setName('');
+            setMealCount('');
+            setPriceDollars('');
+            setDescription('');
+            return;
+          }
+          setShowForm(true);
+        }}
+        resultLabel={`${plans.length} ${plans.length === 1 ? 'plan' : 'plans'}`}
+      />
 
       {showForm ? (
-        <>
-          <h2 className="sub-admin-h2">Add New Plan</h2>
-          <form className="promo-admin-form" onSubmit={handleCreate}>
-            <div className="promo-form-grid">
-              <label className="promo-field">
-                <span>Name</span>
-                <input
-                  type="text"
-                  className="promo-input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="10 meals"
-                  required
-                />
-              </label>
-              <label className="promo-field">
-                <span>Meal count</span>
-                <input
-                  type="number"
-                  className="promo-input"
-                  min="1"
-                  step="1"
-                  value={mealCount}
-                  onChange={(e) => setMealCount(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="promo-field">
-                <span>Price (dollars / week, pre-tax)</span>
-                <input
-                  type="number"
-                  className="promo-input"
-                  min="0"
-                  step="0.01"
-                  value={priceDollars}
-                  onChange={(e) => setPriceDollars(e.target.value)}
-                  placeholder="180"
-                  required
-                />
-              </label>
-              <label className="promo-field sub-admin-desc-field">
-                <span>Description (Subscribe &amp; Save card)</span>
-                <input
-                  type="text"
-                  className="promo-input"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={DEFAULT_DESCRIPTION}
-                />
-              </label>
-              <button className="promo-submit-button" type="submit">
-                Add New Plan
-              </button>
+        <FormCard
+          title="Add New Plan"
+          onSubmit={handleCreate}
+          onCancel={() => {
+            setShowForm(false);
+            setName('');
+            setMealCount('');
+            setPriceDollars('');
+            setDescription('');
+          }}
+          submitLabel="Create plan"
+        >
+          <FormField label="Name" htmlFor="plan-name">
+            <input
+              id="plan-name"
+              className="admin-control"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="10 meals"
+              required
+            />
+          </FormField>
+          <FormField label="Meal count" htmlFor="plan-meals">
+            <input
+              id="plan-meals"
+              className="admin-control"
+              type="number"
+              min="1"
+              step="1"
+              value={mealCount}
+              onChange={(e) => setMealCount(e.target.value)}
+              required
+            />
+          </FormField>
+          <FormField label="Price" hint="Dollars per week, pre-tax" htmlFor="plan-price">
+            <div className="admin-prefix-field">
+              <span className="admin-prefix" aria-hidden="true">$</span>
+              <input
+                id="plan-price"
+                className="admin-control admin-prefix-input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={priceDollars}
+                onChange={(e) => setPriceDollars(e.target.value)}
+                placeholder="180"
+                required
+              />
             </div>
-          </form>
-        </>
+          </FormField>
+          <FormField label="Description" hint="Shown on the Subscribe & Save card" htmlFor="plan-description">
+            <input
+              id="plan-description"
+              className="admin-control"
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={DEFAULT_DESCRIPTION}
+            />
+          </FormField>
+        </FormCard>
       ) : null}
 
       <h2 className="sub-admin-h2">Existing plans</h2>
@@ -492,7 +514,7 @@ const SubscriptionAdmin = () => {
                     <span className="promo-code-with-badge">
                       {plan.name}
                       {!plan.is_active ? (
-                        <span className="promo-inactive-badge">hidden</span>
+                        <Badge tone="muted">hidden</Badge>
                       ) : null}
                     </span>
                   </td>
@@ -626,14 +648,15 @@ const SubscriptionAdmin = () => {
                   </td>
                   <td>
                     {canDelete ? (
-                      <button
+                      <AdminButton
                         type="button"
-                        className="promo-delete-button"
+                        variant="danger"
+                        size="sm"
                         disabled={savingId === plan.id}
                         onClick={() => handleDeletePlan(plan)}
                       >
                         Delete
-                      </button>
+                      </AdminButton>
                     ) : (
                       <span className="sub-admin-muted">—</span>
                     )}

@@ -14,6 +14,7 @@ import AdminListItem from './admin/AdminListItem';
 import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
 import '../styles/ProductAdmin.css';
+import '../styles/AdminShared.css';
 
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]);
@@ -163,6 +164,10 @@ const ProductAdmin = () => {
   return (
     <div className="product-admin-container">
       <h1 className="product-admin-title">Menu Management </h1>
+      <p className="admin-tab-lead">
+        All the dishes customers can order — bowls, salads, mains, and add-ons.
+        Update names, prices, and photos here. Archiving hides a dish from the menu without deleting it.
+      </p>
 
       <AdminToolbar
         searchValue={searchTerm}

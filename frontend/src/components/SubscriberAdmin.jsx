@@ -10,6 +10,7 @@ import { DELIVERY_WINDOW, PICKUP_ADDRESS, setOrderPickedUp } from '../helpers/or
 import '../styles/PromoAdmin.css';
 import '../styles/UsersAdmin.css';
 import '../styles/SubscriptionAdmin.css';
+import '../styles/AdminShared.css';
 
 const formatPhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -342,6 +343,11 @@ const SubscriberAdmin = () => {
           </button>
         </div>
         </div>
+
+        <p className="admin-tab-lead">
+          See who’s subscribed this week and what meals they’re getting on Sunday.
+          Switch between this Sunday and next, open a customer for details, and keep an eye on the banner if meals can still change.
+        </p>
 
         {statusTab === 'active' ? (
           <>

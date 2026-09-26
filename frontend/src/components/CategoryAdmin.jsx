@@ -12,6 +12,7 @@ import AdminListItem from './admin/AdminListItem';
 import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
 import '../styles/CategoryAdmin.css'
+import '../styles/AdminShared.css'
 
 const CategoryAdmin = () => {
   const [categories, setCategories] = useState([]);
@@ -100,6 +101,10 @@ const CategoryAdmin = () => {
   return (
     <div className="category-admin-container">
       <h1 className="category-admin-title">Categories Management</h1>
+      <p className="admin-tab-lead">
+        Organize your menu into groups like bowls, salads, or catering. What you add here shows up on the website,
+        and you can choose which ones appear on the homepage.
+      </p>
 
       <AdminToolbar
         searchValue={searchTerm}

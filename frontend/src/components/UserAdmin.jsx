@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import '../styles/UsersAdmin.css'
+import '../styles/AdminShared.css'
 
 const UserAdmin = ({ currentUserId }) => {
   const [users, setUsers] = useState([]);
@@ -91,7 +92,10 @@ const UserAdmin = ({ currentUserId }) => {
   return (
     <div className="user-admin-container">
       <h1 className="user-admin-title">Users Management</h1>
-      <br/> 
+      <p className="admin-tab-lead">
+        Everyone who has an account. You can search by name, email, or phone,
+        and give someone admin access so they can use this board too.
+      </p>
 
       <input
         className="user-search-input"

@@ -15,7 +15,12 @@ import {
 } from '../helpers/partnerHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import PartnerMonthList from './PartnerMonthList';
+import AdminToolbar from './admin/AdminToolbar';
+import Badge from './admin/Badge';
+import FormCard from './admin/FormCard';
+import FormField from './admin/FormField';
 import '../styles/PartnerAdmin.css';
+import '../styles/AdminShared.css';
 
 const parseRateInput = (raw) => {
   if (raw === null || raw === undefined || String(raw).trim() === '') return null;
@@ -343,106 +348,118 @@ const PartnerAdmin = () => {
   return (
     <div className="partner-admin-container">
       <h1 className="partner-admin-title">Partners Management</h1>
-      <br />
+      <p className="admin-tab-lead">
+        People who share a referral code and earn cashback when customers use it.
+        Add someone from your existing users, then open their row to see earnings and invoices.
+      </p>
 
-      <div className="partner-form-toolbar">
-        {showForm ? (
-          <h2 className="partner-form-heading">Add new partner</h2>
-        ) : (
-          <span />
-        )}
-        <button
-          type="button"
-          className="partner-toggle-button"
-          onClick={() => setShowForm((prev) => !prev)}
-        >
-          {showForm ? 'Close' : 'Add partner'}
-        </button>
-      </div>
+      <AdminToolbar
+        showSearch={false}
+        actionLabel={showForm ? 'Close Form' : 'Add New Partner'}
+        onAction={() => {
+          if (showForm) {
+            setShowForm(false);
+            setSelectedUserId('');
+            setUserSearch('');
+            setReferralCode('');
+            setDiscountPercent('');
+            setCashbackPercent('');
+            return;
+          }
+          setShowForm(true);
+        }}
+        resultLabel={`${visiblePartners.length} ${visiblePartners.length === 1 ? 'partner' : 'partners'}`}
+      />
 
       {showForm && (
-        <form className="partner-admin-form" onSubmit={handleCreate}>
-          <div className="partner-form-grid">
-            <label className="partner-field">
-              <span>User</span>
-              <input
-                type="text"
-                className="partner-input"
-                value={selectedUser
-                  ? `${[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ')} (${selectedUser.email})`
-                  : userSearch}
-                onChange={(e) => {
-                  setSelectedUserId('');
-                  setUserSearch(e.target.value);
-                }}
-                placeholder="Search by name or email"
-              />
-              {!selectedUserId && candidateUsers.length > 0 && (
-                <ul className="partner-user-results">
-                  {candidateUsers.map((user) => (
-                    <li key={user.auth_user_id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedUserId(user.auth_user_id);
-                          setUserSearch('');
-                        }}
-                      >
-                        {[user.first_name, user.last_name].filter(Boolean).join(' ') || '—'}
-                        {' — '}
-                        {user.email}
-                        {user.phone_number ? ` — ${formatPhoneNumber(user.phone_number)}` : ''}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </label>
-            <label className="partner-field">
-              <span>Referral code</span>
-              <input
-                type="text"
-                className="partner-input"
-                value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value)}
-                placeholder="e.g. JOSH15"
-              />
-            </label>
-            <label className="partner-field partner-field-rate">
-              <span>Customer discount %</span>
-              <input
-                type="number"
-                className="partner-input"
-                min={0}
-                max={100}
-                step={1}
-                value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
-                placeholder="Required"
-                required
-              />
-            </label>
-            <label className="partner-field partner-field-rate">
-              <span>Partner cashback %</span>
-              <input
-                type="number"
-                className="partner-input"
-                min={0}
-                max={100}
-                step={1}
-                value={cashbackPercent}
-                onChange={(e) => setCashbackPercent(e.target.value)}
-                placeholder="Required"
-                required
-              />
-            </label>
-          </div>
-          <div className="partner-form-actions">
-            <button type="submit" className="partner-submit-button" disabled={saving}>
-              {saving ? 'Adding…' : 'Save'}
-            </button>
-          </div>
-        </form>
+        <FormCard
+          title="Add New Partner"
+          onSubmit={handleCreate}
+          onCancel={() => {
+            setShowForm(false);
+            setSelectedUserId('');
+            setUserSearch('');
+            setReferralCode('');
+            setDiscountPercent('');
+            setCashbackPercent('');
+          }}
+          submitLabel={saving ? 'Adding…' : 'Create partner'}
+          submitDisabled={saving}
+        >
+          <FormField label="User" htmlFor="partner-user">
+            <input
+              id="partner-user"
+              type="text"
+              className="admin-control"
+              value={selectedUser
+                ? `${[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ')} (${selectedUser.email})`
+                : userSearch}
+              onChange={(e) => {
+                setSelectedUserId('');
+                setUserSearch(e.target.value);
+              }}
+              placeholder="Search by name or email"
+            />
+            {!selectedUserId && candidateUsers.length > 0 && (
+              <ul className="admin-user-results">
+                {candidateUsers.map((user) => (
+                  <li key={user.auth_user_id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUserId(user.auth_user_id);
+                        setUserSearch('');
+                      }}
+                    >
+                      {[user.first_name, user.last_name].filter(Boolean).join(' ') || '—'}
+                      {' — '}
+                      {user.email}
+                      {user.phone_number ? ` — ${formatPhoneNumber(user.phone_number)}` : ''}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </FormField>
+          <FormField label="Referral code" htmlFor="partner-code">
+            <input
+              id="partner-code"
+              type="text"
+              className="admin-control"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value)}
+              placeholder="e.g. JOSH15"
+            />
+          </FormField>
+          <FormField label="Customer discount %" htmlFor="partner-discount">
+            <input
+              id="partner-discount"
+              type="number"
+              className="admin-control"
+              min={0}
+              max={100}
+              step={1}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+              placeholder="Required"
+              required
+            />
+          </FormField>
+          <FormField label="Partner cashback %" htmlFor="partner-cashback">
+            <input
+              id="partner-cashback"
+              type="number"
+              className="admin-control"
+              min={0}
+              max={100}
+              step={1}
+              value={cashbackPercent}
+              onChange={(e) => setCashbackPercent(e.target.value)}
+              placeholder="Required"
+              required
+            />
+          </FormField>
+        </FormCard>
       )}
 
       <div className="partner-status-tabs" role="tablist" aria-label="Partner status">
@@ -511,7 +528,7 @@ const PartnerAdmin = () => {
                       <td>
                         <div className="partner-name-with-badge">
                           <div className="partner-name">{partnerName(row)}</div>
-                          {!row.active && <span className="partner-inactive-badge">Inactive</span>}
+                          {!row.active ? <Badge tone="muted">Inactive</Badge> : null}
                         </div>
                         {row.user?.email && (
                           <div className="partner-email">{row.user.email}</div>

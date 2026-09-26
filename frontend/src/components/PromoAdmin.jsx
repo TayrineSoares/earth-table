@@ -1,7 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import AdminTabLoading from './AdminTabLoading';
+import AdminToolbar from './admin/AdminToolbar';
+import AdminButton from './admin/AdminButton';
+import Badge from './admin/Badge';
+import FormCard from './admin/FormCard';
+import FormField from './admin/FormField';
 import '../styles/PromoAdmin.css';
+import '../styles/AdminShared.css';
 
 const normalizeCode = (value) => (value || '').trim();
 
@@ -17,6 +23,7 @@ function formatExpiresDisplay(iso) {
 const PromoAdmin = () => {
   const [promos, setPromos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [code, setCode] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
@@ -59,6 +66,14 @@ const PromoAdmin = () => {
     if (!term) return promos;
     return promos.filter((p) => p.code?.toLowerCase().includes(term));
   }, [promos, searchTerm]);
+
+  const resetForm = () => {
+    setCode('');
+    setDiscountPercentage('');
+    setExpiresAt('');
+    setFirstTimeOnly(false);
+    setMaxUses('');
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -105,11 +120,8 @@ const PromoAdmin = () => {
     }
 
     setPromos((prev) => [data, ...prev]);
-    setCode('');
-    setDiscountPercentage('');
-    setExpiresAt('');
-    setFirstTimeOnly(false);
-    setMaxUses('');
+    resetForm();
+    setShowForm(false);
   };
 
   const handleToggleActive = async (row) => {
@@ -167,25 +179,53 @@ const PromoAdmin = () => {
   return (
     <div className="promo-admin-container">
       <h1 className="promo-admin-title">Promo Codes Management</h1>
-      <br />
+      <p className="admin-tab-lead">
+        Create discount codes customers can enter at checkout.
+        Turn a code off if you want to pause it, or delete it when you’re done with it.
+      </p>
 
-      <form className="promo-admin-form" onSubmit={handleCreate}>
-        <div className="promo-form-grid">
-          <label className="promo-field">
-            <span>Code</span>
+      <AdminToolbar
+        searchValue={searchTerm}
+        searchPlaceholder="Search by code"
+        searchLabel="Search by code"
+        onSearchChange={(e) => setSearchTerm(e.target.value)}
+        actionLabel={showForm ? 'Close Form' : 'Add New Promo'}
+        onAction={() => {
+          if (showForm) {
+            setShowForm(false);
+            resetForm();
+            return;
+          }
+          setShowForm(true);
+        }}
+        resultLabel={`${filteredPromos.length} ${filteredPromos.length === 1 ? 'promo' : 'promos'}`}
+      />
+
+      {showForm ? (
+        <FormCard
+          title="Add New Promo"
+          onSubmit={handleCreate}
+          onCancel={() => {
+            setShowForm(false);
+            resetForm();
+          }}
+          submitLabel="Create promo"
+        >
+          <FormField label="Code" htmlFor="promo-code">
             <input
+              id="promo-code"
+              className="admin-control"
               type="text"
-              className="promo-input"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="e.g. SUMMER20"
             />
-          </label>
-          <label className="promo-field">
-            <span>Discount %</span>
+          </FormField>
+          <FormField label="Discount %" htmlFor="promo-discount">
             <input
+              id="promo-discount"
+              className="admin-control"
               type="number"
-              className="promo-input"
               min={0}
               max={100}
               step={1}
@@ -193,51 +233,38 @@ const PromoAdmin = () => {
               onChange={(e) => setDiscountPercentage(e.target.value)}
               placeholder="0–100"
             />
-          </label>
-          <label className="promo-field">
-            <span>Expires (optional)</span>
+          </FormField>
+          <FormField label="Expires" hint="Optional" htmlFor="promo-expires">
             <input
+              id="promo-expires"
+              className="admin-control"
               type="datetime-local"
-              className="promo-input"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
             />
-          </label>
-          <label className="promo-field promo-field-checkbox">
+          </FormField>
+          <FormField label="Max uses" hint="Leave empty for unlimited" htmlFor="promo-max-uses">
             <input
-              type="checkbox"
-              checked={firstTimeOnly}
-              onChange={(e) => setFirstTimeOnly(e.target.checked)}
-            />
-            <span>First-time customers only</span>
-          </label>
-          <label className="promo-field">
-            <span>Max uses (optional)</span>
-            <input
+              id="promo-max-uses"
+              className="admin-control"
               type="number"
-              className="promo-input"
               min={0}
               step={1}
               value={maxUses}
               onChange={(e) => setMaxUses(e.target.value)}
               placeholder="Unlimited if empty"
             />
+          </FormField>
+          <label className="admin-check-row">
+            <input
+              type="checkbox"
+              checked={firstTimeOnly}
+              onChange={(e) => setFirstTimeOnly(e.target.checked)}
+            />
+            First-time customers only
           </label>
-        </div>
-        <button type="submit" className="promo-submit-button">
-          Add promo code
-        </button>
-      </form>
-
-      <br />
-
-      <input
-        type="text"
-        className="promo-search-input"
-        placeholder="Search by code"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
+        </FormCard>
+      ) : null}
 
       {promos.length === 0 ? (
         <p className="promo-empty">No promo codes yet.</p>
@@ -261,44 +288,44 @@ const PromoAdmin = () => {
             {filteredPromos.map((row) => {
               const isSaving = savingActiveId === row.id;
               return (
-              <tr key={row.id}>
-                <td>
-                  <span className="promo-code-with-badge">
-                    {row.code}
-                    {!row.active && <span className="promo-inactive-badge">Inactive</span>}
-                  </span>
-                </td>
-                <td>{row.discount_percentage}</td>
-                <td>{formatExpiresDisplay(row.expires_at)}</td>
-                <td>{row.first_time_only ? 'Yes' : 'No'}</td>
-                <td>{row.max_uses == null ? '—' : row.max_uses}</td>
-                <td>{row.used_count ?? 0}</td>
-                <td>
-                  <label
-                    className={isSaving ? 'admin-toggle is-disabled' : 'admin-toggle'}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!row.active}
-                      disabled={isSaving}
-                      onChange={() => handleToggleActive(row)}
-                    />
-                    <span className="admin-toggle-track" />
-                    <span className="admin-toggle-label">
-                      {row.active ? 'Active' : 'Inactive'}
+                <tr key={row.id}>
+                  <td>
+                    <span className="promo-code-with-badge">
+                      {row.code}
+                      {!row.active ? <Badge tone="muted">Inactive</Badge> : null}
                     </span>
-                  </label>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="promo-delete-button"
-                    onClick={() => handleDelete(row.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
+                  </td>
+                  <td>{row.discount_percentage}</td>
+                  <td>{formatExpiresDisplay(row.expires_at)}</td>
+                  <td>{row.first_time_only ? 'Yes' : 'No'}</td>
+                  <td>{row.max_uses == null ? '—' : row.max_uses}</td>
+                  <td>{row.used_count ?? 0}</td>
+                  <td>
+                    <label
+                      className={isSaving ? 'admin-toggle is-disabled' : 'admin-toggle'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!row.active}
+                        disabled={isSaving}
+                        onChange={() => handleToggleActive(row)}
+                      />
+                      <span className="admin-toggle-track" />
+                      <span className="admin-toggle-label">
+                        {row.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </label>
+                  </td>
+                  <td>
+                    <AdminButton
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(row.id)}
+                    >
+                      Delete
+                    </AdminButton>
+                  </td>
+                </tr>
               );
             })}
           </tbody>
