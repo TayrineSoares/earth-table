@@ -261,28 +261,6 @@ const SubscriptionAdmin = () => {
     }
   };
 
-  const handleToggleActive = async (plan) => {
-    if (plan.discontinued_at) return;
-    const next = !plan.is_active;
-    const confirmed = window.confirm(
-      next
-        ? `Activate "${plan.name}"? New customers will see it on Subscribe & Save.`
-        : `Deactivate "${plan.name}"? It will be hidden from new signups. People already subscribed keep it.`
-    );
-    if (!confirmed) return;
-
-    setSavingId(plan.id);
-    setError('');
-    try {
-      const { plan: updated } = await updateSubscriptionPlan(plan.id, { is_active: next });
-      setPlans((prev) => prev.map((p) => (p.id === plan.id ? updated : p)));
-    } catch (err) {
-      setError(err.message || 'Failed to update plan.');
-    } finally {
-      setSavingId(null);
-    }
-  };
-
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     setSavingSettings(true);
@@ -538,7 +516,6 @@ const SubscriptionAdmin = () => {
                 <th>Price / week</th>
                 <th>Description</th>
                 <th>Subscribers</th>
-                <th>Active</th>
                 <th></th>
               </tr>
             </thead>
@@ -671,24 +648,6 @@ const SubscriptionAdmin = () => {
                   </td>
                   <td>
                     {subscriberCount} {subscriberCount === 1 ? 'person' : 'people'}
-                  </td>
-                  <td>
-                    {discontinued ? (
-                      <span className="sub-admin-muted">Off</span>
-                    ) : (
-                      <label className={`admin-toggle ${savingId === plan.id ? 'is-disabled' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={!!plan.is_active}
-                          disabled={savingId === plan.id}
-                          onChange={() => handleToggleActive(plan)}
-                        />
-                        <span className="admin-toggle-track" />
-                        <span className="admin-toggle-label">
-                          {plan.is_active ? 'On' : 'Off'}
-                        </span>
-                      </label>
-                    )}
                   </td>
                   <td>
                     {discontinued ? (
