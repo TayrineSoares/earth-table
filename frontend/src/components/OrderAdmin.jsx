@@ -235,7 +235,8 @@ const OrderAdmin = () => {
               className={view === 'upcoming' ? 'active' : ''}
               onClick={() => setView('upcoming')}
             >
-              Upcoming ({upcomingCount})
+              Upcoming
+              <span className="admin-view-tab-count">{upcomingCount}</span>
             </button>
             <button
               type="button"
@@ -244,7 +245,8 @@ const OrderAdmin = () => {
               className={view === 'past' ? 'active' : ''}
               onClick={() => setView('past')}
             >
-              Past ({pastCount})
+              Past
+              <span className="admin-view-tab-count">{pastCount}</span>
             </button>
           </div>
         )}

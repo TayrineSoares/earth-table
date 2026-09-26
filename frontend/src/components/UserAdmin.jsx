@@ -129,7 +129,7 @@ const UserAdmin = ({ currentUserId }) => {
                   <td>
                     <span className="user-name-with-badge">
                       {user.first_name}
-                      {user.is_admin && <span className="admin-badge">Admin</span>}
+                      {user.is_admin && <span className="user-admin-badge">Admin</span>}
                       {user.is_partner && <span className="partner-badge">Partner</span>}
                     </span>
                   </td>

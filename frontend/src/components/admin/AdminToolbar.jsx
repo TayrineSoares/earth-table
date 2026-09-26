@@ -17,6 +17,7 @@ const AdminToolbar = ({
   <div className="admin-toolbar-block">
     <div className="admin-toolbar">
       <div className="admin-toolbar-main">
+        {!filtersBelow ? filters : null}
         {showSearch ? (
           <SearchField
             className="admin-search-field--toolbar"
@@ -27,7 +28,6 @@ const AdminToolbar = ({
             aria-label={searchLabel}
           />
         ) : null}
-        {!filtersBelow ? filters : null}
       </div>
       {actionLabel && onAction ? (
         <div className="admin-toolbar-action">

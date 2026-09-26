@@ -125,39 +125,12 @@
   margin-bottom: 0;
 }
 
-.sub-admin-head .sub-admin-status-tabs {
+.sub-admin-head .admin-view-tabs {
   margin: 0 0 0 auto;
 }
 
-.sub-admin-status-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.sub-admin-screen > .admin-view-tabs {
   margin: 0 0 1rem;
-}
-
-.sub-admin-status-tabs button {
-  background-color: #FEE8D4;
-  color: #000;
-  font-family: var(--body-font);
-  font-weight: 500;
-  font-size: 13px;
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
-  border: none;
-  border-radius: 15px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.sub-admin-status-tabs button:active {
-  transform: scale(0.98);
-  background-color: #EDA413;
-}
-
-.sub-admin-status-tabs button.active {
-  background-color: #EDA413;
-  color: #000;
 }
 
 .sub-admin-banner {

@@ -43,6 +43,7 @@
 .order-admin-table th {
   background-color: #FEE8D4;
   color: #000;
+  font-size: 15px;
   font-variant: small-caps;
 }
 
@@ -133,7 +134,7 @@
 .order-customer-name {
   font-family: var(--body-font);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   color: #000;
 }
 

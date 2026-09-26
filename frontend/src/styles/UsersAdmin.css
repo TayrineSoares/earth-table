@@ -111,7 +111,7 @@
   white-space: nowrap;
 }
 
-.admin-badge {
+.user-admin-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -128,7 +128,7 @@
   border: 1px solid #93c5fd;
 }
 
-.admin-badge::before {
+.user-admin-badge::before {
   content: "";
   width: 4px;
   height: 4px;

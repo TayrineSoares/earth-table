@@ -175,7 +175,7 @@
   margin-top: 2px;
   font-family: var(--body-font);
   font-size: 12px;
-  color: inherit;
+  color: #757575;
 }
 
 .partner-table-wrap {
@@ -201,10 +201,10 @@
 .partner-table th {
   background-color: #FEE8D4;
   color: #000;
-  text-transform: uppercase;
+  font-size: 15px;
+  font-variant: small-caps;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  font-size: 11px;
 }
 
 .partner-table th.partner-th-rate {
@@ -228,11 +228,21 @@
 }
 
 .partner-row {
-  cursor: pointer;
+  cursor: default;
+}
+
+.partner-email {
+  margin-top: 2px;
+  font-family: var(--body-font);
+  font-size: 12px;
+  color: #757575;
 }
 
 .partner-name {
-  font-weight: 700;
+  font-family: var(--body-font);
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
 }
 
 .partner-name-with-badge {

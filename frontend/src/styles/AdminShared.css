@@ -123,16 +123,22 @@
 }
 
 .admin-view-tabs {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 4px;
+  background-color: #FEE8D4;
+  border-radius: 15px;
 }
 
 .admin-view-tabs button {
   -webkit-appearance: none;
   appearance: none;
-  background-color: #FEE8D4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
   color: #000;
   -webkit-text-fill-color: #000;
   font-family: var(--body-font);
@@ -141,9 +147,9 @@
   font-variant: small-caps;
   letter-spacing: 0.04em;
   border: none;
-  border-radius: 15px;
-  padding: 8px 14px;
-  min-height: 40px;
+  border-radius: 12px;
+  padding: 6px 12px;
+  min-height: 36px;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
@@ -164,6 +170,91 @@
 .admin-view-tabs button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+}
+
+.admin-view-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-family: var(--body-font);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant: normal;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.admin-person-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-person-name {
+  font-family: var(--body-font);
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
+}
+
+.admin-person-email {
+  font-family: var(--body-font);
+  font-size: 12px;
+  color: #757575;
+  overflow-wrap: anywhere;
+}
+
+.admin-money,
+.admin-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-money {
+  text-align: right;
+}
+
+.view-items-button.admin-btn,
+.view-items-button {
+  background-color: #FEE8D4;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.view-items-button.is-open,
+.view-items-button.admin-btn.is-open {
+  background-color: #f5d4a8;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.admin-fulfillment-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-fulfillment-meta {
+  font-family: var(--body-font);
+  font-size: 12px;
+  color: #757575;
+  white-space: nowrap;
+}
+
+.admin-details-panel {
+  padding: 20px 12px;
+  background-color: #FFFBF3;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+  container-type: inline-size;
 }
 
 .admin-toolbar-count {
@@ -425,6 +516,14 @@ select.admin-control {
   font-weight: 500;
   line-height: 1.4;
   white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  gap: 0;
+  border: none;
+}
+
+.admin-badge::before {
+  content: none;
 }
 
 .admin-badge--neutral {

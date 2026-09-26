@@ -647,7 +647,7 @@ const SubscriptionAdmin = () => {
                     )}
                   </td>
                   <td>
-                    {subscriberCount} {subscriberCount === 1 ? 'person' : 'people'}
+                    {subscriberCount} {subscriberCount === 1 ? 'subscriber' : 'subscribers'}
                   </td>
                   <td>
                     {discontinued ? (

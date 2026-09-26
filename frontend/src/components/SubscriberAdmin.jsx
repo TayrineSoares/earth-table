@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import AdminTabLoading from './AdminTabLoading';
-import SearchField from './admin/SearchField';
+import AdminToolbar from './admin/AdminToolbar';
+import AdminButton from './admin/AdminButton';
+import Badge from './admin/Badge';
 import {
   fetchAdminSubscriptions,
   formatPickupSlot,
@@ -8,27 +10,17 @@ import {
   sundayDatePart,
 } from '../helpers/subscriptionHelpers';
 import { DELIVERY_WINDOW, PICKUP_ADDRESS, setOrderPickedUp } from '../helpers/orderHelpers';
+import { formatDueShort } from '../helpers/orderAdminHelpers';
 import '../styles/PromoAdmin.css';
-import '../styles/UsersAdmin.css';
 import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
+import '../styles/OrderAdmin.css';
 
 const formatPhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '');
   const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
   if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
   return String(phone || '').trim() || '—';
-};
-
-const formatYmd = (ymd) => {
-  if (!ymd) return '—';
-  const [y, m, d] = String(ymd).split('-').map(Number);
-  if (!y || !m || !d) return '—';
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 };
 
 const formatMd = (ymd, fallback) => {
@@ -39,6 +31,11 @@ const formatMd = (ymd, fallback) => {
     month: 'short',
     day: 'numeric',
   });
+};
+
+const patchKitchen = (kitchen, orderId, pickedUp) => {
+  if (!kitchen || kitchen.id !== orderId) return kitchen;
+  return { ...kitchen, picked_up: pickedUp };
 };
 
 const customerName = (customer) => {
@@ -60,6 +57,27 @@ const statusLabel = (row) => {
   return 'Active';
 };
 
+const statusBadgeTone = (label) => (label === 'Active' ? 'success' : 'muted');
+
+const mealLabel = (count) => {
+  const n = Number(count) || 0;
+  return `${n} ${n === 1 ? 'meal' : 'meals'}`;
+};
+
+const fulfillmentParts = (cycle) => {
+  if (!cycle || (!cycle.delivery_date && !cycle.pickup_date && cycle.delivery == null)) {
+    return { kind: null, meta: '' };
+  }
+  if (cycle.delivery) {
+    return {
+      kind: 'Delivery',
+      meta: DELIVERY_WINDOW || '',
+    };
+  }
+  const slot = formatPickupSlot(cycle.pickup_time_slot);
+  return { kind: 'Pickup', meta: slot || '' };
+};
+
 const cycleItems = (cycle) => (
   Array.isArray(cycle?.subscription_cycle_items) ? cycle.subscription_cycle_items : []
 );
@@ -75,14 +93,6 @@ const splitWindow = (delivery, pickupSlot) => {
     start: (parts[0] || '').trim() || '—',
     end: (parts.slice(1).join(' – ') || '').trim() || '—',
   };
-};
-
-const fulfillmentLabel = (cycle) => {
-  if (!cycle || (!cycle.delivery_date && !cycle.pickup_date && cycle.delivery == null)) return '—';
-  if (cycle.delivery) {
-    return `Delivery${cycle.delivery_postal_code ? ` · ${cycle.delivery_postal_code}` : ''}`;
-  }
-  return `Pickup${cycle.pickup_time_slot ? ` · ${formatPickupSlot(cycle.pickup_time_slot)}` : ''}`;
 };
 
 const planLines = (plans) => {
@@ -111,16 +121,6 @@ const cycleForRow = (row, statusTab, weekTab) => {
 const kitchenForRow = (row, statusTab, weekTab) => {
   if (statusTab === 'other') return row.kitchen || row.this_kitchen || row.next_kitchen || null;
   return weekTab === 'next' ? (row.next_kitchen || null) : (row.this_kitchen || null);
-};
-
-const fulfillmentForGroup = (plans, statusTab, weekTab) => {
-  const methods = [...new Set(plans.map((row) => {
-    const cycle = cycleForRow(row, statusTab, weekTab);
-    if (!cycle || (cycle.delivery == null && !cycle.delivery_date && !cycle.pickup_date)) return null;
-    return cycle.delivery ? 'Delivery' : 'Pickup';
-  }).filter(Boolean))];
-  if (plans.length === 1) return fulfillmentLabel(cycleForRow(plans[0], statusTab, weekTab) || {});
-  return methods.join(' · ') || '—';
 };
 
 const matchesSearch = (row, term) => {
@@ -320,42 +320,51 @@ const SubscriberAdmin = () => {
       <div className="sub-admin-screen">
         <div className="sub-admin-head">
           <h1 className="promo-admin-title">Subscriptions</h1>
-          <div className="sub-admin-status-tabs" role="tablist" aria-label="Subscription status">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={statusTab === 'active'}
-            className={statusTab === 'active' ? 'active' : ''}
-            onClick={() => {
-              setStatusTab('active');
-              setExpandedId(null);
-            }}
-          >
-            Active ({activeRows.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={statusTab === 'other'}
-            className={statusTab === 'other' ? 'active' : ''}
-            onClick={() => {
-              setStatusTab('other');
-              setExpandedId(null);
-            }}
-          >
-            Other ({otherCount})
-          </button>
+          <div className="admin-view-tabs" role="tablist" aria-label="Subscription status">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusTab === 'active'}
+              className={statusTab === 'active' ? 'active' : ''}
+              onClick={() => {
+                setStatusTab('active');
+                setExpandedId(null);
+              }}
+            >
+              Active
+              <span className="admin-view-tab-count">{activeRows.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusTab === 'other'}
+              className={statusTab === 'other' ? 'active' : ''}
+              onClick={() => {
+                setStatusTab('other');
+                setExpandedId(null);
+              }}
+            >
+              Other
+              <span className="admin-view-tab-count">{otherCount}</span>
+            </button>
+          </div>
         </div>
-        </div>
-
         <p className="admin-tab-lead">
           See who’s subscribed this week and what meals they’re getting on Sunday.
           Switch between this Sunday and next, open a customer for details, and keep an eye on the banner if meals can still change.
         </p>
 
+        <AdminToolbar
+          searchValue={searchTerm}
+          searchPlaceholder="Search by name, email, phone, or plan"
+          searchLabel="Search by name, email, phone, or plan"
+          onSearchChange={(e) => setSearchTerm(e.target.value)}
+          resultLabel={`${groups.length} ${groups.length === 1 ? 'customer' : 'customers'}`}
+        />
+
         {statusTab === 'active' ? (
           <>
-            <div className="sub-admin-status-tabs" role="tablist" aria-label="Cook week">
+            <div className="admin-view-tabs" role="tablist" aria-label="Cook week">
               <button
                 type="button"
                 role="tab"
@@ -366,7 +375,8 @@ const SubscriberAdmin = () => {
                   setExpandedId(null);
                 }}
               >
-                This Sunday, {thisLabel} ({thisSundayActive.length})
+                This Sunday, {thisLabel}
+                <span className="admin-view-tab-count">{thisSundayActive.length}</span>
               </button>
               <button
                 type="button"
@@ -378,7 +388,8 @@ const SubscriberAdmin = () => {
                   setExpandedId(null);
                 }}
               >
-                Next Sunday, {nextLabel} ({nextSundayActive.length})
+                Next Sunday, {nextLabel}
+                <span className="admin-view-tab-count">{nextSundayActive.length}</span>
               </button>
             </div>
 
@@ -402,13 +413,14 @@ const SubscriberAdmin = () => {
                   </>
                 )}
               </div>
-              <button
+              <AdminButton
                 type="button"
-                className="sub-admin-print-button"
+                variant="secondary"
+                size="md"
                 onClick={handlePrint}
               >
                 Print the summary
-              </button>
+              </AdminButton>
             </div>
           </>
         ) : null}
@@ -433,18 +445,10 @@ const SubscriberAdmin = () => {
           </div>
         </div>
 
-        <SearchField
-          inputClassName="user-search-input"
-          placeholder="Search by name, email, phone, or plan"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Search by name, email, phone, or plan"
-        />
-
         {groups.length === 0 ? (
           <p className="promo-empty">No subscriptions match.</p>
         ) : (
-          <div className="sub-admin-table-wrap">
+          <div className="sub-admin-table-wrap order-admin-table-wrap">
             <table className="promo-table">
               <thead>
                 <tr>
@@ -464,19 +468,29 @@ const SubscriberAdmin = () => {
                   const lines = planLines(plans);
                   const statuses = [...new Set(plans.map(statusLabel))];
                   const cycle = cycleForRow(plans[0], statusTab, weekTab) || {};
-                  const sunday = formatYmd(cycle.delivery_date || cycle.pickup_date);
-                  const fulfillment = fulfillmentForGroup(plans, statusTab, weekTab);
+                  const sundayYmd = cycle.delivery_date || cycle.pickup_date;
+                  const sunday = formatDueShort(sundayYmd) || '—';
+                  const fulfill = fulfillmentParts(cycle);
+                  const phone = formatPhone(customer.phone_number);
 
                   return (
                     <Fragment key={userId}>
-                      <tr>
+                      <tr className={isOpen ? 'order-row-open' : undefined}>
                         <td>
-                          <div className="sub-admin-customer-name">
-                            <span>{customerName(customer)}</span>
-                            {hasNote ? <span className="sub-admin-note-chip">Note</span> : null}
+                          <div className="admin-person-cell">
+                            <span className="admin-person-name">
+                              {customerName(customer)}
+                              {hasNote ? (
+                                <>
+                                  {' '}
+                                  <Badge tone="accent">Has note</Badge>
+                                </>
+                              ) : null}
+                            </span>
+                            {customer.email ? (
+                              <span className="admin-person-email">{customer.email}</span>
+                            ) : null}
                           </div>
-                          <div className="sub-admin-muted">{customer.email || '—'}</div>
-                          <div className="sub-admin-muted">{formatPhone(customer.phone_number)}</div>
                         </td>
                         <td>
                           {plans.length > 1 ? (
@@ -484,14 +498,14 @@ const SubscriberAdmin = () => {
                               <div>{plans.length} plans:</div>
                               {lines.map((line) => (
                                 <div key={`${line.meal}-${line.price}`} className="sub-admin-plan-line">
-                                  <div>{line.meal} meals x {line.qty}</div>
+                                  <div>{mealLabel(line.meal)} x {line.qty}</div>
                                   <div className="sub-admin-muted">{formatPlanPrice(line.price)}</div>
                                 </div>
                               ))}
                             </>
                           ) : (
                             <>
-                              {`${Number(plans[0].subscription_plans?.meal_count) || 0} meals`}
+                              {mealLabel(plans[0].subscription_plans?.meal_count)}
                               <div className="sub-admin-muted">
                                 {formatPlanPrice(plans[0].subscription_plans?.price_cents)}
                               </div>
@@ -499,93 +513,137 @@ const SubscriberAdmin = () => {
                           )}
                         </td>
                         <td>
-                          {statuses.join(', ')}
+                          <div className="admin-fulfillment-cell">
+                            {statuses.map((label) => (
+                              <Badge key={label} tone={statusBadgeTone(label)}>{label}</Badge>
+                            ))}
+                          </div>
                           {plans.map((row) => (
                             row.pending_status ? (
                               <div key={`${row.id}-pending`} className="sub-admin-muted">
                                 pending {row.pending_status}
-                                {row.pending_plan ? ` · next: ${Number(row.pending_plan.meal_count) || 0} meals` : ''}
+                                {row.pending_plan ? ` · next: ${mealLabel(row.pending_plan.meal_count)}` : ''}
                               </div>
                             ) : null
                           ))}
                         </td>
                         <td>{sunday}</td>
-                        <td>{fulfillment}</td>
                         <td>
-                          <button
-                            type="button"
-                            className="promo-delete-button"
+                          {fulfill.kind ? (
+                            <div className="admin-fulfillment-cell">
+                              <Badge tone={fulfill.kind === 'Delivery' ? 'delivery' : 'pickup'}>
+                                {fulfill.kind}
+                              </Badge>
+                              {fulfill.meta ? (
+                                <span className="admin-fulfillment-meta">
+                                  {fulfill.kind} · {fulfill.meta}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td>
+                          <AdminButton
+                            variant="secondary"
+                            size="sm"
+                            className={isOpen ? 'view-items-button is-open' : 'view-items-button'}
                             onClick={() => setExpandedId(isOpen ? null : userId)}
                           >
-                            {isOpen ? 'Hide' : 'View'}
-                          </button>
+                            {isOpen ? 'Hide' : 'View Details'}
+                          </AdminButton>
                         </td>
                       </tr>
                       {isOpen ? (
-                        <tr>
+                        <tr className="order-admin-details-row">
                           <td colSpan={6}>
-                            <div className="sub-admin-details">
-                              {plans.map((row) => {
-                                const planCycle = cycleForRow(row, statusTab, weekTab) || {};
-                                const items = cycleItems(planCycle);
-                                const meals = items.filter((item) => item.kind === 'plan');
-                                const addons = items.filter((item) => item.kind === 'addon');
-                                const noteText = cycleNote(row, planCycle) || '-';
-                                const kitchen = kitchenForRow(row, statusTab, weekTab);
-                                const mealCount = Number(row.subscription_plans?.meal_count) || 0;
-                                return (
-                                  <div key={row.id} className="sub-admin-plan-block">
-                                    {plans.length > 1 ? (
-                                      <p>
-                                        <strong>{mealCount} meals</strong>
-                                        {' · '}
-                                        {statusLabel(row)}
-                                        {' · '}
-                                        {fulfillmentLabel(planCycle)}
-                                      </p>
-                                    ) : null}
-                                    <p>
-                                      <strong>Notes:</strong>{' '}
-                                      <span className={noteText === '-' ? 'sub-admin-muted sub-admin-notes' : 'sub-admin-notes'}>
-                                        {noteText}
-                                      </span>
-                                    </p>
-                                    <p><strong>Meals</strong></p>
-                                    {meals.length ? (
-                                      <ul>
-                                        {meals.map((item) => (
-                                          <li key={item.id}>{itemLine(item, 'Meal')}</li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <p className="sub-admin-muted">No meals picked yet.</p>
-                                    )}
-                                    <p><strong>Add-ons</strong></p>
-                                    {addons.length ? (
-                                      <ul>
-                                        {addons.map((item) => (
-                                          <li key={item.id}>{itemLine(item, 'Add-on')}</li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <p className="sub-admin-muted">None this week.</p>
-                                    )}
-                                    {kitchen?.id ? (
-                                      <p>
-                                        <button
-                                          type="button"
-                                          className="promo-delete-button"
-                                          onClick={() => handlePickedUp(kitchen.id, !kitchen.picked_up)}
-                                        >
-                                          {kitchen.picked_up ? 'Delivered ✓' : 'Mark delivered'}
-                                        </button>
-                                      </p>
-                                    ) : planCycle.status === 'locked' ? (
-                                      <p className="sub-admin-muted">Locked — kitchen order missing.</p>
-                                    ) : null}
-                                  </div>
-                                );
-                              })}
+                            <div className="order-details-sticky">
+                              <div className="order-details-grid">
+                                <section className="order-details-col">
+                                  <h3 className="order-details-col-title">Customer</h3>
+                                  <p className="order-details-name">{customerName(customer)}</p>
+                                  {customer.email ? (
+                                    <a className="order-details-link" href={`mailto:${customer.email}`}>
+                                      {customer.email}
+                                    </a>
+                                  ) : null}
+                                  {phone && phone !== '—' ? (
+                                    <a className="order-details-link" href={`tel:${String(customer.phone_number || '').replace(/\D/g, '')}`}>
+                                      {phone}
+                                    </a>
+                                  ) : null}
+                                </section>
+                                <section className="order-details-col" style={{ gridColumn: 'span 2' }}>
+                                  {plans.map((row) => {
+                                    const planCycle = cycleForRow(row, statusTab, weekTab) || {};
+                                    const items = cycleItems(planCycle);
+                                    const meals = items.filter((item) => item.kind === 'plan');
+                                    const addons = items.filter((item) => item.kind === 'addon');
+                                    const noteText = cycleNote(row, planCycle);
+                                    const kitchen = kitchenForRow(row, statusTab, weekTab);
+                                    const mealCount = Number(row.subscription_plans?.meal_count) || 0;
+                                    const planFulfill = fulfillmentParts(planCycle);
+                                    return (
+                                      <div key={row.id} className="sub-admin-plan-block">
+                                        {plans.length > 1 ? (
+                                          <p className="order-details-col-title">
+                                            {mealLabel(mealCount)}
+                                            {' · '}
+                                            <Badge tone={statusBadgeTone(statusLabel(row))}>{statusLabel(row)}</Badge>
+                                            {planFulfill.kind ? (
+                                              <>
+                                                {' '}
+                                                <Badge tone={planFulfill.kind === 'Delivery' ? 'delivery' : 'pickup'}>
+                                                  {planFulfill.kind}
+                                                </Badge>
+                                              </>
+                                            ) : null}
+                                          </p>
+                                        ) : null}
+                                        {noteText ? (
+                                          <div className="order-details-note">
+                                            <div className="order-details-note-label">Special Note</div>
+                                            <div className="order-details-note-box">{noteText}</div>
+                                          </div>
+                                        ) : null}
+                                        <p className="order-details-col-title">Meals</p>
+                                        {meals.length ? (
+                                          <ul>
+                                            {meals.map((item) => (
+                                              <li key={item.id}>{itemLine(item, 'Meal')}</li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <p className="order-details-muted">No meals picked yet.</p>
+                                        )}
+                                        <p className="order-details-col-title">Add-ons</p>
+                                        {addons.length ? (
+                                          <ul>
+                                            {addons.map((item) => (
+                                              <li key={item.id}>{itemLine(item, 'Add-on')}</li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <p className="order-details-muted">None this week.</p>
+                                        )}
+                                        {kitchen?.id ? (
+                                          <p>
+                                            <AdminButton
+                                              type="button"
+                                              variant="secondary"
+                                              size="sm"
+                                              onClick={() => handlePickedUp(kitchen.id, !kitchen.picked_up)}
+                                            >
+                                              {kitchen.picked_up ? 'Delivered ✓' : 'Mark delivered'}
+                                            </AdminButton>
+                                          </p>
+                                        ) : planCycle.status === 'locked' ? (
+                                          <p className="order-details-muted">Locked — kitchen order missing.</p>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
+                                </section>
+                              </div>
                             </div>
                           </td>
                         </tr>

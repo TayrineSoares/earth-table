@@ -16,11 +16,12 @@ import {
 import AdminTabLoading from './AdminTabLoading';
 import PartnerMonthList from './PartnerMonthList';
 import AdminToolbar from './admin/AdminToolbar';
-import Badge from './admin/Badge';
+import AdminButton from './admin/AdminButton';
 import FormCard from './admin/FormCard';
 import FormField from './admin/FormField';
 import '../styles/PartnerAdmin.css';
 import '../styles/AdminShared.css';
+import '../styles/OrderAdmin.css';
 
 const parseRateInput = (raw) => {
   if (raw === null || raw === undefined || String(raw).trim() === '') return null;
@@ -369,6 +370,36 @@ const PartnerAdmin = () => {
           setShowForm(true);
         }}
         resultLabel={`${visiblePartners.length} ${visiblePartners.length === 1 ? 'partner' : 'partners'}`}
+        filters={(
+          <div className="admin-view-tabs" role="tablist" aria-label="Partner status">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusTab === 'active'}
+              className={statusTab === 'active' ? 'active' : ''}
+              onClick={() => {
+                setStatusTab('active');
+                setExpandedId(null);
+              }}
+            >
+              Active
+              <span className="admin-view-tab-count">{activePartners.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusTab === 'inactive'}
+              className={statusTab === 'inactive' ? 'active' : ''}
+              onClick={() => {
+                setStatusTab('inactive');
+                setExpandedId(null);
+              }}
+            >
+              Inactive
+              <span className="admin-view-tab-count">{inactivePartners.length}</span>
+            </button>
+          </div>
+        )}
       />
 
       {showForm && (
@@ -462,33 +493,6 @@ const PartnerAdmin = () => {
         </FormCard>
       )}
 
-      <div className="partner-status-tabs" role="tablist" aria-label="Partner status">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={statusTab === 'active'}
-          className={statusTab === 'active' ? 'active' : ''}
-          onClick={() => {
-            setStatusTab('active');
-            setExpandedId(null);
-          }}
-        >
-          Active ({activePartners.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={statusTab === 'inactive'}
-          className={statusTab === 'inactive' ? 'active' : ''}
-          onClick={() => {
-            setStatusTab('inactive');
-            setExpandedId(null);
-          }}
-        >
-          Inactive ({inactivePartners.length})
-        </button>
-      </div>
-
       {visiblePartners.length === 0 ? (
         <p className="partner-empty">
           {partners.length === 0
@@ -502,15 +506,15 @@ const PartnerAdmin = () => {
           <table className={expandedId ? 'partner-table has-expanded' : 'partner-table'}>
             <thead>
               <tr>
+                <th>Partner</th>
+                <th>Code</th>
+                <th className="partner-th-rate">Customer<br />Discount</th>
+                <th className="partner-th-rate">Partner<br />Cashback</th>
+                <th>Payout</th>
+                <th>This Month</th>
+                <th>Total Earnings</th>
+                <th>Active</th>
                 <th></th>
-                <th>PARTNER</th>
-                <th>CODE</th>
-                <th className="partner-th-rate">CUSTOMER<br />DISCOUNT</th>
-                <th className="partner-th-rate">PARTNER<br />CASHBACK</th>
-                <th>PAYOUT</th>
-                <th>THIS MONTH</th>
-                <th>TOTAL EARNINGS</th>
-                <th>ACTIVE</th>
               </tr>
             </thead>
             <tbody>
@@ -518,29 +522,19 @@ const PartnerAdmin = () => {
                 const isExpanded = expandedId === row.id;
                 const detail = details[row.id] || {};
                 const months = detail.data?.months || [];
+                const phone = formatPhoneNumber(row.user?.phone_number);
                 return (
                   <Fragment key={row.id}>
-                    <tr
-                      className={isExpanded ? 'partner-row is-expanded' : 'partner-row'}
-                      onClick={() => handleToggleRow(row.id)}
-                    >
-                      <td className="partner-expand-cell">{isExpanded ? '▾' : '▸'}</td>
+                    <tr className={isExpanded ? 'partner-row is-expanded order-row-open' : 'partner-row'}>
                       <td>
-                        <div className="partner-name-with-badge">
-                          <div className="partner-name">{partnerName(row)}</div>
-                          {!row.active ? <Badge tone="muted">Inactive</Badge> : null}
-                        </div>
-                        {row.user?.email && (
-                          <div className="partner-email">{row.user.email}</div>
-                        )}
-                        <div className="partner-email">
-                          {formatPhoneNumber(row.user?.phone_number)}
+                        <div className="admin-person-cell">
+                          <span className="admin-person-name">{partnerName(row)}</span>
+                          {row.user?.email ? (
+                            <span className="admin-person-email">{row.user.email}</span>
+                          ) : null}
                         </div>
                       </td>
-                      <td
-                        className="partner-code-cell"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <td className="partner-code-cell">
                         {editingCodeId === row.id ? (
                           <div className="partner-code-edit">
                             <input
@@ -590,10 +584,7 @@ const PartnerAdmin = () => {
                           </div>
                         )}
                       </td>
-                      <td
-                        className="partner-rates-cell"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <td className="partner-rates-cell">
                         {editingDiscountId === row.id ? (
                           <div className="partner-rates-edit">
                             <label className="partner-rate-inline">
@@ -649,10 +640,7 @@ const PartnerAdmin = () => {
                           </div>
                         )}
                       </td>
-                      <td
-                        className="partner-rates-cell"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <td className="partner-rates-cell">
                         {editingCashbackId === row.id ? (
                           <div className="partner-rates-edit">
                             <label className="partner-rate-inline">
@@ -708,10 +696,10 @@ const PartnerAdmin = () => {
                           </div>
                         )}
                       </td>
-                      <td>{formatPayoutLabel(row.payout_type)}</td>
-                      <td>{formatCents(row.current_month_cents)}</td>
-                      <td>{formatCents(row.total_earn_cents)}</td>
-                      <td onClick={(e) => e.stopPropagation()}>
+                      <td>{formatPayoutLabel(row.payout_type) || '—'}</td>
+                      <td className="admin-money">{formatCents(row.current_month_cents)}</td>
+                      <td className="admin-money">{formatCents(row.total_earn_cents)}</td>
+                      <td>
                         <label
                           className={
                             savingActiveId === row.id
@@ -731,24 +719,41 @@ const PartnerAdmin = () => {
                           </span>
                         </label>
                       </td>
+                      <td>
+                        <AdminButton
+                          variant="secondary"
+                          size="sm"
+                          className={isExpanded ? 'view-items-button is-open' : 'view-items-button'}
+                          onClick={() => handleToggleRow(row.id)}
+                        >
+                          {isExpanded ? 'Hide' : 'View Details'}
+                        </AdminButton>
+                      </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="partner-expand-row">
+                      <tr className="partner-expand-row order-admin-details-row">
                         <td colSpan={9}>
-                          <p className="partner-wallet-balance">
-                            Wallet balance (store credit): {formatCents(row.available_credit_cents)}
-                          </p>
-                          {detail.loading && <p className="partner-empty">Loading months…</p>}
-                          {detail.error && <p className="partner-empty">{detail.error}</p>}
-                          {!detail.loading && !detail.error && (
-                            <PartnerMonthList
-                              months={months}
-                              isAdmin
-                              onMarkPaid={(invoiceId, paid) =>
-                                handleMarkPaid(row.id, invoiceId, paid)
-                              }
-                            />
-                          )}
+                          <div className="admin-details-panel">
+                            {phone && phone !== '(not set)' ? (
+                              <p className="order-details-muted" style={{ marginBottom: 12 }}>
+                                Phone: {phone}
+                              </p>
+                            ) : null}
+                            <p className="partner-wallet-balance">
+                              Wallet balance (store credit): {formatCents(row.available_credit_cents)}
+                            </p>
+                            {detail.loading && <p className="partner-empty">Loading months…</p>}
+                            {detail.error && <p className="partner-empty">{detail.error}</p>}
+                            {!detail.loading && !detail.error && (
+                              <PartnerMonthList
+                                months={months}
+                                isAdmin
+                                onMarkPaid={(invoiceId, paid) =>
+                                  handleMarkPaid(row.id, invoiceId, paid)
+                                }
+                              />
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}

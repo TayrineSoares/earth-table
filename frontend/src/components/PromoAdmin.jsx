@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { formatPlacedShort } from '../helpers/orderAdminHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import AdminToolbar from './admin/AdminToolbar';
 import AdminButton from './admin/AdminButton';
@@ -13,12 +14,14 @@ const normalizeCode = (value) => (value || '').trim();
 
 function formatExpiresDisplay(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return String(iso);
-  }
+  return formatPlacedShort(iso) || '—';
 }
+
+const formatUses = (used, max) => {
+  const usedLabel = Number.isFinite(Number(used)) ? String(used) : '0';
+  const maxLabel = max == null ? '—' : String(max);
+  return `${usedLabel} / ${maxLabel}`;
+};
 
 const PromoAdmin = () => {
   const [promos, setPromos] = useState([]);
@@ -275,11 +278,10 @@ const PromoAdmin = () => {
           <thead>
             <tr>
               <th>Code</th>
-              <th>Discount %</th>
+              <th>Discount</th>
               <th>Expires</th>
               <th>First-time only</th>
-              <th>Max uses</th>
-              <th>Used</th>
+              <th>Uses</th>
               <th>Active</th>
               <th></th>
             </tr>
@@ -290,16 +292,20 @@ const PromoAdmin = () => {
               return (
                 <tr key={row.id}>
                   <td>
-                    <span className="promo-code-with-badge">
-                      {row.code}
-                      {!row.active ? <Badge tone="muted">Inactive</Badge> : null}
-                    </span>
+                    <span className="promo-code-cell">{row.code}</span>
                   </td>
-                  <td>{row.discount_percentage}</td>
+                  <td className="admin-num">{row.discount_percentage}%</td>
                   <td>{formatExpiresDisplay(row.expires_at)}</td>
-                  <td>{row.first_time_only ? 'Yes' : 'No'}</td>
-                  <td>{row.max_uses == null ? '—' : row.max_uses}</td>
-                  <td>{row.used_count ?? 0}</td>
+                  <td>
+                    {row.first_time_only ? (
+                      <Badge tone="accent">First order</Badge>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="promo-uses-cell">
+                    {formatUses(row.used_count ?? 0, row.max_uses)}
+                  </td>
                   <td>
                     <label
                       className={isSaving ? 'admin-toggle is-disabled' : 'admin-toggle'}

@@ -124,6 +124,7 @@
 .promo-table th {
   background-color: #FEE8D4;
   color: #000;
+  font-size: 15px;
   font-variant: small-caps;
 }
 
@@ -135,11 +136,16 @@
   background-color: #fff0dc;
 }
 
-.promo-code-with-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.promo-code-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.promo-uses-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .promo-inactive-badge {
