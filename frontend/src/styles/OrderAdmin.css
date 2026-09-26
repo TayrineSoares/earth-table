@@ -38,6 +38,84 @@
   font-variant: small-caps;
 }
 
+.order-admin-table th.is-sorted {
+  background-color: #f5d4a8;
+}
+
+.order-sort-header {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant: small-caps;
+  cursor: pointer;
+  text-align: left;
+}
+
+.order-sort-header:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+  border-radius: 4px;
+}
+
+.order-sort-arrow {
+  font-size: 10px;
+  line-height: 1;
+  color: #a89680;
+}
+
+.order-sort-arrow.is-active {
+  color: #BE7200;
+}
+
+.order-cell-nowrap {
+  white-space: nowrap;
+}
+
+.order-due-cell {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.order-customer-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.order-customer-name {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #000;
+}
+
+.order-customer-email {
+  font-family: var(--body-font);
+  font-size: 12px;
+  color: #757575;
+  overflow-wrap: anywhere;
+}
+
+.order-admin-empty-cell {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #757575;
+  text-align: left;
+  padding: 1.25rem 10px;
+}
+
 .order-admin-table tr:nth-child(even) {
   background-color: #fffaf4;
 }

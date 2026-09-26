@@ -122,6 +122,50 @@
   margin-top: 12px;
 }
 
+.admin-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-view-tabs button {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #FEE8D4;
+  color: #000;
+  -webkit-text-fill-color: #000;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 15px;
+  padding: 8px 14px;
+  min-height: 40px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.admin-view-tabs button:active {
+  transform: scale(0.98);
+  background-color: #EDA413;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.admin-view-tabs button.active {
+  background-color: #EDA413;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.admin-view-tabs button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+}
+
 .admin-toolbar-count {
   margin: 8px 0 0;
   font-family: var(--body-font);
@@ -249,6 +293,7 @@ select.admin-control {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-width: 1040px;
 }
 
 .admin-list-item {
@@ -416,10 +461,22 @@ select.admin-control {
   font-weight: 600;
 }
 
+.admin-badge--delivery {
+  background: oklch(0.93 0.035 250);
+  color: oklch(0.42 0.09 250);
+  border: none;
+}
+
+.admin-badge--pickup {
+  background: oklch(0.93 0.035 150);
+  color: oklch(0.42 0.09 150);
+  border: none;
+}
+
 .admin-form-card {
   box-sizing: border-box;
   width: 100%;
-  max-width: 600px;
+  max-width: 1040px;
   margin: 0 0 2rem;
   padding: 2rem;
   background-color: #FFFBF3;
