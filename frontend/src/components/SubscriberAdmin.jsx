@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import AdminTabLoading from './AdminTabLoading';
+import SearchField from './admin/SearchField';
 import {
   fetchAdminSubscriptions,
   formatPickupSlot,
@@ -429,12 +430,12 @@ const SubscriberAdmin = () => {
           </div>
         </div>
 
-        <input
-          className="user-search-input"
-          type="text"
+        <SearchField
+          inputClassName="user-search-input"
           placeholder="Search by name, email, phone, or plan"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Search by name, email, phone, or plan"
         />
 
         {groups.length === 0 ? (

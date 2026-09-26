@@ -114,11 +114,59 @@
   margin-left: auto;
 }
 
+.admin-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .admin-toolbar-count {
   margin: 8px 0 0;
   font-family: var(--body-font);
   font-size: 13px;
   color: #757575;
+}
+
+.admin-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: #757575;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.admin-search-input,
+.admin-search-field .admin-control,
+.admin-search-field .user-search-input,
+.admin-search-field .products-search-input {
+  width: 100%;
+  padding-left: 38px;
+  box-sizing: border-box;
+}
+
+.admin-search-field--toolbar {
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 180px;
+  max-width: 420px;
+}
+
+.admin-search-field--toolbar .admin-control {
+  flex: none;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 
 .admin-control {
@@ -217,7 +265,7 @@ select.admin-control {
 
 .admin-list-title {
   font-family: var(--heading-font);
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 500;
   color: #000;
   white-space: nowrap;
@@ -242,6 +290,38 @@ select.admin-control {
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
+}
+
+.admin-list-price-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+.admin-list-price {
+  font-family: var(--body-font);
+  font-size: 17px;
+  font-weight: 500;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-list-price-sep,
+.admin-list-category {
+  font-family: var(--body-font);
+  font-size: 14px;
+  color: #757575;
+}
+
+.admin-list-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  min-width: 0;
 }
 
 .admin-list-meta {
@@ -282,6 +362,10 @@ select.admin-control {
 .admin-badge--neutral {
   background-color: #FEE8D4;
   color: #000;
+  font-weight: 400;
+  font-size: 12px;
+  padding: 2px 10px;
+  text-transform: none;
 }
 
 .admin-badge--accent {
@@ -655,12 +739,18 @@ select.admin-control {
   }
 
   .admin-toolbar-search.admin-control,
+  .admin-search-field--toolbar,
   .admin-toolbar-select.admin-control,
   .admin-toolbar-action .admin-btn {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     flex: 1 1 auto;
+  }
+
+  .admin-toolbar-filters {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .admin-list-item {

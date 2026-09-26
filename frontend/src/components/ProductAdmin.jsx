@@ -193,6 +193,7 @@ const ProductAdmin = () => {
         resultLabel={products.length === 0
           ? ''
           : `${tabFilteredProducts.length} ${tabFilteredProducts.length === 1 ? 'product' : 'products'}`}
+        filtersBelow
         filters={(
           <>
             <select
@@ -275,12 +276,10 @@ const ProductAdmin = () => {
                 image={product.image_url}
                 title={product.slug}
                 description={product.description?.trim() ? product.description : ''}
-                meta={(
+                price={`$${(product.price_cents / 100).toFixed(2)}`}
+                category={getCategoryName(product.category_id) || '—'}
+                tags={(
                   <>
-                    <span className="admin-list-meta-text">
-                      {getCategoryName(product.category_id) || '—'} · $
-                      {(product.price_cents / 100).toFixed(2)}
-                    </span>
                     {tagNames.map((name, i) => (
                       <Badge key={`${name}-${i}`} tone="neutral">{name}</Badge>
                     ))}

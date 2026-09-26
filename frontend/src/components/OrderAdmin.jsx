@@ -7,8 +7,10 @@ import {
   titleCaseName,
 } from '../helpers/orderHelpers';
 import AdminTabLoading from './AdminTabLoading';
+import SearchField from './admin/SearchField';
 import '../styles/OrderAdmin.css';
 import '../styles/AdminShared.css';
+import '../styles/UsersAdmin.css';
 
 const HST_RATE = 0.13;
 
@@ -176,12 +178,12 @@ const OrderAdmin = () => {
         Search for a customer or order, open the details, and mark it picked up when it’s ready.
       </p>
 
-      <input
-        className="user-search-input"
-        type="text"
+      <SearchField
+        inputClassName="user-search-input"
         placeholder="Search by id, email, name, status, date or postal"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        aria-label="Search by id, email, name, status, date or postal"
       />
 
       <table className="order-admin-table">

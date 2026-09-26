@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchAllUsers, updateUserAdmin } from '../helpers/adminHelpers';
 import AdminTabLoading from './AdminTabLoading';
+import SearchField from './admin/SearchField';
 import '../styles/UsersAdmin.css'
 import '../styles/AdminShared.css'
 
@@ -97,12 +98,12 @@ const UserAdmin = ({ currentUserId }) => {
         and give someone admin access so they can use this board too.
       </p>
 
-      <input
-        className="user-search-input"
-        type="text"
+      <SearchField
+        inputClassName="user-search-input"
         placeholder="Search by email, name, or phone"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        aria-label="Search by email, name, or phone"
       />
       
 
