@@ -3,53 +3,49 @@ import { useSearchParams } from 'react-router-dom';
 import {
   fetchAllOrders,
   fetchOrderById,
+  formatMoney,
   formatTimeWindow,
+  getPostalFromBuyerInfo,
   setOrderPickedUp,
-  titleCaseName,
 } from '../helpers/orderHelpers';
 import {
   countOrdersByView,
   defaultSortDirForView,
   formatDueShort,
   formatPlacedShort,
+  getOrderBreakdown,
   getOrderDueYmd,
   isDueToday,
   splitAndSortOrders,
 } from '../helpers/orderAdminHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import AdminToolbar from './admin/AdminToolbar';
+import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
 import '../styles/OrderAdmin.css';
 import '../styles/AdminShared.css';
 
-const HST_RATE = 0.13;
-
-const formatMoney = (cents) => {
-  const n = Number.isFinite(cents) ? cents : 0;
-  return `$${(n / 100).toFixed(2)}`;
-};
-
-const getPostalFromInfo = (buyerStripeInfo) => {
-  try {
-    const parsed = typeof buyerStripeInfo === 'string' ? JSON.parse(buyerStripeInfo) : (buyerStripeInfo || {});
-    return parsed?.delivery_meta?.postal_code || '—';
-  } catch {
-    return '—';
-  }
-};
-
-const getDeliveryFeeCents = (buyerStripeInfo) => {
-  try {
-    const parsed = typeof buyerStripeInfo === 'string' ? JSON.parse(buyerStripeInfo) : (buyerStripeInfo || {});
-    const preTax = Number(parsed?.delivery_meta?.fee_cents_server) || 0;
-    const withTax = Math.round(preTax * (1 + HST_RATE));
-    return { preTaxCents: preTax, withTaxCents: withTax };
-  } catch {
-    return { preTaxCents: 0, withTaxCents: 0 };
-  }
-};
+const ORDER_COL_COUNT = 10;
 
 const listCustomerName = (order) => String(order?.buyer_name || '').trim() || 'Guest';
+
+const formatPhoneDisplay = (phone) => {
+  if (!phone) return '';
+  const cleaned = String(phone).replace(/\D/g, '');
+  const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.slice(1) : cleaned;
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return String(phone);
+};
+
+const telHref = (phone) => {
+  const cleaned = String(phone || '').replace(/\D/g, '');
+  if (!cleaned) return '';
+  if (cleaned.length === 10) return `tel:+1${cleaned}`;
+  if (cleaned.length === 11 && cleaned.startsWith('1')) return `tel:+${cleaned}`;
+  return `tel:+${cleaned}`;
+};
 
 const OrderAdmin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -141,32 +137,10 @@ const OrderAdmin = () => {
     }
   };
 
-  const formatPhoneNumber = (phone) => {
-    if (!phone) return '(not set)';
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    return phone;
-  };
-
-  const formatStripePhoneNumber = (phone) => {
-    if (!phone) return '(not set)';
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('1') && cleaned.length === 11) {
-      const area = cleaned.slice(1, 4);
-      const prefix = cleaned.slice(4, 7);
-      const line = cleaned.slice(7);
-      return `(${area}) ${prefix}-${line}`;
-    }
-    return `+${cleaned}`;
-  };
-
   const filteredOrders = useMemo(() => {
     const term = (searchTerm || '').toLowerCase().trim();
     if (!term) return orders;
     return orders.filter((order) => {
-      const postal = getPostalFromInfo(order.buyer_stripe_payment_info).toLowerCase();
       const name = listCustomerName(order).toLowerCase();
       const dueYmd = getOrderDueYmd(order);
       const dueLabel = dueYmd ? formatDueShort(dueYmd).toLowerCase() : '';
@@ -175,7 +149,6 @@ const OrderAdmin = () => {
         order.buyer_email?.toLowerCase().includes(term) ||
         name.includes(term) ||
         order.status?.toLowerCase().includes(term) ||
-        postal.includes(term) ||
         dueLabel.includes(term)
       );
     });
@@ -257,182 +230,276 @@ const OrderAdmin = () => {
         )}
       />
 
-      <table className="order-admin-table">
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Status</th>
-            <th>Placed at</th>
-            <SortableTh column="due" label="Due Date" />
-            <SortableTh column="fulfilment" label="Fulfilment" />
-            <th>Total</th>
-            <th>Customer</th>
-            <SortableTh column="note" label="Note" />
-            <th>Actions</th>
-            <th>Picked Up / Delivered?</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {visibleOrders.length === 0 ? (
+      <div className="order-admin-table-wrap">
+        <table className="order-admin-table">
+          <thead>
             <tr>
-              <td colSpan={10} className="order-admin-empty-cell">
-                {view === 'past' ? 'No past orders' : 'No upcoming orders'}
-              </td>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <SortableTh column="due" label="Due Date" />
+              <SortableTh column="fulfilment" label="Fulfilment" />
+              <SortableTh column="note" label="Note" />
+              <th>Total</th>
+              <th>Status</th>
+              <th>Placed At</th>
+              <th>Actions</th>
+              <th>Picked Up / Delivered?</th>
             </tr>
-          ) : (
-            visibleOrders.map((order) => {
-              const isOpen = expandedOrderId === order.id;
-              const detailsReady = isOpen && !detailsLoading && orderDetails?.id === order.id;
-              const items = detailsReady ? (orderDetails.order_products || []) : [];
-              const postal = getPostalFromInfo(order.buyer_stripe_payment_info);
-              const { preTaxCents, withTaxCents } = getDeliveryFeeCents(order.buyer_stripe_payment_info);
-              const account = detailsReady ? orderDetails?.user : null;
-              const customerName = [account?.first_name, account?.last_name]
-                .filter(Boolean)
-                .join(' ')
-                .trim()
-                || (detailsReady ? orderDetails?.buyer_name : '')
-                || order.buyer_name
-                || '';
-              const customerEmail = account?.email
-                || (detailsReady ? orderDetails?.buyer_email : '')
-                || order.buyer_email
-                || '';
-              const customerPhone = account?.phone_number
-                ? formatPhoneNumber(account.phone_number)
-                : formatStripePhoneNumber(
-                    (detailsReady ? orderDetails?.buyer_phone_number : '')
-                    || order.buyer_phone_number
-                  );
-              const dueYmd = getOrderDueYmd(order);
-              const dueLabel = dueYmd ? formatDueShort(dueYmd) : '—';
-              const showToday = view === 'upcoming' && isDueToday(order);
-              const hasNote = Boolean(String(order.special_note || '').trim());
-              const listName = listCustomerName(order);
-              const listEmail = String(order.buyer_email || '').trim();
+          </thead>
 
-              return (
-                <Fragment key={order.id}>
-                  <tr>
-                    <td>{order.id}</td>
-                    <td>{order.status}</td>
-                    <td className="order-cell-nowrap">{formatPlacedShort(order.created_at) || '—'}</td>
-                    <td className="order-cell-nowrap">
-                      <span className="order-due-cell">
-                        {dueLabel}
-                        {showToday ? <Badge tone="accent">Today</Badge> : null}
-                      </span>
-                    </td>
-                    <td className="order-cell-nowrap">
-                      <Badge tone={order.delivery ? 'delivery' : 'pickup'}>
-                        {order.delivery ? 'Delivery' : 'Pickup'}
-                      </Badge>
-                    </td>
-                    <td>{formatMoney(order.total_cents)}</td>
-                    <td>
-                      <div className="order-customer-cell">
-                        <span className="order-customer-name">{listName}</span>
-                        {listEmail ? (
-                          <span className="order-customer-email">{listEmail}</span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="order-cell-nowrap">
-                      {hasNote ? (
-                        <Badge tone="accent">Has note</Badge>
-                      ) : (
-                        <Badge tone="muted">None</Badge>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="view-items-button"
-                        onClick={() => toggleDetailedOrder(order.id)}
-                      >
-                        {isOpen ? 'Hide' : 'View Details'}
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        className={`picked-btn ${order.picked_up ? 'is-picked' : ''}`}
-                        onClick={() => handleTogglePickedUp(order)}
-                        aria-pressed={order.picked_up}
-                        title={order.picked_up ? 'Mark as NOT picked up' : 'Mark as picked up'}
-                      >
-                        {order.picked_up ? 'Delivered ✓' : 'Pending'}
-                      </button>
-                    </td>
-                  </tr>
+          <tbody>
+            {visibleOrders.length === 0 ? (
+              <tr>
+                <td colSpan={ORDER_COL_COUNT} className="order-admin-empty-cell">
+                  {view === 'past' ? 'No past orders' : 'No upcoming orders'}
+                </td>
+              </tr>
+            ) : (
+              visibleOrders.map((order) => {
+                const isOpen = expandedOrderId === order.id;
+                const detailsReady = isOpen && !detailsLoading && orderDetails?.id === order.id;
+                const detailOrder = detailsReady ? orderDetails : order;
+                const items = detailsReady ? (orderDetails.order_products || []) : [];
+                const breakdown = detailsReady ? getOrderBreakdown(detailOrder, items) : null;
+                const account = detailsReady ? orderDetails?.user : null;
+                const customerName = [account?.first_name, account?.last_name]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim()
+                  || (detailsReady ? orderDetails?.buyer_name : '')
+                  || order.buyer_name
+                  || '';
+                const customerEmail = account?.email
+                  || (detailsReady ? orderDetails?.buyer_email : '')
+                  || order.buyer_email
+                  || '';
+                const customerPhoneRaw = account?.phone_number
+                  || (detailsReady ? orderDetails?.buyer_phone_number : '')
+                  || order.buyer_phone_number
+                  || '';
+                const customerPhone = formatPhoneDisplay(customerPhoneRaw);
+                const phoneLink = telHref(customerPhoneRaw);
+                const dueYmd = getOrderDueYmd(order);
+                const dueLabel = dueYmd ? formatDueShort(dueYmd) : '—';
+                const showToday = view === 'upcoming' && isDueToday(order);
+                const hasNote = Boolean(String(order.special_note || '').trim());
+                const listName = listCustomerName(order);
+                const listEmail = String(order.buyer_email || '').trim();
+                const postal = breakdown?.postalCode || getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
+                const noteText = String(order.special_note || '').trim();
 
-                  {isOpen && (
-                    <tr className="order-admin-details-row">
-                      <td colSpan={11}>
-                        <div className="order-details-card">
-                          <div className="order-admin-buyer">
-                            <strong>Customer:</strong>{' '}
-                            {customerName || 'Guest'}
-                            {detailsReady && !account && (
-                              <span style={{ color: '#666' }}> (guest checkout)</span>
-                            )}
-                            <br />
-                            <strong>Email: </strong>{customerEmail || 'No email'}
-                            <br />
-                            <strong>Phone Number:</strong> {customerPhone || 'No phone'}
-                            <br />
-                            <strong>Special Note:</strong>{' '}
-                            <span style={{ whiteSpace: 'pre-wrap' }}>
-                              {order.special_note || ''}
-                            </span>
-                          </div>
-
-                          {detailsLoading ? (
-                            <em>Loading items…</em>
-                          ) : items.length ? (
-                            <ul className="order-items-list">
-                              {items.map((it, idx) => (
-                                <li key={it.id || `${it.product_id || 'item'}-${idx}`}>
-                                  {it.quantity}× {titleCaseName(it.product?.slug || it.slug || 'Unnamed product')} — {formatMoney(it.unit_price_cents)}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <em>No items found for this order.</em>
-                          )}
-
-                          {!order.delivery && order.pickup_time_slot && (
-                            <div style={{ marginTop: 8 }}>
-                              <strong>Pickup time:</strong>{' '}
-                              {formatTimeWindow(order.pickup_time_slot) || order.pickup_time_slot}
-                            </div>
-                          )}
-
-                          {order.delivery && (
-                            <>
-                              <div style={{ marginTop: 8 }}>
-                                <strong>Delivery postal (for quote):</strong> {postal}
-                              </div>
-                              <div style={{ marginTop: 4 }}>
-                                <strong>Delivery fee:</strong> {formatMoney(withTaxCents)}{' '}
-                                <span style={{ color: '#666' }}>(incl HST)</span>
-                                {preTaxCents > 0 && (
-                                  <div style={{ fontSize: 12, color: '#666' }}>
-                                    Pre-tax: {formatMoney(preTaxCents)} • HST (13%): {formatMoney(Math.max(withTaxCents - preTaxCents, 0))}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
+                return (
+                  <Fragment key={order.id}>
+                    <tr className={isOpen ? 'order-row-open' : undefined}>
+                      <td>{order.id}</td>
+                      <td>
+                        <div className="order-customer-cell">
+                          <span className="order-customer-name">{listName}</span>
+                          {listEmail ? (
+                            <span className="order-customer-email">{listEmail}</span>
+                          ) : null}
                         </div>
                       </td>
+                      <td className="order-cell-nowrap">
+                        <span className="order-due-cell">
+                          {dueLabel}
+                          {showToday ? <Badge tone="accent">Today</Badge> : null}
+                        </span>
+                      </td>
+                      <td className="order-cell-nowrap">
+                        <div className="order-fulfilment-cell">
+                          <Badge tone={order.delivery ? 'delivery' : 'pickup'}>
+                            {order.delivery ? 'Delivery' : 'Pickup'}
+                          </Badge>
+                          {order.delivery && postal ? (
+                            <span className="order-fulfilment-postal">{postal}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="order-cell-nowrap">
+                        {hasNote ? (
+                          <Badge tone="accent">Has note</Badge>
+                        ) : (
+                          <Badge tone="muted">None</Badge>
+                        )}
+                      </td>
+                      <td className="order-cell-nowrap">{formatMoney(order.total_cents)}</td>
+                      <td>{order.status}</td>
+                      <td className="order-cell-nowrap">{formatPlacedShort(order.created_at) || '—'}</td>
+                      <td>
+                        <AdminButton
+                          variant="secondary"
+                          size="sm"
+                          className={isOpen ? 'view-items-button is-open' : 'view-items-button'}
+                          onClick={() => toggleDetailedOrder(order.id)}
+                        >
+                          {isOpen ? 'Hide' : 'View Details'}
+                        </AdminButton>
+                      </td>
+                      <td>
+                        <button
+                          className={`picked-btn ${order.picked_up ? 'is-picked' : ''}`}
+                          onClick={() => handleTogglePickedUp(order)}
+                          aria-pressed={order.picked_up}
+                          title={order.picked_up ? 'Mark as NOT picked up' : 'Mark as picked up'}
+                        >
+                          {order.picked_up ? 'Delivered ✓' : 'Pending'}
+                        </button>
+                      </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+
+                    {isOpen && (
+                      <tr className="order-admin-details-row">
+                        <td colSpan={ORDER_COL_COUNT}>
+                          <div className="order-details-sticky">
+                            {detailsLoading || !breakdown ? (
+                              <em className="order-details-loading">Loading details…</em>
+                            ) : (
+                              <div className="order-details-grid">
+                                <section className="order-details-col">
+                                  <h3 className="order-details-col-title">Customer</h3>
+                                  <p className="order-details-name">{customerName || 'Guest'}</p>
+                                  <p className="order-details-muted">
+                                    {account ? 'Registered customer' : 'Guest checkout'}
+                                  </p>
+                                  {customerEmail ? (
+                                    <a className="order-details-link" href={`mailto:${customerEmail}`}>
+                                      {customerEmail}
+                                    </a>
+                                  ) : (
+                                    <p className="order-details-muted">No email</p>
+                                  )}
+                                  {phoneLink ? (
+                                    <a className="order-details-link" href={phoneLink}>
+                                      {customerPhone || customerPhoneRaw}
+                                    </a>
+                                  ) : (
+                                    <p className="order-details-muted">No phone</p>
+                                  )}
+                                  {noteText ? (
+                                    <div className="order-details-note">
+                                      <span className="order-details-note-label">Special Note</span>
+                                      <div className="order-details-note-box">{noteText}</div>
+                                    </div>
+                                  ) : null}
+                                </section>
+
+                                <section className="order-details-col">
+                                  <h3 className="order-details-col-title">
+                                    Items · {breakdown.totalQty}
+                                  </h3>
+                                  {breakdown.lines.length ? (
+                                    <div className="order-details-items">
+                                      {breakdown.lines.map((line, idx) => (
+                                        <div
+                                          key={line.id || `${line.name}-${idx}`}
+                                          className="order-details-item"
+                                        >
+                                          <span className="order-details-item-qty">{line.quantity}×</span>
+                                          <div className="order-details-item-main">
+                                            <span className="order-details-item-name">{line.name}</span>
+                                            {line.quantity > 1 ? (
+                                              <span className="order-details-item-unit">
+                                                {formatMoney(line.unitPriceCents)} each
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                          <span className="order-details-item-price">
+                                            {formatMoney(line.lineTotalCents)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="order-details-muted">No items found for this order.</p>
+                                  )}
+                                </section>
+
+                                <section className="order-details-col">
+                                  <h3 className="order-details-col-title order-details-fulfilment-title">
+                                    <span>{order.delivery ? 'Delivery' : 'Pickup'}</span>
+                                    <Badge tone={order.delivery ? 'delivery' : 'pickup'}>
+                                      {order.delivery ? 'Delivery' : 'Pickup'}
+                                    </Badge>
+                                  </h3>
+                                  {order.delivery ? (
+                                    <>
+                                      <p className="order-details-body">
+                                        Postal code {breakdown.postalCode || '—'}
+                                      </p>
+                                      <p className="order-details-body">
+                                        Due {dueYmd ? formatDueShort(dueYmd) : '—'}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="order-details-body">
+                                        Pickup window{' '}
+                                        {formatTimeWindow(order.pickup_time_slot) || order.pickup_time_slot || '—'}
+                                      </p>
+                                      <p className="order-details-body">
+                                        Due {dueYmd ? formatDueShort(dueYmd) : '—'}
+                                      </p>
+                                    </>
+                                  )}
+
+                                  <div className="order-details-totals">
+                                    <div className="order-details-total-row">
+                                      <span>Subtotal</span>
+                                      <span>{formatMoney(breakdown.subtotalCents)}</span>
+                                    </div>
+                                    {breakdown.discountCents > 0 ? (
+                                      <div className="order-details-total-row">
+                                        <span>
+                                          Discount
+                                          {breakdown.discount?.code ? ` (${breakdown.discount.code})` : ''}
+                                        </span>
+                                        <span>−{formatMoney(breakdown.discountCents)}</span>
+                                      </div>
+                                    ) : null}
+                                    {order.delivery && breakdown.deliveryFeeInclHstCents > 0 ? (
+                                      <div className="order-details-total-block">
+                                        <div className="order-details-total-row">
+                                          <span>Delivery fee (incl. HST)</span>
+                                          <span>{formatMoney(breakdown.deliveryFeeInclHstCents)}</span>
+                                        </div>
+                                        <p className="order-details-fee-split">
+                                          Pre-tax {formatMoney(breakdown.deliveryPreTaxCents)} · HST (13%){' '}
+                                          {formatMoney(breakdown.deliveryHstCents)}
+                                        </p>
+                                      </div>
+                                    ) : null}
+                                    {breakdown.foodTaxCents > 0 ? (
+                                      <div className="order-details-total-row">
+                                        <span>Tax</span>
+                                        <span>{formatMoney(breakdown.foodTaxCents)}</span>
+                                      </div>
+                                    ) : null}
+                                    {breakdown.creditCents > 0 ? (
+                                      <div className="order-details-total-row">
+                                        <span>Store credit</span>
+                                        <span>−{formatMoney(breakdown.creditCents)}</span>
+                                      </div>
+                                    ) : null}
+                                    <div className="order-details-total-row order-details-total-row--grand">
+                                      <span>Total</span>
+                                      <span>{formatMoney(breakdown.tableTotalCents || order.total_cents)}</span>
+                                    </div>
+                                  </div>
+                                </section>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

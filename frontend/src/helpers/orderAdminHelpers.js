@@ -1,3 +1,12 @@
+import {
+  formatMoney as formatMoneyCents,
+  getDeliveryFeePreTaxCents,
+  getOrderDiscount,
+  getPostalFromBuyerInfo,
+  HST_RATE,
+  titleCaseName,
+} from './orderHelpers';
+
 const TORONTO_TZ = 'America/Toronto';
 
 /** Calendar YYYY-MM-DD in America/Toronto (ignores clock time). */
@@ -71,8 +80,8 @@ const comparePrimary = (a, b, sortKey) => {
 
 /**
  * Filter to upcoming|past and sort by sortKey ('due' | 'fulfilment' | 'note').
- * Missing due dates always sort to the end for due comparisons.
- * Ties break on due date, then placed at.
+ * Orders with no due date always stay at the bottom (any sort key / direction).
+ * Ties among dated orders break on due date, then placed at.
  */
 export const splitAndSortOrders = (
   orders,
@@ -91,11 +100,23 @@ export const splitAndSortOrders = (
   });
 
   return [...filtered].sort((a, b) => {
+    const dueA = getOrderDueYmd(a);
+    const dueB = getOrderDueYmd(b);
+
+    // No due date always at the bottom, regardless of sort direction.
+    if (!dueA && !dueB) {
+      const primary = comparePrimary(a, b, key);
+      if (primary !== 0) return primary * dir;
+      return comparePlaced(a, b);
+    }
+    if (!dueA) return 1;
+    if (!dueB) return -1;
+
     const primary = comparePrimary(a, b, key);
     if (primary !== 0) return primary * dir;
 
-    const byDue = compareDue(a, b);
-    if (byDue !== 0) return byDue;
+    const byDue = dueA.localeCompare(dueB);
+    if (byDue !== 0) return byDue * (key === 'due' ? dir : 1);
 
     return comparePlaced(a, b);
   });
@@ -130,3 +151,76 @@ export const formatPlacedShort = (isoString, now = new Date()) => {
   });
   return `${datePart} · ${timePart}`;
 };
+
+/**
+ * Line items + totals for admin order / subscription panels.
+ * Subtotal + delivery fee (incl HST) + food tax − discount − credit should match table total.
+ */
+export const getOrderBreakdown = (order, lineItems) => {
+  const items = Array.isArray(lineItems) && lineItems.length
+    ? lineItems
+    : (Array.isArray(order?.order_products) ? order.order_products : []);
+
+  const lines = items.map((it) => {
+    const quantity = Math.max(0, Number(it.quantity) || 0);
+    const unitPriceCents = Number(it.unit_price_cents) || 0;
+    return {
+      id: it.id,
+      quantity,
+      unitPriceCents,
+      lineTotalCents: quantity * unitPriceCents,
+      name: titleCaseName(it.product?.slug || it.slug || 'Unnamed product'),
+    };
+  });
+
+  const linesSubtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
+  const storedSubtotal = Number(order?.item_subtotal_cents);
+  const subtotalCents = storedSubtotal > 0 ? storedSubtotal : linesSubtotalCents;
+  const totalQty = lines.reduce((sum, line) => sum + line.quantity, 0);
+
+  const deliveryPreTaxCents = order?.delivery ? getDeliveryFeePreTaxCents(order) : 0;
+  const deliveryHstCents = Math.round(deliveryPreTaxCents * HST_RATE);
+  const deliveryFeeInclHstCents = deliveryPreTaxCents + deliveryHstCents;
+
+  const discount = getOrderDiscount(order);
+  const discountCents = discount?.amountOffCents || 0;
+  const creditCents = Number(order?.credit_applied_cents) || 0;
+
+  const taxableFoodCents = Math.max(0, subtotalCents - discountCents);
+  const foodTaxCents = Math.round(taxableFoodCents * HST_RATE);
+
+  const summedCents =
+    subtotalCents - discountCents + deliveryFeeInclHstCents + foodTaxCents - creditCents;
+  const tableTotalCents = Number(order?.total_cents) || 0;
+
+  if (tableTotalCents > 0 && summedCents !== tableTotalCents) {
+    console.warn('[getOrderBreakdown] totals mismatch', {
+      orderId: order?.id,
+      summedCents,
+      tableTotalCents,
+      subtotalCents,
+      discountCents,
+      deliveryFeeInclHstCents,
+      foodTaxCents,
+      creditCents,
+    });
+  }
+
+  return {
+    lines,
+    totalQty,
+    subtotalCents,
+    discountCents,
+    discount,
+    deliveryPreTaxCents,
+    deliveryHstCents,
+    deliveryFeeInclHstCents,
+    foodTaxCents,
+    creditCents,
+    summedCents,
+    tableTotalCents,
+    postalCode: getPostalFromBuyerInfo(order?.buyer_stripe_payment_info),
+    formatMoney: formatMoneyCents,
+  };
+};
+
