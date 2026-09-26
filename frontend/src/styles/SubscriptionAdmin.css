@@ -332,7 +332,8 @@
   .sub-admin-totals,
   .sub-admin-banner,
   .sub-admin-head,
-  .user-search-input {
+  .user-search-input,
+  .admin-search-field:has(.user-search-input) {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -348,7 +349,8 @@
   .sub-admin-desc-edit .promo-input,
   .sub-admin-price-input,
   .sub-admin-notes,
-  .user-search-input {
+  .user-search-input,
+  .admin-search-field:has(.user-search-input) {
     width: 100%;
     min-width: 0;
     max-width: 100%;

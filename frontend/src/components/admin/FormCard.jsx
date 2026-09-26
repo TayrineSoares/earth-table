@@ -31,11 +31,11 @@ const FormCard = forwardRef(function FormCard({
       </div>
       {children}
       <div className="admin-form-actions">
-        <AdminButton type="submit" variant="primary" size="md" disabled={submitDisabled}>
-          {submitLabel}
-        </AdminButton>
         <AdminButton type="button" variant="secondary" size="md" onClick={onCancel} disabled={submitDisabled}>
           Cancel
+        </AdminButton>
+        <AdminButton type="submit" variant="primary" size="md" disabled={submitDisabled}>
+          {submitLabel}
         </AdminButton>
       </div>
     </form>
