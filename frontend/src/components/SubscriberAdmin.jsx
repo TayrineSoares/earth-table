@@ -53,6 +53,9 @@ const cycleNote = (row, cycle) => String(cycle?.special_note || row?.special_not
 const statusLabel = (row) => {
   if (row.status === 'paused' && row.pause_reason === 'payment_failed') return 'Payment failed';
   if (row.status === 'paused') return 'Paused';
+  if (row.status === 'cancelled' && row.cancelled_reason === 'plan_discontinued') {
+    return 'Plan discontinued';
+  }
   if (row.status === 'cancelled') return 'Cancelled';
   return 'Active';
 };

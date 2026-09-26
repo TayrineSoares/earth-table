@@ -1915,6 +1915,76 @@ function renderOwnerPaymentFailedEmail({
   return { subject, html, text };
 }
 
+function renderPlanDiscontinuedEmail({
+  firstName,
+  planName,
+  mealCount,
+  deliveryLabel,
+  pending = false,
+  keptLockedSunday = false,
+  refundedCents = 0,
+} = {}) {
+  const name = firstName || 'there';
+  const planWeek = mealsAWeek(mealCount);
+  const planLabel = String(planName || '').trim() || planWeek;
+  const sunday = deliveryLabel || 'Sunday';
+  const refundLine = refundedCents > 0
+    ? ` A refund of ${formatDollars(refundedCents)} (plan and delivery, with tax) has been processed. Add-ons are not refunded.`
+    : '';
+  const subject = `Your ${planLabel} plan has been discontinued`;
+  let introText;
+  if (pending || keptLockedSunday) {
+    introText = `We're discontinuing the ${planLabel} weekly plan. ${ThisSundayPhrase(sunday)} still goes out as already paid. Your subscription is cancelled after that — no further weeks will be charged.${refundLine}`;
+  } else {
+    introText = `We're discontinuing the ${planLabel} weekly plan. Your subscription has been cancelled and ${thisSundayPhrase(sunday)} will not go out.${refundLine}`;
+  }
+  const after = 'Questions? Reply to this email or write to hello@earthtableco.ca. You are welcome to start a different plan any time from Subscribe & Save.';
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1(`Plan discontinued, ${name}`)}
+      ${intro(introText)}
+      ${intro(after)}
+      ${ctaLink(appUrl('/subscribe-and-save'), 'Subscribe & Save →')}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `Plan discontinued, ${name}\n\n${introText}\n\n${after}\n\nSubscribe & Save: ${appUrl('/subscribe-and-save')}\n`;
+  return { subject, html, text };
+}
+
+function renderOwnerPlanDiscontinuedEmail({
+  planName,
+  mealCount,
+  cancelledCount = 0,
+  refundedCount = 0,
+  pendingCount = 0,
+} = {}) {
+  const planWeek = mealsAWeek(mealCount);
+  const planLabel = String(planName || '').trim() || planWeek;
+  const n = Number(cancelledCount) || 0;
+  const subject = `Plan discontinued — ${planLabel} (${n} subscription${n === 1 ? '' : 's'})`;
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1('Plan discontinued')}
+      ${intro(`<strong>${planLabel}</strong> was discontinued in Admin.`)}
+      ${card(kvTable(`
+        ${kvRow('Subscriptions cancelled', String(n))}
+        ${kvRow('Refunded this cycle', String(Number(refundedCount) || 0))}
+        ${kvRow('Keeping this Sunday', String(Number(pendingCount) || 0), { last: true })}
+      `))}
+      ${intro('Affected customers were emailed. Discontinued plans stay in Admin history and cannot be reactivated.')}
+      ${ctaLink(appUrl('/admin'), 'View Admin →')}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+  const text = `${subject}\n\n${planLabel} was discontinued.\nCancelled: ${n}\nRefunded this cycle: ${Number(refundedCount) || 0}\nKeeping this Sunday: ${Number(pendingCount) || 0}\n`;
+  return { subject, html, text };
+}
+
 function renderSubscriptionPriceEmail({
   firstName,
   mealCount,
@@ -1962,5 +2032,7 @@ module.exports = {
   renderSubscriptionWednesdayEmail,
   renderSubscriptionThursdayEmail,
   renderSubscriptionPriceEmail,
+  renderPlanDiscontinuedEmail,
+  renderOwnerPlanDiscontinuedEmail,
   getEmailLogoUrl,
 };

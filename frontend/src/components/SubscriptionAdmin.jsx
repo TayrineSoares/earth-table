@@ -6,11 +6,13 @@ import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
 import FormCard from './admin/FormCard';
 import FormField from './admin/FormField';
+import FeedbackDialog from './FeedbackDialog';
 import {
   fetchSubscriptionPlans,
+  fetchSubscriptionPlan,
   createSubscriptionPlan,
   updateSubscriptionPlan,
-  deleteSubscriptionPlan,
+  discontinueSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
   runSubscriptionCharge,
@@ -23,6 +25,7 @@ import {
 import '../styles/PromoAdmin.css';
 import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
+import '../styles/FeedbackDialog.css';
 
 const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, and mains.';
 
@@ -52,6 +55,7 @@ const SubscriptionAdmin = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [jobBusy, setJobBusy] = useState('');
   const [jobNote, setJobNote] = useState('');
+  const [dialog, setDialog] = useState(null);
 
   const load = async () => {
     const [planRows, settingsRow] = await Promise.all([
@@ -203,28 +207,62 @@ const SubscriptionAdmin = () => {
     }
   };
 
-  const handleDeletePlan = async (plan) => {
-    const count = Number(plan.subscriber_count) || 0;
-    if (count > 0) return;
-
-    const confirmed = window.confirm(
-      `Delete "${plan.name}"? This cannot be undone. Plans with subscribers cannot be deleted.`
-    );
-    if (!confirmed) return;
+  const handleDiscontinuePlan = async (plan) => {
+    if (plan.discontinued_at) return;
 
     setSavingId(plan.id);
     setError('');
     try {
-      await deleteSubscriptionPlan(plan.id);
-      setPlans((prev) => prev.filter((p) => p.id !== plan.id));
+      const live = await fetchSubscriptionPlan(plan.id);
+      const count = Number(live.subscriber_count) || 0;
+      const body = count > 0
+        ? [
+            `This will cancel all ${count} active subscription${count === 1 ? '' : 's'} on "${live.name}" and cannot be undone.`,
+            'Affected customers will be notified by email. Any applicable plan and delivery refund for the current cycle will be processed (add-ons are never refunded).',
+          ]
+        : [
+            `Discontinue "${live.name}"? This cannot be undone.`,
+            'There are no active or paused subscribers on this plan. It will be marked discontinued and hidden from new signups.',
+          ];
+
+      setDialog({
+        icon: 'alert',
+        title: 'Discontinue this plan?',
+        body,
+        primaryLabel: 'Discontinue plan',
+        secondaryLabel: 'Cancel',
+        destructive: true,
+        onPrimary: () => persistDiscontinue(live),
+      });
     } catch (err) {
-      setError(err.message || 'Failed to delete plan.');
+      setError(err.message || 'Failed to load plan subscribers.');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const persistDiscontinue = async (plan) => {
+    setDialog((prev) => (prev ? {
+      ...prev,
+      busy: true,
+      primaryLabel: 'Discontinuing…',
+    } : prev));
+    setSavingId(plan.id);
+    setError('');
+    try {
+      const result = await discontinueSubscriptionPlan(plan.id);
+      setPlans((prev) => prev.map((p) => (p.id === plan.id ? result.plan : p)));
+      setDialog(null);
+    } catch (err) {
+      setError(err.message || 'Failed to discontinue plan.');
+      setDialog(null);
     } finally {
       setSavingId(null);
     }
   };
 
   const handleToggleActive = async (plan) => {
+    if (plan.discontinued_at) return;
     const next = !plan.is_active;
     const confirmed = window.confirm(
       next
@@ -507,13 +545,15 @@ const SubscriptionAdmin = () => {
             <tbody>
               {plans.map((plan) => {
                 const subscriberCount = Number(plan.subscriber_count) || 0;
-                const canDelete = subscriberCount === 0;
+                const discontinued = Boolean(plan.discontinued_at);
                 return (
                 <tr key={plan.id}>
                   <td>
                     <span className="promo-code-with-badge">
                       {plan.name}
-                      {!plan.is_active ? (
+                      {discontinued ? (
+                        <Badge tone="muted">discontinued</Badge>
+                      ) : !plan.is_active ? (
                         <Badge tone="muted">hidden</Badge>
                       ) : null}
                     </span>
@@ -633,32 +673,36 @@ const SubscriptionAdmin = () => {
                     {subscriberCount} {subscriberCount === 1 ? 'person' : 'people'}
                   </td>
                   <td>
-                    <label className={`admin-toggle ${savingId === plan.id ? 'is-disabled' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={!!plan.is_active}
-                        disabled={savingId === plan.id}
-                        onChange={() => handleToggleActive(plan)}
-                      />
-                      <span className="admin-toggle-track" />
-                      <span className="admin-toggle-label">
-                        {plan.is_active ? 'On' : 'Off'}
-                      </span>
-                    </label>
+                    {discontinued ? (
+                      <span className="sub-admin-muted">Off</span>
+                    ) : (
+                      <label className={`admin-toggle ${savingId === plan.id ? 'is-disabled' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={!!plan.is_active}
+                          disabled={savingId === plan.id}
+                          onChange={() => handleToggleActive(plan)}
+                        />
+                        <span className="admin-toggle-track" />
+                        <span className="admin-toggle-label">
+                          {plan.is_active ? 'On' : 'Off'}
+                        </span>
+                      </label>
+                    )}
                   </td>
                   <td>
-                    {canDelete ? (
+                    {discontinued ? (
+                      <span className="sub-admin-muted">—</span>
+                    ) : (
                       <AdminButton
                         type="button"
                         variant="danger"
                         size="sm"
                         disabled={savingId === plan.id}
-                        onClick={() => handleDeletePlan(plan)}
+                        onClick={() => handleDiscontinuePlan(plan)}
                       >
-                        Delete
+                        Discontinue
                       </AdminButton>
-                    ) : (
-                      <span className="sub-admin-muted">—</span>
                     )}
                   </td>
                 </tr>
@@ -668,6 +712,13 @@ const SubscriptionAdmin = () => {
           </table>
         </div>
       )}
+
+      <FeedbackDialog
+        dialog={dialog}
+        onClose={() => {
+          if (!dialog?.busy) setDialog(null);
+        }}
+      />
     </div>
   );
 };

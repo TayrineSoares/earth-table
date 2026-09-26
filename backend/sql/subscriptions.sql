@@ -26,6 +26,8 @@ create table if not exists public.subscription_plans (
   price_cents int not null check (price_cents >= 0),
   description text,
   is_active boolean not null default true,
+  -- Set when admin Discontinues; never cleared. Soft-hide + force-cancel subscribers.
+  discontinued_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -55,6 +57,9 @@ create table if not exists public.subscriptions (
   first_promo_applied boolean not null default false,
   created_at timestamptz not null default now(),
   cancelled_at timestamptz,
+  -- Why status became cancelled (e.g. plan_discontinued). Null for legacy/unknown.
+  cancelled_reason text
+    check (cancelled_reason is null or cancelled_reason in ('plan_discontinued')),
   paused_at timestamptz,
   resumed_at timestamptz
 );
@@ -235,3 +240,15 @@ create table if not exists public.subscription_card_expiry_notices (
 
 revoke all on public.subscription_card_expiry_notices from anon, authenticated;
 alter table public.subscription_card_expiry_notices enable row level security;
+
+-- Existing projects: plan discontinue + cancelled_reason for Admin reporting
+alter table public.subscription_plans
+  add column if not exists discontinued_at timestamptz;
+
+alter table public.subscriptions
+  add column if not exists cancelled_reason text;
+
+alter table public.subscriptions drop constraint if exists subscriptions_cancelled_reason_check;
+alter table public.subscriptions
+  add constraint subscriptions_cancelled_reason_check
+  check (cancelled_reason is null or cancelled_reason in ('plan_discontinued'));

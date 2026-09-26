@@ -143,6 +143,13 @@ async function updatePlan(id, body) {
   const existing = await getPlanById(id);
   if (!existing) throw new SubscriptionError(404, 'Plan not found.');
 
+  if (existing.discontinued_at && Object.prototype.hasOwnProperty.call(patch, 'is_active') && patch.is_active) {
+    throw new SubscriptionError(
+      409,
+      'This plan was discontinued and cannot be reactivated. Create a new plan instead.'
+    );
+  }
+
   const { data, error } = await supabase
     .from('subscription_plans')
     .update(patch)
@@ -704,7 +711,7 @@ async function listAll() {
     .select(`
       id, user_id, status, plan_id, label, delivery, delivery_postal_code,
       pickup_time_slot, special_note, created_at, paused_at, cancelled_at, pause_reason,
-      pending_plan_id, pending_status,
+      cancelled_reason, pending_plan_id, pending_status,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents ),
       pending_plan:subscription_plans!subscriptions_pending_plan_id_fkey ( id, name, meal_count, price_cents )
     `)
@@ -1171,35 +1178,6 @@ async function countActiveSubscribers(planId) {
   return count || 0;
 }
 
-async function deletePlan(id) {
-  if (!id) throw new SubscriptionError(400, 'Plan id is required.');
-
-  const existing = await getPlanById(id);
-  if (!existing) throw new SubscriptionError(404, 'Plan not found.');
-
-  const current = await countActiveSubscribers(id);
-  if (current > 0) {
-    throw new SubscriptionError(
-      409,
-      `This plan has ${current} subscriber${current === 1 ? '' : 's'}. Deactivate it instead of deleting.`
-    );
-  }
-
-  const { error } = await supabase
-    .from('subscription_plans')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    throw new SubscriptionError(
-      409,
-      'This plan is still linked to past subscriptions and cannot be deleted. Deactivate it instead.'
-    );
-  }
-
-  return { ok: true };
-}
-
 async function getSettings() {
   const { data, error } = await supabase
     .from('subscription_settings')
@@ -1309,7 +1287,6 @@ module.exports = {
   listAll,
   createPlan,
   updatePlan,
-  deletePlan,
   getSettings,
   updateSettings,
   getPublicSignupInfo,

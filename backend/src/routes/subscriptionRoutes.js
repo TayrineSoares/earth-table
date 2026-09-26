@@ -9,7 +9,6 @@ const {
   listAll,
   createPlan,
   updatePlan,
-  deletePlan,
   getSettings,
   updateSettings,
   getPublicSignupInfo,
@@ -27,6 +26,7 @@ const {
   resumeSubscription,
   cancelSubscription,
   changeSubscriptionPlan,
+  discontinuePlan,
 } = require('../queries/subscriptionManage');
 const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
 
@@ -211,12 +211,12 @@ router.patch('/plans/:id', async (req, res) => {
   }
 });
 
-router.delete('/plans/:id', async (req, res) => {
+router.post('/plans/:id/discontinue', async (req, res) => {
   try {
-    const result = await deletePlan(req.params.id);
+    const result = await discontinuePlan(req.params.id);
     res.json(result);
   } catch (err) {
-    handleError(res, err, '[DELETE /subscriptions/plans/:id]');
+    handleError(res, err, '[POST /subscriptions/plans/:id/discontinue]');
   }
 });
 

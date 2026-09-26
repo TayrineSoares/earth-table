@@ -84,7 +84,7 @@ const FeedbackDialog = ({ dialog, onClose }) => {
         )}
         <div className="feedback-dialog-actions">
           <DialogAction
-            className="feedback-dialog-primary"
+            className={`feedback-dialog-primary${dialog.destructive ? ' feedback-dialog-primary--danger' : ''}`}
             to={dialog.primaryTo}
             disabled={busy}
             onClick={() => {

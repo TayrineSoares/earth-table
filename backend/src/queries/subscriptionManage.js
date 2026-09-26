@@ -329,6 +329,245 @@ async function cancelSubscription(userId, subscriptionId) {
   return pauseSubscription(userId, subscriptionId);
 }
 
+/**
+ * Force-cancel one subscription because its plan was discontinued.
+ * Timing matches pause (skip vs keep this Sunday), but terminal state is
+ * status=cancelled + cancelled_reason=plan_discontinued.
+ * Before Wednesday: refund plan+delivery via refundSkip when already paid
+ * (including first-box signup charge). Add-ons are never refunded.
+ */
+async function cancelForPlanDiscontinued(sub) {
+  if (!sub?.id) throw new SubscriptionError(400, 'Subscription id is required.');
+  if (sub.status === 'cancelled') {
+    return { ok: true, already: true, pending: false, refunded_cents: 0 };
+  }
+
+  const { week, charge, cycle } = await currentCycleFor(sub);
+  const alreadyPaid = Boolean(cycle && Number(cycle.plan_paid_cents) > 0);
+  const alreadyLocked = cycle?.status === 'locked';
+  const reason = 'plan_discontinued';
+
+  // Already locked: this Sunday is fulfilled. Cancel now and skip any later open weeks.
+  if (alreadyLocked) {
+    const today = torontoYmd(new Date());
+    const { data: openRows, error: openErr } = await supabase
+      .from('subscription_cycles')
+      .select('*')
+      .eq('subscription_id', sub.id)
+      .eq('status', 'open')
+      .gte('delivery_date', today);
+    if (openErr) throw openErr;
+    for (const row of openRows || []) {
+      await skipOpenCycle(row);
+    }
+
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_reason: reason,
+        pending_status: null,
+        pause_reason: null,
+      })
+      .eq('id', sub.id);
+    if (error) throw error;
+    return {
+      ok: true,
+      pending: false,
+      refunded_cents: 0,
+      week,
+      charge,
+      user_id: sub.user_id,
+      kept_locked_sunday: true,
+    };
+  }
+
+  // After Wednesday charge window (cycle still open/charged): keep this Sunday via pending.
+  if (!charge.before_wednesday) {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        pending_status: 'cancelled',
+        cancelled_reason: reason,
+      })
+      .eq('id', sub.id);
+    if (error) throw error;
+    return {
+      ok: true,
+      pending: true,
+      refunded_cents: 0,
+      week,
+      charge,
+      user_id: sub.user_id,
+    };
+  }
+
+  let refunded_cents = 0;
+  if (alreadyPaid) {
+    try {
+      const refund = await refundSkip(cycle, sub.id);
+      refunded_cents = Number(refund.refunded_cents) || 0;
+    } catch (err) {
+      console.error('[subscriptions] discontinue refund failed', sub.id, err.message);
+      throw new SubscriptionError(
+        402,
+        'We could not refund this subscription. Try again or email hello@earthtableco.ca.'
+      );
+    }
+  }
+
+  await skipOpenCycle(cycle);
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      cancelled_reason: reason,
+      pending_status: null,
+      pause_reason: null,
+    })
+    .eq('id', sub.id);
+  if (error) throw error;
+
+  return {
+    ok: true,
+    pending: false,
+    refunded_cents,
+    week,
+    charge,
+    user_id: sub.user_id,
+  };
+}
+
+/**
+ * Soft-discontinue a plan: hide from signups, force-cancel active/paused subs.
+ */
+async function discontinuePlan(planId) {
+  if (!planId) throw new SubscriptionError(400, 'Plan id is required.');
+
+  const plan = await getPlanById(planId);
+  if (!plan) throw new SubscriptionError(404, 'Plan not found.');
+
+  const { data: subs, error: subErr } = await supabase
+    .from('subscriptions')
+    .select(`
+      id, user_id, status, plan_id, pending_status, pause_reason, cancelled_reason,
+      stripe_customer_id, stripe_payment_method_id, delivery, delivery_postal_code,
+      pickup_time_slot, special_note, created_at,
+      subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
+    `)
+    .eq('plan_id', planId)
+    .in('status', ['active', 'paused']);
+  if (subErr) throw subErr;
+
+  const rows = subs || [];
+  if (plan.discontinued_at && rows.length === 0) {
+    throw new SubscriptionError(409, 'This plan is already discontinued.');
+  }
+
+  let updatedPlan = plan;
+  if (!plan.discontinued_at) {
+    const discontinuedAt = new Date().toISOString();
+    const { data, error: planErr } = await supabase
+      .from('subscription_plans')
+      .update({
+        is_active: false,
+        discontinued_at: discontinuedAt,
+      })
+      .eq('id', planId)
+      .select()
+      .single();
+    if (planErr) throw planErr;
+    updatedPlan = data;
+  }
+
+  let cancelledCount = 0;
+  let refundedCount = 0;
+  let pendingCount = 0;
+  const failures = [];
+
+  const { getUserByAuthId } = require('./user');
+  const { sendEmail } = require('../utils/email');
+  const {
+    renderPlanDiscontinuedEmail,
+    renderOwnerPlanDiscontinuedEmail,
+  } = require('../utils/emailTemplates');
+  const { sendOwnerEmail } = require('../emails/sendSubscriptionMail');
+
+  for (const sub of rows) {
+    try {
+      const result = await cancelForPlanDiscontinued(sub);
+      if (result.already) continue;
+      cancelledCount += 1;
+      if (result.pending || result.kept_locked_sunday) pendingCount += 1;
+      if (result.refunded_cents > 0) refundedCount += 1;
+
+      try {
+        const user = await getUserByAuthId(sub.user_id);
+        if (!user?.email) continue;
+        const msg = renderPlanDiscontinuedEmail({
+          firstName: user.first_name,
+          planName: plan.name,
+          mealCount: plan.meal_count,
+          deliveryLabel: result.week?.delivery_label,
+          pending: !!result.pending,
+          keptLockedSunday: !!result.kept_locked_sunday,
+          refundedCents: result.refunded_cents,
+        });
+        await sendEmail({
+          to: user.email,
+          subject: msg.subject,
+          html: msg.html,
+          text: msg.text,
+          replyTo: 'hello@earthtableco.ca',
+        });
+      } catch (err) {
+        console.warn('[subscriptions] discontinue customer email failed:', sub.id, err.message);
+      }
+    } catch (err) {
+      failures.push({ subscription_id: sub.id, error: err.message || String(err) });
+      console.error('[subscriptions] discontinue cancel failed:', sub.id, err.message);
+    }
+  }
+
+  if (cancelledCount > 0) {
+    try {
+      const ownerMsg = renderOwnerPlanDiscontinuedEmail({
+        planName: plan.name,
+        mealCount: plan.meal_count,
+        cancelledCount,
+        refundedCount,
+        pendingCount,
+      });
+      await sendOwnerEmail(ownerMsg);
+    } catch (err) {
+      console.warn('[subscriptions] discontinue owner email failed:', err.message);
+    }
+  }
+
+  const { count: remaining, error: countErr } = await supabase
+    .from('subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('plan_id', planId)
+    .in('status', ['active', 'paused']);
+  if (countErr) throw countErr;
+
+  return {
+    ok: true,
+    plan: {
+      ...updatedPlan,
+      display_description: plan.display_description,
+      subscriber_count: remaining || 0,
+    },
+    cancelled_count: cancelledCount,
+    refunded_count: refundedCount,
+    pending_count: pendingCount,
+    failures,
+  };
+}
+
 async function claimCutoffRun(weekKey, job) {
   const { error } = await supabase
     .from('cutoff_runs')
@@ -534,6 +773,8 @@ module.exports = {
   pauseSubscription,
   resumeSubscription,
   cancelSubscription,
+  cancelForPlanDiscontinued,
+  discontinuePlan,
   changeSubscriptionPlan,
   sendPauseReminders,
 };

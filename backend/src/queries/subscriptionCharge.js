@@ -231,6 +231,7 @@ async function loadSubsForSunday() {
     .from('subscriptions')
     .select(`
       id, user_id, status, plan_id, pending_status, pending_plan_id, pause_reason,
+      cancelled_reason, cancelled_at,
       stripe_customer_id, stripe_payment_method_id, delivery, delivery_postal_code,
       pickup_time_slot, special_note,
       first_promo_percent, first_promo_applied, first_promo_code,
@@ -749,7 +750,20 @@ async function createKitchenOrder(sub, cycle, sunday) {
 }
 
 async function applyPendingAfterLock(sub) {
-  if (sub.pending_status === 'cancelled' || sub.pending_status === 'paused') {
+  if (sub.pending_status === 'cancelled') {
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_reason: sub.cancelled_reason || null,
+        pending_status: null,
+        pause_reason: null,
+      })
+      .eq('id', sub.id);
+    return { cancelled: true };
+  }
+  if (sub.pending_status === 'paused') {
     await supabase
       .from('subscriptions')
       .update({

@@ -52,9 +52,9 @@ const updateSubscriptionPlan = async (planId, body) => {
   return parseJson(res);
 };
 
-const deleteSubscriptionPlan = async (planId) => {
-  const res = await fetch(`/api/subscriptions/plans/${planId}`, {
-    method: 'DELETE',
+const discontinueSubscriptionPlan = async (planId) => {
+  const res = await fetch(`/api/subscriptions/plans/${planId}/discontinue`, {
+    method: 'POST',
   });
   return parseJson(res);
 };
@@ -324,7 +324,7 @@ export {
   fetchSubscriptionPlans,
   createSubscriptionPlan,
   updateSubscriptionPlan,
-  deleteSubscriptionPlan,
+  discontinueSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
   runSubscriptionCharge,

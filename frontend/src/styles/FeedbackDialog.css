@@ -156,6 +156,19 @@
   background-color: #d69410;
 }
 
+.feedback-dialog-primary--danger {
+  border-color: #b42318;
+  background-color: #b42318;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.feedback-dialog-primary--danger:hover,
+.feedback-dialog-primary--danger:focus {
+  background-color: #912018;
+  border-color: #912018;
+}
+
 .feedback-dialog-primary:disabled,
 .feedback-dialog-primary:disabled:hover,
 .feedback-dialog-primary:disabled:focus {
