@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, Fragment } from 'react';
+import { useCallback, useEffect, useState, useMemo, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   fetchAllOrders,
@@ -49,7 +49,8 @@ const telHref = (phone) => {
 
 const OrderAdmin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const view = searchParams.get('view') === 'past' ? 'past' : 'upcoming';
+  // Local only — remounting the Orders tab always starts on Upcoming.
+  const [view, setViewState] = useState('upcoming');
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,19 +59,32 @@ const OrderAdmin = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState('due');
-  const [sortDir, setSortDir] = useState(() => defaultSortDirForView(view));
+  const [sortDir, setSortDir] = useState(() => defaultSortDirForView('upcoming'));
+
+  const loadOrders = useCallback(async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoading(true);
+    try {
+      const data = await fetchAllOrders();
+      setOrders(data);
+    } catch (err) {
+      console.error('Failed to load orders:', err.message);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, []);
 
   const setView = (nextView) => {
     const next = nextView === 'past' ? 'past' : 'upcoming';
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('view', next);
-      return params;
-    }, { replace: true });
+    if (next === view) {
+      loadOrders();
+      return;
+    }
+    setViewState(next);
     setSortKey('due');
     setSortDir(defaultSortDirForView(next));
     setExpandedOrderId(null);
     setOrderDetails(null);
+    loadOrders();
   };
 
   const handleSort = (column) => {
@@ -94,10 +108,21 @@ const OrderAdmin = () => {
     }
   };
 
+  // Drop leftover ?view= from the URL so Past never sticks across visits.
+  useEffect(() => {
+    if (!searchParams.has('view')) return;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('view');
+      return params;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Fresh fetch whenever Orders mounts (including after switching admin tabs).
   useEffect(() => {
     let cancelled = false;
 
-    const loadOrders = async () => {
+    const run = async () => {
       setLoading(true);
       try {
         const data = await fetchAllOrders();
@@ -108,14 +133,9 @@ const OrderAdmin = () => {
         if (!cancelled) setLoading(false);
       }
     };
-    loadOrders();
+    run();
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    setSortKey('due');
-    setSortDir(defaultSortDirForView(view));
-  }, [view]);
 
   const toggleDetailedOrder = async (orderId) => {
     if (expandedOrderId === orderId) {
