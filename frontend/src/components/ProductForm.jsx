@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { uploadProductImage, fetchAllTags, fetchProductTags } from '../helpers/adminHelpers';
-import '../styles/ProductForm.css'
+import FormCard from './admin/FormCard';
+import FormField from './admin/FormField';
+import ImageField from './admin/ImageField';
 
-const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
+const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initialData, categories }, ref) {
   const [formData, setFormData] = useState({
     id: '',
     slug: '',
@@ -32,7 +34,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
   useEffect(() => {
     const initializeForm = async () => {
       try {
-        const tags = await fetchAllTags(); 
+        const tags = await fetchAllTags();
         setAllTags(tags);
 
         if (initialData && Object.keys(initialData).length > 0) {
@@ -54,12 +56,10 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
       } catch (err) {
         console.error("Error initializing form:", err.message);
       }
-    }; 
+    };
     initializeForm();
-    
+
   }, [initialData]);
-
-
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -68,7 +68,6 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -81,7 +80,6 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
 
     onSubmit(processedForm);
 
-    // Reset form
     setFormData({
       id: '',
       slug: '',
@@ -91,7 +89,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
       price_cents: 0,
       category_id: '',
     });
-    setSelectedTags([]); 
+    setSelectedTags([]);
   };
 
   const handleFileUpload = async (e) => {
@@ -109,69 +107,75 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
     }
   };
 
+  const editing = Boolean(initialData?.id);
 
   return (
-    <div>
-      
-      <form onSubmit={handleSubmit} className='product-form'>
-        <h2 className="product-form-title">
-          {initialData?.id ? 'Update Product' : 'Add New Product'}
-        </h2>
-        
-        <label> Slug: </label>
-        <input 
-          name="slug" 
+    <FormCard
+      ref={ref}
+      title={editing ? 'Update Product' : 'Add New Product'}
+      titleNote={editing ? `#${initialData.id}` : ''}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      submitLabel={editing ? 'Save changes' : 'Create product'}
+    >
+      <FormField
+        label="Name"
+        hint="Used as the product slug"
+        htmlFor="product-slug"
+      >
+        <input
+          id="product-slug"
+          className="admin-control"
+          name="slug"
           type="text"
-          value={formData.slug} 
-          onChange={handleChange} 
-          required 
+          value={formData.slug}
+          onChange={handleChange}
+          aria-describedby="product-slug-hint"
+          required
         />
+      </FormField>
 
-        <label> Image URL: </label>
-        <input 
-          name="image_url" 
-          type="text"
-          value={formData.image_url} 
-          onChange={handleChange} 
-          required 
-        />
-        
+      <ImageField
+        id="product-image"
+        value={formData.image_url}
+        onChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+        onFile={handleFileUpload}
+        required
+      />
 
-        <h3>OR</h3>
-
-   
-        <label>Upload Image:</label>
-        <input 
-          type="file" 
-          accept="image/*"
-          onChange={handleFileUpload}
-        />
-    
-
-        <label> Description: </label>
-        <textarea 
-          name="description" 
-          value={formData.description} 
-          placeholder="Add Product Description"
-          onChange={handleChange} 
+      <FormField label="Description" htmlFor="product-description">
+        <textarea
+          id="product-description"
+          className="admin-control"
+          name="description"
+          value={formData.description}
+          placeholder="Add product description"
+          onChange={handleChange}
           rows={4}
         />
-        
+      </FormField>
 
-        <label>
-          Price ($):
+      <FormField label="Price" htmlFor="product-price">
+        <div className="admin-prefix-field">
+          <span className="admin-prefix" aria-hidden="true">$</span>
           <input
+            id="product-price"
+            className="admin-control admin-prefix-input"
             name="price_cents"
             type="number"
+            inputMode="decimal"
             value={formData.price_cents}
             onChange={handleChange}
             step="0.01"
             min="0"
           />
-        </label>
-       
-        <label> Category: </label>
+        </div>
+      </FormField>
+
+      <FormField label="Category" htmlFor="product-category">
         <select
+          id="product-category"
+          className="admin-control"
           name="category_id"
           value={formData.category_id}
           onChange={handleChange}
@@ -182,54 +186,44 @@ const ProductForm = ({ onSubmit, onCancel, initialData, categories }) => {
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>
-            ))}
-          </select>
-        
-        <br /> <br />
+          ))}
+        </select>
+      </FormField>
 
-        <label>Tags:</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-            {allTags.map(tag => (
-              <label key={tag.id}>
-                <input
-                  type="checkbox"
-                  value={tag.id}
-                  checked={selectedTags.includes(tag.id)}
-                  onChange={(e) => {
-                    const tagId = parseInt(e.target.value);
-                    if (e.target.checked) {
-                      setSelectedTags(prev => [...prev, tagId]);
-                    } else {
-                      setSelectedTags(prev => prev.filter(id => id !== tagId));
-                    }
-                  }}
-                />
-                {tag.name}
-              </label>
-            ))}
-          </div>
+      <FormField label="Tags">
+        <div className="admin-check-chips">
+          {allTags.map(tag => (
+            <label key={tag.id} className="admin-check-chip">
+              <input
+                type="checkbox"
+                value={tag.id}
+                checked={selectedTags.includes(tag.id)}
+                onChange={(e) => {
+                  const tagId = parseInt(e.target.value);
+                  if (e.target.checked) {
+                    setSelectedTags(prev => [...prev, tagId]);
+                  } else {
+                    setSelectedTags(prev => prev.filter(id => id !== tagId));
+                  }
+                }}
+              />
+              {tag.name}
+            </label>
+          ))}
+        </div>
+      </FormField>
 
-        <label>
-          <input
-            type="checkbox"
-            name="is_available"
-            checked={formData.is_available}
-            onChange={handleChange}
-          />
-          Available:
-        </label>
-        <br /> <br />
-
-        <button type="submit">Submit</button>
-        <button type="button" onClick={onCancel} style={{ marginLeft: '1rem' }}>
-          Cancel
-        </button>
-      </form>
-      <br /> 
-      <br /> 
-      
-    </div>
-  )
-};
+      <label className="admin-check-row">
+        <input
+          type="checkbox"
+          name="is_available"
+          checked={formData.is_available}
+          onChange={handleChange}
+        />
+        Available
+      </label>
+    </FormCard>
+  );
+});
 
 export default ProductForm;

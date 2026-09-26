@@ -7,6 +7,10 @@ import {
 } from '../helpers/adminHelpers'
 import CategoryForm from './CategoryForm'
 import AdminTabLoading from './AdminTabLoading';
+import AdminToolbar from './admin/AdminToolbar';
+import AdminListItem from './admin/AdminListItem';
+import AdminButton from './admin/AdminButton';
+import Badge from './admin/Badge';
 import '../styles/CategoryAdmin.css'
 
 const CategoryAdmin = () => {
@@ -96,74 +100,56 @@ const CategoryAdmin = () => {
   return (
     <div className="category-admin-container">
       <h1 className="category-admin-title">Categories Management</h1>
-      <br />
 
-      <div className="category-admin-toolbar">
-        <input
-          type="text"
-          className="category-search-input"
-          placeholder="Search by name or description"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <div className="admin-create-actions">
-        <button
-          type="button"
-          className="toggle-form-button"
-          onClick={() => setShowForm((prev) => !prev)}
-        >
-          {showForm ? 'Close Form' : 'Add New Category'}
-        </button>
-      </div>
+      <AdminToolbar
+        searchValue={searchTerm}
+        searchPlaceholder="Search by name or description"
+        searchLabel="Search by name or description"
+        onSearchChange={(e) => setSearchTerm(e.target.value)}
+        actionLabel={showForm ? 'Close Form' : 'Add New Category'}
+        onAction={() => {
+          if (showForm) {
+            setShowForm(false);
+            setCategoryToEdit(null);
+            return;
+          }
+          setShowForm(true);
+        }}
+        resultLabel={`${filteredCategories.length} ${filteredCategories.length === 1 ? 'category' : 'categories'}`}
+      />
 
       {showForm && (
-        <div ref={formRef}>
-          <CategoryForm
-            onSubmit={(formData) => {
-              if (categoryToEdit) {
-                handleUpdateCategory(formData);
-              } else {
-                handleAddCategory(formData);
-              }
-            }}
-            onCancel={() => {
-              setShowForm(false);
-              setCategoryToEdit(null);
-            }}
-            initialData={categoryToEdit}
-          />
-        </div>
+        <CategoryForm
+          ref={formRef}
+          onSubmit={(formData) => {
+            if (categoryToEdit) {
+              handleUpdateCategory(formData);
+            } else {
+              handleAddCategory(formData);
+            }
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setCategoryToEdit(null);
+          }}
+          initialData={categoryToEdit}
+        />
       )}
 
-      <div className="category-card-container">
+      <div className="admin-list">
         {filteredCategories.map((category) => (
-          <div className="category-card" key={category.id}>
-            <img
-              className="category-thumb"
-              src={category.image_url}
-              alt=""
-            />
-            <div className="category-card-body">
-              <div className="category-card-info">
-                <span className="category-card-name" title={category.name}>
-                  {category.name}
-                </span>
-                <span
-                  className="category-card-desc-preview"
-                  title={category.description || ''}
-                >
-                  {category.description?.trim() ? category.description : '—'}
-                </span>
-                <span className="category-card-homepage">
-                  Homepage: {category.show_on_homepage ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div className="category-card-actions">
-                <button
-                  type="button"
-                  className="category-card-action-btn"
+          <AdminListItem
+            key={category.id}
+            image={category.image_url}
+            title={category.name}
+            capitalize
+            description={category.description?.trim() ? category.description : ''}
+            meta={category.show_on_homepage ? <Badge tone="accent">On homepage</Badge> : null}
+            actions={(
+              <>
+                <AdminButton
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
                     setCategoryToEdit(category);
                     setShowForm(true);
@@ -173,17 +159,17 @@ const CategoryAdmin = () => {
                   }}
                 >
                   Edit
-                </button>
-                <button
-                  type="button"
-                  className="category-card-action-btn"
+                </AdminButton>
+                <AdminButton
+                  variant="danger"
+                  size="sm"
                   onClick={() => handleDeleteCategory(category.id)}
                 >
                   Delete
-                </button>
-              </div>
-            </div>
-          </div>
+                </AdminButton>
+              </>
+            )}
+          />
         ))}
       </div>
     </div>

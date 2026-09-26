@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, Fragment } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   fetchAllProducts,
   fetchAllCategories,
@@ -9,6 +9,10 @@ import {
 } from '../helpers/adminHelpers';
 import ProductForm from './ProductForm';
 import AdminTabLoading from './AdminTabLoading';
+import AdminToolbar from './admin/AdminToolbar';
+import AdminListItem from './admin/AdminListItem';
+import AdminButton from './admin/AdminButton';
+import Badge from './admin/Badge';
 import '../styles/ProductAdmin.css';
 
 const ProductAdmin = () => {
@@ -68,6 +72,10 @@ const ProductAdmin = () => {
 
 
   const handleToggleArchive = async (product) => {
+    if (product.is_active) {
+      const confirmed = window.confirm('Are you sure you want to archive this product?');
+      if (!confirmed) return;
+    }
     try {
       const updated = await toggleProductActive(product.id, !product.is_active);
       setProducts(prev =>
@@ -155,40 +163,52 @@ const ProductAdmin = () => {
   return (
     <div className="product-admin-container">
       <h1 className="product-admin-title">Menu Management </h1>
-      <br />
 
-      <div className="product-admin-toolbar">
-        <input
-          type="text"
-          className="product-search-input"
-          placeholder="Search slug, description, price, category, or tags"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="product-category-filter"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          aria-label="Filter by category"
-        >
-          <option value="">All Categories</option>
-          {categorySelectOptions.map(({ id, name }) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="product-category-filter"
-          value={archiveTab}
-          onChange={(e) => setArchiveTab(e.target.value)}
-          aria-label="Filter by listing status"
-        >
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="archived">Archived</option>
-        </select>
-      </div>
+      <AdminToolbar
+        searchValue={searchTerm}
+        searchPlaceholder="Search slug, description, price, category, or tags"
+        searchLabel="Search slug, description, price, category, or tags"
+        onSearchChange={(e) => setSearchTerm(e.target.value)}
+        actionLabel={showForm ? 'Close Form' : 'Add New Product'}
+        onAction={() => {
+          if (showForm) {
+            setShowForm(false);
+            setEditProduct(null);
+            return;
+          }
+          setShowForm(true);
+        }}
+        resultLabel={products.length === 0
+          ? ''
+          : `${tabFilteredProducts.length} ${tabFilteredProducts.length === 1 ? 'product' : 'products'}`}
+        filters={(
+          <>
+            <select
+              className="admin-control admin-toolbar-select"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+            >
+              <option value="">All Categories</option>
+              {categorySelectOptions.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="admin-control admin-toolbar-select"
+              value={archiveTab}
+              onChange={(e) => setArchiveTab(e.target.value)}
+              aria-label="Filter by listing status"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
+          </>
+        )}
+      />
 
       {archiveTab === 'archived' && (
         <p className="product-admin-tab-help">
@@ -196,34 +216,21 @@ const ProductAdmin = () => {
         </p>
       )}
 
-      <br />
-
-      <div className="admin-create-actions">
-        <button
-          type="button"
-          className="toggle-form-button"
-          onClick={() => setShowForm((prev) => !prev)}
-        >
-          {showForm ? 'Close Form' : 'Add New Product'}
-        </button>
-      </div>
       {showForm && (
-        <>
-          <div ref={formRef}></div>
-          <ProductForm
-            onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
-            onCancel={() => {
-              setShowForm(false);
-              setEditProduct(null);
-            }}
-            initialData={editProduct}
-            categories={categories}
-          />
-        </>
+        <ProductForm
+          ref={formRef}
+          onSubmit={editProduct ? handleUpdateProduct : handleAddProduct}
+          onCancel={() => {
+            setShowForm(false);
+            setEditProduct(null);
+          }}
+          initialData={editProduct}
+          categories={categories}
+        />
       )}
 
       {products.length === 0 ? (
-        <p>No products found.</p>
+        <p className="product-admin-empty-tab">No products found.</p>
       ) : tabFilteredProducts.length === 0 ? (
         <p className="product-admin-empty-tab">
           {archiveTab === 'all'
@@ -233,91 +240,56 @@ const ProductAdmin = () => {
               : 'No archived products match your search or category filter.'}
         </p>
       ) : (
-        <div className="product-card-container">
+        <div className="admin-list">
           {tabFilteredProducts.map((product) => {
             const tagNames = getTagNames(product);
             const isAvailable = product.is_available !== false && product.is_available !== 0;
             return (
-            <div key={product.id} className="product-card">
-              <img
-                src={product.image_url}
-                alt=""
-                className="admin-product-thumb"
+              <AdminListItem
+                key={product.id}
+                image={product.image_url}
+                title={product.slug}
+                description={product.description?.trim() ? product.description : ''}
+                meta={(
+                  <>
+                    <span className="admin-list-meta-text">
+                      {getCategoryName(product.category_id) || '—'} · $
+                      {(product.price_cents / 100).toFixed(2)}
+                    </span>
+                    {tagNames.map((name, i) => (
+                      <Badge key={`${name}-${i}`} tone="neutral">{name}</Badge>
+                    ))}
+                    <Badge tone={isAvailable ? 'success' : 'muted'}>
+                      {isAvailable ? 'Available' : 'Unavailable'}
+                    </Badge>
+                    {!product.is_active ? <Badge tone="muted">Archived</Badge> : null}
+                  </>
+                )}
+                actions={(
+                  <>
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setEditProduct(product);
+                        setShowForm(true);
+                        setTimeout(() => {
+                          formRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                      }}
+                    >
+                      Edit
+                    </AdminButton>
+                    <AdminButton
+                      variant={product.is_active ? 'danger' : 'secondary'}
+                      size="sm"
+                      onClick={() => handleToggleArchive(product)}
+                    >
+                      {product.is_active ? 'Archive' : 'Unarchive'}
+                    </AdminButton>
+                  </>
+                )}
               />
-              <div className="product-card-body">
-                <div className="product-card-info">
-                  <span className="product-card-slug" title={product.slug}>
-                    {product.slug}
-                  </span>
-                  {product.description?.trim() ? (
-                    <span
-                      className="product-card-desc-truncate"
-                      title={product.description}
-                    >
-                      {product.description}
-                    </span>
-                  ) : null}
-                  <span className="product-card-line2">
-                    {getCategoryName(product.category_id) || '—'} · $
-                    {(product.price_cents / 100).toFixed(2)}
-                  </span>
-                  <div className="product-card-tags" aria-label="Tags">
-                    {tagNames.length ? (
-                      <span className="product-card-tags-inline">
-                        {tagNames.map((name, i) => (
-                          <Fragment key={`${name}-${i}`}>
-                            {i > 0 ? (
-                              <span className="product-card-tag-sep" aria-hidden>
-                                ·
-                              </span>
-                            ) : null}
-                            {name}
-                          </Fragment>
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="product-card-tags-empty">No tags</span>
-                    )}
-                  </div>
-                  <div className="product-card-availability-row">
-                    <span
-                      className={
-                        isAvailable
-                          ? 'product-card-avail product-card-avail--yes'
-                          : 'product-card-avail product-card-avail--no'
-                      }
-                    >
-                      {isAvailable ? 'Available for purchase' : 'Not available for purchase'}
-                    </span>
-                  </div>
-                </div>
-                <div className="product-card-actions">
-                  {!product.is_active && (
-                    <span className="archived-badge">Archived</span>
-                  )}
-                  <button
-                    type="button"
-                    className="product-card-action-btn"
-                    onClick={() => {
-                      setEditProduct(product);
-                      setShowForm(true);
-                      setTimeout(() => {
-                        formRef.current?.scrollIntoView({ behavior: 'smooth' });
-                      }, 100);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="product-card-action-btn"
-                    onClick={() => handleToggleArchive(product)}
-                  >
-                    {product.is_active ? 'Archive' : 'Unarchive'}
-                  </button>
-                </div>
-              </div>
-            </div>
             );
           })}
         </div>

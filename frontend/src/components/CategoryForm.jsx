@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { uploadCategoryImage } from '../helpers/adminHelpers';
-import '../styles/CategoryForm.css'
+import FormCard from './admin/FormCard';
+import FormField from './admin/FormField';
+import ImageField from './admin/ImageField';
 
-const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
+const CategoryForm = forwardRef(function CategoryForm({ onSubmit, onCancel, initialData }, ref) {
   const [formData, setFormData] = useState({
     name: '',
     image_url: '',
@@ -11,7 +13,6 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
   });
 
   useEffect(() => {
-    // If initialData is provided (editing), pre-fill the form
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData({
         name: initialData.name || '',
@@ -22,7 +23,6 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     }
   }, [initialData]);
 
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -31,9 +31,8 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     }));
   };
 
-
   const handleSubmit = (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
 
     const submission = { ...formData, id: initialData?.id };
     onSubmit(submission);
@@ -54,91 +53,59 @@ const CategoryForm = ({ onSubmit, onCancel, initialData }) => {
     }
   };
 
-  
+  const editing = Boolean(initialData?.id);
+
   return (
+    <FormCard
+      ref={ref}
+      title={editing ? 'Update Category' : 'Add New Category'}
+      titleNote={editing ? `#${initialData.id}` : ''}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      submitLabel={editing ? 'Save changes' : 'Create category'}
+    >
+      <FormField label="Name" htmlFor="category-name">
+        <input
+          id="category-name"
+          className="admin-control"
+          type="text"
+          name="name"
+          value={formData.name}
+          placeholder="Add category name"
+          onChange={handleChange}
+        />
+      </FormField>
 
-    <div>
-  
-      <form onSubmit={handleSubmit} className='category-form'>
-        <h2 className="category-form-title">
-          {initialData?.id ? 'Update Category' : 'Add New Category'}
-        </h2>
-        <div>
-          {initialData?.id && (
-            <div>
-              <label>ID:</label>
-              <input 
-                type="text"
-                value={initialData.id}
-                disabled
-              />
-              <br /><br />
-            </div>
-          )}
+      <ImageField
+        id="category-image"
+        value={formData.image_url}
+        onChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+        onFile={handleFileUpload}
+      />
 
-          <label>Name:</label>
-          <input 
-            type="text"
-            name="name"
-            value={formData.name} 
-            placeholder='Add Category Name'
-            onChange={handleChange}
-          /><br /><br />
-        </div>
+      <FormField label="Description" htmlFor="category-description">
+        <textarea
+          id="category-description"
+          className="admin-control"
+          name="description"
+          value={formData.description}
+          placeholder="Add category description"
+          onChange={handleChange}
+          rows={4}
+        />
+      </FormField>
 
-        <div>
-          <label>Add Image URL:</label>
-          <input 
-            type="text"
-            name="image_url"
-            value={formData.image_url} 
-            placeholder='Add Category Image URL'
-            onChange={handleChange}
-          />
-          <br /><br />
-        </div>
-        <h3>OR</h3>
-        <div>
-          <label>Upload Image:</label>
-          <input 
-            type="file" 
-            accept="image/*"
-            onChange={handleFileUpload}
-          /><br /><br />
-        </div>
-
-        <div>
-          <label>Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            placeholder="Add Category Description"
-            onChange={handleChange}
-            rows={4} 
-
-          />
-        </div>
-
-        <div>
-          <label>
-            <input 
-              type="checkbox"
-              name="show_on_homepage"
-              checked={formData.show_on_homepage} 
-              onChange={handleChange}
-            />
-            Show on homepage
-          </label><br /><br />
-        </div>
-
-        <button type="submit">Submit</button>
-        <button type="button" style={{ marginLeft: '1rem' }} onClick={onCancel}>Cancel</button>
-
-      </form>
-      
-      
-    </div>
+      <label className="admin-check-row">
+        <input
+          type="checkbox"
+          name="show_on_homepage"
+          checked={formData.show_on_homepage}
+          onChange={handleChange}
+        />
+        Show on homepage
+      </label>
+    </FormCard>
   );
-};
+});
 
 export default CategoryForm;
