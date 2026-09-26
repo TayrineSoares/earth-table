@@ -108,13 +108,15 @@ const CategoryAdmin = () => {
         />
       </div>
 
-      <button
-        type="button"
-        className="toggle-form-button"
-        onClick={() => setShowForm((prev) => !prev)}
-      >
-        {showForm ? 'Close Form' : 'Add New Category'}
-      </button>
+      <div className="admin-create-actions">
+        <button
+          type="button"
+          className="toggle-form-button"
+          onClick={() => setShowForm((prev) => !prev)}
+        >
+          {showForm ? 'Close Form' : 'Add New Category'}
+        </button>
+      </div>
 
       {showForm && (
         <div ref={formRef}>

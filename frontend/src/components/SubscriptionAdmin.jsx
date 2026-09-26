@@ -28,6 +28,7 @@ const SubscriptionAdmin = () => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   const [name, setName] = useState('');
   const [mealCount, setMealCount] = useState('');
@@ -109,6 +110,7 @@ const SubscriptionAdmin = () => {
       setMealCount('');
       setPriceDollars('');
       setDescription('');
+      setShowForm(false);
     } catch (err) {
       setError(err.message || 'Failed to create plan.');
     }
@@ -394,60 +396,74 @@ const SubscriptionAdmin = () => {
         </>
       ) : null}
 
-      <h2 className="sub-admin-h2">Create a plan</h2>
-      <form className="promo-admin-form" onSubmit={handleCreate}>
-        <div className="promo-form-grid">
-          <label className="promo-field">
-            <span>Name</span>
-            <input
-              type="text"
-              className="promo-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="10 meals"
-              required
-            />
-          </label>
-          <label className="promo-field">
-            <span>Meal count</span>
-            <input
-              type="number"
-              className="promo-input"
-              min="1"
-              step="1"
-              value={mealCount}
-              onChange={(e) => setMealCount(e.target.value)}
-              required
-            />
-          </label>
-          <label className="promo-field">
-            <span>Price (dollars / week, pre-tax)</span>
-            <input
-              type="number"
-              className="promo-input"
-              min="0"
-              step="0.01"
-              value={priceDollars}
-              onChange={(e) => setPriceDollars(e.target.value)}
-              placeholder="180"
-              required
-            />
-          </label>
-          <label className="promo-field sub-admin-desc-field">
-            <span>Description (Subscribe &amp; Save card)</span>
-            <input
-              type="text"
-              className="promo-input"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={DEFAULT_DESCRIPTION}
-            />
-          </label>
-          <button className="promo-submit-button" type="submit">
-            Create plan
-          </button>
-        </div>
-      </form>
+      <div className="admin-create-actions">
+        <button
+          type="button"
+          className="toggle-form-button"
+          onClick={() => setShowForm((prev) => !prev)}
+        >
+          {showForm ? 'Close Form' : 'Add New Plan'}
+        </button>
+      </div>
+
+      {showForm ? (
+        <>
+          <h2 className="sub-admin-h2">Add New Plan</h2>
+          <form className="promo-admin-form" onSubmit={handleCreate}>
+            <div className="promo-form-grid">
+              <label className="promo-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  className="promo-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="10 meals"
+                  required
+                />
+              </label>
+              <label className="promo-field">
+                <span>Meal count</span>
+                <input
+                  type="number"
+                  className="promo-input"
+                  min="1"
+                  step="1"
+                  value={mealCount}
+                  onChange={(e) => setMealCount(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="promo-field">
+                <span>Price (dollars / week, pre-tax)</span>
+                <input
+                  type="number"
+                  className="promo-input"
+                  min="0"
+                  step="0.01"
+                  value={priceDollars}
+                  onChange={(e) => setPriceDollars(e.target.value)}
+                  placeholder="180"
+                  required
+                />
+              </label>
+              <label className="promo-field sub-admin-desc-field">
+                <span>Description (Subscribe &amp; Save card)</span>
+                <input
+                  type="text"
+                  className="promo-input"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={DEFAULT_DESCRIPTION}
+                />
+              </label>
+              <button className="promo-submit-button" type="submit">
+                Add New Plan
+              </button>
+            </div>
+          </form>
+        </>
+      ) : null}
 
       <h2 className="sub-admin-h2">Existing plans</h2>
       {plans.length === 0 ? (

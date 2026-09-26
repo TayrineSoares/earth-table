@@ -198,12 +198,15 @@ const ProductAdmin = () => {
 
       <br />
 
-      <button
-        className="toggle-form-button"
-        onClick={() => setShowForm((prev) => !prev)}
-      >
-        {showForm ? 'Close Form' : 'Add New Product'}
-      </button>
+      <div className="admin-create-actions">
+        <button
+          type="button"
+          className="toggle-form-button"
+          onClick={() => setShowForm((prev) => !prev)}
+        >
+          {showForm ? 'Close Form' : 'Add New Product'}
+        </button>
+      </div>
       {showForm && (
         <>
           <div ref={formRef}></div>

@@ -61,9 +61,16 @@
   margin: 0.5rem 0 1rem 0;
 }
 
+.admin-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 2rem;
+}
+
 .toggle-form-button {
   background-color: #FEE8D4;
   color: #000;
+  -webkit-text-fill-color: #000;
   font-family: var(--body-font);
   font-weight: 500;
   font-size: 15px;
@@ -73,14 +80,24 @@
   border: none;
   border-radius: 15px;
   padding: 8px 12px;
+  min-height: 44px;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
-  margin-bottom: 2rem;
 }
 
 .toggle-form-button:active {
   transform: scale(0.98);
   background-color: #EDA413;
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+@media (max-width: 768px) {
+  .admin-create-actions,
+  .toggle-form-button {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 .product-card-container {
