@@ -38,6 +38,15 @@
   overflow-wrap: break-word;
 }
 
+.homepage .loading-container {
+  width: 300px;
+  min-height: 40vh;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .zigzag-content {
   display: flex;
   gap: 1rem;

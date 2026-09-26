@@ -1,5 +1,7 @@
 import '../styles/Home.css';
 import { useState, useEffect } from 'react';
+import loadingAnimation from '../assets/loading.json';
+import Lottie from 'lottie-react';
 import { Link } from "react-router-dom";
 import { Check } from 'lucide-react';
 import headerImage from "../assets/images/headerImage.webp";
@@ -17,6 +19,7 @@ const MAKE_STANDARDS = [
 
 const Home = () => {
   const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -29,7 +32,8 @@ const Home = () => {
       .then(data => {
         setCategories(data);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => console.error(err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const homepageCategories = categories.filter(cat => cat.show_on_homepage);
@@ -61,7 +65,12 @@ const Home = () => {
       </section>
 
       <div className="page-wrapper">
-        {homepageCategories.map((category, index) => (
+        {isLoading ? (
+          <div className="loading-container" role="status" aria-live="polite" aria-label="Loading categories">
+            <Lottie animationData={loadingAnimation} loop={true} />
+          </div>
+        ) : (
+          homepageCategories.map((category, index) => (
             <section className="zigzag-section" key={category.id}>
               <div className={`zigzag-content ${index % 2 !== 0 ? 'reverse' : ''}`}>
                 <div className="zigzag-text">
@@ -85,10 +94,11 @@ const Home = () => {
                 </div>
               </div>
             </section>
-          ))}
+          ))
+        )}
       </div>
 
-      {categories.length > 0 && (
+      {!isLoading && categories.length > 0 && (
         <div className="homepage-footer">
           <div className="page-wrapper">
             <p className="footer-starter-text">And much more!</p>
