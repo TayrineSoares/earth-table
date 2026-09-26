@@ -1120,8 +1120,9 @@ function renderSubscriptionWelcomeEmail({
       `))}
       ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : ''}
       ${ctaLink(manageHref, "Manage my subscription")}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.</p>
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. Swap meals or switch between pickup and delivery in My Subscriptions before ${cutoff} to change this week's box.</p>
+      <p style="margin:0 0 16px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week automatically. You can change meals and add extras anytime until ${MEAL_LOCK_BY}.</p>
+      <p style="margin:0 0 16px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">If you miss the cutoff, we'll repeat last week's selections.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan and delivery fee are charged every Wednesday. Add-ons are billed at the Thursday 5:00 PM ET cutoff.</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1143,9 +1144,11 @@ Change your meals by: ${cutoff}
 ${addonText}
 Manage my subscription: ${manageHref}
 
-Haven't picked yet? Choose your meals before ${cutoff} and we'll have them ready. Miss the cutoff and we'll repeat last week's selections.
+Your plan renews every week automatically. You can change meals and add extras anytime until ${MEAL_LOCK_BY}.
 
-Your plan renews every week automatically. Swap meals or switch between pickup and delivery in My Subscriptions before ${cutoff} to change this week's box.
+If you miss the cutoff, we'll repeat last week's selections.
+
+Your plan and delivery fee are charged every Wednesday. Add-ons are billed at the Thursday 5:00 PM ET cutoff.
 
 Questions? Reply to this email or write to hello@earthtableco.ca.`;
 
@@ -1687,7 +1690,6 @@ function renderSubscriptionWednesdayEmail({
   chargedCents = 0,
   meals,
   addons,
-  subscriptionId,
   cardBrand,
   last4,
   unsubscribeHref,
@@ -1698,7 +1700,6 @@ function renderSubscriptionWednesdayEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const cutoff = cutoffLabel || MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
-  const mealsHref = appUrl(`/my-subscriptions/${subscriptionId || ''}/meals`);
   const chargeLines = charged
     ? receiptLines({ planCents, deliveryCents, chargedCents })
     : [];
@@ -1713,7 +1714,7 @@ function renderSubscriptionWednesdayEmail({
 
   const subject = charged
     ? `Receipt — ${planWeek} charged for ${sunday}`
-    : `This Sunday's box — meals and extras until ${cutoff}`;
+    : `This Sunday's box — change meals and add extras until ${MEAL_LOCK_BY}`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
@@ -1729,7 +1730,6 @@ function renderSubscriptionWednesdayEmail({
       ${itemListHtml(meals, 'None yet — pick them before cutoff and we will have them ready.')}
       ${h2("Add-ons")}
       ${itemListHtml(addons, 'None yet. Add extras before cutoff if you want them this week.')}
-      ${ctaLink(mealsHref, "Manage this week's meals →")}
       ${ctaLink(manageHref, "My Subscriptions →")}
   `, {
     preheader: introText,
@@ -1752,7 +1752,6 @@ ${itemLinesText(meals) || 'None yet — pick them before cutoff.'}
 Add-ons
 ${itemLinesText(addons) || 'None yet.'}
 
-Manage this week's meals: ${mealsHref}
 My Subscriptions: ${manageHref}
 
 Questions? Reply to this email or write to hello@earthtableco.ca.${unsubscribeHref ? `
