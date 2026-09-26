@@ -213,15 +213,31 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
         </div>
       </FormField>
 
-      <label className="admin-check-row">
-        <input
-          type="checkbox"
-          name="is_available"
-          checked={formData.is_available}
-          onChange={handleChange}
-        />
-        Available
-      </label>
+      <div className="admin-switch-row">
+        <div className="admin-switch-copy">
+          <span className="admin-switch-label">Sold out</span>
+          <p className="admin-switch-hint">
+            Sold-out dishes still appear on the menu, but customers can’t add them to an order.
+          </p>
+        </div>
+        <label className="admin-toggle">
+          <input
+            type="checkbox"
+            name="is_available"
+            checked={!formData.is_available}
+            onChange={(e) => {
+              setFormData((prev) => ({
+                ...prev,
+                is_available: !e.target.checked,
+              }));
+            }}
+          />
+          <span className="admin-toggle-track" />
+          <span className="admin-toggle-label">
+            {formData.is_available ? 'No' : 'Yes'}
+          </span>
+        </label>
+      </div>
     </FormCard>
   );
 });

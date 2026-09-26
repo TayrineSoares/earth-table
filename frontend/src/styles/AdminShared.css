@@ -302,6 +302,13 @@ select.admin-control {
   border: 1px solid #D9C7B0;
 }
 
+.admin-badge--danger {
+  background-color: #fff6f4;
+  color: #9b1c1c;
+  border: 1px solid #e8b4b4;
+  font-weight: 600;
+}
+
 .admin-form-card {
   box-sizing: border-box;
   width: 100%;
@@ -538,6 +545,88 @@ select.admin-control {
   height: 16px;
   margin: 0;
   flex-shrink: 0;
+}
+
+.admin-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+
+.admin-switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-switch-label {
+  font-family: var(--body-font);
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.admin-switch-hint {
+  margin: 0;
+  font-family: var(--body-font);
+  font-size: 13px;
+  color: #757575;
+}
+
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-toggle-track {
+  width: 36px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #d1d5db;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.admin-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.admin-toggle input:checked + .admin-toggle-track {
+  background: #EDA413;
+}
+
+.admin-toggle input:checked + .admin-toggle-track::after {
+  transform: translateX(16px);
+}
+
+.admin-toggle-label {
+  font-family: var(--body-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
 }
 
 @media (max-width: 1366px) {

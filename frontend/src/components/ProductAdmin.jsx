@@ -27,6 +27,8 @@ const ProductAdmin = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   /** 'all' | 'active' (listed) | 'archived' (hidden from storefront) */
   const [archiveTab, setArchiveTab] = useState('all');
+  /** 'all' | 'available' | 'sold_out' */
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -146,11 +148,16 @@ const ProductAdmin = () => {
   }, [products, searchTerm, categoryFilter, categories, allTags]);
 
   const tabFilteredProducts = useMemo(() => {
-    if (archiveTab === 'all') return filteredProducts;
-    return filteredProducts.filter((product) =>
-      archiveTab === 'active' ? product.is_active : !product.is_active
-    );
-  }, [filteredProducts, archiveTab]);
+    return filteredProducts.filter((product) => {
+      if (archiveTab === 'active' && !product.is_active) return false;
+      if (archiveTab === 'archived' && product.is_active) return false;
+
+      const isAvailable = product.is_available !== false && product.is_available !== 0;
+      if (availabilityFilter === 'available' && !isAvailable) return false;
+      if (availabilityFilter === 'sold_out' && isAvailable) return false;
+      return true;
+    });
+  }, [filteredProducts, archiveTab, availabilityFilter]);
 
   if (loading) {
     return (
@@ -211,6 +218,16 @@ const ProductAdmin = () => {
               <option value="active">Active</option>
               <option value="archived">Archived</option>
             </select>
+            <select
+              className="admin-control admin-toolbar-select"
+              value={availabilityFilter}
+              onChange={(e) => setAvailabilityFilter(e.target.value)}
+              aria-label="Filter by availability"
+            >
+              <option value="all">All availability</option>
+              <option value="available">Available</option>
+              <option value="sold_out">Sold out</option>
+            </select>
           </>
         )}
       />
@@ -218,6 +235,11 @@ const ProductAdmin = () => {
       {archiveTab === 'archived' && (
         <p className="product-admin-tab-help">
           Archived products are hidden from the storefront and are not shown to customers.
+        </p>
+      )}
+      {availabilityFilter === 'sold_out' && (
+        <p className="product-admin-tab-help">
+          Sold-out dishes still show on the website and subscription pages — customers just can’t add them to an order.
         </p>
       )}
 
@@ -238,11 +260,9 @@ const ProductAdmin = () => {
         <p className="product-admin-empty-tab">No products found.</p>
       ) : tabFilteredProducts.length === 0 ? (
         <p className="product-admin-empty-tab">
-          {archiveTab === 'all'
-            ? 'No products match your search or category filter.'
-            : archiveTab === 'active'
-              ? 'No active products match your search or category filter.'
-              : 'No archived products match your search or category filter.'}
+          {archiveTab !== 'all' || availabilityFilter !== 'all'
+            ? 'No products match your search or filters.'
+            : 'No products match your search or category filter.'}
         </p>
       ) : (
         <div className="admin-list">
@@ -264,8 +284,8 @@ const ProductAdmin = () => {
                     {tagNames.map((name, i) => (
                       <Badge key={`${name}-${i}`} tone="neutral">{name}</Badge>
                     ))}
-                    <Badge tone={isAvailable ? 'success' : 'muted'}>
-                      {isAvailable ? 'Available' : 'Unavailable'}
+                    <Badge tone={isAvailable ? 'success' : 'danger'}>
+                      {isAvailable ? 'Available' : 'Sold out'}
                     </Badge>
                     {!product.is_active ? <Badge tone="muted">Archived</Badge> : null}
                   </>
