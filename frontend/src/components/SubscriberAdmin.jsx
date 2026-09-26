@@ -299,12 +299,8 @@ const SubscriberAdmin = () => {
   const viewedCycles = viewedActive
     .map((row) => cycleForRow(row, statusTab, weekTab))
     .filter(Boolean);
-  // Cycle status when that Sunday has boxes; otherwise the selected Sunday's cutoff.
-  const clockLocked = weekTab === 'next'
-    ? Boolean(meta.next_cutoff_passed)
-    : Boolean(meta.this_cutoff_passed ?? meta.cutoff_passed);
-  const weekLocked = clockLocked
-    || (viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed));
+  // Locked only after the Thursday job has closed every box (charge, then status locked).
+  const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);
   const printSunday = weekTab === 'next'
