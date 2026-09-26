@@ -137,10 +137,9 @@
 }
 
 .promo-code-cell {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.02em;
+  font-family: var(--body-font);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .promo-uses-cell {

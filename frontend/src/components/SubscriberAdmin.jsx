@@ -354,6 +354,24 @@ const SubscriberAdmin = () => {
           Switch between this Sunday and next, open a customer for details, and keep an eye on the banner if meals can still change.
         </p>
 
+        <div className="sub-admin-totals">
+          <div className="sub-admin-total">
+            <span className="sub-admin-total-value">{totals.activeCount}</span>
+            <span className="sub-admin-total-label">active subscriptions</span>
+          </div>
+          <div className="sub-admin-total">
+            <span className="sub-admin-total-value">
+              {formatPlanPrice(totals.weeklyCents)}
+              <span className="sub-admin-total-hst"> + hst</span>
+            </span>
+            <span className="sub-admin-total-label">total</span>
+          </div>
+          <div className="sub-admin-total">
+            <span className="sub-admin-total-value">{totals.meals}</span>
+            <span className="sub-admin-total-label">meals this week (not including add-ons)</span>
+          </div>
+        </div>
+
         <AdminToolbar
           searchValue={searchTerm}
           searchPlaceholder="Search by name, email, phone, or plan"
@@ -413,37 +431,18 @@ const SubscriberAdmin = () => {
                   </>
                 )}
               </div>
-              <AdminButton
+              <button
                 type="button"
-                variant="secondary"
-                size="md"
+                className="sub-admin-print-button"
                 onClick={handlePrint}
               >
                 Print the summary
-              </AdminButton>
+              </button>
             </div>
           </>
         ) : null}
 
         {error ? <p className="sub-admin-error">{error}</p> : null}
-
-        <div className="sub-admin-totals">
-          <div className="sub-admin-total">
-            <span className="sub-admin-total-value">{totals.activeCount}</span>
-            <span className="sub-admin-total-label">active subscriptions</span>
-          </div>
-          <div className="sub-admin-total">
-            <span className="sub-admin-total-value">
-              {formatPlanPrice(totals.weeklyCents)}
-              <span className="sub-admin-total-hst"> + hst</span>
-            </span>
-            <span className="sub-admin-total-label">total</span>
-          </div>
-          <div className="sub-admin-total">
-            <span className="sub-admin-total-value">{totals.meals}</span>
-            <span className="sub-admin-total-label">meals this week (not including add-ons)</span>
-          </div>
-        </div>
 
         {groups.length === 0 ? (
           <p className="promo-empty">No subscriptions match.</p>
