@@ -873,8 +873,10 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       }
     }
     const linkedOrderId = await orderIdForThisCycle(cycle);
-    if (cycle.status === 'locked' && linkedOrderId) {
-      cycle.order_id = linkedOrderId;
+    // Locked boxes still go out after a later pause or cancel. Keep them on the
+    // kitchen email even when the plan is no longer active.
+    if (cycle.status === 'locked') {
+      if (linkedOrderId) cycle.order_id = linkedOrderId;
       locked += 1;
       if (!emailedIds.has(sub.id)) {
         try {

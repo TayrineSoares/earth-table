@@ -113,14 +113,23 @@ const cycleIsClosed = (cycle) => {
   return status === 'locked' || status === 'skipped';
 };
 
-const cycleForRow = (row, statusTab, weekTab) => {
-  if (statusTab === 'other') return row.cycle || row.this_cycle || row.next_cycle || null;
-  return weekTab === 'next' ? (row.next_cycle || null) : (row.this_cycle || null);
+// A pause or cancel after the box is committed does not pull it off this Sunday.
+// Skipped weeks stay off the kitchen list. Later unpaid weeks on a paused plan stay off too.
+const receivesSundayBox = (row, cycle) => {
+  if (!cycle || cycle.status === 'skipped') return false;
+  if (row?.status === 'active') return true;
+  if (cycle.status === 'locked') return true;
+  return Number(cycle.plan_paid_cents) > 0;
 };
 
-const kitchenForRow = (row, statusTab, weekTab) => {
-  if (statusTab === 'other') return row.kitchen || row.this_kitchen || row.next_kitchen || null;
-  return weekTab === 'next' ? (row.next_kitchen || null) : (row.this_kitchen || null);
+const cycleForRow = (row, view) => {
+  if (view === 'paused') return row.cycle || row.this_cycle || row.next_cycle || null;
+  return view === 'next' ? (row.next_cycle || null) : (row.this_cycle || null);
+};
+
+const kitchenForRow = (row, view) => {
+  if (view === 'paused') return row.kitchen || row.this_kitchen || row.next_kitchen || null;
+  return view === 'next' ? (row.next_kitchen || null) : (row.this_kitchen || null);
 };
 
 const matchesSearch = (row, term) => {
@@ -161,6 +170,7 @@ const toPrintBoxes = (weekRows, cycleKey) => {
       phone: formatPhone(customer.phone_number),
       email: customer.email || '—',
       notes: cycleNote(row, cycle),
+      orderId: cycle.order_id || null,
       meals: items.filter((item) => item.kind === 'plan'),
       extras: items.filter((item) => item.kind === 'addon'),
     };
@@ -175,8 +185,7 @@ const SubscriberAdmin = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState(null);
-  const [statusTab, setStatusTab] = useState('active');
-  const [weekTab, setWeekTab] = useState('this');
+  const [view, setView] = useState('this');
 
   const handlePickedUp = async (orderId, next) => {
     setRows((prev) => prev.map((row) => ({
@@ -223,18 +232,17 @@ const SubscriberAdmin = () => {
     () => rows.filter((row) => row.status === 'active'),
     [rows],
   );
-  const thisSundayActive = useMemo(
-    () => activeRows.filter((row) => row.this_cycle),
-    [activeRows],
+  const thisSundayBoxes = useMemo(
+    () => rows.filter((row) => receivesSundayBox(row, row.this_cycle)),
+    [rows],
   );
-  const nextSundayActive = useMemo(
-    () => activeRows.filter((row) => row.next_cycle),
-    [activeRows],
+  const nextSundayBoxes = useMemo(
+    () => rows.filter((row) => receivesSundayBox(row, row.next_cycle)),
+    [rows],
   );
 
-  const totalsWeekRows = statusTab === 'active' && weekTab === 'next'
-    ? nextSundayActive
-    : thisSundayActive;
+  const sundayView = view === 'next' || view === 'this';
+  const totalsWeekRows = view === 'next' ? nextSundayBoxes : thisSundayBoxes;
 
   const totals = {
     activeCount: activeRows.length,
@@ -251,16 +259,15 @@ const SubscriberAdmin = () => {
   const visibleRows = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return rows.filter((row) => {
-      if (statusTab === 'active') {
-        if (row.status !== 'active') return false;
-        if (weekTab === 'next' && !row.next_cycle) return false;
-        if (weekTab !== 'next' && !row.this_cycle) return false;
-      } else if (row.status === 'active') {
-        return false;
+      if (view === 'paused') {
+        if (row.status === 'active') return false;
+      } else {
+        const cycle = view === 'next' ? row.next_cycle : row.this_cycle;
+        if (!receivesSundayBox(row, cycle)) return false;
       }
       return matchesSearch(row, term);
     });
-  }, [rows, searchTerm, statusTab, weekTab]);
+  }, [rows, searchTerm, view]);
 
   const groups = useMemo(() => {
     const byUser = new Map();
@@ -277,10 +284,10 @@ const SubscriberAdmin = () => {
   }, [visibleRows]);
 
   const printBoxes = useMemo(() => (
-    weekTab === 'next'
-      ? toPrintBoxes(nextSundayActive, 'next_cycle')
-      : toPrintBoxes(thisSundayActive, 'this_cycle')
-  ), [weekTab, thisSundayActive, nextSundayActive]);
+    view === 'next'
+      ? toPrintBoxes(nextSundayBoxes, 'next_cycle')
+      : toPrintBoxes(thisSundayBoxes, 'this_cycle')
+  ), [view, thisSundayBoxes, nextSundayBoxes]);
 
   const handlePrint = () => {
     window.print();
@@ -296,62 +303,37 @@ const SubscriberAdmin = () => {
   }
 
   const cutoffLabel = (
-    (weekTab === 'next' ? meta.next_cutoff_label : meta.this_cutoff_label)
+    (view === 'next' ? meta.next_cutoff_label : meta.this_cutoff_label)
     || meta.cutoff_label
     || 'Thursday 5:00 PM'
   );
-  const viewedActive = weekTab === 'next' ? nextSundayActive : thisSundayActive;
-  const viewedCycles = viewedActive
-    .map((row) => cycleForRow(row, statusTab, weekTab))
+  const viewedBoxes = view === 'next' ? nextSundayBoxes : thisSundayBoxes;
+  const viewedCycles = viewedBoxes
+    .map((row) => cycleForRow(row, view))
     .filter(Boolean);
   // Locked only after the Thursday job has closed every box (charge, then status locked).
   const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);
-  const printSunday = weekTab === 'next'
+  const printSunday = view === 'next'
     ? (meta.next_sunday_label || 'Sunday')
     : (meta.this_sunday_label || 'Sunday');
+  const pausedCount = rows.filter((row) => row.status !== 'active').length;
   const openTitle = 'Plans are not locked yet';
   const openBody = `Please be mindful that meals and add-ons may still change by ${cutoffLabel}.`;
-  const otherCount = rows.filter((row) => row.status !== 'active').length;
+  const selectView = (next) => {
+    setView(next);
+    setExpandedId(null);
+  };
 
   return (
     <div className="promo-admin-container sub-admin-panel">
       <div className="sub-admin-screen">
-        <div className="sub-admin-head">
-          <h1 className="promo-admin-title">Subscriptions</h1>
-          <div className="admin-view-tabs" role="tablist" aria-label="Subscription status">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={statusTab === 'active'}
-              className={statusTab === 'active' ? 'active' : ''}
-              onClick={() => {
-                setStatusTab('active');
-                setExpandedId(null);
-              }}
-            >
-              Active
-              <span className="admin-view-tab-count">{activeRows.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={statusTab === 'other'}
-              className={statusTab === 'other' ? 'active' : ''}
-              onClick={() => {
-                setStatusTab('other');
-                setExpandedId(null);
-              }}
-            >
-              Other
-              <span className="admin-view-tab-count">{otherCount}</span>
-            </button>
-          </div>
-        </div>
+        <h1 className="promo-admin-title">Subscriptions</h1>
         <p className="admin-tab-lead">
-          See who’s subscribed this week and what meals they’re getting on Sunday.
-          Switch between this Sunday and next, open a customer for details, and keep an eye on the banner if meals can still change.
+          {view === 'paused'
+            ? 'Plans that are paused or cancelled. If this Sunday’s box is still going out, it stays on the This Sunday tab.'
+            : 'Who’s getting a box, and the meals on it. A paused plan stays here when that Sunday’s box is already going out.'}
         </p>
 
         <div className="sub-admin-totals">
@@ -368,7 +350,9 @@ const SubscriberAdmin = () => {
           </div>
           <div className="sub-admin-total">
             <span className="sub-admin-total-value">{totals.meals}</span>
-            <span className="sub-admin-total-label">meals this week (not including add-ons)</span>
+            <span className="sub-admin-total-label">
+              {view === 'next' ? 'meals next Sunday' : 'meals this Sunday'} (not including add-ons)
+            </span>
           </div>
         </div>
 
@@ -377,49 +361,54 @@ const SubscriberAdmin = () => {
           searchPlaceholder="Search by name, email, phone, or plan"
           searchLabel="Search by name, email, phone, or plan"
           onSearchChange={(e) => setSearchTerm(e.target.value)}
+          filtersBelow
+          filters={(
+            <div className="admin-view-tabs" role="tablist" aria-label="Subscription list">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'this'}
+                className={view === 'this' ? 'active' : ''}
+                onClick={() => selectView('this')}
+              >
+                This Sunday, {thisLabel}
+                <span className="admin-view-tab-count">{thisSundayBoxes.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'next'}
+                className={view === 'next' ? 'active' : ''}
+                onClick={() => selectView('next')}
+              >
+                Next Sunday, {nextLabel}
+                <span className="admin-view-tab-count">{nextSundayBoxes.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'paused'}
+                className={view === 'paused' ? 'active' : ''}
+                onClick={() => selectView('paused')}
+              >
+                Paused & cancelled
+                <span className="admin-view-tab-count">{pausedCount}</span>
+              </button>
+            </div>
+          )}
           resultLabel={`${groups.length} ${groups.length === 1 ? 'customer' : 'customers'}`}
         />
 
-        {statusTab === 'active' ? (
-          <>
-            <div className="admin-view-tabs" role="tablist" aria-label="Cook week">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={weekTab === 'this'}
-                className={weekTab === 'this' ? 'active' : ''}
-                onClick={() => {
-                  setWeekTab('this');
-                  setExpandedId(null);
-                }}
-              >
-                This Sunday, {thisLabel}
-                <span className="admin-view-tab-count">{thisSundayActive.length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={weekTab === 'next'}
-                className={weekTab === 'next' ? 'active' : ''}
-                onClick={() => {
-                  setWeekTab('next');
-                  setExpandedId(null);
-                }}
-              >
-                Next Sunday, {nextLabel}
-                <span className="admin-view-tab-count">{nextSundayActive.length}</span>
-              </button>
-            </div>
-
-            <div className={`sub-admin-banner ${weekLocked ? 'is-locked' : 'is-open'}`} role="status">
+        {sundayView ? (
+          <div className={`sub-admin-banner ${weekLocked ? 'is-locked' : 'is-open'}`} role="status">
               <div className="sub-admin-banner-copy">
                 {weekLocked ? (
                   <>
                     <p className="sub-admin-banner-title">
-                      {weekTab === 'next' ? 'Next week is locked' : 'This week is locked'}
+                      {view === 'next' ? 'Next week is locked' : 'This week is locked'}
                     </p>
                     <p className="sub-admin-banner-text">
-                      {weekTab === 'next'
+                      {view === 'next'
                         ? 'Meals and add-ons are final for next week.'
                         : 'Meals and add-ons are final for this week.'}
                     </p>
@@ -438,8 +427,7 @@ const SubscriberAdmin = () => {
               >
                 Print the summary
               </button>
-            </div>
-          </>
+          </div>
         ) : null}
 
         {error ? <p className="sub-admin-error">{error}</p> : null}
@@ -466,7 +454,7 @@ const SubscriberAdmin = () => {
                   const hasNote = plans.some((row) => subscriptionNote(row));
                   const lines = planLines(plans);
                   const statuses = [...new Set(plans.map(statusLabel))];
-                  const cycle = cycleForRow(plans[0], statusTab, weekTab) || {};
+                  const cycle = cycleForRow(plans[0], view) || {};
                   const sundayYmd = cycle.delivery_date || cycle.pickup_date;
                   const sunday = formatDueShort(sundayYmd) || '—';
                   const fulfill = fulfillmentParts(cycle);
@@ -573,12 +561,12 @@ const SubscriberAdmin = () => {
                                 </section>
                                 <section className="order-details-col" style={{ gridColumn: 'span 2' }}>
                                   {plans.map((row) => {
-                                    const planCycle = cycleForRow(row, statusTab, weekTab) || {};
+                                    const planCycle = cycleForRow(row, view) || {};
                                     const items = cycleItems(planCycle);
                                     const meals = items.filter((item) => item.kind === 'plan');
                                     const addons = items.filter((item) => item.kind === 'addon');
                                     const noteText = cycleNote(row, planCycle);
-                                    const kitchen = kitchenForRow(row, statusTab, weekTab);
+                                    const kitchen = kitchenForRow(row, view);
                                     const mealCount = Number(row.subscription_plans?.meal_count) || 0;
                                     const planFulfill = fulfillmentParts(planCycle);
                                     return (
@@ -665,7 +653,7 @@ const SubscriberAdmin = () => {
         )}
         <p className="sub-admin-print-kicker">Kitchen</p>
         <h1 className="sub-admin-print-title">
-          {weekTab === 'next' ? 'Next Sunday' : 'This Sunday'}&apos;s subscriptions — {printSunday}
+          {view === 'next' ? 'Next Sunday' : 'This Sunday'}&apos;s subscriptions — {printSunday}
         </h1>
         <p className="sub-admin-print-intro">
           <strong>{printBoxes.length} plans</strong>
@@ -680,7 +668,9 @@ const SubscriberAdmin = () => {
             <p>
               {row.method} {printSunday}, {row.windowStart} – {row.windowEnd}
             </p>
-            <p className="sub-admin-print-muted">{row.phone} · {row.email}</p>
+            <p className="sub-admin-print-muted">
+              {row.phone} · {row.email}{row.orderId ? ` · order #${row.orderId}` : ''}
+            </p>
             {row.delivery ? (
               <p><strong>Delivery Address:</strong> {row.address}</p>
             ) : (
