@@ -275,6 +275,16 @@
   margin-top: 6px;
 }
 
+.sub-admin-signup {
+  margin-top: 12px;
+}
+
+.sub-admin-signup + .sub-admin-signup {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #D9C7B0;
+}
+
 .sub-admin-plan-block + .sub-admin-plan-block {
   margin-top: 16px;
   padding-top: 12px;
