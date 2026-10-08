@@ -28,7 +28,7 @@ const {
   changeSubscriptionPlan,
   discontinuePlan,
 } = require('../queries/subscriptionManage');
-const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
+const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -83,7 +83,7 @@ router.get('/admin', async (req, res) => {
 
 router.post('/admin/run-charge', async (req, res) => {
   try {
-    const result = await runWednesdayCharge({ force: true });
+    const result = await runPlanCharge({ force: true });
     res.json(result);
   } catch (err) {
     handleError(res, err, '[POST /subscriptions/admin/run-charge]');
@@ -92,7 +92,7 @@ router.post('/admin/run-charge', async (req, res) => {
 
 router.post('/admin/run-lock', async (req, res) => {
   try {
-    const result = await runThursdayLock({ force: true });
+    const result = await runMealLock({ force: true });
     res.json(result);
   } catch (err) {
     handleError(res, err, '[POST /subscriptions/admin/run-lock]');

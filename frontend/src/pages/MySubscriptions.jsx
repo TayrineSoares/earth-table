@@ -637,7 +637,7 @@ const MySubscriptions = ({ user }) => {
 
   const confirmStatus = (row, action) => {
     if (savingId || statusLockRef.current) return
-    const beforeWed = row.charge?.before_wednesday !== false
+    const beforeCharge = row.charge?.before_wednesday !== false
     const firstProtected = Boolean(row.first_box_protected)
     const firstSunday = row.first_delivery_label
       || sundayDatePart(row.week?.delivery_label)
@@ -653,7 +653,7 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : beforeWed
+        : beforeCharge
         ? {
           title: 'Pause this plan?',
           body: [
@@ -673,7 +673,7 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : beforeWed
+        : beforeCharge
         ? {
           title: 'Cancel this plan?',
           body: [
@@ -738,13 +738,13 @@ const MySubscriptions = ({ user }) => {
   }
 
   const confirmPlan = (row, plan) => {
-    const beforeWed = row.charge?.before_wednesday !== false
+    const beforeCharge = row.charge?.before_wednesday !== false
     const sunday = sundayDatePart(row.week?.delivery_label)
     const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
-      body: beforeWed
+      body: beforeCharge
         ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${lockBy}.`
         : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
       primaryLabel: 'Change plan',

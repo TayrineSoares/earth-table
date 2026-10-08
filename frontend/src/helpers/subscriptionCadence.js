@@ -7,8 +7,8 @@
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel / plan-change for this Sunday: before Tuesday 9:00 AM ET.
  *
- * Pass charge_label / cutoff_label from /api/subscriptions/dates (or the
- * row on My Plans) so test_charge_at / test_lock_at show the real times.
+ * Customer copy uses these standing weekday times. Calendar dates stay on
+ * the box itself (confirmation, meal picker) via cutoff_label / charge_label.
  */
 
 export const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET'
@@ -67,7 +67,7 @@ export function resumeByCharge(chargeLabel) {
   return `Resume by ${chargeLabel || PAUSE_CANCEL_BY} for that week's box.`
 }
 
-/** Standing weekly deadline: "every week by Saturday at 7:55 PM ET". */
+/** Standing weekly deadline: "every week by Wednesday at 5:00 PM ET". */
 export function everyWeekBy(cadenceLabel, fallback) {
   const label = String(cadenceLabel || fallback || '').trim()
   if (!label) return ''
@@ -86,13 +86,6 @@ export function pausedBanner(chargeLabel, { firstBoxLabel } = {}) {
 export function paymentFailedBanner() {
   return 'Your subscription is paused because your last payment didn\'t go through. Update your card below to resume your subscription.'
 }
-
-export const HOW_IT_WORKS_CHARGE = howItWorksCharge()
-export const HOW_IT_WORKS_PAUSE = howItWorksPause()
-export const HOW_IT_WORKS_MEALS = howItWorksMeals()
-export const RESUME_BY_CHARGE = resumeByCharge()
-export const PAUSED_BANNER = pausedBanner()
-export const PAYMENT_FAILED_BANNER = paymentFailedBanner()
 
 /** Shown only after a promo/referral code validates. Delivery sentence is pickup-safe. */
 export function firstWeekPromoAppliedMessage({ label, code, percent, isDelivery }) {

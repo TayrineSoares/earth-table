@@ -123,7 +123,9 @@ create index if not exists subscription_cycle_items_cycle_id_idx
 alter table public.orders
   add column if not exists subscription_cycle_id uuid references public.subscription_cycles (id);
 
--- Idempotent cron: one charge job, one lock job, and one Monday pause email per week_key
+-- Idempotent cron: one charge job, one lock job, and one Monday pause email per week_key.
+-- Job ids stay wednesday_charge / thursday_lock. They are history keys, not the
+-- live weekday (Tuesday charge, Wednesday lock). Renaming them re-runs a week.
 create table if not exists public.cutoff_runs (
   week_key text not null,
   job text not null check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder')),
@@ -214,6 +216,7 @@ alter table public.cutoff_runs
   add constraint cutoff_runs_job_check
   check (job in ('wednesday_charge', 'thursday_lock', 'pause_reminder', 'email_flush', 'card_expiry'));
 
+-- Pref key wednesday_reminder is the Tuesday charge email. Do not rename it.
 alter table public.users
   add column if not exists email_prefs jsonb not null default '{"wednesday_reminder":true,"pause_reminder":true}'::jsonb;
 

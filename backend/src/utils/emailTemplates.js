@@ -1059,7 +1059,6 @@ function renderSubscriptionWelcomeEmail({
   delivery,
   deliveryLabel,
   pickupSlot,
-  cutoffLabel,
   subscriptionId,
   notes,
   addons,
@@ -1162,7 +1161,6 @@ function renderOwnerSubscriptionEmail({
   chargeId,
   meals,
   addons,
-  cutoffLabel,
   email,
   phone,
   notes,
@@ -1280,7 +1278,6 @@ function renderSubscriptionUpdatedEmail({
   delivery,
   deliveryLabel,
   pickupSlot,
-  cutoffLabel,
   appliesTo,
   meals,
   addons,
@@ -1356,8 +1353,6 @@ function renderSubscriptionManageEmail(payload = {}) {
     nextMealCount,
     deliveryLabel,
     fulfillmentDate,
-    chargeLabel,
-    cutoffLabel,
     cardBrand,
     last4,
     expMonth,
@@ -1467,7 +1462,7 @@ My Subscriptions: ${manageHref}`;
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
       heading: `We could not charge this week, ${name}`,
-      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid at cutoff, this Sunday is skipped and the plan stays paused.`,
+      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid by then, this Sunday is skipped and the plan stays paused.`,
     },
     resume: {
       subject: `Your weekly plan is active again`,
@@ -1521,7 +1516,6 @@ function renderSubscriptionHolidaySkipEmail({
   firstName,
   skippedSunday,
   nextSunday,
-  chargeLabel,
   owner = false,
 } = {}) {
   const name = firstName || 'there';
@@ -1556,7 +1550,7 @@ function boxMealCount(row) {
   return fromItems > 0 ? fromItems : '—';
 }
 
-function renderOwnerThursdayLockEmail({ sunday, boxes = [] } = {}) {
+function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
   const pickup = boxes.filter((row) => !row.delivery);
   const delivery = boxes.filter((row) => row.delivery);
   const ordered = [...pickup, ...delivery];
@@ -1671,13 +1665,12 @@ function receiptLines({
 /**
  * Tuesday: plan+delivery receipt (if the card was billed) plus tomorrow's meal cutoff.
  */
-function renderSubscriptionWednesdayEmail({
+function renderSubscriptionChargeEmail({
   firstName,
   mealCount,
   delivery,
   deliveryLabel,
   pickupSlot,
-  cutoffLabel,
   charged = false,
   planCents = 0,
   deliveryCents = 0,
@@ -1721,9 +1714,9 @@ function renderSubscriptionWednesdayEmail({
       `))}
       ${charged ? `${h2("Receipt")}${moneyReceiptHtml(chargeLines, chargedLabel, chargedCents)}` : ''}
       ${h2("Meals")}
-      ${itemListHtml(meals, 'None yet — pick them before cutoff and we will have them ready.')}
+      ${itemListHtml(meals, `None yet — pick them before ${cutoff} and we will have them ready.`)}
       ${h2("Add-ons")}
-      ${itemListHtml(addons, 'None yet. Add extras before cutoff if you want them this week.')}
+      ${itemListHtml(addons, `None yet. Add extras before ${cutoff} if you want them this week.`)}
       ${ctaLink(manageHref, "My Subscriptions →")}
   `, {
     preheader: introText,
@@ -1741,7 +1734,7 @@ This Sunday: ${fulfillment}
 Change meals by: ${cutoff}
 
 ${charged ? `Receipt\n${moneyReceiptText(chargeLines, chargedLabel, chargedCents)}\n\n` : ''}Meals
-${itemLinesText(meals) || 'None yet — pick them before cutoff.'}
+${itemLinesText(meals) || `None yet — pick them before ${cutoff}.`}
 
 Add-ons
 ${itemLinesText(addons) || 'None yet.'}
@@ -1758,7 +1751,7 @@ Unsubscribe from reminder emails: ${unsubscribeHref}` : ''}`;
 /**
  * Wednesday lock: box is placed. Add-on receipt only if extras were billed.
  */
-function renderSubscriptionThursdayEmail({
+function renderSubscriptionLockEmail({
   firstName,
   mealCount,
   delivery,
@@ -1984,7 +1977,6 @@ function renderSubscriptionPriceEmail({
   mealCount,
   oldPriceCents,
   newPriceCents,
-  chargeLabel,
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -2020,11 +2012,11 @@ module.exports = {
   renderSubscriptionUpdatedEmail,
   renderSubscriptionManageEmail,
   renderSubscriptionHolidaySkipEmail,
-  renderOwnerThursdayLockEmail,
+  renderOwnerLockEmail,
   renderOwnerPaymentFailedEmail,
   renderOwnerFulfillmentEmail,
-  renderSubscriptionWednesdayEmail,
-  renderSubscriptionThursdayEmail,
+  renderSubscriptionChargeEmail,
+  renderSubscriptionLockEmail,
   renderSubscriptionPriceEmail,
   renderPlanDiscontinuedEmail,
   renderOwnerPlanDiscontinuedEmail,

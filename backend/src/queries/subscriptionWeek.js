@@ -12,7 +12,7 @@
  * After it has passed, the same Toronto weekday and clock repeats every
  * 7 days until the overrides are cleared. Signup, My Plans, emails, admin
  * buttons, and cron jobs all read getSignupDates / getTargetSundayYmd.
- * Plan charge is Tuesday 9:00 AM America/Toronto (not Wednesday).
+ * Plan charge is Tuesday 9:00 AM America/Toronto.
  *
  * No date library — Intl + a small nudge loop to map Toronto wall-clock
  * times onto UTC instants (handles EST/EDT).
@@ -174,14 +174,6 @@ function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = nu
   };
 }
 
-function isBeforeWednesdayCharge(now = new Date(), settings = {}, deliveryDateYmd = null) {
-  return getChargeDeadline(now, settings, deliveryDateYmd).before_wednesday;
-}
-
-function isBeforeThursdayLock(now = new Date(), settings = {}) {
-  return !getSignupDates(now, settings).cutoff_passed;
-}
-
 function nextLiveLockAt(now) {
   const thisWeek = thisWeekLockAt(now);
   if (now.getTime() < thisWeek.getTime()) return thisWeek;
@@ -231,7 +223,7 @@ function formatCutoffLabel(date) {
   return `${map.weekday}, ${map.month} ${map.day} at ${map.hour}:${map.minute} ${dayPeriod} ET`.replace(/\s+/g, ' ').trim();
 }
 
-/** Standing weekly rule, no calendar date: "Saturday at 7:55 PM ET". */
+/** Standing weekly rule, no calendar date: "Wednesday at 5:00 PM ET". */
 function formatCadenceLabel(date) {
   if (!date || !Number.isFinite(date.getTime())) return '';
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -547,8 +539,6 @@ module.exports = {
   getSignupDates,
   getEditWeek,
   getChargeDeadline,
-  isBeforeWednesdayCharge,
-  isBeforeThursdayLock,
   formatFulfillmentLine,
   mealsAWeek,
   mealPlanPhrase,

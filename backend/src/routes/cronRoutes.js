@@ -8,7 +8,7 @@ const {
   markInvoicesEmailed,
 } = require('../queries/partner');
 const { sendPauseReminders } = require('../queries/subscriptionManage');
-const { runWednesdayCharge, runThursdayLock } = require('../queries/subscriptionCharge');
+const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
 const { runCardExpiryNotices } = require('../queries/subscription');
 const { sendEmail, adminNotificationEmails } = require('../utils/email');
 const {
@@ -174,7 +174,7 @@ function handleSubscriptionCharge(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  runWednesdayCharge()
+  runPlanCharge()
     .then((result) => res.json(result))
     .catch((err) => {
       console.error('[cron/subscription-charge]', err);
@@ -191,7 +191,7 @@ function handleSubscriptionLock(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  runThursdayLock()
+  runMealLock()
     .then((result) => res.json(result))
     .catch((err) => {
       console.error('[cron/subscription-lock]', err);
@@ -203,8 +203,6 @@ router.get('/subscription-charge', handleSubscriptionCharge);
 router.post('/subscription-charge', handleSubscriptionCharge);
 router.get('/subscription-lock', handleSubscriptionLock);
 router.post('/subscription-lock', handleSubscriptionLock);
-router.get('/thursday-lock', handleSubscriptionLock);
-router.post('/thursday-lock', handleSubscriptionLock);
 
 function handleCardExpiry(req, res) {
   if (!process.env.CRON_SECRET) {

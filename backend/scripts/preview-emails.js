@@ -17,10 +17,10 @@ const {
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
   renderSubscriptionManageEmail,
-  renderSubscriptionWednesdayEmail,
-  renderSubscriptionThursdayEmail,
+  renderSubscriptionChargeEmail,
+  renderSubscriptionLockEmail,
   renderSubscriptionHolidaySkipEmail,
-  renderOwnerThursdayLockEmail,
+  renderOwnerLockEmail,
   renderOwnerStatusEmail,
   renderOwnerPlanChangedEmail,
   renderOwnerFulfillmentEmail,
@@ -251,7 +251,7 @@ write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   expMonth: '10',
   expYear: 2026,
 }).html);
-write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
+write('13-subscription-charge.html', renderSubscriptionChargeEmail({
   ...subMail,
   charged: true,
   planCents: 18000,
@@ -261,12 +261,12 @@ write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
   last4: '4242',
   unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
-write('13b-subscription-wednesday-paid.html', renderSubscriptionWednesdayEmail({
+write('13b-subscription-charge-paid.html', renderSubscriptionChargeEmail({
   ...subMail,
   charged: false,
   unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
-write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
+write('14-subscription-lock.html', renderSubscriptionLockEmail({
   ...subMail,
   delivery: true,
   address: subMail.address,
@@ -280,7 +280,7 @@ write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
   cardBrand: 'visa',
   last4: '4242',
 }).html);
-write('14b-subscription-thursday-no-extras.html', renderSubscriptionThursdayEmail({
+write('14b-subscription-lock-no-extras.html', renderSubscriptionLockEmail({
   ...subMail,
   chargedAddons: false,
   addonItems: [],
@@ -295,7 +295,7 @@ write('15b-holiday-owner.html', renderSubscriptionHolidaySkipEmail({
   nextSunday: 'Sunday, January 3',
   owner: true,
 }).html);
-write('16-owner-thursday.html', renderOwnerThursdayLockEmail({
+write('16-owner-lock.html', renderOwnerLockEmail({
   sunday: 'Sunday, September 20',
   boxes: [
     {
@@ -409,13 +409,13 @@ const labels = {
   '12j-subscription-delivery.html': '11. Switched to delivery',
   '12k-subscription-pickup.html': '11. Switched to pickup',
   '12l-subscription-card-expiry.html': '12. Card expiring',
-  '13-subscription-wednesday.html': '2. Tuesday charge + reminder',
-  '13b-subscription-wednesday-paid.html': '2. Tuesday reminder (already paid)',
-  '14-subscription-thursday.html': '3. Wednesday lock + extras',
-  '14b-subscription-thursday-no-extras.html': '3. Wednesday lock, no extras',
+  '13-subscription-charge.html': '2. Tuesday charge + reminder',
+  '13b-subscription-charge-paid.html': '2. Tuesday reminder (already paid)',
+  '14-subscription-lock.html': '3. Wednesday lock + extras',
+  '14b-subscription-lock-no-extras.html': '3. Wednesday lock, no extras',
   '15-holiday-user.html': 'Holiday skip (customer)',
   '15b-holiday-owner.html': 'Holiday skip (owner)',
-  '16-owner-thursday.html': '14. Owner Wednesday prep',
+  '16-owner-lock.html': '14. Owner Wednesday prep',
   '17-owner-paused.html': '15. Owner paused',
   '17c-owner-resumed.html': '15. Owner resumed',
   '17b-owner-cancelled.html': '15. Owner cancelled',
