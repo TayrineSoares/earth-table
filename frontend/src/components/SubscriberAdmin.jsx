@@ -16,6 +16,41 @@ import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
 import '../styles/OrderAdmin.css';
 
+const formatPostal = (value) => {
+  const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (compact.length === 6) return `${compact.slice(0, 3)} ${compact.slice(3)}`;
+  return String(value || '').trim();
+};
+
+const quotePostal = (row, cycle) => {
+  const candidates = [
+    cycle?.delivery_postal_code,
+    row?.delivery_postal_code,
+    row?.this_cycle?.delivery_postal_code,
+    row?.next_cycle?.delivery_postal_code,
+    row?.cycle?.delivery_postal_code,
+  ];
+  return candidates.map(formatPostal).find(Boolean) || '';
+};
+
+const formatSignedUp = (iso) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const datePart = date.toLocaleDateString('en-US', {
+    timeZone: 'America/Toronto',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    timeZone: 'America/Toronto',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `${datePart} · ${timePart} ET`;
+};
+
 const formatPhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '');
   const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
@@ -558,6 +593,26 @@ const SubscriberAdmin = () => {
                                       {phone}
                                     </a>
                                   ) : null}
+                                  {plans.map((row) => {
+                                    const planCycle = cycleForRow(row, view);
+                                    const signedUp = formatSignedUp(row.created_at);
+                                    const postal = quotePostal(row, planCycle);
+                                    return (
+                                      <div key={`${row.id}-signup`} className="sub-admin-signup">
+                                        {plans.length > 1 ? (
+                                          <p className="order-details-muted">
+                                            {mealLabel(row.subscription_plans?.meal_count)}
+                                          </p>
+                                        ) : null}
+                                        <p className="order-details-body">
+                                          Signed up {signedUp || '—'}
+                                        </p>
+                                        <p className="order-details-body">
+                                          Postal code {postal || '—'}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
                                 </section>
                                 <section className="order-details-col" style={{ gridColumn: 'span 2' }}>
                                   {plans.map((row) => {
