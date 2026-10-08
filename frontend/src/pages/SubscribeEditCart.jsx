@@ -12,6 +12,7 @@ import {
   updateSubscriptionItems,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
+import { MEAL_LOCK_BY } from '../helpers/subscriptionCadence'
 import {
   addonSubtotalCents,
   clearEditCart,
@@ -54,7 +55,7 @@ const SubscribeEditCart = ({ user }) => {
             icon: 'alert',
             title: found ? 'This box is locked' : 'Subscription not found',
             body: found
-              ? 'Meals and add-ons can be changed until Thursday at 5:00 PM ET while the box is still open.'
+              ? `Meals and add-ons can be changed until ${MEAL_LOCK_BY} while the box is still open.`
               : 'That plan is not on this account.',
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',

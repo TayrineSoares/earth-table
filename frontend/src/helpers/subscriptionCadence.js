@@ -3,61 +3,57 @@
  * Keep in sync with backend/src/emails/subscriptionEmailSpec.js
  *
  * Live fallbacks (when dates have not loaded yet):
- * Charge: Wednesday 9:00 AM ET (plan + delivery).
- * Lock: Thursday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel / plan-change for this Sunday: before Wednesday 9:00 AM ET.
+ * Charge: Tuesday 9:00 AM ET (plan + delivery).
+ * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
+ * Pause / cancel / plan-change for this Sunday: before Tuesday 9:00 AM ET.
  *
  * Pass charge_label / cutoff_label from /api/subscriptions/dates (or the
  * row on My Plans) so test_charge_at / test_lock_at show the real times.
  */
 
-export const PAUSE_CANCEL_BY = 'Wednesday at 9:00 AM ET'
-export const MEAL_LOCK_BY = 'Thursday at 5:00 PM ET'
-export const CHARGE_DAY_TIME = 'Wednesday at 9:00 AM ET'
-export const LOCK_DAY_TIME = 'Thursday at 5:00 PM ET'
+export const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET'
+export const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET'
+export const CHARGE_DAY_TIME = 'Tuesday at 9:00 AM ET'
+export const LOCK_DAY_TIME = 'Wednesday at 5:00 PM ET'
 
-export function howItWorksCharge(chargeLabel, cutoffLabel) {
-  return `Your subscription (plan and delivery) is charged ${chargeLabel || CHARGE_DAY_TIME}; add-ons are charged at the ${cutoffLabel || LOCK_DAY_TIME} lock cutoff for that week's box.`
+export function howItWorksCharge() {
+  return 'Plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.'
 }
 
-export function howItWorksPause(chargeLabel) {
-  return `Your first box cannot be paused or cancelled. After that, pause or cancel any time before ${chargeLabel || PAUSE_CANCEL_BY}, no fees.`
+export function howItWorksPause() {
+  return `Your first box can't be paused or cancelled. After that, pause or cancel anytime before ${PAUSE_CANCEL_BY}. No fees.`
 }
 
-export function howItWorksMeals(cutoffLabel) {
-  return `You can change meals, extras, and pickup or delivery in My Subscriptions until the ${cutoffLabel || MEAL_LOCK_BY} cutoff.`
+export function howItWorksMeals() {
+  return 'Change meals and extras for that week in My Subscriptions until Wednesday at 5:00 PM ET.'
 }
 
 export function howItWorksFirstDelivery(firstDeliveryLabel) {
   const label = String(firstDeliveryLabel || '').trim()
-  return label ? `First delivery: ${label}.` : null
+  return label ? `Sign up now and your first delivery is ${label}.` : null
 }
 
 /** Shared copy for the Subscription details panel (checkout + My Subscriptions). */
 export function subscriptionDetailsItems({
-  chargeLabel,
-  cutoffLabel,
   firstDeliveryLabel,
+  signingUp = false,
 } = {}) {
   return [
-    'Every plan lets you choose any combination of bowls, salads, and main plates.',
-    howItWorksCharge(chargeLabel, cutoffLabel),
-    'If you don\'t make changes on time, we\'ll send your previous week\'s selections.',
-    howItWorksPause(chargeLabel),
-    howItWorksFirstDelivery(firstDeliveryLabel),
-    'Add-ons are for this week only. They do not repeat unless you add them again.',
-    howItWorksMeals(cutoffLabel),
+    howItWorksCharge(),
+    howItWorksPause(),
+    signingUp ? howItWorksFirstDelivery(firstDeliveryLabel) : null,
+    howItWorksMeals(),
   ].filter(Boolean)
 }
 
 /** Marketing page: standing weekly cadence, not this week's calendar dates. */
 export function howItWorksFlexible() {
-  return 'Update your meals and add-ons every week by Thursday at 5:00 PM ET.'
+  return 'Update your meals and add-ons every week by Wednesday at 5:00 PM ET.'
 }
 
 /** Marketing page badge: standing weekly cadence, not this week's calendar date. */
 export function orderByCutoff() {
-  return 'Order by Thursday 5:00 PM ET. Delivered the following Sunday.'
+  return 'Order by Wednesday at 5:00 PM ET. Delivered the following Sunday.'
 }
 
 export function addonsBilledAt(cutoffLabel, { firstWeekRate = false } = {}) {
@@ -81,12 +77,12 @@ export function everyWeekBy(cadenceLabel, fallback) {
 
 export function pausedBanner(chargeLabel, { firstBoxLabel } = {}) {
   if (firstBoxLabel) {
-    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Thursday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
+    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Wednesday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
   }
   return `This plan is paused. Your last meals and card stay on file. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
 
-/** Auto-pause after a declined Wednesday charge. Sunday/cutoff details stay on the email. */
+/** Auto-pause after a declined Tuesday charge. Sunday/cutoff details stay on the email. */
 export function paymentFailedBanner() {
   return 'Your subscription is paused because your last payment didn\'t go through. Update your card below to resume your subscription.'
 }

@@ -220,7 +220,7 @@ router.post('/plans/:id/discontinue', async (req, res) => {
   }
 });
 
-// Public: next Thursday 5pm meal lock (or test_lock_at), first delivery Sunday, save-up-to %
+// Public: next Wednesday 5pm meal lock (or test_lock_at), first delivery Sunday, save-up-to %
 router.get('/dates', async (req, res) => {
   try {
     const info = await getPublicSignupInfo();

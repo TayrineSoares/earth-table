@@ -405,7 +405,7 @@ const MySubscriptions = ({ user }) => {
               : 'Your card is on file, but we still could not charge this week. Try another card or email hello@earthtableco.ca.'
           } else if (retry?.ok) {
             title = 'You\'re back on'
-            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Wednesday if this week\'s cutoff has already passed.'
+            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Tuesday at 9:00 AM ET if this week\'s cutoff has already passed.'
           }
           setDialog({
             icon: retry && retry.ok === false ? 'alert' : 'mail',
@@ -649,7 +649,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Pause after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET.`,
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}.`,
             resumeBy,
           ],
         }
@@ -669,7 +669,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Cancel after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET. Later weeks stay on file until you resume.`,
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay on file until you resume.`,
             resumeBy,
           ],
         }
@@ -802,11 +802,7 @@ const MySubscriptions = ({ user }) => {
       icon: 'alert',
       title: 'Subscription details',
       asList: true,
-      body: subscriptionDetailsItems({
-        chargeLabel: row?.charge?.charge_label,
-        cutoffLabel: row?.week?.cutoff_label,
-        firstDeliveryLabel: row?.first_delivery_label || '',
-      }),
+      body: subscriptionDetailsItems(),
       hint: (
         <>
           All subscription information, rules, and terms are in the{' '}

@@ -243,9 +243,8 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       title: 'Subscription details',
       asList: true,
       body: subscriptionDetailsItems({
-        chargeLabel: dates?.charge_label,
-        cutoffLabel: dates?.cutoff_label,
         firstDeliveryLabel: dates?.first_delivery_label,
+        signingUp: true,
       }),
       hint: (
         <>

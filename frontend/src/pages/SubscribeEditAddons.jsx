@@ -11,6 +11,7 @@ import {
   fetchMySubscriptions,
   formatPlanPrice,
 } from '../helpers/subscriptionHelpers'
+import { MEAL_LOCK_BY } from '../helpers/subscriptionCadence'
 import {
   addonCategories,
   addonSubtotalCents,
@@ -77,7 +78,7 @@ const SubscribeEditAddons = ({ user }) => {
           setDialog({
             icon: 'alert',
             title: 'This box is locked',
-            body: 'Add-ons can be changed until Thursday at 5:00 PM ET while the box is still open.',
+            body: `Add-ons can be changed until ${MEAL_LOCK_BY} while the box is still open.`,
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',
           })

@@ -162,7 +162,7 @@ const SubscriptionAdmin = () => {
 
     const confirmed = window.confirm(
       `Change "${plan.name}" from ${formatPlanPrice(plan.price_cents)} to ${formatPlanPrice(cents)} per week?\n\n` +
-      'Customers already on this plan will be emailed. The new price applies at their next uncharged Wednesday (not this week if they already paid).'
+      'Customers already on this plan will be emailed. The new price applies at their next uncharged Tuesday (not this week if they already paid).'
     );
     if (!confirmed) {
       cancelEditPrice(plan);
@@ -282,7 +282,7 @@ const SubscriptionAdmin = () => {
 
   const handleClearTestTimes = async () => {
     const confirmed = window.confirm(
-      'Clear test times? The app will use live Wednesday 9:00 AM (charge) and Thursday 5:00 PM (meal lock) America/Toronto.'
+      'Clear test times? The app will use live Tuesday 9:00 AM (charge) and Wednesday 5:00 PM (meal lock) America/Toronto.'
     );
     if (!confirmed) return;
 
@@ -307,8 +307,8 @@ const SubscriptionAdmin = () => {
     const charge = kind === 'charge';
     const confirmed = window.confirm(
       charge
-        ? 'Run Wednesday charge now? Unpaid active plans for this Sunday will be charged plan + delivery at the 9:00 AM ET cadence. Already-paid first weeks are skipped.'
-        : 'Run Thursday lock now? Unpaid add-ons are charged, this Sunday is locked, and kitchen orders are created on the Subscriptions tab.'
+        ? 'Run Tuesday charge now? Unpaid active plans for this Sunday will be charged plan + delivery at the 9:00 AM ET cadence. Already-paid first weeks are skipped.'
+        : 'Run Wednesday lock now? Unpaid add-ons are charged, this Sunday is locked, and kitchen orders are created on the Subscriptions tab.'
     );
     if (!confirmed) return;
     setJobBusy(kind);
@@ -358,12 +358,12 @@ const SubscriptionAdmin = () => {
       <h2 className="sub-admin-h2">Test week times</h2>
       <p className="sub-admin-hint">
         Set these to times you can sit through (today → Friday). While they are set, the site uses them
-        instead of Wednesday 9:00 AM / Thursday 5:00 PM. Browser local time. Clear both before launch.
+        instead of Tuesday 9:00 AM / Wednesday 5:00 PM. Browser local time. Clear both before launch.
       </p>
       <form className="promo-admin-form" onSubmit={handleSaveSettings}>
         <div className="promo-form-grid">
           <label className="promo-field">
-            <span>Test charge (stands in for Wednesday 9:00 AM)</span>
+            <span>Test charge (stands in for Tuesday 9:00 AM)</span>
             <input
               type="datetime-local"
               className="promo-input"
@@ -372,7 +372,7 @@ const SubscriptionAdmin = () => {
             />
           </label>
           <label className="promo-field">
-            <span>Test meal lock (stands in for Thursday 5pm)</span>
+            <span>Test meal lock (stands in for Wednesday 5pm)</span>
             <input
               type="datetime-local"
               className="promo-input"
@@ -390,12 +390,12 @@ const SubscriptionAdmin = () => {
             onClick={handleClearTestTimes}
             disabled={savingSettings || (!settings?.test_charge_at && !settings?.test_lock_at)}
           >
-            Use live Wednesday 9am / Thursday 5pm
+            Use live Tuesday 9am / Wednesday 5pm
           </AdminButton>
         </div>
       </form>
       <p className="sub-admin-hint">
-        Run charge / lock yourself while testing. Live cron is Wednesday 9:00 AM and Thursday 5:00 PM America/Toronto (13:00 / 22:00 UTC).
+        Run charge / lock yourself while testing. Live cron is Tuesday 9:00 AM and Wednesday 5:00 PM America/Toronto (13:00 and 14:00 UTC Tuesday, 21:00 and 22:00 UTC Wednesday, so both EST and EDT fire after the clock).
       </p>
       <div className="sub-admin-inline" style={{ marginBottom: '1rem' }}>
         <AdminButton
@@ -405,7 +405,7 @@ const SubscriptionAdmin = () => {
           disabled={!!jobBusy}
           onClick={() => handleRunJob('charge')}
         >
-          {jobBusy === 'charge' ? 'Running…' : 'Run Wednesday charge'}
+          {jobBusy === 'charge' ? 'Running…' : 'Run Tuesday charge'}
         </AdminButton>
         <AdminButton
           type="button"
@@ -414,7 +414,7 @@ const SubscriptionAdmin = () => {
           disabled={!!jobBusy}
           onClick={() => handleRunJob('lock')}
         >
-          {jobBusy === 'lock' ? 'Running…' : 'Run Thursday lock'}
+          {jobBusy === 'lock' ? 'Running…' : 'Run Wednesday lock'}
         </AdminButton>
       </div>
       {jobNote ? <p className="sub-admin-hint">{jobNote}</p> : null}

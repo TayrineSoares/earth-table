@@ -2,17 +2,17 @@
  * Subscription email copy, cadence, and repeated phrases.
  * Keep in sync with frontend/src/helpers/subscriptionCadence.js
  *
- * Charge: Wednesday 9:00 AM ET (plan + delivery) — one email from that job.
- * Lock: Thursday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel / plan-change for this Sunday: before Wednesday 9:00 AM ET.
+ * Charge: Tuesday 9:00 AM ET (plan + delivery) — one email from that job.
+ * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
+ * Pause / cancel / plan-change for this Sunday: before Tuesday 9:00 AM ET.
  */
 
 const CADENCE = {
   TIMEZONE: 'America/Toronto',
-  CHARGE_WEEKDAY: 3,
+  CHARGE_WEEKDAY: 2,
   CHARGE_HOUR: 9,
   CHARGE_MINUTE: 0,
-  LOCK_WEEKDAY: 4,
+  LOCK_WEEKDAY: 3,
   LOCK_HOUR: 17,
   LOCK_MINUTE: 0,
   PAUSE_NUDGE_WEEKDAY: 1,
@@ -23,8 +23,8 @@ const CADENCE = {
   CARD_EXPIRY_DAYS: 30,
 };
 
-const PAUSE_CANCEL_BY = 'Wednesday at 9:00 AM ET';
-const MEAL_LOCK_BY = 'Thursday at 5:00 PM ET';
+const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET';
+const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET';
 const PICKUP_ADDRESS = '77 Woodstream Blvd, Vaughan, ON L4L 7Y7';
 const DELIVERY_WINDOW = '11:00 AM – 6:00 PM';
 

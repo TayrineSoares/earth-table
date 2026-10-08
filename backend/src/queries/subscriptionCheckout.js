@@ -4,7 +4,7 @@
  * We use Checkout mode "payment" (not Stripe Subscriptions) and ask Stripe
  * to save the card with setup_future_usage. Later weeks (Phase 5/6) charge
  * that saved payment method off-session. First Checkout is plan + delivery + tax;
- * add-ons stay on the cycle and are billed Thursday.
+ * add-ons stay on the cycle and are billed Wednesday.
  */
 
 const supabase = require('../../supabase/db');
@@ -385,7 +385,7 @@ async function createSubscriptionCheckout(body = {}) {
     }
   }
 
-  // Promo/referral at signup is plan-only. Add-ons get that discount on Thursday.
+  // Promo/referral at signup is plan-only. Add-ons get that discount on Wednesday.
   const discountableCents = Number(plan.price_cents) || 0;
 
   let discountFactor = 1;
@@ -429,7 +429,7 @@ async function createSubscriptionCheckout(body = {}) {
         currency: 'cad',
         product_data: {
           name: `${plan.name} weekly plan (includes tax)`,
-          description: `Add-ons will be charged at ${dates.cutoff_label} if they are still on the box.`,
+          description: 'Add-ons still on the box are charged Wednesday at 5:00 PM ET.',
         },
         unit_amount: Math.max(0, Math.round(planDiscounted * HST)),
       },
@@ -498,7 +498,7 @@ async function createSubscriptionCheckout(body = {}) {
           ? (delivery
               ? 'Promo applied to this first week\'s plan and add-ons. Delivery is full price. Later weeks are regular price.'
               : 'Promo applied to this first week\'s plan and add-ons. Later weeks are regular price.')
-          : `Today you pay the weekly plan and delivery. After this week we charge plan and delivery ${dates.charge_label} and email a receipt. Add-ons still on the box ${dates.cutoff_label} are billed then.`,
+          : 'After this week, plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.',
       },
     },
     success_url: `${frontendUrl()}/subscribe/confirmation?session_id={CHECKOUT_SESSION_ID}`,
@@ -622,7 +622,7 @@ async function loadSignupPayload(subscriptionId) {
 
 /**
  * Webhook (and the success-page poll) create the subscription after Stripe is paid.
- * First cycle stays `open` so meals can still change until Thursday lock.
+ * First cycle stays `open` so meals can still change until Wednesday lock.
  */
 async function completeSubscriptionSignup(session) {
   const md = (session && session.metadata) || {};
@@ -708,7 +708,7 @@ async function completeSubscriptionSignup(session) {
   } catch (err) {
     console.warn('[subscriptions] live signup dates failed, using checkout snapshot:', err.message);
   }
-  // Live cutoff wins: a cart started before Thursday lock must not land on this Sunday.
+  // Live cutoff wins: a cart started before Wednesday lock must not land on this Sunday.
   const sunday = dates.first_delivery_date || draft.delivery_date;
 
   const { data: sub, error: subErr } = await supabase
@@ -934,7 +934,7 @@ async function createCardSetupCheckout(userId, subscriptionId) {
     cancel_url: `${frontendUrl()}/my-subscriptions`,
     custom_text: {
       submit: {
-        message: `This saves a card for your Earth Table weekly plan. We charge plan and delivery ${dates.charge_label} and email a receipt. Extras are billed ${dates.cutoff_label} if you added any.`,
+        message: 'This saves a card for your weekly plan. Plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.',
       },
     },
     metadata: {

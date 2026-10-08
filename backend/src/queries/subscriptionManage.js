@@ -1,6 +1,6 @@
 /**
  * Pause / resume / cancel / change plan.
- * Wednesday 9:00 AM ET is the deadline for this Sunday; after that the change waits.
+ * Tuesday 9:00 AM ET is the deadline for this Sunday; after that the change waits.
  */
 
 const supabase = require('../../supabase/db');
@@ -333,7 +333,7 @@ async function cancelSubscription(userId, subscriptionId) {
  * Force-cancel one subscription because its plan was discontinued.
  * Timing matches pause (skip vs keep this Sunday), but terminal state is
  * status=cancelled + cancelled_reason=plan_discontinued.
- * Before Wednesday: refund plan+delivery via refundSkip when already paid
+ * Before Tuesday: refund plan+delivery via refundSkip when already paid
  * (including first-box signup charge). Add-ons are never refunded.
  */
 async function cancelForPlanDiscontinued(sub) {
@@ -383,7 +383,7 @@ async function cancelForPlanDiscontinued(sub) {
     };
   }
 
-  // After Wednesday charge window (cycle still open/charged): keep this Sunday via pending.
+  // After Tuesday charge window (cycle still open/charged): keep this Sunday via pending.
   if (!charge.before_wednesday) {
     const { error } = await supabase
       .from('subscriptions')

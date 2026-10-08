@@ -251,7 +251,7 @@ const formatCutoffShort = (iso) => {
   return `${label.replace(/, (\d)/, ' · $1')} ET`;
 };
 
-/** "Thu 5:00 PM ET" — weekday + time, no calendar date. */
+/** "Wed 5:00 PM ET" — weekday + time, no calendar date. */
 const formatCutoffWeekdayTime = (iso, fallback = MEAL_LOCK_BY) => {
   if (!iso) return fallback;
   const d = new Date(iso);

@@ -6,7 +6,7 @@
 --
 -- After testing: deactivate the $1 plan, and set
 --   test_charge_at = null, test_lock_at = null
--- so live Wednesday 9:00 AM / Thursday 5:00 PM America/Toronto apply.
+-- so live Tuesday 9:00 AM / Wednesday 5:00 PM America/Toronto apply.
 
 -- Needed for gen_random_uuid() on some projects
 create extension if not exists pgcrypto;
@@ -136,12 +136,12 @@ create table if not exists public.cutoff_runs (
 -- ---------------------------------------------------------------------------
 -- Test-week overrides. One row only (id = 1).
 -- If test_charge_at / test_lock_at are set, the app uses those instead of
--- live Wednesday 9:00 AM / Thursday 5:00 PM America/Toronto.
+-- live Tuesday 9:00 AM / Wednesday 5:00 PM America/Toronto.
 -- ---------------------------------------------------------------------------
 create table if not exists public.subscription_settings (
   id int primary key default 1 check (id = 1),
-  charge_weekday int not null default 3 check (charge_weekday between 0 and 6),
-  lock_weekday int not null default 4 check (lock_weekday between 0 and 6),
+  charge_weekday int not null default 2 check (charge_weekday between 0 and 6),
+  lock_weekday int not null default 3 check (lock_weekday between 0 and 6),
   cutoff_hour int not null default 17 check (cutoff_hour between 0 and 23),
   cutoff_minute int not null default 0 check (cutoff_minute between 0 and 59),
   timezone text not null default 'America/Toronto',
@@ -252,3 +252,10 @@ alter table public.subscriptions drop constraint if exists subscriptions_cancell
 alter table public.subscriptions
   add constraint subscriptions_cancelled_reason_check
   check (cancelled_reason is null or cancelled_reason in ('plan_discontinued'));
+
+-- Weekday columns are not read by the app. subscriptionWeek.js owns the clock.
+-- Safe to run before the open-cycle cutoff shift: it does not change cutoff_at.
+update public.subscription_settings
+set charge_weekday = 2,
+    lock_weekday = 3
+where id = 1;

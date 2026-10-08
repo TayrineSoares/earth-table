@@ -1,6 +1,6 @@
 /**
- * Weekly jobs: Wednesday 9:00 AM ET plan+delivery charge + receipt email,
- * Thursday 5:00 PM ET extras + kitchen lock.
+ * Weekly jobs: Tuesday 9:00 AM ET plan+delivery charge + receipt email,
+ * Wednesday 5:00 PM ET extras + kitchen lock.
  * Safe to re-run: already-paid cycles and locked rows are skipped.
  */
 
@@ -525,7 +525,7 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
     let weekSunday = sunday;
     try {
       cycle = await ensureCycle(sub, weekSunday, settings);
-      // Admin "run now" after Thursday lock: bill the newly opened week, not the locked one.
+      // Admin "run now" after Wednesday lock: bill the newly opened week, not the locked one.
       if (force && cycle && (cycle.status === 'locked' || cycle.status === 'skipped')) {
         weekSunday = nextOpenSunday(weekSunday);
         cycle = await ensureCycle(sub, weekSunday, settings);

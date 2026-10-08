@@ -1,7 +1,7 @@
 /**
  * Subscription plans, customer subscriptions, and open-cycle edits.
  * First-week payment lives in subscriptionCheckout.js.
- * Recurring Wednesday 9:00 AM ET charge / Thursday 5:00 PM ET lock.
+ * Recurring Tuesday 9:00 AM ET charge / Wednesday 5:00 PM ET lock.
  */
 
 const supabase = require('../../supabase/db');
@@ -683,7 +683,7 @@ async function listMine(userId) {
 function adminWeekMeta(now = new Date(), settings = {}) {
   const dates = getSignupDates(now, settings || {});
   // Kitchen "This Sunday" is the calendar Sunday (today, when today is Sunday).
-  // job_sunday jumps to next week's cook date once Thursday lock has passed,
+  // job_sunday jumps to next week's cook date once Wednesday lock has passed,
   // which would hide today's boxes on Sunday itself.
   const thisSunday = calendarThisSundayYmd(now);
   const nextSunday = nextOpenSunday(thisSunday);
@@ -702,7 +702,7 @@ function adminWeekMeta(now = new Date(), settings = {}) {
   };
 }
 
-/** Active plans still get a next-Sunday box; the DB row is usually created at Thursday lock. */
+/** Active plans still get a next-Sunday box; the DB row is usually created at Wednesday lock. */
 function expectsNextSundayBox(sub) {
   if (!sub || sub.status !== 'active') return false;
   if (sub.pending_status === 'cancelled' || sub.pending_status === 'paused') return false;
@@ -803,7 +803,7 @@ async function listAll() {
     const list = bySub[sub.id] || [];
     const thisCycle = list.find((row) => String(row.delivery_date) === String(meta.this_sunday)) || null;
     let nextCycle = list.find((row) => String(row.delivery_date) === String(meta.next_sunday)) || null;
-    // Next-week rows are created at Thursday lock; preview so active kitchens still appear.
+    // Next-week rows are created at Wednesday lock; preview so active kitchens still appear.
     if (!nextCycle && expectsNextSundayBox(sub)) {
       const source = thisCycle || pickDisplayCycle(list, now) || null;
       nextCycle = previewNextSundayCycle(sub, source, meta.next_sunday, settings || {}, now);
@@ -1238,7 +1238,7 @@ async function getSettings() {
 
 /**
  * Test charge/lock timestamps. Pass null (or '') to clear and use live
- * Wednesday 9:00 AM plan charge / Thursday 5:00 PM meal lock, America/Toronto.
+ * Tuesday 9:00 AM plan charge / Wednesday 5:00 PM meal lock, America/Toronto.
  */
 async function updateSettings(body) {
   const patch = {};
