@@ -702,6 +702,49 @@ function adminWeekMeta(now = new Date(), settings = {}) {
   };
 }
 
+/** Active plans still get a next-Sunday box; the DB row is usually created at Thursday lock. */
+function expectsNextSundayBox(sub) {
+  if (!sub || sub.status !== 'active') return false;
+  if (sub.pending_status === 'cancelled' || sub.pending_status === 'paused') return false;
+  return true;
+}
+
+/**
+ * Non-persisted cycle so admin "Next Sunday" lists active subscribers before openNextWeek runs.
+ * Meals/fulfillment mirror the latest known cycle (usually this Sunday).
+ */
+function previewNextSundayCycle(sub, source, nextSunday, settings, now = new Date()) {
+  const delivery = source ? !!source.delivery : !!sub.delivery;
+  const planItems = planMealItems(source).map((item, index) => ({
+    ...item,
+    id: item?.id != null ? `preview-${item.id}` : `preview-item-${index}`,
+    cycle_id: null,
+  }));
+  return {
+    id: null,
+    subscription_id: sub.id,
+    status: 'open',
+    order_id: null,
+    cutoff_at: cutoffAtForSunday(nextSunday, settings) || getSignupDates(now, settings || {}).cutoff_at,
+    delivery_date: nextSunday,
+    pickup_date: delivery ? null : nextSunday,
+    delivery,
+    delivery_postal_code: source?.delivery_postal_code ?? sub.delivery_postal_code ?? null,
+    pickup_time_slot: source?.pickup_time_slot ?? sub.pickup_time_slot ?? null,
+    special_note: source?.special_note ?? sub.special_note ?? null,
+    delivery_fee_cents: delivery ? (Number(source?.delivery_fee_cents) || 0) : 0,
+    plan_paid_cents: 0,
+    addon_paid_cents: 0,
+    promo_percent: 0,
+    plan_price_cents:
+      Number(sub.subscription_plans?.price_cents)
+      || Number(source?.plan_price_cents)
+      || 0,
+    subscription_cycle_items: planItems,
+    is_preview: true,
+  };
+}
+
 async function listAll() {
   const settings = await getSettings();
   const now = new Date();
@@ -758,8 +801,13 @@ async function listAll() {
 
   const subscriptions = subs.map((sub) => {
     const list = bySub[sub.id] || [];
-    const thisCycle = list.find((row) => row.delivery_date === meta.this_sunday) || null;
-    const nextCycle = list.find((row) => row.delivery_date === meta.next_sunday) || null;
+    const thisCycle = list.find((row) => String(row.delivery_date) === String(meta.this_sunday)) || null;
+    let nextCycle = list.find((row) => String(row.delivery_date) === String(meta.next_sunday)) || null;
+    // Next-week rows are created at Thursday lock; preview so active kitchens still appear.
+    if (!nextCycle && expectsNextSundayBox(sub)) {
+      const source = thisCycle || pickDisplayCycle(list, now) || null;
+      nextCycle = previewNextSundayCycle(sub, source, meta.next_sunday, settings || {}, now);
+    }
     const display = thisCycle || nextCycle || pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, earliestOpenCycle(list) || hintCycleForEdit(list, now, settings || {}));
     return {
