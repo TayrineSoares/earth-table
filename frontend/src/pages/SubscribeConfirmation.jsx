@@ -215,7 +215,7 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                   <div>
                     <p className="subscribe-confirm-step-lead">It repeats, unless you say otherwise.</p>
                     <p className="subscribe-confirm-step-body">
-                      Don&apos;t have time to pick? We&apos;ll repeat last week&apos;s selection.{' '}
+                      If you don&apos;t change anything, we repeat last week&apos;s meals. Add-ons don&apos;t repeat unless you add them again.{' '}
                       {howItWorksPause()}
                     </p>
                   </div>

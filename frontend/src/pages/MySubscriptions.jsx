@@ -30,6 +30,7 @@ import {
   subscriptionDetailsItems,
   CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
+  UNCHANGED_MEALS,
   everyWeekBy,
   pausedBanner,
   paymentFailedBanner,
@@ -1130,6 +1131,7 @@ const MySubscriptions = ({ user }) => {
                         ) : null}
                       </DetailRow>
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
+                      <p className="my-sub-repeat-note">{UNCHANGED_MEALS}</p>
                       <DetailRow label="Pause or cancel by">
                         {row.first_box_protected
                           ? `after your first box, ${pauseBy}`

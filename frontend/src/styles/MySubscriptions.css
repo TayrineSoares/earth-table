@@ -333,6 +333,15 @@
   text-wrap: pretty;
 }
 
+.my-sub-repeat-note {
+  font-family: var(--body-font);
+  font-size: 14px;
+  line-height: 1.4;
+  color: #757575;
+  margin: 0 0 10px;
+  text-wrap: pretty;
+}
+
 .my-sub-status-note {
   font-family: var(--body-font);
   font-size: 14px;
@@ -718,6 +727,7 @@
   .my-sub-notes-edit .order-history-button,
   .my-sub-status-note,
   .my-sub-card-since,
+  .my-sub-repeat-note,
   .my-sub-card-expiry,
   .my-sub-fee-line,
   .my-sub-next-head,

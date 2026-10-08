@@ -13,6 +13,7 @@
 
 export const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET'
 export const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET'
+export const UNCHANGED_MEALS = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again."
 export const CHARGE_DAY_TIME = 'Tuesday at 9:00 AM ET'
 export const LOCK_DAY_TIME = 'Wednesday at 5:00 PM ET'
 
@@ -25,7 +26,7 @@ export function howItWorksPause() {
 }
 
 export function howItWorksMeals() {
-  return 'Change meals and extras for that week in My Subscriptions until Wednesday at 5:00 PM ET.'
+  return `Change meals and extras for that week in My Subscriptions until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}`
 }
 
 export function howItWorksFirstDelivery(firstDeliveryLabel) {

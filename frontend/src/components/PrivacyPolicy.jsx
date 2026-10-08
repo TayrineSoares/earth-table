@@ -28,7 +28,7 @@ const PrivacyPolicy = () => {
           <li><strong>Plans:</strong> Recurring weekly meal plans. Advertised prices are pre-tax. Checkout and weekly bills add 13% HST. Delivery, if you choose it, uses the same zone fees as à la carte, plus HST.</li>
           <li><strong>Schedule:</strong> Plan and delivery are charged every <strong>Tuesday at 9:00 AM ET</strong>. Add-ons are charged <strong>Wednesday at 5:00 PM ET</strong>.</li>
           <li><strong>First box:</strong> Charged when you subscribe, and it can’t be paused or cancelled. Add-ons on that box are billed Wednesday at 5:00 PM ET if they’re still on it.</li>
-          <li><strong>Changes:</strong> Change meals and extras in My Subscriptions until Wednesday at 5:00 PM ET. Miss it, and we repeat last week’s meals. Add-ons don’t repeat unless you add them again.</li>
+          <li><strong>Changes:</strong> Change meals and extras in My Subscriptions until Wednesday at 5:00 PM ET. If you don’t change anything, we repeat last week’s meals. Add-ons don’t repeat unless you add them again.</li>
           <li><strong>Pause or cancel:</strong> After your first box, pause or cancel anytime before Tuesday at 9:00 AM ET. No fees. After that, that Sunday’s box still goes out, and the change starts the following week.</li>
           <li><strong>Failed payments:</strong> A declined charge pauses the plan. Update your card before Wednesday at 5:00 PM ET to keep that Sunday’s box. If it’s still unpaid, that Sunday is skipped.</li>
           <li><strong>Holidays:</strong> We skip December 25, 26, 31, and January 1. That week is not charged and not delivered.</li>

@@ -14,7 +14,7 @@ function formatMoneyHst(cents) {
 }
 
 const { mealsAWeek, mealPlanPhrase, formatFulfillmentLine } = require('../queries/subscriptionWeek');
-const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, PICKUP_ADDRESS } = require('../emails/subscriptionEmailSpec');
+const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, PICKUP_ADDRESS, UNCHANGED_MEALS } = require('../emails/subscriptionEmailSpec');
 
 function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -1119,7 +1119,7 @@ function renderSubscriptionWelcomeEmail({
       `))}
       ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : ''}
       ${ctaLink(manageHref, "Manage my subscription")}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1141,7 +1141,7 @@ Change your meals by: ${cutoff}
 ${addonText}
 Manage my subscription: ${manageHref}
 
-Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET.
+Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}
 
 Questions? Reply to this email or write to hello@earthtableco.ca.`;
 
@@ -1319,7 +1319,7 @@ function renderSubscriptionUpdatedEmail({
       ${thisSunday
         ? ''
         : `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">If you need a delivery change for this Sunday, email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER};">hello@earthtableco.ca</a>.</p>`}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Manage anything else in My Subscriptions before ${cutoff}.</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Manage anything else in My Subscriptions before ${cutoff}. ${UNCHANGED_MEALS}</p>
   `, {
     preheader: timing,
     replyOk: true,
@@ -1340,7 +1340,7 @@ ${mealText}
 Add-ons
 ${addonText || 'None this week.'}
 
-${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@earthtableco.ca.\n\n'}Manage anything else in My Subscriptions before ${cutoff}.`;
+${thisSunday ? '' : 'If you need a delivery change for this Sunday, email hello@earthtableco.ca.\n\n'}Manage anything else in My Subscriptions before ${cutoff}. ${UNCHANGED_MEALS}`;
 
   return { subject, html, text };
 }
@@ -1695,7 +1695,6 @@ function renderSubscriptionChargeEmail({
     : '';
   const chargedLabel = cardLine ? `Charged to ${cardLine}` : 'Charged to your card';
 
-  const repeatLine = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again.";
   const introText = charged
     ? `This is your receipt for this week's plan and delivery${cardLine ? `, charged to ${cardLine}` : ''}. You can still change meals and extras until ${MEAL_LOCK_BY}.`
     : `Plan and delivery for this Sunday are already paid. You can still change meals and extras until ${MEAL_LOCK_BY}.`;
@@ -1708,7 +1707,7 @@ function renderSubscriptionChargeEmail({
       ${eyebrow("Weekly subscription")}
       ${h1(charged ? `Your receipt, ${name}` : `This week's box, ${name}`)}
       ${intro(introText)}
-      ${intro(repeatLine)}
+      ${intro(UNCHANGED_MEALS)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
@@ -1731,7 +1730,7 @@ function renderSubscriptionChargeEmail({
 
 ${introText}
 
-${repeatLine}
+${UNCHANGED_MEALS}
 
 Plan: ${planWeek}
 This Sunday: ${fulfillment}
