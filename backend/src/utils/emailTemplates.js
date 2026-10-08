@@ -1695,6 +1695,7 @@ function renderSubscriptionChargeEmail({
     : '';
   const chargedLabel = cardLine ? `Charged to ${cardLine}` : 'Charged to your card';
 
+  const repeatLine = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again.";
   const introText = charged
     ? `This is your receipt for this week's plan and delivery${cardLine ? `, charged to ${cardLine}` : ''}. You can still change meals and extras until ${MEAL_LOCK_BY}.`
     : `Plan and delivery for this Sunday are already paid. You can still change meals and extras until ${MEAL_LOCK_BY}.`;
@@ -1707,6 +1708,7 @@ function renderSubscriptionChargeEmail({
       ${eyebrow("Weekly subscription")}
       ${h1(charged ? `Your receipt, ${name}` : `This week's box, ${name}`)}
       ${intro(introText)}
+      ${intro(repeatLine)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
         ${kvRow("This Sunday", fulfillment)}
@@ -1728,6 +1730,8 @@ function renderSubscriptionChargeEmail({
   const text = `${charged ? `Your receipt, ${name}` : `This week's box, ${name}`}
 
 ${introText}
+
+${repeatLine}
 
 Plan: ${planWeek}
 This Sunday: ${fulfillment}
