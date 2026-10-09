@@ -79,7 +79,7 @@ const SubscribeEditMeals = ({ user }) => {
           setDialog({
             icon: 'alert',
             title: 'This box is locked',
-            body: 'Meals can be changed until Thursday at 5:00 PM ET while the box is still open.',
+            body: `Meals can be changed until ${MEAL_LOCK_BY} while the box is still open.`,
             primaryLabel: 'My Subscriptions',
             primaryTo: '/my-subscriptions',
           })

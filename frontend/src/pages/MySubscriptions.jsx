@@ -30,6 +30,7 @@ import {
   subscriptionDetailsItems,
   CHARGE_DAY_TIME,
   MEAL_LOCK_BY,
+  UNCHANGED_MEALS,
   everyWeekBy,
   pausedBanner,
   paymentFailedBanner,
@@ -405,7 +406,7 @@ const MySubscriptions = ({ user }) => {
               : 'Your card is on file, but we still could not charge this week. Try another card or email hello@earthtableco.ca.'
           } else if (retry?.ok) {
             title = 'You\'re back on'
-            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Wednesday if this week\'s cutoff has already passed.'
+            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Tuesday at 9:00 AM ET if this week\'s cutoff has already passed.'
           }
           setDialog({
             icon: retry && retry.ok === false ? 'alert' : 'mail',
@@ -637,7 +638,7 @@ const MySubscriptions = ({ user }) => {
 
   const confirmStatus = (row, action) => {
     if (savingId || statusLockRef.current) return
-    const beforeWed = row.charge?.before_wednesday !== false
+    const beforeCharge = row.charge?.before_wednesday !== false
     const firstProtected = Boolean(row.first_box_protected)
     const firstSunday = row.first_delivery_label
       || sundayDatePart(row.week?.delivery_label)
@@ -649,11 +650,11 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Pause after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET.`,
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}.`,
             resumeBy,
           ],
         }
-        : beforeWed
+        : beforeCharge
         ? {
           title: 'Pause this plan?',
           body: [
@@ -669,11 +670,11 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Cancel after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until Thursday at 5:00 PM ET. Later weeks stay on file until you resume.`,
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay on file until you resume.`,
             resumeBy,
           ],
         }
-        : beforeWed
+        : beforeCharge
         ? {
           title: 'Cancel this plan?',
           body: [
@@ -738,13 +739,13 @@ const MySubscriptions = ({ user }) => {
   }
 
   const confirmPlan = (row, plan) => {
-    const beforeWed = row.charge?.before_wednesday !== false
+    const beforeCharge = row.charge?.before_wednesday !== false
     const sunday = sundayDatePart(row.week?.delivery_label)
     const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
-      body: beforeWed
+      body: beforeCharge
         ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${lockBy}.`
         : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
       primaryLabel: 'Change plan',
@@ -802,11 +803,7 @@ const MySubscriptions = ({ user }) => {
       icon: 'alert',
       title: 'Subscription details',
       asList: true,
-      body: subscriptionDetailsItems({
-        chargeLabel: row?.charge?.charge_label,
-        cutoffLabel: row?.week?.cutoff_label,
-        firstDeliveryLabel: row?.first_delivery_label || '',
-      }),
+      body: subscriptionDetailsItems(),
       hint: (
         <>
           All subscription information, rules, and terms are in the{' '}
@@ -1134,6 +1131,7 @@ const MySubscriptions = ({ user }) => {
                         ) : null}
                       </DetailRow>
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
+                      <p className="my-sub-repeat-note">{UNCHANGED_MEALS}</p>
                       <DetailRow label="Pause or cancel by">
                         {row.first_box_protected
                           ? `after your first box, ${pauseBy}`

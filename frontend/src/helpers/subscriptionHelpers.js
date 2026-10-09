@@ -234,33 +234,6 @@ const formatPickupSlot = (slot) => {
   return `${fmt(parts[0].trim())} – ${fmt(parts[1].trim())}`;
 };
 
-const ET = { timeZone: 'America/Toronto' };
-
-const formatCutoffShort = (iso) => {
-  if (!iso) return MEAL_LOCK_BY;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return MEAL_LOCK_BY;
-  const label = d.toLocaleString('en-US', {
-    ...ET,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  return `${label.replace(/, (\d)/, ' · $1')} ET`;
-};
-
-/** "Thu 5:00 PM ET" — weekday + time, no calendar date. */
-const formatCutoffWeekdayTime = (iso, fallback = MEAL_LOCK_BY) => {
-  if (!iso) return fallback;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return fallback;
-  const weekday = d.toLocaleString('en-US', { ...ET, weekday: 'short' });
-  const time = d.toLocaleString('en-US', { ...ET, hour: 'numeric', minute: '2-digit' });
-  return `${weekday} ${time} ET`;
-};
-
 /** "Sunday, September 20" -> "September 20" when the sentence already says Sunday. */
 const sundayDatePart = (label) => {
   const raw = String(label || '').trim();
@@ -346,8 +319,6 @@ export {
   firstWeekCodeLabel,
   titleCaseName,
   formatPickupSlot,
-  formatCutoffShort,
-  formatCutoffWeekdayTime,
   weekSaveCopy,
   sundayDatePart,
   formatPlanPrice,

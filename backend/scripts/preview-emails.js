@@ -17,10 +17,10 @@ const {
   renderOwnerSubscriptionEmail,
   renderSubscriptionUpdatedEmail,
   renderSubscriptionManageEmail,
-  renderSubscriptionWednesdayEmail,
-  renderSubscriptionThursdayEmail,
+  renderSubscriptionChargeEmail,
+  renderSubscriptionLockEmail,
   renderSubscriptionHolidaySkipEmail,
-  renderOwnerThursdayLockEmail,
+  renderOwnerLockEmail,
   renderOwnerStatusEmail,
   renderOwnerPlanChangedEmail,
   renderOwnerFulfillmentEmail,
@@ -154,8 +154,8 @@ const subMail = {
   delivery: false,
   deliveryLabel: 'Sunday, September 20',
   pickupSlot: '10:00-13:00',
-  cutoffLabel: 'Thursday, September 17 at 5:00 PM ET',
-  chargeLabel: 'Wednesday, September 16 at 9:00 AM ET',
+  cutoffLabel: 'Wednesday, September 16 at 5:00 PM ET',
+  chargeLabel: 'Tuesday, September 15 at 9:00 AM ET',
   subscriptionId: 'preview',
   subscribedAtLabel: 'Wednesday, September 16, 2026 at 2:14 PM',
   paidCents: 20340,
@@ -221,7 +221,7 @@ write('12h-subscription-plan-up.html', renderSubscriptionManageEmail({
   oldPrice: '$180.00',
   newPrice: '$270.00',
   effectiveDate: 'Sunday, September 20',
-  nextChargeDate: 'Wednesday, September 23 at 9:00 AM ET',
+  nextChargeDate: 'Tuesday, September 22 at 9:00 AM ET',
   difference: 5,
 }).html);
 write('12i-subscription-plan-down.html', renderSubscriptionManageEmail({
@@ -232,7 +232,7 @@ write('12i-subscription-plan-down.html', renderSubscriptionManageEmail({
   oldPrice: '$270.00',
   newPrice: '$180.00',
   effectiveDate: 'Sunday, September 27',
-  nextChargeDate: 'Wednesday, September 23 at 9:00 AM ET',
+  nextChargeDate: 'Tuesday, September 22 at 9:00 AM ET',
 }).html);
 write('12j-subscription-delivery.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -251,7 +251,7 @@ write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   expMonth: '10',
   expYear: 2026,
 }).html);
-write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
+write('13-subscription-charge.html', renderSubscriptionChargeEmail({
   ...subMail,
   charged: true,
   planCents: 18000,
@@ -261,12 +261,12 @@ write('13-subscription-wednesday.html', renderSubscriptionWednesdayEmail({
   last4: '4242',
   unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
-write('13b-subscription-wednesday-paid.html', renderSubscriptionWednesdayEmail({
+write('13b-subscription-charge-paid.html', renderSubscriptionChargeEmail({
   ...subMail,
   charged: false,
   unsubscribeHref: 'http://localhost:5173/unsubscribe?token=preview',
 }).html);
-write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
+write('14-subscription-lock.html', renderSubscriptionLockEmail({
   ...subMail,
   delivery: true,
   address: subMail.address,
@@ -280,7 +280,7 @@ write('14-subscription-thursday.html', renderSubscriptionThursdayEmail({
   cardBrand: 'visa',
   last4: '4242',
 }).html);
-write('14b-subscription-thursday-no-extras.html', renderSubscriptionThursdayEmail({
+write('14b-subscription-lock-no-extras.html', renderSubscriptionLockEmail({
   ...subMail,
   chargedAddons: false,
   addonItems: [],
@@ -295,7 +295,7 @@ write('15b-holiday-owner.html', renderSubscriptionHolidaySkipEmail({
   nextSunday: 'Sunday, January 3',
   owner: true,
 }).html);
-write('16-owner-thursday.html', renderOwnerThursdayLockEmail({
+write('16-owner-lock.html', renderOwnerLockEmail({
   sunday: 'Sunday, September 20',
   boxes: [
     {
@@ -381,8 +381,8 @@ write('20-owner-payment-failed.html', renderOwnerPaymentFailedEmail({
   cardBrand: 'visa',
   last4: '4242',
   declineReason: 'insufficient_funds',
-  dateTime: 'Wednesday, September 16, 2026 at 9:01 AM',
-  cutoffDateTime: 'Thursday, September 17 at 5:00 PM ET',
+  dateTime: 'Tuesday, September 15, 2026 at 9:01 AM',
+  cutoffDateTime: 'Wednesday, September 16 at 5:00 PM ET',
 }).html);
 
 const labels = {
@@ -409,13 +409,13 @@ const labels = {
   '12j-subscription-delivery.html': '11. Switched to delivery',
   '12k-subscription-pickup.html': '11. Switched to pickup',
   '12l-subscription-card-expiry.html': '12. Card expiring',
-  '13-subscription-wednesday.html': '2. Wednesday charge + reminder',
-  '13b-subscription-wednesday-paid.html': '2. Wednesday reminder (already paid)',
-  '14-subscription-thursday.html': '3. Thursday lock + extras',
-  '14b-subscription-thursday-no-extras.html': '3. Thursday lock, no extras',
+  '13-subscription-charge.html': '2. Tuesday charge + reminder',
+  '13b-subscription-charge-paid.html': '2. Tuesday reminder (already paid)',
+  '14-subscription-lock.html': '3. Wednesday lock + extras',
+  '14b-subscription-lock-no-extras.html': '3. Wednesday lock, no extras',
   '15-holiday-user.html': 'Holiday skip (customer)',
   '15b-holiday-owner.html': 'Holiday skip (owner)',
-  '16-owner-thursday.html': '14. Owner Thursday prep',
+  '16-owner-lock.html': '14. Owner Wednesday prep',
   '17-owner-paused.html': '15. Owner paused',
   '17c-owner-resumed.html': '15. Owner resumed',
   '17b-owner-cancelled.html': '15. Owner cancelled',

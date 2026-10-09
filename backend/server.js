@@ -99,7 +99,7 @@ const stripeWebhookHandler = async (request, response) => {
     const session = event.data.object;
     const md = session.metadata || {};
 
-    // Subscription signups must not create a kitchen order (those wait until Thursday lock).
+    // Subscription signups must not create a kitchen order (those wait until Wednesday lock).
     if (String(md.kind || '') === 'subscription') {
       await completeSubscriptionSignup(session);
       return response.status(200).send('ok');

@@ -340,13 +340,13 @@ const SubscriberAdmin = () => {
   const cutoffLabel = (
     (view === 'next' ? meta.next_cutoff_label : meta.this_cutoff_label)
     || meta.cutoff_label
-    || 'Thursday 5:00 PM'
+    || 'Wednesday 5:00 PM'
   );
   const viewedBoxes = view === 'next' ? nextSundayBoxes : thisSundayBoxes;
   const viewedCycles = viewedBoxes
     .map((row) => cycleForRow(row, view))
     .filter(Boolean);
-  // Locked only after the Thursday job has closed every box (charge, then status locked).
+  // Locked only after the Wednesday job has closed every box (charge, then status locked).
   const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);

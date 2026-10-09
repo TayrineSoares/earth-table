@@ -218,12 +218,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const deliveryDueCents = deliveryCents > 0 ? withHst(deliveryCents) : 0
   const dueTodayCents = planDueCents + deliveryDueCents
   const addonAfterPromo = applyPromoPercent(addonCents, promoPct)
-  const addonThursdayCents = addonAfterPromo > 0 ? withHst(addonAfterPromo) : 0
+  const addonAtCutoffCents = addonAfterPromo > 0 ? withHst(addonAfterPromo) : 0
   const planHstCents = Math.max(0, planDueCents - planAfterPromo)
   const deliveryHstCents = Math.max(0, deliveryDueCents - deliveryCents)
   const weeklyHstCents = planHstCents + deliveryHstCents
-  const addonHstCents = Math.max(0, addonThursdayCents - addonAfterPromo)
-  const totalCents = dueTodayCents + addonThursdayCents
+  const addonHstCents = Math.max(0, addonAtCutoffCents - addonAfterPromo)
+  const totalCents = dueTodayCents + addonAtCutoffCents
   const mealHave = totalQty(subCart.meals)
   const mealNeed = Number(subCart.mealCount) || 0
   const mealsShort = mealHave < mealNeed
@@ -243,9 +243,8 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       title: 'Subscription details',
       asList: true,
       body: subscriptionDetailsItems({
-        chargeLabel: dates?.charge_label,
-        cutoffLabel: dates?.cutoff_label,
         firstDeliveryLabel: dates?.first_delivery_label,
+        signingUp: true,
       }),
       hint: (
         <>
@@ -481,7 +480,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
               <p className="total">Total</p>
               <p className="total">{formatPlanPrice(totalCents)}</p>
             </div>
-            {addonThursdayCents > 0 ? (
+            {addonAtCutoffCents > 0 ? (
               <>
                 <div className="checkout-summary-subtotal subscribe-due-row">
                   <p className="subtotal">Due today</p>
@@ -491,7 +490,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
                   <p className="subtotal">
                     {addonsBilledAt(dates?.cutoff_label, { firstWeekRate: promoPct > 0 })}
                   </p>
-                  <p className="subtotal">{formatPlanPrice(addonThursdayCents)}</p>
+                  <p className="subtotal">{formatPlanPrice(addonAtCutoffCents)}</p>
                 </div>
               </>
             ) : null}

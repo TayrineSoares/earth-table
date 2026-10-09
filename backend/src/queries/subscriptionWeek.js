@@ -1,18 +1,18 @@
 /**
  * America/Toronto cutoffs for new signups.
  *
- * Live: meal lock is Thursday 5:00 PM. First delivery is the Sunday
+ * Live: meal lock is Wednesday 5:00 PM. First delivery is the Sunday
  * on or after that lock (this Sunday if they subscribe before lock).
  * If they subscribe after lock, first delivery is the Sunday after
- * next Thursday's lock.
+ * next Wednesday's lock.
  *
  * If admin set test_lock_at / test_charge_at, those instants replace
- * Thursday 5pm / Wednesday 9am. A stored instant that is still in the
+ * Wednesday 5pm / Tuesday 9am. A stored instant that is still in the
  * future is used as-is (do not pull next Saturday onto this Saturday).
  * After it has passed, the same Toronto weekday and clock repeats every
  * 7 days until the overrides are cleared. Signup, My Plans, emails, admin
  * buttons, and cron jobs all read getSignupDates / getTargetSundayYmd.
- * Plan charge is Wednesday 9:00 AM America/Toronto (not Thursday).
+ * Plan charge is Tuesday 9:00 AM America/Toronto.
  *
  * No date library — Intl + a small nudge loop to map Toronto wall-clock
  * times onto UTC instants (handles EST/EDT).
@@ -33,12 +33,17 @@ const WEEKDAY_NUM = {
   Sat: 6,
 };
 
-const CHARGE_WEEKDAY = 3; // Wednesday
+const CHARGE_WEEKDAY = 2; // Tuesday
 const CHARGE_HOUR = 9;
 const CHARGE_MINUTE = 0;
-const LOCK_WEEKDAY = 4; // Thursday
+const LOCK_WEEKDAY = 3; // Wednesday
 const LOCK_HOUR = 17;
 const LOCK_MINUTE = 0;
+
+/** Days from a cook Sunday back to `weekday` in that same week (Tue = -5, Wed = -4). */
+function daysBeforeSunday(weekday) {
+  return weekday - 7;
+}
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -103,7 +108,7 @@ function isBlockedHoliday(year, month, day) {
   return BLOCKED_MMDD.has(`${pad2(month)}-${pad2(day)}`);
 }
 
-/** Thursday 5pm of the Toronto week that contains `now` (may already be past). */
+/** Wednesday 5pm of the Toronto week that contains `now` (may already be past). */
 function thisWeekLockAt(now) {
   const p = torontoParts(now);
   const shifted = addCalendarDays(p.year, p.month, p.day, LOCK_WEEKDAY - p.weekday);
@@ -127,7 +132,7 @@ function thisPeriodOccurrence(origin, now) {
 /**
  * Admin test_lock_at / test_charge_at.
  * If the stored instant is still ahead, keep it — mapping a future Saturday
- * onto this week's Saturday made Run Thursday lock target this Sunday while
+ * onto this week's Saturday made Run Wednesday lock target this Sunday while
  * the only open cycle was next Sunday. Once it has passed, same weekday/clock
  * in the Toronto week that contains `now`.
  */
@@ -136,7 +141,7 @@ function overrideOccurrence(origin, now) {
   return thisPeriodOccurrence(origin, now);
 }
 
-/** Wednesday 9:00 AM before a Sunday delivery (same calendar week). */
+/** Tuesday 9:00 AM before a Sunday delivery (same calendar week). */
 function chargeAtForSunday(ymdStr) {
   const sunday = parseYmdToronto(ymdStr);
   if (!sunday) {
@@ -145,15 +150,14 @@ function chargeAtForSunday(ymdStr) {
     return torontoDate(shifted.year, shifted.month, shifted.day, CHARGE_HOUR, CHARGE_MINUTE);
   }
   const p = torontoParts(sunday);
-  // Sunday + 3 is the Wednesday after delivery. Step back 4 days, like lock's -3.
-  const wed = addCalendarDays(p.year, p.month, p.day, -4);
-  return torontoDate(wed.year, wed.month, wed.day, CHARGE_HOUR, CHARGE_MINUTE);
+  const tue = addCalendarDays(p.year, p.month, p.day, daysBeforeSunday(CHARGE_WEEKDAY));
+  return torontoDate(tue.year, tue.month, tue.day, CHARGE_HOUR, CHARGE_MINUTE);
 }
 
 /**
  * Pause / cancel / plan-change deadline for the Sunday currently being edited.
- * After Thursday lock, that Sunday is next week, so the deadline is next Wednesday 9:00 AM.
- * test_charge_at stands in for Wednesday 9:00 AM when set.
+ * After Wednesday lock, that Sunday is next week, so the deadline is next Tuesday 9:00 AM.
+ * test_charge_at stands in for Tuesday 9:00 AM when set.
  */
 function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = null) {
   const testRaw = settings && settings.test_charge_at;
@@ -168,14 +172,6 @@ function getChargeDeadline(now = new Date(), settings = {}, deliveryDateYmd = nu
     charge_label: formatCutoffLabel(chargeAt),
     cadence_label: formatCadenceLabel(chargeAt),
   };
-}
-
-function isBeforeWednesdayCharge(now = new Date(), settings = {}, deliveryDateYmd = null) {
-  return getChargeDeadline(now, settings, deliveryDateYmd).before_wednesday;
-}
-
-function isBeforeThursdayLock(now = new Date(), settings = {}) {
-  return !getSignupDates(now, settings).cutoff_passed;
 }
 
 function nextLiveLockAt(now) {
@@ -227,7 +223,7 @@ function formatCutoffLabel(date) {
   return `${map.weekday}, ${map.month} ${map.day} at ${map.hour}:${map.minute} ${dayPeriod} ET`.replace(/\s+/g, ' ').trim();
 }
 
-/** Standing weekly rule, no calendar date: "Saturday at 7:55 PM ET". */
+/** Standing weekly rule, no calendar date: "Wednesday at 5:00 PM ET". */
 function formatCadenceLabel(date) {
   if (!date || !Number.isFinite(date.getTime())) return '';
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -289,7 +285,7 @@ function getSignupDates(now = new Date(), settings = {}) {
   let firstDeliveryAt = sundayOnOrAfter(cutoffAt);
   let lockedDeliveryDate = null;
   // If the Sunday after the next lock is the same Sunday they just missed
-  // (common when a test lock fires before this week's Thursday), skip ahead.
+  // (common when a test lock fires before this week's Wednesday), skip ahead.
   if (missedLockAt) {
     const missedSunday = sundayOnOrAfter(missedLockAt);
     const missedParts = torontoParts(missedSunday);
@@ -360,19 +356,19 @@ function parseYmdToronto(ymdStr) {
   return torontoDate(year, month, day, 12, 0);
 }
 
-/** Kitchen lock for the Sunday box: Thursday 5pm (or the test-lock clock) before that Sunday. */
+/** Kitchen lock for the Sunday box: Wednesday 5pm (or the test-lock clock) before that Sunday. */
 function lockAtForSunday(ymdStr, settings = {}) {
   const sunday = parseYmdToronto(ymdStr);
   if (!sunday) return null;
   const p = torontoParts(sunday);
-  const thu = addCalendarDays(p.year, p.month, p.day, -3);
-  const thursday = torontoDate(thu.year, thu.month, thu.day, 12, 0);
+  const wed = addCalendarDays(p.year, p.month, p.day, daysBeforeSunday(LOCK_WEEKDAY));
+  const wednesday = torontoDate(wed.year, wed.month, wed.day, 12, 0);
   const testRaw = settings && settings.test_lock_at;
   const testAt = testRaw ? new Date(testRaw) : null;
   if (testAt && Number.isFinite(testAt.getTime())) {
-    return thisPeriodOccurrence(testAt, thursday);
+    return thisPeriodOccurrence(testAt, wednesday);
   }
-  return torontoDate(thu.year, thu.month, thu.day, LOCK_HOUR, LOCK_MINUTE);
+  return torontoDate(wed.year, wed.month, wed.day, LOCK_HOUR, LOCK_MINUTE);
 }
 
 function lockPassedForSunday(ymdStr, now = new Date(), settings = {}) {
@@ -543,8 +539,6 @@ module.exports = {
   getSignupDates,
   getEditWeek,
   getChargeDeadline,
-  isBeforeWednesdayCharge,
-  isBeforeThursdayLock,
   formatFulfillmentLine,
   mealsAWeek,
   mealPlanPhrase,

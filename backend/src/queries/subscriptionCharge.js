@@ -1,6 +1,6 @@
 /**
- * Weekly jobs: Wednesday 9:00 AM ET plan+delivery charge + receipt email,
- * Thursday 5:00 PM ET extras + kitchen lock.
+ * Weekly jobs: Tuesday 9:00 AM ET plan+delivery charge + receipt email,
+ * Wednesday 5:00 PM ET extras + kitchen lock.
  * Safe to re-run: already-paid cycles and locked rows are skipped.
  */
 
@@ -10,10 +10,10 @@ const { getUserByAuthId } = require('./user');
 const { getSettings, getPlanById, copyPlanMealsIfEmpty, firstBoxSunday, firstBoxStillDue, reopenSkippedCycle } = require('./subscription');
 const {
   renderSubscriptionManageEmail,
-  renderOwnerThursdayLockEmail,
+  renderOwnerLockEmail,
   renderSubscriptionHolidaySkipEmail,
-  renderSubscriptionWednesdayEmail,
-  renderSubscriptionThursdayEmail,
+  renderSubscriptionChargeEmail,
+  renderSubscriptionLockEmail,
   renderOwnerPaymentFailedEmail,
   formatDollars,
 } = require('../utils/emailTemplates');
@@ -64,6 +64,21 @@ async function emailedIdsFor(weekKey, job) {
     .eq('job', job)
     .maybeSingle();
   return new Set((data?.stats && data.stats.emailed_ids) || []);
+}
+
+/**
+ * Second DST cron (one UTC hour later) must not email the kitchen again.
+ * A run that recorded failures still retries; a clean run is done.
+ */
+async function jobAlreadyFinished(weekKey, job) {
+  const { data } = await supabase
+    .from('cutoff_runs')
+    .select('finished_at, stats')
+    .eq('week_key', weekKey)
+    .eq('job', job)
+    .maybeSingle();
+  if (!data?.finished_at) return false;
+  return (Number(data.stats?.failed) || 0) === 0;
 }
 
 async function sluggedItems(items) {
@@ -363,7 +378,7 @@ async function chargePlanDelivery(sub, cycle, sunday) {
     confirm: true,
     description: 'Weekly plan',
     metadata: {
-      kind: 'subscription_wednesday',
+      kind: 'subscription_plan',
       subscription_id: sub.id,
       cycle_id: cycle.id,
     },
@@ -424,14 +439,14 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
   }
 }
 
-async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
+async function sendChargeNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
   if (!emailPrefOn(user, 'wednesday_reminder')) return;
   const labeled = await labeledItemsForCycle(cycle.id);
   const charged = !!chargeResult?.charged;
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
-  const msg = renderSubscriptionWednesdayEmail({
+  const msg = renderSubscriptionChargeEmail({
     firstName: user.first_name,
     mealCount: sub.subscription_plans?.meal_count,
     delivery: !!cycle.delivery,
@@ -452,7 +467,7 @@ async function sendWednesdayNotice(sub, cycle, sunday, dates, chargeResult) {
   await sendCustomerEmail({ to: user.email, msg });
 }
 
-async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
+async function sendLockNotice(sub, cycle, sunday, addonResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
   const items = await cycleItemsByCycleId(cycle.id);
@@ -470,7 +485,7 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
   const discountLabel = discountCents > 0
     ? firstWeekDiscountLabel(sub.first_promo_code, discountKind)
     : '';
-  const msg = renderSubscriptionThursdayEmail({
+  const msg = renderSubscriptionLockEmail({
     firstName: user.first_name,
     mealCount: sub.subscription_plans?.meal_count,
     delivery: !!cycle.delivery,
@@ -492,13 +507,16 @@ async function sendThursdayNotice(sub, cycle, sunday, addonResult) {
   await sendCustomerEmail({ to: user.email, msg });
 }
 
-async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
+async function runPlanCharge({ force = false, now = new Date() } = {}) {
   const settings = await getSettings();
   const dates = getSignupDates(now, settings || {});
   const sunday = dates.job_sunday;
   const charge = getChargeDeadline(now, settings || {}, sunday);
   if (!force && charge.before_wednesday) {
     return { ok: true, skipped: true, reason: 'before_charge', sunday };
+  }
+  if (!force && await jobAlreadyFinished(sunday, 'wednesday_charge')) {
+    return { ok: true, skipped: true, reason: 'already_ran', sunday };
   }
 
   if (isYmdBlocked(sunday)) {
@@ -525,7 +543,7 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
     let weekSunday = sunday;
     try {
       cycle = await ensureCycle(sub, weekSunday, settings);
-      // Admin "run now" after Thursday lock: bill the newly opened week, not the locked one.
+      // Admin "run now" after Wednesday lock: bill the newly opened week, not the locked one.
       if (force && cycle && (cycle.status === 'locked' || cycle.status === 'skipped')) {
         weekSunday = nextOpenSunday(weekSunday);
         cycle = await ensureCycle(sub, weekSunday, settings);
@@ -559,7 +577,7 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
         }
       } catch (err) {
         failures.push({ subscription_id: sub.id, error: err.message || String(err) });
-        console.warn('[subscriptions] Wednesday charge failed:', sub.id, err.message);
+        console.warn('[subscriptions] Plan charge failed:', sub.id, err.message);
         await markPaymentFailed(sub, weekSunday, dates.cutoff_label, err);
         continue;
       }
@@ -567,11 +585,11 @@ async function runWednesdayCharge({ force = false, now = new Date() } = {}) {
 
     if (!emailedIds.has(sub.id)) {
       try {
-        await sendWednesdayNotice(sub, cycle, weekSunday, dates, chargeResult);
+        await sendChargeNotice(sub, cycle, weekSunday, dates, chargeResult);
         emailedIds.add(sub.id);
         emailed += 1;
       } catch (err) {
-        console.warn('[subscriptions] Wednesday email failed:', sub.id, err.message);
+        console.warn('[subscriptions] Charge email failed:', sub.id, err.message);
       }
     }
   }
@@ -837,13 +855,16 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
   }
 }
 
-async function runThursdayLock({ force = false, now = new Date() } = {}) {
+async function runMealLock({ force = false, now = new Date() } = {}) {
   const settings = await getSettings();
   const dates = getSignupDates(now, settings || {});
   if (!force && !dates.cutoff_passed) {
     return { ok: true, skipped: true, reason: 'before_lock' };
   }
   const sunday = dates.job_sunday;
+  if (!force && await jobAlreadyFinished(sunday, 'thursday_lock')) {
+    return { ok: true, skipped: true, reason: 'already_ran', sunday };
+  }
   const nextSunday = nextOpenSunday(sunday);
   const subs = await loadSubsForSunday();
   const boxLines = [];
@@ -881,7 +902,7 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       if (!emailedIds.has(sub.id)) {
         try {
           const addonPaid = Number(cycle.addon_paid_cents) || 0;
-          await sendThursdayNotice(sub, cycle, sunday, {
+          await sendLockNotice(sub, cycle, sunday, {
             charged: addonPaid > 0,
             due: addonPaid,
             amount: Math.round(addonPaid * HST),
@@ -889,13 +910,13 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
           emailedIds.add(sub.id);
           emailed += 1;
         } catch (err) {
-          console.warn('[subscriptions] Thursday email failed:', sub.id, err.message);
+          console.warn('[subscriptions] Lock email failed:', sub.id, err.message);
         }
       }
       try {
         boxLines.push(await ownerBoxFrom(sub, cycle));
       } catch (err) {
-        console.warn('[subscriptions] Thursday owner row failed:', err.message);
+        console.warn('[subscriptions] Lock owner row failed:', err.message);
       }
       if (sub.status !== 'paused' && sub.status !== 'cancelled') {
         try {
@@ -921,7 +942,7 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       if (addon.charged) addonsCharged += 1;
     } catch (err) {
       failures.push({ subscription_id: sub.id, error: `addons: ${err.message || err}` });
-      console.warn('[subscriptions] Thursday add-on charge failed:', sub.id, err.message);
+      console.warn('[subscriptions] Lock add-on charge failed:', sub.id, err.message);
     }
 
     try {
@@ -929,17 +950,17 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
       locked += 1;
     } catch (err) {
       failures.push({ subscription_id: sub.id, error: `order: ${err.message || err}` });
-      console.warn('[subscriptions] Thursday order failed:', sub.id, err.message);
+      console.warn('[subscriptions] Lock order failed:', sub.id, err.message);
       continue;
     }
 
     if (!emailedIds.has(sub.id)) {
       try {
-        await sendThursdayNotice(sub, cycle, sunday, addon);
+        await sendLockNotice(sub, cycle, sunday, addon);
         emailedIds.add(sub.id);
         emailed += 1;
       } catch (err) {
-        console.warn('[subscriptions] Thursday email failed:', sub.id, err.message);
+        console.warn('[subscriptions] Lock email failed:', sub.id, err.message);
       }
     }
 
@@ -956,19 +977,19 @@ async function runThursdayLock({ force = false, now = new Date() } = {}) {
     try {
       boxLines.push(await ownerBoxFrom(sub, cycle));
     } catch (err) {
-      console.warn('[subscriptions] Thursday owner row failed:', err.message);
+      console.warn('[subscriptions] Lock owner row failed:', err.message);
     }
   }
 
   if (boxLines.length) {
     try {
-      const msg = renderOwnerThursdayLockEmail({
+      const msg = renderOwnerLockEmail({
         sunday: sundayLabelFromYmd(sunday),
         boxes: boxLines,
       });
       await sendOwnerEmail(msg);
     } catch (err) {
-      console.warn('[subscriptions] Thursday owner email failed:', err.message);
+      console.warn('[subscriptions] Lock owner email failed:', err.message);
     }
   }
 
@@ -1030,7 +1051,7 @@ async function retryFailedCharge(sub) {
     const chargeResult = await chargePlanDelivery(sub, found.cycle, found.sunday);
     await unpauseAfterPayment(sub.id);
     try {
-      await sendWednesdayNotice(sub, found.cycle, found.sunday, dates, chargeResult);
+      await sendChargeNotice(sub, found.cycle, found.sunday, dates, chargeResult);
     } catch (err) {
       console.warn('[subscriptions] retry receipt email failed:', err.message);
     }
@@ -1047,9 +1068,8 @@ async function retryFailedCharge(sub) {
 }
 
 module.exports = {
-  runWednesdayCharge,
-  runThursdayLock,
-  chargeThursdayAddons: runThursdayLock,
+  runPlanCharge,
+  runMealLock,
   retryFailedCharge,
   addonDueCents,
   applyPromoPercent,

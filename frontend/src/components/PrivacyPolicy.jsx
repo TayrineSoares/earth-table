@@ -25,16 +25,16 @@ const PrivacyPolicy = () => {
 
         <h3 className="et-terms__h3">Weekly subscriptions</h3>
         <ul className="et-terms__list">
-          <li><strong>Plans:</strong> Recurring weekly meal plans (10, 15, or 20 meals). Advertised prices are pre-tax meals only. Checkout and weekly bills add 13% HST. Delivery, if you choose it, is extra at the same zone fees as à la carte, plus HST.</li>
-          <li><strong>First week:</strong> Plan and delivery (if any) are charged when you subscribe. That first box cannot be paused or cancelled. Add-ons on that first box are billed later, at Thursday lock, if they are still on the box. You can still change add-ons on the first box until <strong>Thursday at 5:00 PM ET</strong>.</li>
-          <li><strong>Promo and referral codes:</strong> A valid code discounts your first week only, the plan charged at signup, and add-ons billed at that first Thursday lock. Delivery is not discounted. Later Wednesday charges are the regular plan price. Partner referral program terms (for partners issuing codes) are separate from this policy and available on request.</li>
-          <li><strong>Weekly charge:</strong> After the first week, plan and delivery are charged every <strong>Wednesday at 9:00 AM ET</strong> to the card on file. We email a receipt at that same time.</li>
-          <li><strong>Meal and add-on cutoff:</strong> Change meals, extras, pickup, or delivery until <strong>Thursday at 5:00 PM ET</strong>. Then extras still on the box are charged, the box is locked, and we email confirmation (with an extras receipt if anything was billed). Add-ons do not repeat the following week unless you add them again. If you do not pick meals before cutoff, we repeat last week’s selections.</li>
-          <li><strong>Pause or cancel:</strong> After your first box, pause or cancel in My Subscriptions before <strong>Wednesday at 9:00 AM ET</strong> to skip that Sunday’s charge. No fees. Your meals and saved card stay on file until you resume. After Wednesday 9:00 AM ET, that Sunday still goes out; the pause or cancel starts the following week. The first box charged at signup always goes out.</li>
-          <li><strong>Failed payments:</strong> If Wednesday’s charge is declined, we pause the plan and email you. Update your card in My Subscriptions before Thursday at 5:00 PM ET to still receive that Sunday. If it is still unpaid at lock, that Sunday is skipped and the plan stays paused until you resume.</li>
-          <li><strong>Holidays:</strong> We skip blocked Sundays (December 25, 26, 31, and January 1). That week is not charged and not delivered. We email you the next Sunday that will run.</li>
-          <li><strong>Price changes:</strong> If we change a plan price, we email current subscribers. The new price applies at the next Wednesday 9:00 AM ET charge that is not already billed. Pause or cancel before that charge if you do not accept the new price.</li>
-          <li><strong>Refunds:</strong> The first box charged at signup is non-refundable. Later weekly boxes are non-refundable after Wednesday 9:00 AM ET for that cycle. After the first box, avoid a later charge by pausing or cancelling before Wednesday 9:00 AM ET.</li>
+          <li><strong>Plans:</strong> Recurring weekly meal plans. Advertised prices are pre-tax. Checkout and weekly bills add 13% HST. Delivery, if you choose it, uses the same zone fees as à la carte, plus HST.</li>
+          <li><strong>Schedule:</strong> Plan and delivery are charged every <strong>Tuesday at 9:00 AM ET</strong>. Add-ons are charged <strong>Wednesday at 5:00 PM ET</strong>.</li>
+          <li><strong>First box:</strong> Charged when you subscribe, and it can’t be paused or cancelled. Add-ons on that box are billed Wednesday at 5:00 PM ET if they’re still on it.</li>
+          <li><strong>Changes:</strong> Change meals and extras in My Subscriptions until Wednesday at 5:00 PM ET. If you don’t change anything, we repeat last week’s meals. Add-ons don’t repeat unless you add them again.</li>
+          <li><strong>Pause or cancel:</strong> After your first box, pause or cancel anytime before Tuesday at 9:00 AM ET. No fees. After that, that Sunday’s box still goes out, and the change starts the following week.</li>
+          <li><strong>Failed payments:</strong> A declined charge pauses the plan. Update your card before Wednesday at 5:00 PM ET to keep that Sunday’s box. If it’s still unpaid, that Sunday is skipped.</li>
+          <li><strong>Holidays:</strong> We skip December 25, 26, 31, and January 1. That week is not charged and not delivered.</li>
+          <li><strong>Price changes:</strong> A new price applies at the next weekly charge that is not already billed. Pause or cancel before that charge if you do not accept it.</li>
+          <li><strong>Refunds:</strong> The first box is non-refundable. Later boxes are non-refundable after that week’s charge.</li>
+          <li><strong>Promo and referral codes:</strong> A valid code discounts the first week only. Delivery is not discounted. Later weeks are regular price.</li>
         </ul>
 
         <h3 className="et-terms__h3">General</h3>
@@ -55,7 +55,7 @@ const PrivacyPolicy = () => {
           <li><strong>Account:</strong> Name, email, phone, and login credentials when you register (authentication is handled by our auth provider).</li>
           <li><strong>Order details:</strong> Items, quantities, pickup time slot or delivery postal code, and whatever you type in Special Instructions (one field for delivery address and notes).</li>
           <li><strong>Subscription details:</strong> Plan, weekly meal and add-on selections, pickup vs delivery, pause/cancel status, and which Sunday a box is for.</li>
-          <li><strong>Payment:</strong> Payments run through Stripe. We do not store full card numbers. Stripe stores the payment method so we can charge the first week at signup, Wednesday 9:00 AM ET plan-and-delivery charges, and Thursday 5:00 PM ET add-on charges.</li>
+          <li><strong>Payment:</strong> Payments run through Stripe. We do not store full card numbers. Stripe stores the payment method so we can charge the weekly plan on the schedule in these terms.</li>
           <li><strong>Cookies &amp; analytics:</strong> We use cookies and similar tools for site function and aggregated analytics.</li>
         </ul>
 
@@ -63,7 +63,7 @@ const PrivacyPolicy = () => {
         <ul className="et-terms__list">
           <li>To create and manage your account, orders, and weekly boxes.</li>
           <li>To quote delivery from your postal code and to fulfill pickup or delivery.</li>
-          <li>To charge the saved card on the schedule above and to send transactional mail that is part of the service: order/subscription confirmation, the Wednesday 9:00 AM ET plan-and-delivery receipt, Thursday lock (and extras receipt if billed), pause/resume, payment-failed, holiday skip, and plan-price notices.</li>
+          <li>To charge the saved card on the weekly schedule and to send transactional mail that is part of the service: order and subscription confirmation, charge receipts, cutoff confirmation, pause/resume, payment-failed, holiday skip, and plan-price notices.</li>
           <li>To apply pause, cancel, resume, plan changes, and the refund rules in these terms.</li>
           <li>To improve the site with analytics.</li>
           <li>To send marketing only with consent, in accordance with CASL. You can opt out of marketing without opting out of receipts and other transactional mail.</li>
@@ -88,7 +88,7 @@ const PrivacyPolicy = () => {
           <li>Request correction or deletion of your personal information, subject to records we must keep for orders, taxes, or the law.</li>
           <li>Withdraw consent for uses that are not required to fulfill an order or subscription.</li>
           <li>Opt out of marketing communications under CASL.</li>
-          <li>After your first box, pause or cancel a subscription in My Subscriptions before Wednesday at 9:00 AM ET to skip that Sunday’s charge. The first box cannot be paused or cancelled.</li>
+          <li>After your first box, pause or cancel a subscription in My Subscriptions before that week’s charge. The first box cannot be paused or cancelled.</li>
         </ul>
         <p className="et-terms__p">
           To exercise these rights, contact us at:{" "}
