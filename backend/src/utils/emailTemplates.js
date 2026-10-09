@@ -1975,6 +1975,54 @@ function renderOwnerPlanDiscontinuedEmail({
   return { subject, html, text };
 }
 
+/**
+ * One-time notice for Saturday, October 10, 2026.
+ * Active plans only. Not a weekly reminder.
+ */
+function renderSubscriptionDeadlineEmail({ firstName } = {}) {
+  const name = firstName || 'there';
+  const manageHref = appUrl('/my-subscriptions');
+  const subject = 'Subscription Plans - New weekly deadlines';
+  const preheader = 'Starting next week, your weekly deadlines move one day earlier.';
+  const lead = preheader;
+  const charge = `Plan and delivery are charged ${PAUSE_CANCEL_BY}. Pause or cancel anytime before then. No fees.`;
+  const meals = `Change meals and add extras in My Subscriptions until ${MEAL_LOCK_BY}. Add-ons still on the box are charged then.`;
+  const signoff = '— Selena & the Earth Table team';
+
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1(`Hi ${name}`)}
+      ${intro(lead)}
+      ${intro(charge)}
+      ${intro(meals)}
+      ${intro(UNCHANGED_MEALS)}
+      ${ctaLink(manageHref, 'Manage my subscription')}
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT};">${signoff}</p>
+  `, {
+    preheader,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `Hi ${name}
+
+${lead}
+
+${charge}
+
+${meals}
+
+${UNCHANGED_MEALS}
+
+Manage my subscription: ${manageHref}
+
+${signoff}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject, html, text };
+}
+
 function renderSubscriptionPriceEmail({
   firstName,
   mealCount,
@@ -2020,6 +2068,7 @@ module.exports = {
   renderOwnerFulfillmentEmail,
   renderSubscriptionChargeEmail,
   renderSubscriptionLockEmail,
+  renderSubscriptionDeadlineEmail,
   renderSubscriptionPriceEmail,
   renderPlanDiscontinuedEmail,
   renderOwnerPlanDiscontinuedEmail,

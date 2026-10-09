@@ -5,9 +5,9 @@
 
 const supabase = require('../../supabase/db');
 const { sendEmail } = require('../utils/email');
-const { renderSubscriptionManageEmail } = require('../utils/emailTemplates');
-const { getUserByAuthId } = require('./user');
-const { emailPrefOn } = require('../emails/sendSubscriptionMail');
+const { renderSubscriptionManageEmail, renderSubscriptionDeadlineEmail } = require('../utils/emailTemplates');
+const { getUserByAuthId, updateUserByAuthId } = require('./user');
+const { emailPrefOn, sendCustomerEmail } = require('../emails/sendSubscriptionMail');
 const { unsubscribeUrl } = require('../emails/unsubscribeToken');
 const { CADENCE } = require('../emails/subscriptionEmailSpec');
 const {
@@ -633,6 +633,58 @@ async function sendPauseReminders(now = new Date()) {
   return { ok: true, week_key: weekKey, emailed, failed: failures.length, skipped };
 }
 
+const DEADLINE_NOTICE_YMD = '2026-10-10';
+const DEADLINE_NOTICE_PREF = 'deadline_notice_2026';
+
+/**
+ * One send on Saturday, October 10, 2026, 9:00 AM Toronto (13:00 UTC).
+ * Each active subscriber is emailed once. A later run the same day skips anyone already marked.
+ */
+async function sendDeadlineNotice(now = new Date()) {
+  const ymd = torontoYmd(now);
+  if (ymd !== DEADLINE_NOTICE_YMD) {
+    return { ok: true, skipped: true, reason: 'not_send_day', ymd };
+  }
+
+  const { data: subs, error } = await supabase
+    .from('subscriptions')
+    .select('id, user_id')
+    .eq('status', 'active');
+  if (error) throw error;
+
+  const userIds = [...new Set((subs || []).map((row) => row.user_id).filter(Boolean))];
+  let emailed = 0;
+  let skipped = 0;
+  const failures = [];
+
+  for (const userId of userIds) {
+    try {
+      const user = await getUserByAuthId(userId);
+      if (!user?.email) {
+        skipped += 1;
+        continue;
+      }
+      const prefs = user.email_prefs && typeof user.email_prefs === 'object' && !Array.isArray(user.email_prefs)
+        ? { ...user.email_prefs }
+        : {};
+      if (prefs[DEADLINE_NOTICE_PREF]) {
+        skipped += 1;
+        continue;
+      }
+      const msg = renderSubscriptionDeadlineEmail({ firstName: user.first_name });
+      await sendCustomerEmail({ to: user.email, msg });
+      prefs[DEADLINE_NOTICE_PREF] = true;
+      await updateUserByAuthId(userId, { email_prefs: prefs });
+      emailed += 1;
+    } catch (err) {
+      failures.push({ user_id: userId, error: err.message || String(err) });
+      console.warn('[subscriptions] deadline notice failed:', userId, err.message);
+    }
+  }
+
+  return { ok: true, ymd, emailed, skipped, failed: failures.length, failures };
+}
+
 async function changeSubscriptionPlan(userId, subscriptionId, planId) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
   if (sub.status !== 'active') {
@@ -777,4 +829,5 @@ module.exports = {
   discontinuePlan,
   changeSubscriptionPlan,
   sendPauseReminders,
+  sendDeadlineNotice,
 };

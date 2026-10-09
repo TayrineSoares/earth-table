@@ -12,6 +12,7 @@
     { "path": "/api/cron/subscription-charge", "schedule": "0 13 * * 2" },
     { "path": "/api/cron/subscription-charge", "schedule": "0 14 * * 2" },
     { "path": "/api/cron/subscription-lock", "schedule": "0 22 * * 3" },
+    { "path": "/api/cron/subscription-deadline-notice", "schedule": "0 13 10 10 *" },
     { "path": "/api/cron/subscription-card-expiry", "schedule": "0 13 * * 1" }
   ],
   "rewrites": [
