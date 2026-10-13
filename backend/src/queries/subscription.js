@@ -793,8 +793,8 @@ async function listAll() {
     .from('subscriptions')
     .select(`
       id, user_id, status, plan_id, label, delivery, delivery_postal_code,
-      pickup_time_slot, special_note, created_at, paused_at, cancelled_at, pause_reason,
-      cancelled_reason, pending_plan_id, pending_status,
+      pickup_time_slot, special_note, created_at, paused_at, resumed_at, cancelled_at,
+      pause_reason, cancelled_reason, pending_plan_id, pending_status,
       subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents ),
       pending_plan:subscription_plans!subscriptions_pending_plan_id_fkey ( id, name, meal_count, price_cents )
     `)

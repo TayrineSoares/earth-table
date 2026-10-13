@@ -33,7 +33,7 @@ const quotePostal = (row, cycle) => {
   return candidates.map(formatPostal).find(Boolean) || '';
 };
 
-const formatSignedUp = (iso) => {
+const formatAdminStamp = (iso) => {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
@@ -49,6 +49,18 @@ const formatSignedUp = (iso) => {
     minute: '2-digit',
   });
   return `${datePart} · ${timePart} ET`;
+};
+
+/** Status-change lines for View Details (only stamps that exist). */
+const planStatusLines = (row) => {
+  const lines = [];
+  const paused = formatAdminStamp(row?.paused_at);
+  const cancelled = formatAdminStamp(row?.cancelled_at);
+  const resumed = formatAdminStamp(row?.resumed_at);
+  if (paused) lines.push(`Paused ${paused}`);
+  if (cancelled) lines.push(`Cancelled ${cancelled}`);
+  if (resumed) lines.push(`Reactivated ${resumed}`);
+  return lines;
 };
 
 const formatPhone = (phone) => {
@@ -600,7 +612,8 @@ const SubscriberAdmin = () => {
                                   ) : null}
                                   {plans.map((row) => {
                                     const planCycle = cycleForRow(row, view);
-                                    const signedUp = formatSignedUp(row.created_at);
+                                    const signedUp = formatAdminStamp(row.created_at);
+                                    const statusLines = planStatusLines(row);
                                     const postal = quotePostal(row, planCycle);
                                     return (
                                       <div key={`${row.id}-signup`} className="sub-admin-signup">
@@ -612,6 +625,9 @@ const SubscriberAdmin = () => {
                                         <p className="order-details-body">
                                           Signed up {signedUp || '—'}
                                         </p>
+                                        {statusLines.map((line) => (
+                                          <p key={line} className="order-details-body">{line}</p>
+                                        ))}
                                         <p className="order-details-body">
                                           Postal code {postal || '—'}
                                         </p>

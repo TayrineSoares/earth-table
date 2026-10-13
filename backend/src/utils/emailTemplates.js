@@ -1432,7 +1432,7 @@ My Subscriptions: ${manageHref}`;
     pause_now: {
       subject: `Your weekly plan is paused until you resume`,
       heading: `You're paused, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} will not go out. Your meals and card stay on file. The plan stays paused until you tap Resume.`,
+      intro: `${ThisSundayPhrase(sunday)} will not go out. The plan stays paused until you tap Resume.`,
     },
     pause_first: {
       subject: `Your weekly plan is paused — first box still runs`,
@@ -1442,7 +1442,7 @@ My Subscriptions: ${manageHref}`;
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week. Your meals and card stay on file until you resume.`,
+      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     cancel_now: {
       subject: `Your weekly plan is cancelled`,
@@ -1452,12 +1452,12 @@ My Subscriptions: ${manageHref}`;
     cancel_next: {
       subject: `Your weekly plan is cancelled — this Sunday still runs`,
       heading: `This Sunday still goes out, ${name}`,
-      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is cancelled starting the following week — meals and card are not kept after that. Start a new plan any time from Subscribe & Save.`,
+      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is cancelled starting the following week. Start a new plan any time from Subscribe & Save.`,
     },
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,
       heading: `We saved your plan, ${name}`,
-      intro: `Your ${planWeek} is still paused, with your meals and card on file. Resume in My Subscriptions by ${charge} if you want a box this Sunday.`,
+      intro: `Your ${planWeek} is still paused. Resume in My Subscriptions by ${charge} if you want a box this Sunday.`,
     },
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
