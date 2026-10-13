@@ -158,7 +158,12 @@ const receivesSundayBox = (row, cycle) => {
 };
 
 const cycleForRow = (row, view) => {
-  if (view === 'paused') return row.cycle || row.this_cycle || row.next_cycle || null;
+  if (view === 'paused') {
+    const opts = [row.this_cycle, row.next_cycle, row.cycle];
+    const receiving = opts.find((cycle) => receivesSundayBox(row, cycle));
+    if (receiving) return receiving;
+    return opts.find((cycle) => cycle && cycle.status !== 'skipped') || null;
+  }
   return view === 'next' ? (row.next_cycle || null) : (row.this_cycle || null);
 };
 

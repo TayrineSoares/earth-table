@@ -728,6 +728,27 @@ function expectsNextSundayBox(sub) {
   return true;
 }
 
+/** Same rules as admin kitchen list: skipped unpaid weeks are not a "Sunday" for the row. */
+function adminReceivesBox(sub, cycle) {
+  if (!cycle || cycle.status === 'skipped') return false;
+  if (sub?.status === 'active') return true;
+  if (cycle.status === 'locked') return true;
+  return Number(cycle.plan_paid_cents) > 0;
+}
+
+/**
+ * Paused/cancelled tab Sunday column: upcoming box if still going out,
+ * otherwise the latest real box — never a skipped unpaid week.
+ */
+function adminDisplayCycle(sub, list, thisCycle, nextCycle) {
+  if (adminReceivesBox(sub, thisCycle)) return thisCycle;
+  if (adminReceivesBox(sub, nextCycle)) return nextCycle;
+  const real = [...(list || [])]
+    .filter((row) => row && row.status !== 'skipped')
+    .sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)));
+  return real[0] || null;
+}
+
 /**
  * Non-persisted cycle so admin "Next Sunday" lists active subscribers before openNextWeek runs.
  * Meals/fulfillment mirror the latest known cycle (usually this Sunday).
@@ -827,7 +848,8 @@ async function listAll() {
       const source = thisCycle || pickDisplayCycle(list, now) || null;
       nextCycle = previewNextSundayCycle(sub, source, meta.next_sunday, settings || {}, now);
     }
-    const display = thisCycle || nextCycle || pickDisplayCycle(list, now);
+    const display = adminDisplayCycle(sub, list, thisCycle, nextCycle)
+      || pickDisplayCycle(list, now);
     const week = getEditWeek(now, settings || {}, earliestOpenCycle(list) || hintCycleForEdit(list, now, settings || {}));
     return {
       ...sub,
