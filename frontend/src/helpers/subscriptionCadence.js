@@ -5,7 +5,8 @@
  * Live fallbacks (when dates have not loaded yet):
  * Charge: Tuesday 9:00 AM ET (plan + delivery).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel / plan-change for this Sunday: before Tuesday 9:00 AM ET.
+ * Pause / cancel: skip this Sunday while unpaid; once charged/locked it still
+ * goes out (typically after Tuesday 9:00 AM ET). Plan-change: before Tuesday 9:00 AM ET.
  *
  * Customer copy uses these standing weekday times. Calendar dates stay on
  * the box itself (confirmation, meal picker) via cutoff_label / charge_label.
@@ -22,7 +23,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that, pause or cancel anytime before ${PAUSE_CANCEL_BY} (same as the weekly charge). No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksMeals() {
@@ -86,12 +87,12 @@ export function pausedBanner(chargeLabel, { firstBoxLabel, nextBoxLabel } = {}) 
   return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
 
-/** Pending pause after Tuesday 9:00 AM charge — box this Sunday still runs. */
+/** Pause after this Sunday was already charged/locked — box still runs. */
 export function pausingAfterCutoffBanner(sundayLabel) {
   if (sundayLabel) {
-    return `Tuesday's charge has passed, so you're still receiving this Sunday's box on ${sundayLabel}. The plan is paused starting the following week.`
+    return `This Sunday is already charged, so you're still receiving the box on ${sundayLabel}. The plan is paused starting the following week.`
   }
-  return `Tuesday's charge has passed, so you're still receiving this Sunday's box. The plan is paused starting the following week.`
+  return `This Sunday is already charged, so that box still goes out. The plan is paused starting the following week.`
 }
 
 /** Auto-pause after a declined Tuesday charge. Retry window ends at Wednesday meal lock. */

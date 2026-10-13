@@ -1,3 +1,20 @@
+/**
+ * Cron HTTP handlers. Schedules live in backend/vercel.json (JSON — no comments there).
+ *
+ * America/Toronto cutoffs vs UTC (no code change each DST flip):
+ *
+ * Tuesday plan charge — dual slots, first on-time win; jobAlreadyFinished skips the second:
+ *   0 13 * * 2  → 9:00 AM EDT / 8:00 AM EST
+ *   0 14 * * 2  → 10:00 AM EDT / 9:00 AM EST
+ *   So one run is always at-or-after Tuesday 9:00 AM Toronto.
+ *
+ * Wednesday meal lock — single late slot on purpose (never before 5:00 PM Toronto):
+ *   0 22 * * 3  → 6:00 PM EDT / 5:00 PM EST
+ *   EST: exact 5:00 PM. EDT: one hour late (6:00 PM), still after kitchen lock.
+ *   Do not add 21:00 UTC alone — that would be 4:00 PM EST (too early).
+ *   Dual 21+22 like charge would also work with jobAlreadyFinished; we keep one
+ *   slot so lock is simple and always at-or-after 5pm without a seasonal edit.
+ */
 const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();

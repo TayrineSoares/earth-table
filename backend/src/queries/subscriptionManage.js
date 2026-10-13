@@ -83,19 +83,38 @@ async function refundSkip(cycle, subscriptionId) {
   return { refunded_cents: amount };
 }
 
+/**
+ * Skip only if still open and unpaid. Returns the fresh cycle.
+ * If Tuesday charge already won the race, skipped=false and plan_paid_cents > 0.
+ */
 async function skipOpenCycle(cycle) {
-  if (!cycle || cycle.status !== 'open') return;
-  const { error } = await supabase
+  if (!cycle?.id) return { skipped: false, cycle };
+  if (cycle.status !== 'open' || Number(cycle.plan_paid_cents) > 0) {
+    return { skipped: false, cycle };
+  }
+  const { data, error } = await supabase
     .from('subscription_cycles')
     .update({ status: 'skipped' })
     .eq('id', cycle.id)
-    .eq('status', 'open');
+    .eq('status', 'open')
+    .lte('plan_paid_cents', 0)
+    .select('*')
+    .maybeSingle();
   if (error) throw error;
+  if (data) return { skipped: true, cycle: data };
+
+  const { data: fresh, error: readErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('id', cycle.id)
+    .maybeSingle();
+  if (readErr) throw readErr;
+  return { skipped: false, cycle: fresh || cycle };
 }
 
 function pendingNotice(pending) {
   const verb = pending === 'cancelled' ? 'cancelled' : 'paused';
-  return `Tuesday's 9:00 AM ET charge has passed. You're still receiving this Sunday's box. The plan will be ${verb} starting the following week.`;
+  return `This Sunday's box is already charged (or locked), so it still goes out. The plan will be ${verb} starting the following week.`;
 }
 
 /** Pause now when this Sunday is already paid/locked — box still ships; later weeks stop. */
@@ -254,13 +273,23 @@ async function pauseSubscription(userId, subscriptionId) {
   const alreadyPaid = Boolean(cycle && Number(cycle.plan_paid_cents) > 0);
   const alreadyLocked = cycle?.status === 'locked';
 
-  // Paid or locked boxes still go out. Pause starts the following week.
-  // After Tuesday 9:00 AM ET (or once paid/locked), keep this Sunday.
-  if (!charge.before_wednesday || alreadyPaid || alreadyLocked) {
+  // Keep vs skip is decided by money/lock, not the clock — avoids the Tue 9:00 AM
+  // race with the charge job. Clock copy still says "before Tuesday 9am"; after
+  // that the charge usually lands first so pause keeps the box.
+  if (alreadyPaid || alreadyLocked) {
     return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle });
   }
 
-  await skipOpenCycle(cycle);
+  const skipResult = await skipOpenCycle(cycle);
+  const after = skipResult.cycle || cycle;
+  if (
+    !skipResult.skipped
+    && after
+    && (Number(after.plan_paid_cents) > 0 || after.status === 'locked')
+  ) {
+    // Charge (or lock) won the race while we paused — keep this Sunday.
+    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: after });
+  }
 
   const { error } = await supabase
     .from('subscriptions')

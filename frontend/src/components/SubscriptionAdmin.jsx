@@ -395,7 +395,9 @@ const SubscriptionAdmin = () => {
         </div>
       </form>
       <p className="sub-admin-hint">
-        Run charge / lock yourself while testing. Live cron is Tuesday 9:00 AM and Wednesday 5:00 PM America/Toronto (13:00 and 14:00 UTC Tuesday, 21:00 and 22:00 UTC Wednesday, so both EST and EDT fire after the clock).
+        Run charge / lock yourself while testing. Live cadence is Tuesday 9:00 AM and Wednesday 5:00 PM America/Toronto.
+        Cron UTC (no seasonal code change): charge at 13:00 and 14:00 Tuesday (one is at/after 9am in EDT and EST);
+        lock at 22:00 Wednesday only (5:00 PM EST / 6:00 PM EDT) so lock is never before 5pm Toronto.
       </p>
       <div className="sub-admin-inline" style={{ marginBottom: '1rem' }}>
         <AdminButton

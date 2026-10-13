@@ -1442,7 +1442,7 @@ My Subscriptions: ${manageHref}`;
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `Tuesday's 9:00 AM ET charge has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
+      intro: `This Sunday is already charged (or locked), so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     // Cancel button = pause (plan + card kept). Same outcome as pause_now / pause_next.
     cancel_now: {
@@ -1453,7 +1453,7 @@ My Subscriptions: ${manageHref}`;
     cancel_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `Tuesday's 9:00 AM ET charge has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
+      intro: `This Sunday is already charged (or locked), so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,

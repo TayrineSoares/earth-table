@@ -640,14 +640,24 @@ const MySubscriptions = ({ user }) => {
 
   const confirmStatus = (row, action) => {
     if (savingId || statusLockRef.current) return
-    const beforeCharge = row.charge?.before_wednesday !== false
+    const boxCycle = row.next_box_cycle || row.this_week_cycle || null
+    // Same rule as the API: keep this Sunday only if already charged or locked.
+    const thisSundayCommitted = Boolean(
+      boxCycle
+      && (boxCycle.status === 'locked' || Number(boxCycle.plan_paid_cents) > 0)
+    )
     const firstProtected = Boolean(row.first_box_protected)
     const firstSunday = row.first_delivery_label
       || sundayDatePart(row.week?.delivery_label)
       || 'this Sunday'
     const sunday = sundayDatePart(row.week?.delivery_label)
+      || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
     const resumeBy = resumeByCharge(row.charge?.charge_label)
-    const afterChargeBody = `Tuesday's 9:00 AM ET charge has passed. You're still receiving this Sunday, ${sunday}. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
+    const keepSundayBody = `This Sunday, ${sunday}, is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
+    const skipSundayBody = [
+      `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime.`,
+      resumeBy,
+    ]
     const copy = {
       pause: firstProtected
         ? {
@@ -657,17 +667,14 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : beforeCharge
+        : thisSundayCommitted
         ? {
-          title: 'Pause this plan?',
-          body: [
-            `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime before ${PAUSE_CANCEL_BY}.`,
-            resumeBy,
-          ],
+          title: 'Pause after this Sunday?',
+          body: keepSundayBody,
         }
         : {
-          title: 'Pause after this Sunday?',
-          body: afterChargeBody,
+          title: 'Pause this plan?',
+          body: skipSundayBody,
         },
       cancel: firstProtected
         ? {
@@ -677,17 +684,17 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : beforeCharge
+        : thisSundayCommitted
         ? {
-          title: 'Cancel this plan?',
-          body: [
-            `This Sunday, ${sunday}, will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime before ${PAUSE_CANCEL_BY}.`,
-            resumeBy,
-          ],
+          title: 'Cancel after this Sunday?',
+          body: keepSundayBody,
         }
         : {
-          title: 'Cancel after this Sunday?',
-          body: afterChargeBody,
+          title: 'Cancel this plan?',
+          body: [
+            `This Sunday, ${sunday}, will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+            resumeBy,
+          ],
         },
       resume: {
         title: row.pause_reason === 'payment_failed' ? 'Charge this box now?' : 'Resume this plan?',

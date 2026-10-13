@@ -4,7 +4,9 @@
  *
  * Charge: Tuesday 9:00 AM ET (plan + delivery).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel / plan-change for this Sunday: before Tuesday 9:00 AM ET.
+ * Pause / cancel for this Sunday: skip if that week is still unpaid; once
+ * charged or locked the box still goes out (usually after Tuesday 9:00 AM ET).
+ * Plan-change for this Sunday: before Tuesday 9:00 AM ET.
  */
 
 const CADENCE = {

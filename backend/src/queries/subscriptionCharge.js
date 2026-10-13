@@ -2,6 +2,11 @@
  * Weekly jobs: Tuesday 9:00 AM ET plan+delivery charge + receipt email,
  * Wednesday 5:00 PM ET extras + kitchen lock.
  * Safe to re-run: already-paid cycles and locked rows are skipped.
+ *
+ * Vercel cron UTC (see also cronRoutes.js header + vercel.json):
+ * - Charge: 13:00 and 14:00 UTC Tuesday — covers EDT/EST so one fire is at/after 9am Toronto.
+ * - Lock: 22:00 UTC Wednesday only — at/after 5pm Toronto year-round (5pm EST / 6pm EDT).
+ *   Intentionally not 21:00 UTC: that is 4pm EST (too early to freeze meals).
  */
 
 const supabase = require('../../supabase/db');
@@ -67,7 +72,8 @@ async function emailedIdsFor(weekKey, job) {
 }
 
 /**
- * Second DST cron (one UTC hour later) must not email the kitchen again.
+ * Second DST cron (charge's 13:00 then 14:00 UTC) must not email again.
+ * Lock uses a single 22:00 UTC slot, so this mainly guards charge + force re-runs.
  * A run that recorded failures still retries; a clean run is done.
  */
 async function jobAlreadyFinished(weekKey, job) {
@@ -348,9 +354,21 @@ async function ensureCycle(sub, sunday, settings) {
 }
 
 async function chargePlanDelivery(sub, cycle, sunday) {
-  const already = Number(cycle.plan_paid_cents) || 0;
-  const planCents = Number(cycle.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
-  const fee = cycle.delivery ? (Number(cycle.delivery_fee_cents) || 0) : 0;
+  // Re-read so a pause-skip that landed mid-job is not charged.
+  const { data: live, error: liveErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('id', cycle.id)
+    .maybeSingle();
+  if (liveErr) throw liveErr;
+  const row = live || cycle;
+  if (!row || row.status === 'skipped' || row.status === 'locked') {
+    return { charged: false, skipped: true, amount: 0, planCents: 0, deliveryCents: 0 };
+  }
+
+  const already = Number(row.plan_paid_cents) || 0;
+  const planCents = Number(row.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
+  const fee = row.delivery ? (Number(row.delivery_fee_cents) || 0) : 0;
   const due = Math.max(0, planCents - already);
   const amount = Math.round(due * HST) + Math.round(fee * HST);
   if (amount < 50) {
@@ -361,7 +379,9 @@ async function chargePlanDelivery(sub, cycle, sunday) {
           plan_paid_cents: planCents,
           charged_at: new Date().toISOString(),
         })
-        .eq('id', cycle.id);
+        .eq('id', row.id)
+        .eq('status', 'open')
+        .lte('plan_paid_cents', 0);
     }
     return { charged: false, skipped: true, amount: 0, planCents: due, deliveryCents: fee };
   }
@@ -380,18 +400,39 @@ async function chargePlanDelivery(sub, cycle, sunday) {
     metadata: {
       kind: 'subscription_plan',
       subscription_id: sub.id,
-      cycle_id: cycle.id,
+      cycle_id: row.id,
     },
   }, {
-    idempotencyKey: `sub-plan-${cycle.id}-${sunday}-${sub.stripe_payment_method_id}`,
+    idempotencyKey: `sub-plan-${row.id}-${sunday}-${sub.stripe_payment_method_id}`,
   });
   const patch = {
     plan_paid_cents: planCents,
     charged_at: new Date().toISOString(),
   };
-  if (!cycle.stripe_payment_intent_id && pi?.id) patch.stripe_payment_intent_id = pi.id;
-  const { error } = await supabase.from('subscription_cycles').update(patch).eq('id', cycle.id);
+  if (!row.stripe_payment_intent_id && pi?.id) patch.stripe_payment_intent_id = pi.id;
+  // Only mark paid if still open/unpaid — pause may have skipped between PI and write.
+  const { data: paidRow, error } = await supabase
+    .from('subscription_cycles')
+    .update(patch)
+    .eq('id', row.id)
+    .eq('status', 'open')
+    .lte('plan_paid_cents', 0)
+    .select('id')
+    .maybeSingle();
   if (error) throw error;
+  if (!paidRow) {
+    // Paused/skipped after Stripe charged — refund so skip wins the race.
+    try {
+      await stripe.refunds.create({
+        payment_intent: pi.id,
+        reason: 'requested_by_customer',
+        metadata: { kind: 'subscription_charge_race_refund', cycle_id: row.id },
+      });
+    } catch (refundErr) {
+      console.warn('[subscriptions] charge/pause race refund failed:', row.id, refundErr.message);
+    }
+    return { charged: false, skipped: true, amount: 0, planCents: due, deliveryCents: fee };
+  }
   return { charged: true, skipped: false, amount, planCents: due, deliveryCents: fee };
 }
 
