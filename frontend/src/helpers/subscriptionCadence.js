@@ -76,11 +76,22 @@ export function everyWeekBy(cadenceLabel, fallback) {
   return `every week by ${label}`
 }
 
-export function pausedBanner(chargeLabel, { firstBoxLabel } = {}) {
+export function pausedBanner(chargeLabel, { firstBoxLabel, nextBoxLabel } = {}) {
   if (firstBoxLabel) {
     return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Wednesday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
   }
-  return `This plan is paused. Your last meals and card stay on file. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
+  if (nextBoxLabel) {
+    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${chargeLabel || PAUSE_CANCEL_BY} for a later Sunday.`
+  }
+  return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
+}
+
+/** Pending pause after Tuesday cutoff — box this Sunday still runs. */
+export function pausingAfterCutoffBanner(sundayLabel) {
+  if (sundayLabel) {
+    return `You're still receiving this Sunday's box on ${sundayLabel}. The plan will be paused starting the following week.`
+  }
+  return `You're still receiving this Sunday's box. The plan will be paused starting the following week.`
 }
 
 /** Auto-pause after a declined Tuesday charge. Sunday/cutoff details stay on the email. */

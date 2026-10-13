@@ -617,8 +617,18 @@ async function listMine(userId) {
     const hint = open || hintCycleForEdit(list, now, settings || {});
     const week = getEditWeek(now, settings || {}, hint);
     const thisSunday = getSignupDates(now, settings || {}).job_sunday;
-    const receivingWeeks = upcomingReceivingCycles(list, now, sub.created_at, settings || {}, firstYmd);
-    let receiving = receivingWeeks[0] || ensured.cycle || null;
+    let receivingWeeks = upcomingReceivingCycles(list, now, sub.created_at, settings || {}, firstYmd);
+    // Manual pause: only committed boxes still go out. Unpaid open weeks are not a next box.
+    // Keep unpaid weeks visible for payment_failed so they can pay to resume.
+    const manualPause = sub.status === 'paused' && sub.pause_reason !== 'payment_failed';
+    if (manualPause && !firstDue) {
+      receivingWeeks = receivingWeeks.filter((row) => (
+        row
+        && row.status !== 'skipped'
+        && (row.status === 'locked' || Number(row.plan_paid_cents) > 0)
+      ));
+    }
+    let receiving = receivingWeeks[0] || (firstDue ? ensured.cycle : null) || null;
     if (receiving?.status === 'skipped') {
       receiving = String(receiving.delivery_date) === String(firstYmd)
         ? await reopenSkippedCycle(receiving)
@@ -638,6 +648,10 @@ async function listMine(userId) {
     // Meals/extras follow the editable week. After cutoff, this_week_date is the
     // locked Sunday still in motion (Next box), when that cycle exists.
     let current = open || currentCycleForWeek(list, week, null);
+    // Paused with no first-box / committed week: don't surface an unpaid open edit week as "next".
+    if (manualPause && !firstDue && current && Number(current.plan_paid_cents) <= 0) {
+      current = null;
+    }
     const mealSource = previousCycleFromList(list, current)
       || (list || []).find((row) => (
         row
@@ -667,12 +681,13 @@ async function listMine(userId) {
       .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
     const today = torontoYmd(now);
-    const showFirstDelivery = Boolean(firstYmd && String(firstYmd) >= today);
+    const showFirstDelivery = Boolean(firstDue && firstYmd && String(firstYmd) >= today);
     const storedPct = Number(shown?.promo_percent) || 0;
     const firstWeekPct = Number(sub.first_promo_percent) || 0;
     const addonPromoPercent = storedPct > 0
       ? storedPct
       : (shown && firstYmd && String(shown.delivery_date) === String(firstYmd) ? firstWeekPct : 0);
+    const nextBoxCycle = receiving || thisWeekCycle || (firstDue ? ensured.cycle : null) || null;
     const { stripe_payment_method_id: _pm, ...publicSub } = sub;
     void _pm;
     return {
@@ -682,8 +697,8 @@ async function listMine(userId) {
       edit_cycle: current,
       this_week_date: thisWeekCycle?.delivery_date || null,
       this_week_cycle: thisWeekCycle,
-      next_box_date: receiving?.delivery_date || thisWeekCycle?.delivery_date || (firstDue ? firstYmd : null),
-      next_box_cycle: receiving || thisWeekCycle || ensured.cycle || null,
+      next_box_date: nextBoxCycle?.delivery_date || (firstDue ? firstYmd : null),
+      next_box_cycle: nextBoxCycle,
       week,
       charge,
       can_edit: editable,

@@ -33,6 +33,7 @@ import {
   UNCHANGED_MEALS,
   everyWeekBy,
   pausedBanner,
+  pausingAfterCutoffBanner,
   paymentFailedBanner,
   resumeByCharge,
 } from '../helpers/subscriptionCadence'
@@ -658,7 +659,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Pause this plan?',
           body: [
-            `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
+            `This Sunday, ${sunday}, will be skipped.`,
             resumeBy,
           ],
         }
@@ -670,7 +671,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Cancel after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay on file until you resume.`,
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay paused until you resume.`,
             resumeBy,
           ],
         }
@@ -678,13 +679,13 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Cancel this plan?',
           body: [
-            `This Sunday, ${sunday}, will be skipped, and your meals and card stay on file.`,
+            `This Sunday, ${sunday}, will be skipped.`,
             resumeBy,
           ],
         }
         : {
           title: 'Cancel after this Sunday?',
-          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will stay on file starting the following week — resume any time.`,
+          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be paused starting the following week — resume any time.`,
         },
       resume: {
         title: row.pause_reason === 'payment_failed' ? 'Charge this box now?' : 'Resume this plan?',
@@ -916,12 +917,18 @@ const MySubscriptions = ({ user }) => {
             const followingWeekLabel = row.week?.delivery_label
               ? `Following week, ${sundayDatePart(row.week.delivery_label)}`
               : 'Following week'
+            const nextBoxShort = row.next_box_date
+              ? shortWeekdayDate(row.next_box_date)
+              : (row.first_box_protected ? row.first_delivery_label : '')
             const statusNote = paymentFailedPause
               ? ''
-              : isPaused || pending === 'paused'
-                ? pausedBanner(row.charge?.charge_label, {
-                  firstBoxLabel: row.first_box_protected ? row.first_delivery_label : '',
-                })
+              : pending === 'paused'
+                ? pausingAfterCutoffBanner(nextBoxShort || sundayDatePart(row.week?.delivery_label))
+                : isPaused
+                  ? pausedBanner(row.charge?.charge_label, {
+                    firstBoxLabel: row.first_box_protected ? row.first_delivery_label : '',
+                    nextBoxLabel: row.next_box_date ? nextBoxShort : '',
+                  })
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                   : statusLocked
@@ -961,7 +968,12 @@ const MySubscriptions = ({ user }) => {
             const isNextOpen = Boolean(nextWeekOpen[row.id])
             const nextWeekPanelId = `next-week-${row.id}`
             const extrasPromoLabel = firstWeekCodeLabel(row.first_promo_code, row.first_promo_kind)
-            const nextBoxItems = (
+            const hasUpcomingBox = Boolean(
+              row.next_box_date
+              || row.first_box_protected
+              || (row.status === 'active' && (nextBoxCycle || cycle?.delivery_date))
+            )
+            const nextBoxItems = hasUpcomingBox ? (
               <CycleItems
                 meals={nextBoxLines ? nextBoxLines.meals : meals}
                 mealQty={nextBoxLines ? nextBoxLines.mealQty : mealQty}
@@ -982,6 +994,13 @@ const MySubscriptions = ({ user }) => {
                 showMealCount
                 showLockedBadge={nextBoxIsLocked}
               />
+            ) : (
+              <div>
+                <div className="my-sub-section-head">
+                  <p className="my-sub-section-label">Next box</p>
+                </div>
+                <p className="my-sub-empty-extras">—</p>
+              </div>
             )
             const followingUsesRepeat = Boolean(
               showingFollowingWeek
@@ -1107,9 +1126,11 @@ const MySubscriptions = ({ user }) => {
                       <DetailRow label="Next box" emphasize>
                         {row.next_box_date
                           ? shortWeekdayDate(row.next_box_date)
-                          : (row.status === 'active' || showingFollowingWeek || row.first_box_protected
-                            ? shortWeekdayDate(ymd)
-                            : '—')}
+                          : (row.first_box_protected && row.first_delivery_date
+                            ? shortWeekdayDate(row.first_delivery_date)
+                            : (row.status === 'active' && hasUpcomingBox
+                              ? shortWeekdayDate(ymd)
+                              : '—'))}
                       </DetailRow>
                       <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
                       <DetailRow label="Location">{location}</DetailRow>
