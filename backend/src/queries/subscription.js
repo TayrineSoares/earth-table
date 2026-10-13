@@ -282,20 +282,39 @@ async function reopenPaidSkippedCycle(cycle) {
   return reopenSkippedCycle(cycle);
 }
 
-function firstBoxSunday(sub, settings, now = new Date()) {
+/** Earliest paid or locked week — the real first box, not a recomputed signup Sunday. */
+function earliestCommittedBoxYmd(cycles) {
+  const row = [...(cycles || [])]
+    .filter((cycle) => (
+      cycle
+      && cycle.delivery_date
+      && (cycle.status === 'locked' || Number(cycle.plan_paid_cents) > 0)
+    ))
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0];
+  return row ? String(row.delivery_date) : null;
+}
+
+/**
+ * First-box Sunday for pause/cancel protection.
+ * Prefer the earliest paid/locked cycle so a later open week (often created by
+ * ensureFirstBoxCycle from created_at) is not treated as the signup box.
+ */
+function firstBoxSunday(sub, settings, now = new Date(), cycles) {
+  const fromCycles = earliestCommittedBoxYmd(cycles);
+  if (fromCycles) return fromCycles;
   const created = sub?.created_at ? new Date(sub.created_at) : now;
   return getSignupDates(created, settings || {}).first_delivery_date || null;
 }
 
-function firstBoxStillDue(sub, settings, now = new Date()) {
-  const ymd = firstBoxSunday(sub, settings, now);
+function firstBoxStillDue(sub, settings, now = new Date(), cycles) {
+  const ymd = firstBoxSunday(sub, settings, now, cycles);
   return Boolean(ymd && String(ymd) >= torontoYmd(now));
 }
 
-function canEditOpenBox(sub, settings, now = new Date()) {
+function canEditOpenBox(sub, settings, now = new Date(), cycles) {
   if (sub.status === 'active') return true;
   if (sub.status !== 'paused') return false;
-  const ymd = firstBoxSunday(sub, settings, now);
+  const ymd = firstBoxSunday(sub, settings, now, cycles);
   if (!ymd || String(ymd) < torontoYmd(now)) return false;
   return !lockPassedForSunday(ymd, now, settings);
 }
@@ -440,7 +459,7 @@ async function copyPlanMealsIfEmpty(dest, src) {
 }
 
 async function ensureFirstBoxCycle(sub, cycles, settings, now = new Date()) {
-  const firstYmd = firstBoxSunday(sub, settings, now);
+  const firstYmd = firstBoxSunday(sub, settings, now, cycles);
   const today = torontoYmd(now);
   if (!firstYmd || String(firstYmd) < today) {
     return { firstYmd, cycle: null, cycles: cycles || [] };
@@ -592,8 +611,8 @@ async function listMine(userId) {
     const ensured = await ensureFirstBoxCycle(sub, bySub[sub.id] || [], settings || {}, now);
     const list = ensured.cycles;
     const firstYmd = ensured.firstYmd;
-    const firstDue = firstBoxStillDue(sub, settings || {}, now);
-    const editable = canEditOpenBox(sub, settings || {}, now);
+    const firstDue = firstBoxStillDue(sub, settings || {}, now, list);
+    const editable = canEditOpenBox(sub, settings || {}, now, list);
     const open = earliestOpenCycle(list);
     const hint = open || hintCycleForEdit(list, now, settings || {});
     const week = getEditWeek(now, settings || {}, hint);

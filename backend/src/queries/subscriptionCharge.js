@@ -882,9 +882,14 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
       continue;
     }
     if (cycle.status === 'skipped') {
-      const firstYmd = firstBoxSunday(sub, settings || {}, now);
+      const { data: allCycles, error: allErr } = await supabase
+        .from('subscription_cycles')
+        .select('id, delivery_date, status, plan_paid_cents')
+        .eq('subscription_id', sub.id);
+      if (allErr) throw allErr;
+      const firstYmd = firstBoxSunday(sub, settings || {}, now, allCycles);
       if (
-        firstBoxStillDue(sub, settings || {}, now)
+        firstBoxStillDue(sub, settings || {}, now, allCycles)
         && String(cycle.delivery_date) === String(firstYmd)
       ) {
         cycle = await reopenSkippedCycle(cycle);

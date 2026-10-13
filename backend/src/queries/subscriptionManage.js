@@ -15,6 +15,7 @@ const {
   getPlanById,
   getOwnedSubscription,
   getSettings,
+  firstBoxSunday,
   firstBoxStillDue,
   ensureFirstBoxCycle,
 } = require('./subscription');
@@ -157,19 +158,18 @@ async function pauseSubscription(userId, subscriptionId) {
   const { week, charge, cycle } = await currentCycleFor(sub);
   const settings = await getSettings();
   const now = new Date();
+  const { data: rows, error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', sub.id);
+  if (cycleErr) throw cycleErr;
+  const cycles = rows || [];
 
   // First box is charged at signup and always goes out. Pause later weeks only.
-  if (firstBoxStillDue(sub, settings || {}, now)) {
-    const firstYmd = getSignupDates(
-      sub.created_at ? new Date(sub.created_at) : now,
-      settings || {}
-    ).first_delivery_date;
-    const { data: rows, error: cycleErr } = await supabase
-      .from('subscription_cycles')
-      .select('*')
-      .eq('subscription_id', sub.id);
-    if (cycleErr) throw cycleErr;
-    await ensureFirstBoxCycle(sub, rows || [], settings || {}, now);
+  // Use real paid/locked cycles so a later open week is not treated as first box.
+  if (firstBoxStillDue(sub, settings || {}, now, cycles)) {
+    const firstYmd = firstBoxSunday(sub, settings || {}, now, cycles);
+    await ensureFirstBoxCycle(sub, cycles, settings || {}, now);
     const nextSunday = nextOpenSunday(firstYmd);
     const firstWeek = {
       ...week,
