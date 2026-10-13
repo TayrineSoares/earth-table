@@ -592,6 +592,18 @@ async function runPlanCharge({ force = false, now = new Date() } = {}) {
         console.warn('[subscriptions] Charge email failed:', sub.id, err.message);
       }
     }
+
+    // After this Sunday is paid, apply pending pause immediately so status is
+    // Paused (not Active+pending) until Wednesday lock. Pending cancel still
+    // waits for lock so the kitchen job still loads the row.
+    const weekPaid = Number(cycle.plan_paid_cents) > 0 || Boolean(chargeResult.charged);
+    if (sub.pending_status === 'paused' && weekPaid) {
+      try {
+        await applyPendingAfterLock({ ...sub, pending_status: 'paused' });
+      } catch (err) {
+        failures.push({ subscription_id: sub.id, error: `pending pause: ${err.message || err}` });
+      }
+    }
   }
 
   const stats = {

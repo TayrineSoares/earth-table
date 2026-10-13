@@ -25,7 +25,14 @@ const {
   getSettings,
   getOwnedSubscription,
 } = require('./subscription');
-const { getSignupDates, formatTorontoStamp } = require('./subscriptionWeek');
+const {
+  getSignupDates,
+  formatTorontoStamp,
+  lockPassedForSunday,
+  nextOpenSunday,
+  sundayLabelFromYmd,
+  torontoYmd,
+} = require('./subscriptionWeek');
 
 const HST = 1.13;
 const PICKUP_SLOTS = new Set(['10:00-13:00', '14:00-16:30']);
@@ -34,6 +41,40 @@ const ADDON_EXCLUDED = new Set(['catering', 'custom meals']);
 
 function getStripe() {
   return require('stripe')(process.env.STRIPE_SECRET_SK);
+}
+
+/**
+ * First delivery Sunday at signup. Live getSignupDates wins over a stale cart.
+ * Never land on a cook Sunday whose *live* Wednesday lock already passed
+ * (ignores test_lock so a future test override cannot put someone on a
+ * kitchen-locked week — the Setareh/Dalia class of bug).
+ */
+function resolveSignupDelivery(now = new Date(), settings = {}, draftYmd = null) {
+  const dates = getSignupDates(now, settings || {});
+  let sunday = dates.first_delivery_date || draftYmd || null;
+  if (
+    draftYmd
+    && dates.first_delivery_date
+    && String(draftYmd) < String(dates.first_delivery_date)
+  ) {
+    sunday = dates.first_delivery_date;
+  }
+  const today = torontoYmd(now);
+  let guard = 0;
+  while (
+    sunday
+    && String(sunday) >= today
+    && lockPassedForSunday(sunday, now, {})
+    && guard < 4
+  ) {
+    sunday = nextOpenSunday(sunday);
+    guard += 1;
+  }
+  return {
+    ...dates,
+    first_delivery_date: sunday,
+    first_delivery_label: sunday ? sundayLabelFromYmd(sunday) : dates.first_delivery_label,
+  };
 }
 
 function frontendUrl() {
@@ -363,8 +404,11 @@ async function createSubscriptionCheckout(body = {}) {
   }
 
   const settings = await getSettings();
-  const dates = getSignupDates(new Date(), settings || {});
+  const dates = resolveSignupDelivery(new Date(), settings || {}, null);
   const sunday = dates.first_delivery_date;
+  if (!sunday) {
+    throw new SubscriptionError(500, 'Could not determine first delivery Sunday.');
+  }
 
   let deliveryFeeCents = 0;
   let deliveryPostal = null;
@@ -704,12 +748,24 @@ async function completeSubscriptionSignup(session) {
   };
   try {
     const settings = await getSettings();
-    dates = getSignupDates(new Date(), settings || {});
+    // Live cutoff wins: a cart started before Wednesday lock must not land on this Sunday.
+    // Also rejects kitchen-locked weeks even if test_lock_at still shows them as open.
+    dates = resolveSignupDelivery(new Date(), settings || {}, draft.delivery_date);
   } catch (err) {
     console.warn('[subscriptions] live signup dates failed, using checkout snapshot:', err.message);
   }
-  // Live cutoff wins: a cart started before Wednesday lock must not land on this Sunday.
   const sunday = dates.first_delivery_date || draft.delivery_date;
+  if (!sunday) {
+    throw new SubscriptionError(500, 'Could not determine first delivery Sunday.');
+  }
+  if (draft.delivery_date && String(draft.delivery_date) !== String(sunday)) {
+    console.warn(
+      '[subscriptions] signup Sunday adjusted from cart',
+      draft.delivery_date,
+      '→',
+      sunday
+    );
+  }
 
   const { data: sub, error: subErr } = await supabase
     .from('subscriptions')

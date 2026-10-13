@@ -363,7 +363,7 @@ const SubscriberAdmin = () => {
   const viewedCycles = viewedBoxes
     .map((row) => cycleForRow(row, view))
     .filter(Boolean);
-  // Locked only after the Wednesday job has closed every box (charge, then status locked).
+  // Closed after Tuesday charge (paid) and/or Wednesday lock (status locked / skipped).
   const weekLocked = viewedCycles.length > 0 && viewedCycles.every(cycleIsClosed);
   const thisLabel = formatMd(meta.this_sunday, meta.this_sunday_label);
   const nextLabel = formatMd(meta.next_sunday, meta.next_sunday_label);

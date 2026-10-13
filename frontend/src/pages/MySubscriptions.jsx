@@ -29,6 +29,7 @@ import {
   cardExpiryState,
   subscriptionDetailsItems,
   CHARGE_DAY_TIME,
+  PAUSE_CANCEL_BY,
   MEAL_LOCK_BY,
   UNCHANGED_MEALS,
   everyWeekBy,
@@ -407,7 +408,7 @@ const MySubscriptions = ({ user }) => {
               : 'Your card is on file, but we still could not charge this week. Try another card or email hello@earthtableco.ca.'
           } else if (retry?.ok) {
             title = 'You\'re back on'
-            body = 'Your card is saved and the plan is active again. We\'ll charge the next box on the usual Tuesday at 9:00 AM ET if this week\'s cutoff has already passed.'
+            body = `Your card is saved and the plan is active again. If this Sunday is still unpaid and ${MEAL_LOCK_BY} has not passed, we try the charge now. Otherwise the next charge is ${CHARGE_DAY_TIME}.`
           }
           setDialog({
             icon: retry && retry.ok === false ? 'alert' : 'mail',
@@ -646,30 +647,11 @@ const MySubscriptions = ({ user }) => {
       || 'this Sunday'
     const sunday = sundayDatePart(row.week?.delivery_label)
     const resumeBy = resumeByCharge(row.charge?.charge_label)
+    const afterChargeBody = `Tuesday's 9:00 AM ET charge has passed. You're still receiving this Sunday, ${sunday}. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
     const copy = {
       pause: firstProtected
         ? {
           title: 'Pause after your first box?',
-          body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}.`,
-            resumeBy,
-          ],
-        }
-        : beforeCharge
-        ? {
-          title: 'Pause this plan?',
-          body: [
-            `This Sunday, ${sunday}, will be skipped.`,
-            resumeBy,
-          ],
-        }
-        : {
-          title: 'Pause after this Sunday?',
-          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be paused starting the following week.`,
-        },
-      cancel: firstProtected
-        ? {
-          title: 'Cancel after your first box?',
           body: [
             `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay paused until you resume.`,
             resumeBy,
@@ -677,22 +659,42 @@ const MySubscriptions = ({ user }) => {
         }
         : beforeCharge
         ? {
+          title: 'Pause this plan?',
+          body: [
+            `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime before ${PAUSE_CANCEL_BY}.`,
+            resumeBy,
+          ],
+        }
+        : {
+          title: 'Pause after this Sunday?',
+          body: afterChargeBody,
+        },
+      cancel: firstProtected
+        ? {
+          title: 'Cancel after your first box?',
+          body: [
+            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Cancel works like pause: later weeks stop, and your meals and card stay ready to resume.`,
+            resumeBy,
+          ],
+        }
+        : beforeCharge
+        ? {
           title: 'Cancel this plan?',
           body: [
-            `This Sunday, ${sunday}, will be skipped.`,
+            `This Sunday, ${sunday}, will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime before ${PAUSE_CANCEL_BY}.`,
             resumeBy,
           ],
         }
         : {
           title: 'Cancel after this Sunday?',
-          body: `The payment cutoff for this week has passed. You're still receiving this Sunday, ${sunday}. The plan will be paused starting the following week — resume any time.`,
+          body: afterChargeBody,
         },
       resume: {
         title: row.pause_reason === 'payment_failed' ? 'Charge this box now?' : 'Resume this plan?',
         body: row.pause_reason === 'payment_failed'
-          ? 'We\'ll charge the unpaid box to the card on file. If that succeeds, the plan is active again.'
+          ? `We'll charge the unpaid box to the card on file. Update and retry before ${MEAL_LOCK_BY} to keep this Sunday; after that the week is skipped.`
           : row.pending_status
-            ? `This Sunday still goes out, and the pending ${row.pending_status} will be cleared.`
+            ? 'This Sunday still goes out, and the pending pause will be cleared.'
             : row.first_box_protected
               ? 'Your first box still goes out. Weekly charges resume for Sundays after that.'
               : 'Your weekly plan will be active again and weekly charges resume.',

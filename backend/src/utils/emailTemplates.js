@@ -1442,17 +1442,18 @@ My Subscriptions: ${manageHref}`;
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
+      intro: `Tuesday's 9:00 AM ET charge has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
+    // Cancel button = pause (plan + card kept). Same outcome as pause_now / pause_next.
     cancel_now: {
-      subject: `Your weekly plan is cancelled`,
-      heading: `You're cancelled, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} will not go out. Your plan, meals, and saved card are removed. You can start fresh any time from Subscribe & Save.`,
+      subject: `Your weekly plan is paused until you resume`,
+      heading: `You're paused, ${name}`,
+      intro: `${ThisSundayPhrase(sunday)} will not go out. Your meals and card stay ready for when you resume.`,
     },
     cancel_next: {
-      subject: `Your weekly plan is cancelled — this Sunday still runs`,
-      heading: `This Sunday still goes out, ${name}`,
-      intro: `The payment cutoff for this week has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is cancelled starting the following week. Start a new plan any time from Subscribe & Save.`,
+      subject: `Pause confirmed — this Sunday still runs`,
+      heading: `Pause starts after this Sunday, ${name}`,
+      intro: `Tuesday's 9:00 AM ET charge has passed, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,
@@ -1462,7 +1463,7 @@ My Subscriptions: ${manageHref}`;
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
       heading: `We could not charge this week, ${name}`,
-      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} to keep the box. If it is still unpaid by then, this Sunday is skipped and the plan stays paused.`,
+      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} (meal lock) to keep the box. If it is still unpaid by then, this Sunday is skipped and the plan stays paused.`,
     },
     resume: {
       subject: `Your weekly plan is active again`,

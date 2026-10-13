@@ -22,7 +22,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that, pause or cancel anytime before ${PAUSE_CANCEL_BY}. No fees.`
+  return `Your first box can't be paused or cancelled. After that, pause or cancel anytime before ${PAUSE_CANCEL_BY} (same as the weekly charge). No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksMeals() {
@@ -86,17 +86,17 @@ export function pausedBanner(chargeLabel, { firstBoxLabel, nextBoxLabel } = {}) 
   return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
 }
 
-/** Pending pause after Tuesday cutoff — box this Sunday still runs. */
+/** Pending pause after Tuesday 9:00 AM charge — box this Sunday still runs. */
 export function pausingAfterCutoffBanner(sundayLabel) {
   if (sundayLabel) {
-    return `You're still receiving this Sunday's box on ${sundayLabel}. The plan will be paused starting the following week.`
+    return `Tuesday's charge has passed, so you're still receiving this Sunday's box on ${sundayLabel}. The plan is paused starting the following week.`
   }
-  return `You're still receiving this Sunday's box. The plan will be paused starting the following week.`
+  return `Tuesday's charge has passed, so you're still receiving this Sunday's box. The plan is paused starting the following week.`
 }
 
-/** Auto-pause after a declined Tuesday charge. Sunday/cutoff details stay on the email. */
+/** Auto-pause after a declined Tuesday charge. Retry window ends at Wednesday meal lock. */
 export function paymentFailedBanner() {
-  return 'Your subscription is paused because your last payment didn\'t go through. Update your card below to resume your subscription.'
+  return `Your subscription is paused because Tuesday's charge didn't go through. Update your card below before ${MEAL_LOCK_BY} to keep this Sunday's box. If it's still unpaid by then, this Sunday is skipped.`
 }
 
 /** Shown only after a promo/referral code validates. Delivery sentence is pickup-safe. */

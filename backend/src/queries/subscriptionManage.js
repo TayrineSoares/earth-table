@@ -95,10 +95,51 @@ async function skipOpenCycle(cycle) {
 
 function pendingNotice(pending) {
   const verb = pending === 'cancelled' ? 'cancelled' : 'paused';
-  return `The payment cutoff for this week has passed. You're still receiving this Sunday's box. The plan will be ${verb} starting the following week.`;
+  return `Tuesday's 9:00 AM ET charge has passed. You're still receiving this Sunday's box. The plan will be ${verb} starting the following week.`;
 }
 
-async function applyPendingStatus(userId, sub, pending, week, charge) {
+/** Pause now when this Sunday is already paid/locked — box still ships; later weeks stop. */
+async function applyPauseKeepingThisSunday(userId, sub, week, charge) {
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'paused',
+      pause_reason: 'manual',
+      paused_at: new Date().toISOString(),
+      pending_status: null,
+    })
+    .eq('id', sub.id);
+  if (error) throw error;
+  try {
+    await notifyManage(userId, {
+      kind: 'pause_next',
+      mealCount: sub.subscription_plans?.meal_count,
+      deliveryLabel: week.delivery_label,
+      chargeLabel: charge.charge_label,
+    });
+  } catch (err) {
+    console.warn('[subscriptions] pending-status email failed:', err.message);
+  }
+  return {
+    ok: true,
+    status: 'paused',
+    pending: false,
+    week,
+    charge,
+    message: pendingNotice('paused'),
+  };
+}
+
+async function applyPendingStatus(userId, sub, pending, week, charge, { cycle } = {}) {
+  const paidOrLocked = Boolean(
+    cycle
+    && (Number(cycle.plan_paid_cents) > 0 || cycle.status === 'locked')
+  );
+  // Cancel from the customer button is pause. True pending cancel is plan-discontinue only.
+  if (pending === 'paused' && paidOrLocked) {
+    return applyPauseKeepingThisSunday(userId, sub, week, charge);
+  }
+
   const { error } = await supabase
     .from('subscriptions')
     .update({ pending_status: pending })
@@ -214,8 +255,9 @@ async function pauseSubscription(userId, subscriptionId) {
   const alreadyLocked = cycle?.status === 'locked';
 
   // Paid or locked boxes still go out. Pause starts the following week.
+  // After Tuesday 9:00 AM ET (or once paid/locked), keep this Sunday.
   if (!charge.before_wednesday || alreadyPaid || alreadyLocked) {
-    return applyPendingStatus(userId, sub, 'paused', week, charge);
+    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle });
   }
 
   await skipOpenCycle(cycle);
