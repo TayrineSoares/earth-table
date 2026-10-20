@@ -48,6 +48,7 @@ create table if not exists public.subscriptions (
     check (pending_status in ('paused', 'cancelled')),
   stripe_customer_id text,
   stripe_payment_method_id text,
+  card_updated_at timestamptz,
   delivery boolean not null default true,
   delivery_postal_code text,
   pickup_time_slot text,
@@ -250,6 +251,9 @@ alter table public.subscription_plans
 
 alter table public.subscriptions
   add column if not exists cancelled_reason text;
+
+alter table public.subscriptions
+  add column if not exists card_updated_at timestamptz;
 
 alter table public.subscriptions drop constraint if exists subscriptions_cancelled_reason_check;
 alter table public.subscriptions

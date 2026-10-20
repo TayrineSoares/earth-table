@@ -57,9 +57,11 @@ const planStatusLines = (row) => {
   const paused = formatAdminStamp(row?.paused_at);
   const cancelled = formatAdminStamp(row?.cancelled_at);
   const resumed = formatAdminStamp(row?.resumed_at);
+  const cardUpdated = formatAdminStamp(row?.card_updated_at);
   if (paused) lines.push(`Paused ${paused}`);
   if (cancelled) lines.push(`Cancelled ${cancelled}`);
   if (resumed) lines.push(`Reactivated ${resumed}`);
+  if (cardUpdated) lines.push(`Card updated ${cardUpdated}`);
   return lines;
 };
 

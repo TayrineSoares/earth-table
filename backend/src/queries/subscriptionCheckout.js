@@ -775,6 +775,7 @@ async function completeSubscriptionSignup(session) {
       status: 'active',
       stripe_customer_id: customerId,
       stripe_payment_method_id: paymentMethodId,
+      card_updated_at: new Date().toISOString(),
       delivery,
       delivery_postal_code: delivery ? draft.delivery_postal_code : null,
       pickup_time_slot: delivery ? null : cart.pickup_time_slot,
@@ -1026,10 +1027,13 @@ async function completeCardSetup(session) {
   const userId = md.userId;
   if (!pmId || !subId || !userId) throw new SubscriptionError(400, 'Card setup was incomplete.');
 
+  const existing = await getOwnedSubscription(userId, subId);
+  const cardChanged = existing.stripe_payment_method_id !== pmId;
   const { error } = await supabase
     .from('subscriptions')
     .update({
       stripe_payment_method_id: pmId,
+      ...(cardChanged ? { card_updated_at: new Date().toISOString() } : {}),
       ...(customerId ? { stripe_customer_id: customerId } : {}),
     })
     .eq('id', subId)
