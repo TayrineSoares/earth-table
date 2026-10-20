@@ -386,15 +386,43 @@ const MySubscriptions = ({ user }) => {
   }, [location.state, navigate])
 
   const cardSession = searchParams.get('card_session')
+  const cardUpdate = searchParams.get('card_update')
+  useEffect(() => {
+    if (cardUpdate !== 'cancelled') return
+    setSearchParams({}, { replace: true })
+    setDialog({
+      icon: 'alert',
+      title: 'Card not saved',
+      body: 'That card update was cancelled before it finished, so your previous card is still on file. Tap Edit beside the card number and complete the Stripe form to save a new card.',
+      primaryLabel: 'OK',
+    })
+  }, [cardUpdate, setSearchParams])
+
   useEffect(() => {
     const sessionId = cardSession
     if (!sessionId || !userId) return undefined
     let cancelled = false
-    fetchCardSetup(sessionId)
-      .then((result) => {
-        if (cancelled || !result?.ready) return
-        setSearchParams({}, { replace: true })
-        return load().then(() => {
+    let timer = null
+    const wait = () => new Promise((resolve) => {
+      timer = setTimeout(resolve, 2000)
+    })
+    setDialog({
+      icon: 'mail',
+      title: 'Confirming your card…',
+      body: 'Please wait while Stripe confirms your new card. Do not close this page yet.',
+      primaryLabel: 'Confirming…',
+      busy: true,
+    })
+    const confirmCard = async () => {
+      // Stripe can take a few seconds to mark a setup complete (bank auth, redirect).
+      // Poll briefly instead of silently giving up on the first not-ready response.
+      for (let attempt = 0; attempt < 15 && !cancelled; attempt += 1) {
+        const result = await fetchCardSetup(sessionId)
+        if (cancelled) return
+        if (result?.ready) {
+          setSearchParams({}, { replace: true })
+          await load()
+          if (cancelled) return
           const retry = result.retry
           let title = 'Card updated'
           let body = 'This weekly plan will use the new card for the next charge.'
@@ -416,21 +444,34 @@ const MySubscriptions = ({ user }) => {
             body,
             primaryLabel: 'OK',
           })
-        })
-      })
-      .catch((err) => {
-        console.error(err)
-        if (!cancelled) {
-          setDialog({
-            icon: 'alert',
-            title: 'Could not save that card',
-            body: err.message || 'Try Edit beside the card number again.',
-            primaryLabel: 'OK',
-          })
+          return
         }
-      })
+        if (result?.status === 'expired') break
+        if (attempt < 14) await wait()
+      }
+      if (!cancelled) {
+        setDialog({
+          icon: 'alert',
+          title: 'Card not confirmed yet',
+          body: 'Stripe has not confirmed a new card, so your previous card is still on file and no new card was saved. If you finished a bank approval, wait a moment and refresh this page. Otherwise tap Edit beside the card number and complete the Stripe form.',
+          primaryLabel: 'OK',
+        })
+      }
+    }
+    confirmCard().catch((err) => {
+      console.error(err)
+      if (!cancelled) {
+        setDialog({
+          icon: 'alert',
+          title: 'Could not save that card',
+          body: err.message || 'Try Edit beside the card number again.',
+          primaryLabel: 'OK',
+        })
+      }
+    })
     return () => {
       cancelled = true
+      if (timer) clearTimeout(timer)
     }
   }, [cardSession, userId])
 

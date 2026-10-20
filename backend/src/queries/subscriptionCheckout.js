@@ -987,7 +987,7 @@ async function createCardSetupCheckout(userId, subscriptionId) {
     customer: sub.stripe_customer_id,
     payment_method_types: ['card'],
     success_url: `${frontendUrl()}/my-subscriptions?card_session={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${frontendUrl()}/my-subscriptions`,
+    cancel_url: `${frontendUrl()}/my-subscriptions?card_update=cancelled`,
     custom_text: {
       submit: {
         message: 'This saves a card for your weekly plan. Plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.',
@@ -1017,6 +1017,9 @@ async function completeCardSetup(session) {
   if (!setupId) throw new SubscriptionError(400, 'Card setup was missing.');
 
   const si = await stripe.setupIntents.retrieve(setupId);
+  if (si.status !== 'succeeded') {
+    return { ok: false, skipped: true, reason: 'setup_not_succeeded', status: si.status };
+  }
   const pmId = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method?.id;
   const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
   const subId = md.subscription_id;
@@ -1069,8 +1072,9 @@ async function getCardSetupBySessionId(sessionId) {
   if (String((session.metadata || {}).kind || '') !== 'subscription_card') {
     throw new SubscriptionError(404, 'Card update not found.');
   }
-  if (session.status !== 'complete') return { ready: false };
+  if (session.status !== 'complete') return { ready: false, status: session.status };
   const result = await completeCardSetup(session);
+  if (result?.skipped) return { ready: false, status: result.status || session.status };
   return { ready: true, retry: result?.retry || null };
 }
 
