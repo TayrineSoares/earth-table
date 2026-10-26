@@ -27,7 +27,7 @@ import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
 import '../styles/FeedbackDialog.css';
 
-const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, and mains.';
+const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, mains, and soups.';
 
 // Flip to true (or set VITE_SHOW_SUB_TEST_TIMES=true) before more pre-launch testing.
 const SHOW_TEST_WEEK_TIMES = import.meta.env.VITE_SHOW_SUB_TEST_TIMES === 'true';

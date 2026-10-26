@@ -232,8 +232,8 @@ function withNextQuery(path, search) {
   return `${path}?next=${encodeURIComponent(next)}`;
 }
 
-const PLAN_MEAL_CATEGORY_ORDER = ['bowls', 'salads', 'main plates'];
-const ADDON_EXCLUDED = new Set(['catering', 'custom meals']);
+const PLAN_MEAL_CATEGORY_ORDER = ['bowls', 'salads', 'main plates', 'soups'];
+const ADDON_EXCLUDED = new Set(['custom meals']);
 
 function categoryKey(name) {
   return String(name || '').trim().toLowerCase();

@@ -30,7 +30,7 @@ class SubscriptionError extends Error {
 }
 
 /** Shown on plan cards when description is null/blank. */
-const DEFAULT_PLAN_DESCRIPTION = 'Choose any combination of bowls, salads, and mains.';
+const DEFAULT_PLAN_DESCRIPTION = 'Choose any combination of bowls, salads, mains, and soups.';
 
 function planPublicFields(row) {
   if (!row) return null;
@@ -1331,7 +1331,7 @@ function parseTimestampOrNull(value) {
 }
 
 /** Trimmed category names that count as plan meals (not add-ons). */
-const PLAN_MEAL_CATEGORY_NAMES = new Set(['bowls', 'salads', 'main plates']);
+const PLAN_MEAL_CATEGORY_NAMES = new Set(['bowls', 'salads', 'main plates', 'soups']);
 
 /** Ignore the $1 test plan so "Save up to 99%" does not leak onto the marketing page. */
 const MIN_PLAN_CENTS_FOR_SAVINGS = 1000;

@@ -164,8 +164,8 @@ const SubscribeEditMeals = ({ user }) => {
               </p>
               <p className={row.week?.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
                 {row.week?.cutoff_passed
-                  ? `This week's cutoff has passed. Mix bowls, salads, and main plates however you like for ${sundayLabel}.`
-                  : `Mix bowls, salads, and main plates however you like — change anything until ${cutoffLabel}.`}
+                  ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`
+                  : `Mix bowls, salads, main plates, and soups however you like — change anything until ${cutoffLabel}.`}
               </p>
               <div
                 className="subscribe-meal-track"

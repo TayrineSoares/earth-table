@@ -36,8 +36,8 @@ const {
 
 const HST = 1.13;
 const PICKUP_SLOTS = new Set(['10:00-13:00', '14:00-16:30']);
-const PLAN_MEAL_CATEGORY_ORDER = ['bowls', 'salads', 'main plates'];
-const ADDON_EXCLUDED = new Set(['catering', 'custom meals']);
+const PLAN_MEAL_CATEGORY_ORDER = ['bowls', 'salads', 'main plates', 'soups'];
+const ADDON_EXCLUDED = new Set(['custom meals']);
 
 function getStripe() {
   return require('stripe')(process.env.STRIPE_SECRET_SK);
@@ -311,7 +311,7 @@ async function resolveLines(lines, { kind, allowUnavailableIds = new Set() } = {
     }
     const catName = names[product.category_id] || '';
     if (kind === 'plan' && !isPlanMealCategory(catName)) {
-      throw new SubscriptionError(400, `${product.slug} is not a plan meal (bowls, salads, or mains).`);
+      throw new SubscriptionError(400, `${product.slug} is not a plan meal (bowls, salads, mains, or soups).`);
     }
     if (kind === 'addon' && !isAddonCategory(catName)) {
       throw new SubscriptionError(400, `${product.slug} cannot be added as an add-on.`);

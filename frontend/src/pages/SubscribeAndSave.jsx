@@ -17,7 +17,7 @@ const HOW_IT_WORKS = [
   {
     icon: ShoppingBag,
     title: 'Choose your plan',
-    body: '10, 15, or 20 meals a week. Mix bowls, salads, and main plates in any combination.',
+    body: '10, 15, or 20 meals a week. Mix bowls, salads, main plates, and soups in any combination.',
   },
   {
     icon: PlusCircle,
