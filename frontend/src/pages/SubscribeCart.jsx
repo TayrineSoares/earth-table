@@ -383,7 +383,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       <div className="page-wrapper">
         <div className="subscribe-checkout-hero">
           <p className="checkout-summary-text">Review &amp; Confirm</p>
-          {savedCents > 0 ? (
+          {savedCents >= 1000 ? (
             <p className="subscribe-cart-savings-pill">
               You&apos;re saving ${(savedCents / 100).toFixed(0)} with your subscription.
             </p>
