@@ -11,6 +11,8 @@ import AdminToolbar from './admin/AdminToolbar';
 import AdminListItem from './admin/AdminListItem';
 import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
+import FeedbackDialog from './FeedbackDialog';
+import { adminSuccessDialog } from '../helpers/adminFeedback';
 import '../styles/CategoryAdmin.css'
 import '../styles/AdminShared.css'
 
@@ -20,6 +22,7 @@ const CategoryAdmin = () => {
   const [showForm, setShowForm] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dialog, setDialog] = useState(null);
   const formRef = useRef();
 
   useEffect(() => {
@@ -47,8 +50,15 @@ const CategoryAdmin = () => {
       const data = await addCategory(newCategory);
       setCategories(prev => [...prev, data]);
       setShowForm(false);
+      setDialog(adminSuccessDialog(data.name || newCategory.name, 'added'));
     } catch (err) {
       console.error("Error adding category:", err)
+      setDialog({
+        icon: 'alert',
+        title: 'Could not add category',
+        body: err.message || 'Failed to add category.',
+        primaryLabel: 'Got it',
+      });
     }
   };
 
@@ -61,9 +71,16 @@ const CategoryAdmin = () => {
       );
 
       setCategoryToEdit(null); 
-      setShowForm(false); 
+      setShowForm(false);
+      setDialog(adminSuccessDialog(updatedCategory.name || categoryToUpdate.name, 'updated'));
     } catch (err) {
       console.error("Error updating category", err);
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update category',
+        body: err.message || 'Failed to update category.',
+        primaryLabel: 'Got it',
+      });
     }
 
   };
@@ -177,6 +194,8 @@ const CategoryAdmin = () => {
           />
         ))}
       </div>
+
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };

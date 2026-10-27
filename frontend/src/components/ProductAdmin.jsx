@@ -13,8 +13,18 @@ import AdminToolbar from './admin/AdminToolbar';
 import AdminListItem from './admin/AdminListItem';
 import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
+import FeedbackDialog from './FeedbackDialog';
+import { adminSuccessDialog } from '../helpers/adminFeedback';
 import '../styles/ProductAdmin.css';
 import '../styles/AdminShared.css';
+
+const sortByCreatedAtDesc = (list) =>
+  [...list].sort((a, b) => {
+    const aT = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bT = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (bT !== aT) return bT - aT;
+    return (b.id || 0) - (a.id || 0);
+  });
 
 const ProductAdmin = () => {
   const [products, setProducts] = useState([]);
@@ -29,6 +39,7 @@ const ProductAdmin = () => {
   const [archiveTab, setArchiveTab] = useState('all');
   /** 'all' | 'available' | 'sold_out' */
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [dialog, setDialog] = useState(null);
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -43,7 +54,7 @@ const ProductAdmin = () => {
           fetchAllTags(),
         ]);
         if (!cancelled) {
-          setProducts(productsData);
+          setProducts(sortByCreatedAtDesc(productsData || []));
           setCategories(categoriesData);
           setAllTags(tagsData || []);
         }
@@ -65,11 +76,17 @@ const ProductAdmin = () => {
     try {
       const createdProduct = await addProduct(newProductData);
 
-      setProducts(prev => [...prev, createdProduct]);
+      setProducts((prev) => sortByCreatedAtDesc([createdProduct, ...prev]));
       setShowForm(false);
-      
+      setDialog(adminSuccessDialog(createdProduct.slug || newProductData.slug, 'added'));
     } catch (err) {
       console.error("Failed to add product:", err.message);
+      setDialog({
+        icon: 'alert',
+        title: 'Could not add product',
+        body: err.message || 'Failed to add product.',
+        primaryLabel: 'Got it',
+      });
     }  
   };
 
@@ -99,13 +116,22 @@ const ProductAdmin = () => {
         throw new Error("Invalid updated product data");
       }
 
-      setProducts(prev => 
-        prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+      setProducts((prev) =>
+        sortByCreatedAtDesc(
+          prev.map((p) => (p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p))
+        )
       );
       setShowForm(false);
       setEditProduct(null);
+      setDialog(adminSuccessDialog(updatedProduct.slug || updatedData.slug, 'updated'));
     } catch (err) {
       console.error("Failed to update product:", err.message);
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update product',
+        body: err.message || 'Failed to update product.',
+        primaryLabel: 'Got it',
+      });
     }
   };
 
@@ -148,15 +174,17 @@ const ProductAdmin = () => {
   }, [products, searchTerm, categoryFilter, categories, allTags]);
 
   const tabFilteredProducts = useMemo(() => {
-    return filteredProducts.filter((product) => {
-      if (archiveTab === 'active' && !product.is_active) return false;
-      if (archiveTab === 'archived' && product.is_active) return false;
+    return sortByCreatedAtDesc(
+      filteredProducts.filter((product) => {
+        if (archiveTab === 'active' && !product.is_active) return false;
+        if (archiveTab === 'archived' && product.is_active) return false;
 
-      const isAvailable = product.is_available !== false && product.is_available !== 0;
-      if (availabilityFilter === 'available' && !isAvailable) return false;
-      if (availabilityFilter === 'sold_out' && isAvailable) return false;
-      return true;
-    });
+        const isAvailable = product.is_available !== false && product.is_available !== 0;
+        if (availabilityFilter === 'available' && !isAvailable) return false;
+        if (availabilityFilter === 'sold_out' && isAvailable) return false;
+        return true;
+      })
+    );
   }, [filteredProducts, archiveTab, availabilityFilter]);
 
   if (loading) {
@@ -318,6 +346,8 @@ const ProductAdmin = () => {
           })}
         </div>
       )}
+
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };

@@ -19,6 +19,8 @@ import AdminToolbar from './admin/AdminToolbar';
 import AdminButton from './admin/AdminButton';
 import FormCard from './admin/FormCard';
 import FormField from './admin/FormField';
+import FeedbackDialog from './FeedbackDialog';
+import { adminSuccessDialog } from '../helpers/adminFeedback';
 import '../styles/PartnerAdmin.css';
 import '../styles/AdminShared.css';
 import '../styles/OrderAdmin.css';
@@ -54,6 +56,7 @@ const PartnerAdmin = () => {
   const [savingCashback, setSavingCashback] = useState(false);
   const [savingActiveId, setSavingActiveId] = useState(null);
   const [statusTab, setStatusTab] = useState('active');
+  const [dialog, setDialog] = useState(null);
 
   const load = async () => {
     const [partnerRows, userRows] = await Promise.all([
@@ -148,15 +151,25 @@ const PartnerAdmin = () => {
         cashback_percent: cashback,
       });
       await load();
+      const label =
+        [selectedUser?.first_name, selectedUser?.last_name].filter(Boolean).join(' ') ||
+        selectedUser?.email ||
+        referralCode.trim();
       setSelectedUserId('');
       setUserSearch('');
       setReferralCode('');
       setDiscountPercent('');
       setCashbackPercent('');
       setShowForm(false);
+      setDialog(adminSuccessDialog(label, 'added'));
     } catch (err) {
       console.error('Error creating partner:', err);
-      alert(err.message || 'Failed to create partner.');
+      setDialog({
+        icon: 'alert',
+        title: 'Could not add partner',
+        body: err.message || 'Failed to create partner.',
+        primaryLabel: 'Got it',
+      });
     } finally {
       setSaving(false);
     }
@@ -211,9 +224,15 @@ const PartnerAdmin = () => {
       );
       setEditingCodeId(null);
       setEditCode('');
+      setDialog(adminSuccessDialog(partnerName(row), 'updated'));
     } catch (err) {
       console.error('Error updating referral code:', err);
-      alert(err.message || 'Failed to update referral code.');
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update partner',
+        body: err.message || 'Failed to update referral code.',
+        primaryLabel: 'Got it',
+      });
     } finally {
       setSavingCode(false);
     }
@@ -247,9 +266,15 @@ const PartnerAdmin = () => {
       );
       setEditingDiscountId(null);
       setEditDiscount('');
+      setDialog(adminSuccessDialog(partnerName(row), 'updated'));
     } catch (err) {
       console.error('Error updating customer discount:', err);
-      alert(err.message || 'Failed to update customer discount.');
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update partner',
+        body: err.message || 'Failed to update customer discount.',
+        primaryLabel: 'Got it',
+      });
     } finally {
       setSavingDiscount(false);
     }
@@ -283,9 +308,15 @@ const PartnerAdmin = () => {
       );
       setEditingCashbackId(null);
       setEditCashback('');
+      setDialog(adminSuccessDialog(partnerName(row), 'updated'));
     } catch (err) {
       console.error('Error updating partner cashback:', err);
-      alert(err.message || 'Failed to update partner cashback.');
+      setDialog({
+        icon: 'alert',
+        title: 'Could not update partner',
+        body: err.message || 'Failed to update partner cashback.',
+        primaryLabel: 'Got it',
+      });
     } finally {
       setSavingCashback(false);
     }
@@ -768,6 +799,8 @@ const PartnerAdmin = () => {
       <p className="partner-admin-note">
         Payout preference applies to new orders immediately. Monthly invoices show cash and store credit separately; cash can be marked paid only after the invoice is sent.
       </p>
+
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };

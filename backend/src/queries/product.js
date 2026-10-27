@@ -1,9 +1,20 @@
 const supabase = require('../../supabase/db')
 
+function assertValidPriceCents(price_cents) {
+  const cents = Math.round(Number(price_cents));
+  if (!Number.isFinite(cents) || cents <= 0) {
+    const err = new Error('Price must be greater than $0.');
+    err.status = 400;
+    throw err;
+  }
+  return cents;
+}
+
 async function getAllProducts() {
   const { data: products, error } = await supabase
     .from('products')
-    .select('*, product_tags(tag_id)');
+    .select('*, product_tags(tag_id)')
+    .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Error fetching products: ${error.message}`);
 
@@ -37,11 +48,12 @@ async function getProductsByCategory(categoryId) {
 };
 
 async function createProduct({ slug, description, price_cents, image_url, category_id, is_available, tag_ids = [] }) {
+  const validPrice = assertValidPriceCents(price_cents);
 
   const { data, error } = await supabase
     .from('products')
     .insert([
-      { slug, description, price_cents, image_url, category_id, is_available }
+      { slug, description, price_cents: validPrice, image_url, category_id, is_available }
     ])
     .select();
 
@@ -68,9 +80,13 @@ async function deleteProductById(id) {
 async function updateProductById(id, updatedData) {
   const { tag_ids = [], ...productData } = updatedData;
 
+  if (Object.prototype.hasOwnProperty.call(productData, 'price_cents')) {
+    productData.price_cents = assertValidPriceCents(productData.price_cents);
+  }
+
   const { data, error } = await supabase
     .from('products')
-    .update(updatedData)
+    .update(productData)
     .eq('id', id)
     .select() 
     .single();

@@ -22,6 +22,7 @@ import {
   centsToDollarInput,
   toDatetimeLocalValue,
 } from '../helpers/subscriptionHelpers';
+import { adminSuccessDialog } from '../helpers/adminFeedback';
 import '../styles/PromoAdmin.css';
 import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
@@ -121,6 +122,7 @@ const SubscriptionAdmin = () => {
       setPriceDollars('');
       setDescription('');
       setShowForm(false);
+      setDialog(adminSuccessDialog(created.name || name, 'added'));
     } catch (err) {
       setError(err.message || 'Failed to create plan.');
     }
@@ -176,6 +178,7 @@ const SubscriptionAdmin = () => {
       setPlans((prev) => prev.map((p) => (p.id === plan.id ? updated : p)));
       setPriceDrafts((prev) => ({ ...prev, [plan.id]: centsToDollarInput(updated.price_cents) }));
       setEditingPriceId(null);
+      setDialog(adminSuccessDialog(updated.name || plan.name, 'updated'));
     } catch (err) {
       setError(err.message || 'Failed to update price.');
       cancelEditPrice(plan);
@@ -199,6 +202,7 @@ const SubscriptionAdmin = () => {
       setPlans((prev) => prev.map((p) => (p.id === plan.id ? updated : p)));
       setDescDrafts((prev) => ({ ...prev, [plan.id]: updated.description || '' }));
       setEditingDescId(null);
+      setDialog(adminSuccessDialog(updated.name || plan.name, 'updated'));
     } catch (err) {
       setError(err.message || 'Failed to update description.');
       cancelEditDescription(plan);

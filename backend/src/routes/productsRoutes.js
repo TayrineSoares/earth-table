@@ -38,7 +38,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(newProduct);
   } catch (error) {
     console.error('Error creating product:', error.message);
-    res.status(500).json({ error: error.message });
+    const status = error.status || 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -67,15 +68,14 @@ router.patch('/:id', async (req, res) => {
   const { tag_ids = [], ...updatedData } = req.body;
 
   try {
-    const updatedProduct = await updateProductById(id, updatedData);
-    await updateProductTags(id, tag_ids);
-
+    const updatedProduct = await updateProductById(id, { ...updatedData, tag_ids });
     const updatedTags = await getProductTags(id);
 
     res.json({ ...updatedProduct, tag_ids: updatedTags });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    const status = error.status || 500;
+    res.status(status).json({ error: error.message });
   }
 });
 

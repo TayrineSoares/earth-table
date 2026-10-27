@@ -3,31 +3,27 @@ import { uploadProductImage, fetchAllTags, fetchProductTags } from '../helpers/a
 import FormCard from './admin/FormCard';
 import FormField from './admin/FormField';
 import ImageField from './admin/ImageField';
+import FeedbackDialog from './FeedbackDialog';
+
+const emptyForm = () => ({
+  id: '',
+  slug: '',
+  image_url: '',
+  description: '',
+  is_available: true,
+  price_cents: '',
+  category_id: '',
+});
 
 const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initialData, categories }, ref) {
-  const [formData, setFormData] = useState({
-    id: '',
-    slug: '',
-    image_url: '',
-    description: '',
-    is_available: true,
-    price_cents: 0,
-    category_id: '',
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const [dialog, setDialog] = useState(null);
 
   const [allTags, setAllTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
 
   const resetForm = () => {
-    setFormData({
-      id: '',
-      slug: '',
-      image_url: '',
-      description: '',
-      is_available: true,
-      price_cents: 0,
-      category_id: '',
-    });
+    setFormData(emptyForm());
     setSelectedTags([]);
   };
 
@@ -38,13 +34,14 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
         setAllTags(tags);
 
         if (initialData && Object.keys(initialData).length > 0) {
+          const dollars = Number(initialData.price_cents) / 100;
           setFormData({
             id: initialData.id || '',
             slug: initialData.slug || '',
             image_url: initialData.image_url || '',
             description: initialData.description || '',
             is_available: initialData.is_available ?? true,
-            price_cents: initialData.price_cents / 100 || 0,
+            price_cents: Number.isFinite(dollars) && dollars > 0 ? dollars : '',
             category_id: initialData.category_id || '',
           });
 
@@ -72,24 +69,29 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const rawPrice = formData.price_cents;
+    const dollars = typeof rawPrice === 'string' && rawPrice.trim() === ''
+      ? NaN
+      : parseFloat(rawPrice);
+
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      setDialog({
+        icon: 'alert',
+        title: 'Price required',
+        body: 'Enter a price greater than $0 before saving this product.',
+        primaryLabel: 'Got it',
+      });
+      return;
+    }
+
     const processedForm = {
       ...formData,
-      price_cents: Math.round(parseFloat(formData.price_cents) * 100),
+      price_cents: Math.round(dollars * 100),
       tag_ids: selectedTags,
     };
 
     onSubmit(processedForm);
-
-    setFormData({
-      id: '',
-      slug: '',
-      image_url: '',
-      description: '',
-      is_available: true,
-      price_cents: 0,
-      category_id: '',
-    });
-    setSelectedTags([]);
+    resetForm();
   };
 
   const handleFileUpload = async (e) => {
@@ -110,6 +112,7 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
   const editing = Boolean(initialData?.id);
 
   return (
+    <>
     <FormCard
       ref={ref}
       title={editing ? 'Update Product' : 'Add New Product'}
@@ -167,7 +170,8 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
             value={formData.price_cents}
             onChange={handleChange}
             step="0.01"
-            min="0"
+            min="0.01"
+            required
           />
         </div>
       </FormField>
@@ -238,7 +242,10 @@ const ProductForm = forwardRef(function ProductForm({ onSubmit, onCancel, initia
           </span>
         </label>
       </div>
+
     </FormCard>
+    <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
+    </>
   );
 });
 

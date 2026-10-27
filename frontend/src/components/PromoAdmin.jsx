@@ -7,6 +7,8 @@ import AdminButton from './admin/AdminButton';
 import Badge from './admin/Badge';
 import FormCard from './admin/FormCard';
 import FormField from './admin/FormField';
+import FeedbackDialog from './FeedbackDialog';
+import { adminSuccessDialog } from '../helpers/adminFeedback';
 import '../styles/PromoAdmin.css';
 import '../styles/AdminShared.css';
 
@@ -34,6 +36,7 @@ const PromoAdmin = () => {
   const [firstTimeOnly, setFirstTimeOnly] = useState(false);
   const [maxUses, setMaxUses] = useState('');
   const [savingActiveId, setSavingActiveId] = useState(null);
+  const [dialog, setDialog] = useState(null);
 
   const loadPromos = async () => {
     const { data, error } = await supabase
@@ -125,6 +128,7 @@ const PromoAdmin = () => {
     setPromos((prev) => [data, ...prev]);
     resetForm();
     setShowForm(false);
+    setDialog(adminSuccessDialog(data.code || cleaned, 'added'));
   };
 
   const handleToggleActive = async (row) => {
@@ -337,6 +341,8 @@ const PromoAdmin = () => {
           </tbody>
         </table>
       )}
+
+      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };
