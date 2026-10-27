@@ -1,6 +1,7 @@
 import './App.css';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
+import FeedbackDialog from './components/FeedbackDialog.jsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppRoutes from './AppRoutes.jsx';
@@ -25,6 +26,7 @@ const App = () => {
   const [subCart, setSubCart] = useState(() => readSubCart(null));
   const [showSubCartPopup, setShowSubCartPopup] = useState(false);
   const [user, setUser] = useState(null);
+  const [cartNoteDialog, setCartNoteDialog] = useState(null);
   const navigate = useNavigate();
 
   const readStoredCart = (key) => {
@@ -275,7 +277,16 @@ const App = () => {
   };
 
   const addToCart = (product, quantity = 1) => {
+    if (!product?.id) return;
     addItemsToCart([{ ...product, quantity: Math.max(1, Number(quantity) || 1) }]);
+    if (product.slug === 'Burger & Wedges') {
+      setCartNoteDialog({
+        icon: 'alert',
+        title: 'Make your choices and leave a note',
+        body: "Don't forget to add a note at checkout with your bun (gluten-free or kamut), wedges (tallow potato or sweet potato), and if you'd like it dairy-free.",
+        primaryLabel: 'Got it',
+      });
+    }
   };
 
   const removeAll = (product) => {
@@ -358,6 +369,10 @@ const App = () => {
         showSubCartPopup={showSubCartPopup}
       />
       <Footer />
+      <FeedbackDialog
+        dialog={cartNoteDialog}
+        onClose={() => setCartNoteDialog(null)}
+      />
     </div>
   );
 };
