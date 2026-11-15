@@ -185,7 +185,8 @@ router.patch('/:id/plan', async (req, res) => {
     const result = await changeSubscriptionPlan(
       req.body?.userId,
       req.params.id,
-      req.body?.planId
+      req.body?.planId,
+      { meals: req.body?.meals, addons: req.body?.addons }
     );
     res.json(result);
   } catch (err) {

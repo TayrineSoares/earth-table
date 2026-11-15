@@ -31,6 +31,7 @@ const SubscribeEditMeals = ({ user }) => {
   const userId = user?.id
   // Snapshot on first mount so Edit plan can reseed without a URL change (and a second load).
   const [startFresh] = useState(() => location.state?.fresh === true)
+  const [planChangeFlow] = useState(() => location.state?.planChange === true)
   const [row, setRow] = useState(null)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
@@ -75,7 +76,7 @@ const SubscribeEditMeals = ({ user }) => {
           setIsLoading(false)
           return
         }
-        if (!found.can_edit) {
+        if (!found.can_edit && !planChangeFlow) {
           setDialog({
             icon: 'alert',
             title: 'This box is locked',
@@ -88,9 +89,27 @@ const SubscribeEditMeals = ({ user }) => {
         }
         const stored = readEditCart(userId, subscriptionId)
         const source = found.edit_cycle || found.cycle
-        const nextCart = startFresh || stored.subscriptionId !== subscriptionId
-          ? seedEditCart(found, source)
-          : stored
+        const keepPlanChange = Boolean(
+          !startFresh
+          && stored.planChangeId
+          && stored.subscriptionId === subscriptionId
+        )
+        const nextCart = keepPlanChange
+          ? stored
+          : (startFresh || stored.subscriptionId !== subscriptionId
+            ? seedEditCart(found, source)
+            : stored)
+        if (planChangeFlow && !nextCart.planChangeId) {
+          setDialog({
+            icon: 'alert',
+            title: 'Start the plan change again',
+            body: 'Choose a plan from My Subscriptions, then confirm your meals to finish the switch.',
+            primaryLabel: 'My Subscriptions',
+            primaryTo: '/my-subscriptions',
+          })
+          setIsLoading(false)
+          return
+        }
         writeEditCart(userId, subscriptionId, nextCart)
         setRow(found)
         setEditCart(nextCart)
@@ -115,9 +134,10 @@ const SubscribeEditMeals = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [userId, subscriptionId, startFresh])
+  }, [userId, subscriptionId, startFresh, planChangeFlow])
 
   const plan = row?.subscription_plans || {}
+  const changingPlan = Boolean(editCart.planChangeId)
   const picked = totalQty(editCart.meals)
   const need = Number(editCart.mealCount) || 0
   const exact = mealsExact(editCart)
@@ -125,6 +145,8 @@ const SubscribeEditMeals = ({ user }) => {
   const sundayLabel = row?.week?.delivery_label || ''
   const cutoffLabel = row?.week?.cutoff_label || MEAL_LOCK_BY
   const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
+  const planLineCount = changingPlan ? need : (Number(plan.meal_count) || need)
+  const planLinePrice = changingPlan ? editCart.priceCents : plan.price_cents
 
   const bump = (product, delta) => {
     setEditCart((prev) => {
@@ -157,15 +179,21 @@ const SubscribeEditMeals = ({ user }) => {
         <div className="subscribe-content">
           {row ? (
             <>
-              <h1 className="subscribe-h1 subscribe-choose-title">Choose your meals</h1>
+              <h1 className="subscribe-h1 subscribe-choose-title">
+                {changingPlan ? 'Confirm your meals' : 'Choose your meals'}
+              </h1>
               <p className="subscribe-plan-line">
-                {plan.meal_count} meals · {formatPlanPrice(plan.price_cents)}/week ·{' '}
+                {planLineCount} meals · {formatPlanPrice(planLinePrice)}/week ·{' '}
                 <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
               </p>
-              <p className={row.week?.cutoff_passed ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
-                {row.week?.cutoff_passed
-                  ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`
-                  : `Mix bowls, salads, main plates, and soups however you like — change anything until ${cutoffLabel}.`}
+              <p className={(!changingPlan && row.week?.cutoff_passed) ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
+                {changingPlan
+                  ? (editCart.planChangePending
+                    ? `You're switching to ${need} meals a week. Pick exactly ${need} for the following week — the plan change only saves when you confirm.`
+                    : `You're switching to ${need} meals a week. Pick exactly ${need} for ${sundayLabel || 'this Sunday'} — the plan change only saves when you confirm.`)
+                  : row.week?.cutoff_passed
+                    ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`
+                    : `Mix bowls, salads, main plates, and soups however you like — change anything until ${cutoffLabel}.`}
               </p>
               <div
                 className="subscribe-meal-track"

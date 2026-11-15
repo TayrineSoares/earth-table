@@ -18,6 +18,7 @@ const {
   firstBoxSunday,
   firstBoxStillDue,
   ensureFirstBoxCycle,
+  writeCyclePlanAndAddons,
 } = require('./subscription');
 const {
   getEditWeek,
@@ -26,6 +27,7 @@ const {
   torontoYmd,
   nextOpenSunday,
   sundayLabelFromYmd,
+  cutoffAtForSunday,
   pauseNudgeWeek,
 } = require('./subscriptionWeek');
 
@@ -756,7 +758,66 @@ async function sendDeadlineNotice(now = new Date()) {
   return { ok: true, ymd, emailed, skipped, failed: failures.length, failures };
 }
 
-async function changeSubscriptionPlan(userId, subscriptionId, planId) {
+/**
+ * Following Sunday after the charged/locked week — where a pending plan change starts.
+ * Creates the row early so confirmed meals can land before Wednesday lock opens it.
+ */
+async function ensureFollowingWeekCycle(sub, nextPlan, settings, week, sourceCycle) {
+  const nextSunday = nextOpenSunday(week.delivery_date);
+  if (!nextSunday) {
+    throw new SubscriptionError(400, 'Could not find the following Sunday for this plan change.');
+  }
+
+  const { data: existing, error: findErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', sub.id)
+    .eq('delivery_date', nextSunday)
+    .maybeSingle();
+  if (findErr) throw findErr;
+
+  if (existing) {
+    if (existing.status !== 'open') {
+      throw new SubscriptionError(400, 'The following week is already locked. Try again after this Sunday.');
+    }
+    const { error: updErr } = await supabase
+      .from('subscription_cycles')
+      .update({
+        plan_id: nextPlan.id,
+        plan_price_cents: Number(nextPlan.price_cents) || 0,
+      })
+      .eq('id', existing.id);
+    if (updErr) throw updErr;
+    return { ...existing, plan_id: nextPlan.id, plan_price_cents: Number(nextPlan.price_cents) || 0 };
+  }
+
+  const delivery = sourceCycle ? !!sourceCycle.delivery : !!sub.delivery;
+  const { data: created, error: insErr } = await supabase
+    .from('subscription_cycles')
+    .insert({
+      subscription_id: sub.id,
+      plan_id: nextPlan.id,
+      plan_price_cents: Number(nextPlan.price_cents) || 0,
+      cutoff_at: cutoffAtForSunday(nextSunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
+      delivery_date: nextSunday,
+      pickup_date: delivery ? null : nextSunday,
+      status: 'open',
+      delivery,
+      delivery_postal_code: sourceCycle?.delivery_postal_code ?? sub.delivery_postal_code ?? null,
+      pickup_time_slot: sourceCycle?.pickup_time_slot ?? sub.pickup_time_slot ?? null,
+      special_note: sourceCycle?.special_note ?? sub.special_note ?? null,
+      delivery_fee_cents: delivery ? (Number(sourceCycle?.delivery_fee_cents) || 0) : 0,
+      plan_paid_cents: 0,
+      addon_paid_cents: 0,
+      promo_percent: 0,
+    })
+    .select('*')
+    .single();
+  if (insErr) throw insErr;
+  return created;
+}
+
+async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, addons } = {}) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
   if (sub.status !== 'active') {
     throw new SubscriptionError(400, 'Resume this plan before changing it.');
@@ -771,11 +832,26 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId) {
     throw new SubscriptionError(400, 'That plan is not available.');
   }
 
+  const settings = await getSettings();
   const { week, charge, cycle } = await currentCycleFor(sub);
   const currentCount = Number(sub.subscription_plans?.meal_count) || 0;
   const nextCount = Number(nextPlan.meal_count) || 0;
 
+  // Plan changes must confirm meals before the change finishes.
+  const { qtyLines } = require('./subscriptionCheckout');
+  const mealLines = qtyLines(meals);
+  const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
+  if (mealQty !== nextCount) {
+    throw new SubscriptionError(
+      400,
+      `Pick exactly ${nextCount} meal${nextCount === 1 ? '' : 's'} before finishing this plan change.`
+    );
+  }
+
   if (!charge.before_wednesday) {
+    const following = await ensureFollowingWeekCycle(sub, nextPlan, settings || {}, week, cycle);
+    await writeCyclePlanAndAddons(following.id, meals, addons || [], { mealCount: nextCount });
+
     const { error } = await supabase
       .from('subscriptions')
       .update({ pending_plan_id: nextPlan.id })
@@ -848,6 +924,13 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId) {
     }
   }
 
+  if (!cycle || cycle.status !== 'open') {
+    throw new SubscriptionError(400, 'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.');
+  }
+
+  // Meals first so a failed pick does not leave the subscription on the new plan.
+  await writeCyclePlanAndAddons(cycle.id, meals, addons || [], { mealCount: nextCount });
+
   const { error: subErr } = await supabase
     .from('subscriptions')
     .update({
@@ -857,17 +940,15 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId) {
     .eq('id', sub.id);
   if (subErr) throw subErr;
 
-  if (cycle && cycle.status === 'open') {
-    const { error: cycleErr } = await supabase
-      .from('subscription_cycles')
-      .update({
-        plan_id: nextPlan.id,
-        plan_price_cents: newPrice,
-        plan_paid_cents: alreadyPaid > 0 ? newPrice : cycle.plan_paid_cents,
-      })
-      .eq('id', cycle.id);
-    if (cycleErr) throw cycleErr;
-  }
+  const { error: cycleErr } = await supabase
+    .from('subscription_cycles')
+    .update({
+      plan_id: nextPlan.id,
+      plan_price_cents: newPrice,
+      plan_paid_cents: alreadyPaid > 0 ? newPrice : cycle.plan_paid_cents,
+    })
+    .eq('id', cycle.id);
+  if (cycleErr) throw cycleErr;
 
   try {
       await notifyManage(userId, {
@@ -885,7 +966,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId) {
   return {
     ok: true,
     pending: false,
-    needs_meals: currentCount !== nextCount,
+    needs_meals: false,
     week,
     charge,
     plan: nextPlan,

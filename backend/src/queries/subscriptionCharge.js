@@ -895,7 +895,10 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
     throw error;
   }
   const meals = (await cycleItemsByCycleId(lockedCycle.id)).filter((item) => item.kind === 'plan');
-  if (meals.length) {
+  const mealQty = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const need = Number(plan?.meal_count) || 0;
+  // Do not seed next week with a short/over box after a plan size change.
+  if (meals.length && (!need || mealQty === need)) {
     await supabase.from('subscription_cycle_items').insert(
       meals.map((item) => ({
         cycle_id: next.id,

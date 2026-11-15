@@ -18,7 +18,6 @@ import {
   titleCaseName,
   updateSubscriptionFulfillment,
   updateSubscriptionStatus,
-  changeSubscriptionPlan,
   startCardSetup,
   fetchCardSetup,
   sundayDatePart,
@@ -38,7 +37,7 @@ import {
   paymentFailedBanner,
   resumeByCharge,
 } from '../helpers/subscriptionCadence'
-import { clearEditCart } from '../helpers/subscriptionCart'
+import { clearEditCart, seedEditCartForPlanChange, writeEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
 import '../styles/OrderHistory.css'
 import '../styles/MySubscriptions.css'
@@ -380,7 +379,18 @@ const MySubscriptions = ({ user }) => {
 
   useEffect(() => {
     if (!location.state?.saved) return undefined
-    setDialog(SAVED_DIALOG)
+    if (location.state.planChanged) {
+      setDialog({
+        icon: 'mail',
+        title: location.state.pendingPlan ? 'Plan change saved' : 'Plan updated',
+        body: location.state.pendingPlan
+          ? 'This Sunday stays as-is. Your new plan and meals start the following week.'
+          : 'Your plan and meals for this Sunday are updated.',
+        primaryLabel: 'OK',
+      })
+    } else {
+      setDialog(SAVED_DIALOG)
+    }
     navigate('/my-subscriptions', { replace: true, state: {} })
     return undefined
   }, [location.state, navigate])
@@ -758,50 +768,30 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
-  const persistPlan = async (row, plan) => {
-    setSavingId(row.id)
+  const startPlanChange = (row, plan) => {
+    if (!user?.id) return
+    const beforeCharge = row.charge?.before_wednesday !== false
+    const pending = !beforeCharge
+    const source = row.edit_cycle || row.cycle
+    const draft = seedEditCartForPlanChange(row, source, plan, { pending })
+    writeEditCart(user.id, row.id, draft)
+    setChangingId(null)
     setDialog(null)
-    try {
-      const result = await changeSubscriptionPlan(user.id, row.id, plan.id)
-      clearEditCart(user.id, row.id)
-      await load()
-      setChangingId(null)
-      if (result?.needs_meals) {
-        const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
-        setDialog({
-          icon: 'mail',
-          title: 'Pick this week\'s meals',
-          body: `You're now on ${mealsAWeek(plan.meal_count)}. Choose exactly that many meals before ${lockBy}.`,
-          primaryLabel: 'Choose meals',
-          primaryTo: `/my-subscriptions/${row.id}/meals`,
-        })
-      }
-    } catch (err) {
-      console.error(err)
-      setDialog({
-        icon: 'alert',
-        title: 'Could not change plan',
-        body: err.message || 'Try again in a moment.',
-        primaryLabel: 'OK',
-      })
-    } finally {
-      setSavingId(null)
-    }
+    navigate(`/my-subscriptions/${row.id}/meals`, { state: { planChange: true } })
   }
 
   const confirmPlan = (row, plan) => {
     const beforeCharge = row.charge?.before_wednesday !== false
     const sunday = sundayDatePart(row.week?.delivery_label)
-    const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: beforeCharge
-        ? `This Sunday, ${sunday}, will use the new plan. You'll need to pick ${plan.meal_count} meals before ${lockBy}.`
-        : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week.`,
-      primaryLabel: 'Change plan',
+        ? `This Sunday, ${sunday}, will use the new plan. Next you'll confirm exactly ${plan.meal_count} meals — the change only finishes when that count is saved.`
+        : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week — next you'll confirm exactly ${plan.meal_count} meals for that box before the change is saved.`,
+      primaryLabel: 'Choose meals',
       secondaryLabel: 'Never mind',
-      onPrimary: () => persistPlan(row, plan),
+      onPrimary: () => startPlanChange(row, plan),
     })
   }
 

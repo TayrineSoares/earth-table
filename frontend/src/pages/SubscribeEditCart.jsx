@@ -7,8 +7,10 @@ import FeedbackDialog from '../components/FeedbackDialog'
 import '../styles/Cart.css'
 import '../styles/SubscribeFlow.css'
 import {
+  changeSubscriptionPlan,
   fetchMySubscriptions,
   formatPlanPrice,
+  mealsAWeek,
   updateSubscriptionItems,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
@@ -50,7 +52,8 @@ const SubscribeEditCart = ({ user }) => {
       .then((subs) => {
         if (cancelled) return
         const found = (subs || []).find((item) => item.id === subscriptionId)
-        if (!found?.can_edit) {
+        const planChangeDraft = Boolean(stored.planChangeId)
+        if (!found?.can_edit && !planChangeDraft) {
           setDialog({
             icon: 'alert',
             title: found ? 'This box is locked' : 'Subscription not found',
@@ -85,31 +88,46 @@ const SubscribeEditCart = ({ user }) => {
   }, [user, subscriptionId, navigate])
 
   const addonCents = addonSubtotalCents(editCart)
-  const copy = weekSaveCopy(row?.week, {
-    lockedPriorCycle: Boolean(
-      row?.this_week_cycle
-      && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
-    ),
-  })
+  const changingPlan = Boolean(editCart.planChangeId)
+  const copy = changingPlan
+    ? {
+      title: editCart.planChangePending
+        ? `Save ${mealsAWeek(editCart.mealCount)} for next week?`
+        : `Switch to ${mealsAWeek(editCart.mealCount)}?`,
+      body: editCart.planChangePending
+        ? `This Sunday stays on your current plan. ${mealsAWeek(editCart.mealCount)} and these meals start the following week.`
+        : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below.`,
+    }
+    : weekSaveCopy(row?.week, {
+      lockedPriorCycle: Boolean(
+        row?.this_week_cycle
+        && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
+      ),
+    })
 
   const persist = async () => {
     setSaving(true)
     setDialog(null)
+    const meals = editCart.meals.map((item) => ({ id: item.id, quantity: item.quantity }))
+    const addons = editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
     try {
-      await updateSubscriptionItems(
-        user.id,
-        subscriptionId,
-        editCart.meals.map((item) => ({ id: item.id, quantity: item.quantity })),
-        editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
-      )
+      if (changingPlan) {
+        await changeSubscriptionPlan(user.id, subscriptionId, editCart.planChangeId, { meals, addons })
+      } else {
+        await updateSubscriptionItems(user.id, subscriptionId, meals, addons)
+      }
       clearEditCart(user.id, subscriptionId)
-      navigate('/my-subscriptions', { state: { saved: true } })
+      navigate('/my-subscriptions', {
+        state: changingPlan
+          ? { saved: true, planChanged: true, pendingPlan: Boolean(editCart.planChangePending) }
+          : { saved: true },
+      })
     } catch (err) {
       console.error(err)
       setSaving(false)
       setDialog({
         icon: 'alert',
-        title: 'Could not save your plan',
+        title: changingPlan ? 'Could not change plan' : 'Could not save your plan',
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
@@ -122,7 +140,7 @@ const SubscribeEditCart = ({ user }) => {
       icon: 'mail',
       title: copy.title,
       body: `${copy.body} Add-ons are a one-time extra for that Sunday and will not repeat the following week.`,
-      primaryLabel: 'Save changes',
+      primaryLabel: changingPlan ? 'Confirm plan change' : 'Save changes',
       secondaryLabel: 'Cancel',
       onPrimary: persist,
     })

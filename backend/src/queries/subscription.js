@@ -444,6 +444,19 @@ async function copyPlanMealsIfEmpty(dest, src) {
     .eq('kind', 'plan');
   if (srcErr) throw srcErr;
   if (!srcMeals || !srcMeals.length) return dest;
+
+  // Never copy a short/over box onto a different plan size (e.g. 10 → 15 upgrade).
+  const srcQty = srcMeals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  if (dest.plan_id) {
+    try {
+      const destPlan = await getPlanById(dest.plan_id);
+      const need = Number(destPlan?.meal_count) || 0;
+      if (need > 0 && srcQty !== need) return dest;
+    } catch (err) {
+      console.warn('[subscriptions] copy meal-count check failed:', err.message);
+    }
+  }
+
   const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
     srcMeals.map((item) => ({
       cycle_id: dest.id,
@@ -1058,9 +1071,38 @@ async function replaceCycleKindItems(cycleId, kind, resolved) {
   if (insErr) throw insErr;
 }
 
+/** Replace plan meals (and optional add-ons) on a specific open cycle. */
+async function writeCyclePlanAndAddons(cycleId, meals, addons, { mealCount } = {}) {
+  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
+  const mealLines = qtyLines(meals);
+  const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
+  const need = Number(mealCount) || 0;
+  if (need > 0 && mealQty !== need) {
+    throw new SubscriptionError(
+      400,
+      `Pick exactly ${need} meal${need === 1 ? '' : 's'} for this plan.`
+    );
+  }
+
+  const { data: existingPlan, error: existingErr } = await supabase
+    .from('subscription_cycle_items')
+    .select('product_id')
+    .eq('cycle_id', cycleId)
+    .eq('kind', 'plan');
+  if (existingErr) throw existingErr;
+
+  const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
+  const resolvedMeals = await resolveLines(mealLines, { kind: 'plan', allowUnavailableIds });
+  await replaceCycleKindItems(cycleId, 'plan', resolvedMeals);
+
+  const addonLines = qtyLines(addons);
+  const resolvedAddons = addonLines.length ? await resolveLines(addonLines, { kind: 'addon' }) : [];
+  await replaceCycleKindItems(cycleId, 'addon', resolvedAddons);
+  return { mealQty };
+}
+
 /** Save meals and add-ons together so the customer gets one update email. */
 async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addons) {
-  const { qtyLines, resolveLines } = require('./subscriptionCheckout');
   const sub = await getOwnedSubscription(userId, subscriptionId);
   const settings = await getSettings();
   if (!canEditOpenBox(sub, settings || {})) {
@@ -1070,29 +1112,9 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
   requireOpenCycle(cycle);
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
 
-  const mealLines = qtyLines(meals);
-  const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
-  if (mealQty !== Number(plan.meal_count)) {
-    throw new SubscriptionError(
-      400,
-      `Pick exactly ${plan.meal_count} meal${plan.meal_count === 1 ? '' : 's'} for this plan.`
-    );
-  }
-
-  const { data: existingPlan, error: existingErr } = await supabase
-    .from('subscription_cycle_items')
-    .select('product_id')
-    .eq('cycle_id', cycle.id)
-    .eq('kind', 'plan');
-  if (existingErr) throw existingErr;
-
-  const allowUnavailableIds = new Set((existingPlan || []).map((row) => row.product_id));
-  const resolvedMeals = await resolveLines(mealLines, { kind: 'plan', allowUnavailableIds });
-  await replaceCycleKindItems(cycle.id, 'plan', resolvedMeals);
-
-  const addonLines = qtyLines(addons);
-  const resolvedAddons = addonLines.length ? await resolveLines(addonLines, { kind: 'addon' }) : [];
-  await replaceCycleKindItems(cycle.id, 'addon', resolvedAddons);
+  await writeCyclePlanAndAddons(cycle.id, meals, addons, {
+    mealCount: Number(plan.meal_count) || 0,
+  });
 
   return { ok: true, week };
 }
@@ -1395,6 +1417,7 @@ module.exports = {
   updateSettings,
   getPublicSignupInfo,
   replaceOpenCyclePlanAndAddons,
+  writeCyclePlanAndAddons,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
   runCardExpiryNotices,

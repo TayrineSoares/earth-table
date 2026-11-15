@@ -74,7 +74,9 @@ const SubscribeEditAddons = ({ user }) => {
           setIsLoading(false)
           return
         }
-        if (!found.can_edit) {
+        const stored = readEditCart(userId, subscriptionId)
+        const planChangeDraft = Boolean(stored.planChangeId && stored.subscriptionId === subscriptionId)
+        if (!found.can_edit && !planChangeDraft) {
           setDialog({
             icon: 'alert',
             title: 'This box is locked',
@@ -85,7 +87,6 @@ const SubscribeEditAddons = ({ user }) => {
           setIsLoading(false)
           return
         }
-        const stored = readEditCart(userId, subscriptionId)
         const source = found.edit_cycle || found.cycle
         const nextCart = startFresh || stored.subscriptionId !== subscriptionId || !mealsExact(stored)
           ? seedEditCart(found, source)

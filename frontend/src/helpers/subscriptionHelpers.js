@@ -172,11 +172,11 @@ const updateSubscriptionStatus = async (userId, subscriptionId, action) => {
   return parseJson(res);
 };
 
-const changeSubscriptionPlan = async (userId, subscriptionId, planId) => {
+const changeSubscriptionPlan = async (userId, subscriptionId, planId, { meals, addons } = {}) => {
   const res = await fetch(`/api/subscriptions/${subscriptionId}/plan`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, planId }),
+    body: JSON.stringify({ userId, planId, meals, addons }),
   });
   return parseJson(res);
 };

@@ -99,6 +99,8 @@ function emptyEditCart() {
     priceCents: 0,
     meals: [],
     addons: [],
+    planChangeId: null,
+    planChangePending: false,
   };
 }
 
@@ -148,6 +150,30 @@ function seedEditCart(sub, cycle) {
     priceCents: Number(plan.price_cents) || 0,
     meals: fromCycle.length ? fromCycle : fromLastBox,
     addons: seedLinesFromCycle(cycle, 'addon'),
+    planChangeId: null,
+    planChangePending: false,
+  };
+}
+
+/**
+ * Draft for a plan switch: new meal count/price, keep current meals as a starting
+ * point so they can top up or trim to the exact count before the change commits.
+ */
+function seedEditCartForPlanChange(sub, cycle, nextPlan, { pending = false } = {}) {
+  const fromCycle = seedLinesFromCycle(cycle, 'plan');
+  const fromLastBox = seedLinesFromCycle(sub?.this_week_cycle, 'plan');
+  const meals = fromCycle.length ? fromCycle : fromLastBox;
+  return {
+    subscriptionId: sub.id,
+    planId: nextPlan.id,
+    planName: nextPlan.name || '',
+    mealCount: Number(nextPlan.meal_count) || 0,
+    priceCents: Number(nextPlan.price_cents) || 0,
+    meals,
+    // Pending switch is for the following week — add-ons do not carry.
+    addons: pending ? [] : seedLinesFromCycle(cycle, 'addon'),
+    planChangeId: nextPlan.id,
+    planChangePending: Boolean(pending),
   };
 }
 
@@ -268,6 +294,7 @@ export {
   adoptGuestSubCart,
   applyPlanToCart,
   seedEditCart,
+  seedEditCartForPlanChange,
   emptyEditCart,
   readEditCart,
   writeEditCart,
