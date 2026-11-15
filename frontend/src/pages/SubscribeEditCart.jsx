@@ -95,8 +95,8 @@ const SubscribeEditCart = ({ user }) => {
         ? `Save ${mealsAWeek(editCart.mealCount)} for next week?`
         : `Switch to ${mealsAWeek(editCart.mealCount)}?`,
       body: editCart.planChangePending
-        ? `This Sunday stays on your current plan. ${mealsAWeek(editCart.mealCount)} and these meals start the following week.`
-        : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below.`,
+        ? `This Sunday stays on your current plan. ${mealsAWeek(editCart.mealCount)} and these meals start the following week. Need help? Email hello@earthtableco.ca.`
+        : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below. Need help? Email hello@earthtableco.ca.`,
     }
     : weekSaveCopy(row?.week, {
       lockedPriorCycle: Boolean(

@@ -6,6 +6,7 @@ const {
   mealCountMismatch,
   canCopyOrSeedPlanMeals,
   planChangeMealsOk,
+  planChangeDefersToNextWeek,
   mealMismatchAdminNote,
 } = require('../src/utils/mealCountMatch');
 
@@ -89,6 +90,21 @@ describe('planChangeMealsOk', () => {
     assert.equal(planChangeMealsOk(10, 15), false);
     assert.equal(planChangeMealsOk(15, 10), false);
     assert.equal(planChangeMealsOk(0, 10), false);
+  });
+});
+
+describe('planChangeDefersToNextWeek', () => {
+  it('defers after Tuesday charge', () => {
+    assert.equal(planChangeDefersToNextWeek({ beforeCharge: false, planPaidCents: 0 }), true);
+    assert.equal(planChangeDefersToNextWeek({ beforeCharge: false, planPaidCents: 27000 }), true);
+  });
+
+  it('defers when this Sunday is already paid (first box)', () => {
+    assert.equal(planChangeDefersToNextWeek({ beforeCharge: true, planPaidCents: 27000 }), true);
+  });
+
+  it('applies now only when before charge and unpaid', () => {
+    assert.equal(planChangeDefersToNextWeek({ beforeCharge: true, planPaidCents: 0 }), false);
   });
 });
 

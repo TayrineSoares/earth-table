@@ -848,7 +848,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
 
   // Plan changes must confirm meals before the change finishes.
   const { qtyLines } = require('./subscriptionCheckout');
-  const { planChangeMealsOk } = require('../utils/mealCountMatch');
+  const { planChangeMealsOk, planChangeDefersToNextWeek } = require('../utils/mealCountMatch');
   const mealLines = qtyLines(meals);
   const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
   if (!planChangeMealsOk(mealQty, nextCount)) {
@@ -858,7 +858,15 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     );
   }
 
-  if (!charge.before_wednesday) {
+  // Already-paid weeks (first box at signup, or after Tuesday charge) keep this Sunday's
+  // size — same idea as first-box pause. No mid-week upgrade charge / downgrade refund.
+  const alreadyPaid = Number(cycle?.plan_paid_cents) || 0;
+  const deferNext = planChangeDefersToNextWeek({
+    beforeCharge: charge.before_wednesday,
+    planPaidCents: alreadyPaid,
+  });
+
+  if (deferNext) {
     const following = await ensureFollowingWeekCycle(sub, nextPlan, settings || {}, week, cycle);
     await writeCyclePlanAndAddons(following.id, meals, addons || [], { mealCount: nextCount });
 
@@ -900,61 +908,12 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     };
   }
 
-  // Fail closed before any Stripe move — locked week must not charge then throw.
   if (!cycle || cycle.status !== 'open') {
     throw new SubscriptionError(400, 'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.');
   }
 
-  const oldPrice = Number(cycle.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
+  // Unpaid week before charge: swap plan now; Tuesday charges the new price.
   const newPrice = Number(nextPlan.price_cents) || 0;
-  const alreadyPaid = Number(cycle.plan_paid_cents) || 0;
-  const delta = newPrice - oldPrice;
-
-  if (alreadyPaid > 0 && delta !== 0) {
-    const stripe = getStripe();
-    const amount = Math.round(Math.abs(delta) * HST);
-    if (delta > 0 && amount >= 50) {
-      if (!sub.stripe_customer_id || !sub.stripe_payment_method_id) {
-        throw new SubscriptionError(400, 'No card on file. Email hello@earthtableco.ca.');
-      }
-      try {
-        await stripe.paymentIntents.create({
-          amount,
-          currency: 'cad',
-          customer: sub.stripe_customer_id,
-          payment_method: sub.stripe_payment_method_id,
-          off_session: true,
-          confirm: true,
-          description: 'Subscription plan upgrade',
-          // Same cycle+plan retry must not double-charge if meals/plan write fails after.
-          idempotencyKey: `sub-upgrade-${cycle.id}-${nextPlan.id}`,
-          metadata: {
-            kind: 'subscription_upgrade',
-            subscription_id: sub.id,
-            cycle_id: cycle.id,
-          },
-        });
-      } catch (err) {
-        console.error('[subscriptions] upgrade charge failed', err.message);
-        throw new SubscriptionError(402, 'We could not charge the plan difference. Try again or email hello@earthtableco.ca.');
-      }
-    } else if (delta < 0 && amount >= 50 && cycle.stripe_payment_intent_id) {
-      try {
-        await stripe.refunds.create({
-          payment_intent: cycle.stripe_payment_intent_id,
-          amount,
-          reason: 'requested_by_customer',
-          idempotencyKey: `sub-downgrade-${cycle.id}-${nextPlan.id}`,
-          metadata: { kind: 'subscription_downgrade', subscription_id: sub.id, cycle_id: cycle.id },
-        });
-      } catch (err) {
-        console.error('[subscriptions] downgrade refund failed', err.message);
-        throw new SubscriptionError(402, 'We could not refund the plan difference. Email hello@earthtableco.ca.');
-      }
-    }
-  }
-
-  // Meals after Stripe (with idempotency above) so a failed pick never leaves free extra meals.
   await writeCyclePlanAndAddons(cycle.id, meals, addons || [], { mealCount: nextCount });
 
   const { error: subErr } = await supabase
@@ -973,7 +932,6 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     .update({
       plan_id: nextPlan.id,
       plan_price_cents: newPrice,
-      plan_paid_cents: alreadyPaid > 0 ? newPrice : cycle.plan_paid_cents,
       meal_count: nextCount,
     })
     .eq('id', cycle.id);
@@ -989,14 +947,14 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
   });
 
   try {
-      await notifyManage(userId, {
-        kind: 'plan_now',
-        mealCount: nextCount,
-        nextMealCount: nextCount,
-        deliveryLabel: week.delivery_label,
-        chargeLabel: charge.charge_label,
-        cutoffLabel: week.cutoff_label,
-      });
+    await notifyManage(userId, {
+      kind: 'plan_now',
+      mealCount: nextCount,
+      nextMealCount: nextCount,
+      deliveryLabel: week.delivery_label,
+      chargeLabel: charge.charge_label,
+      cutoffLabel: week.cutoff_label,
+    });
   } catch (err) {
     console.warn('[subscriptions] plan-change email failed:', err.message);
   }

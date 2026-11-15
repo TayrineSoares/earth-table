@@ -43,6 +43,16 @@ function planChangeMealsOk(mealQty, nextCount) {
   return (Number(mealQty) || 0) === (Number(nextCount) || 0);
 }
 
+/**
+ * Defer size change to the following week when this Sunday is already charged
+ * (first box at signup, or after Tuesday charge) — never mid-week upgrade/refund.
+ * Immediate only when before charge and this week is still unpaid.
+ */
+function planChangeDefersToNextWeek({ beforeCharge, planPaidCents } = {}) {
+  if (beforeCharge === false) return true;
+  return (Number(planPaidCents) || 0) > 0;
+}
+
 /** Admin / print warning — empty when no real mismatch. */
 function mealMismatchAdminNote(selected, planCount) {
   const mismatch = mealCountMismatch(selected, planCount);
@@ -59,5 +69,6 @@ module.exports = {
   mealCountMismatch,
   canCopyOrSeedPlanMeals,
   planChangeMealsOk,
+  planChangeDefersToNextWeek,
   mealMismatchAdminNote,
 };

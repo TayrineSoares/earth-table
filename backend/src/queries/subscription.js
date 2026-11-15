@@ -405,6 +405,38 @@ async function recordPlanChange({
   }
 }
 
+/**
+ * Rare safety-net events (lock mismatch, skipped copy-forward).
+ * Best-effort — never fail charge/lock/copy.
+ */
+async function recordOpsEvent({
+  kind,
+  subscriptionId,
+  cycleId,
+  sourceCycleId,
+  deliveryDate,
+  need,
+  got,
+  orderId,
+  note,
+}) {
+  if (!kind) return;
+  const { error } = await supabase.from('subscription_ops_events').insert({
+    kind,
+    subscription_id: subscriptionId || null,
+    cycle_id: cycleId || null,
+    source_cycle_id: sourceCycleId || null,
+    delivery_date: deliveryDate || null,
+    need: Number.isFinite(Number(need)) ? Number(need) : null,
+    got: Number.isFinite(Number(got)) ? Number(got) : null,
+    order_id: orderId != null && Number.isFinite(Number(orderId)) ? Number(orderId) : null,
+    note: note ? String(note).slice(0, 500) : null,
+  });
+  if (error) {
+    console.warn('[subscriptions] ops event failed:', kind, error.message);
+  }
+}
+
 async function attachCycleItems(cycles) {
   const rows = cycles || [];
   if (!rows.length) return rows;
@@ -483,7 +515,19 @@ async function copyPlanMealsIfEmpty(dest, src) {
       console.warn('[subscriptions] copy meal-count check failed:', err.message);
     }
   }
-  if (!canCopyOrSeedPlanMeals(srcQty, need)) return dest;
+  if (!canCopyOrSeedPlanMeals(srcQty, need)) {
+    await recordOpsEvent({
+      kind: 'copy_forward_skipped',
+      subscriptionId: dest.subscription_id,
+      cycleId: dest.id,
+      sourceCycleId: src.id,
+      deliveryDate: dest.delivery_date,
+      need,
+      got: srcQty,
+      note: 'copyPlanMealsIfEmpty: source qty ≠ destination meal_count',
+    });
+    return dest;
+  }
 
   const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
     srcMeals.map((item) => ({
@@ -1461,6 +1505,7 @@ module.exports = {
   replaceOpenCyclePlanAndAddons,
   writeCyclePlanAndAddons,
   recordPlanChange,
+  recordOpsEvent,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
   runCardExpiryNotices,

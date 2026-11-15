@@ -12,7 +12,15 @@
 const supabase = require('../../supabase/db');
 const { createOrderWithProducts } = require('./order');
 const { getUserByAuthId } = require('./user');
-const { getSettings, getPlanById, copyPlanMealsIfEmpty, firstBoxSunday, firstBoxStillDue, reopenSkippedCycle } = require('./subscription');
+const {
+  getSettings,
+  getPlanById,
+  copyPlanMealsIfEmpty,
+  firstBoxSunday,
+  firstBoxStillDue,
+  reopenSkippedCycle,
+  recordOpsEvent,
+} = require('./subscription');
 const {
   renderSubscriptionManageEmail,
   renderOwnerLockEmail,
@@ -575,6 +583,17 @@ async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
   const deliveryLabel = sundayLabelFromYmd(sunday);
   const user = await getUserByAuthId(sub.user_id);
 
+  await recordOpsEvent({
+    kind: 'lock_meal_mismatch',
+    subscriptionId: sub.id,
+    cycleId: cycle.id,
+    deliveryDate: sunday,
+    need: mismatch.need,
+    got: mismatch.got,
+    orderId: cycle.order_id || null,
+    note: mismatch.got < mismatch.need ? 'short at lock' : 'over at lock',
+  });
+
   const billed = Number(cycle.plan_paid_cents) > 0;
 
   if (user?.email) {
@@ -975,6 +994,17 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
         kind: 'plan',
       }))
     );
+  } else if (meals.length && need > 0) {
+    await recordOpsEvent({
+      kind: 'copy_forward_skipped',
+      subscriptionId: sub.id,
+      cycleId: next.id,
+      sourceCycleId: lockedCycle.id,
+      deliveryDate: nextSunday,
+      need,
+      got: mealQty,
+      note: 'openNextWeek: locked qty ≠ plan meal_count',
+    });
   }
 }
 

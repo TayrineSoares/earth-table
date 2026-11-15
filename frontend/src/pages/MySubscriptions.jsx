@@ -768,10 +768,17 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
+  /** Already-paid / first box stays this size; new plan starts next week (no mid-week charge). */
+  const planChangePendingFor = (row) => {
+    const beforeCharge = row.charge?.before_wednesday !== false
+    const box = row.this_week_cycle || row.cycle || row.edit_cycle || {}
+    const paid = Number(box.plan_paid_cents) > 0 || Boolean(row.first_box_protected)
+    return !beforeCharge || paid
+  }
+
   const startPlanChange = (row, plan) => {
     if (!user?.id) return
-    const beforeCharge = row.charge?.before_wednesday !== false
-    const pending = !beforeCharge
+    const pending = planChangePendingFor(row)
     const source = row.edit_cycle || row.cycle
     const draft = seedEditCartForPlanChange(row, source, plan, { pending })
     writeEditCart(user.id, row.id, draft)
@@ -781,14 +788,14 @@ const MySubscriptions = ({ user }) => {
   }
 
   const confirmPlan = (row, plan) => {
-    const beforeCharge = row.charge?.before_wednesday !== false
+    const pending = planChangePendingFor(row)
     const sunday = sundayDatePart(row.week?.delivery_label)
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
-      body: beforeCharge
-        ? `This Sunday, ${sunday}, will use the new plan. Next you'll confirm exactly ${plan.meal_count} meals — the change only finishes when that count is saved.`
-        : `This Sunday, ${sunday}, stays on your current plan. ${mealsAWeek(plan.meal_count)} starts the following week — next you'll confirm exactly ${plan.meal_count} meals for that box before the change is saved.`,
+      body: pending
+        ? `This Sunday, ${sunday}, stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week — next you'll confirm exactly ${plan.meal_count} meals for that box before the change is saved. Need help? Email hello@earthtableco.ca.`
+        : `This Sunday, ${sunday}, will use the new plan. Next you'll confirm exactly ${plan.meal_count} meals — the change only finishes when that count is saved. Need help? Email hello@earthtableco.ca.`,
       primaryLabel: 'Choose meals',
       secondaryLabel: 'Never mind',
       onPrimary: () => startPlanChange(row, plan),

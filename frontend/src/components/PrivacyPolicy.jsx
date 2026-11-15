@@ -27,14 +27,16 @@ const PrivacyPolicy = () => {
         <ul className="et-terms__list">
           <li><strong>Plans:</strong> Recurring weekly meal plans. Advertised prices are pre-tax. Checkout and weekly bills add 13% HST. Delivery, if you choose it, uses the same zone fees as à la carte, plus HST.</li>
           <li><strong>Schedule:</strong> Plan and delivery are charged every <strong>Tuesday at 9:00 AM ET</strong>. Add-ons are charged <strong>Wednesday at 5:00 PM ET</strong>.</li>
-          <li><strong>First box:</strong> Charged when you subscribe, and it can’t be paused or cancelled. Add-ons on that box are billed Wednesday at 5:00 PM ET if they’re still on it.</li>
+          <li><strong>First box:</strong> Charged when you subscribe, and it can’t be paused or cancelled. Add-ons on that box are billed Wednesday at 5:00 PM ET if they’re still on it. Plan size changes also don’t apply to that first Sunday — the new size starts the following week.</li>
           <li><strong>Changes:</strong> Change meals and extras in My Subscriptions until Wednesday at 5:00 PM ET. If you don’t change anything, we repeat last week’s meals. Add-ons don’t repeat unless you add them again.</li>
+          <li><strong>Plan size:</strong> Switch plans in My Subscriptions. If that Sunday is still unpaid, the new size applies to that box. Once a week is paid (including the first box) or after that week’s Tuesday charge, that Sunday stays as-is and the new size starts the following week. We do not charge or refund a mid-week plan difference.</li>
           <li><strong>Pause or cancel:</strong> After your first box, pause or cancel before Tuesday at 9:00 AM ET to skip that Sunday. Once that week’s charge has run (or the box is locked), that Sunday still goes out and the pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.</li>
           <li><strong>Failed payments:</strong> A declined Tuesday charge pauses the plan. Update your card before Wednesday at 5:00 PM ET (meal lock) to keep that Sunday’s box. If it’s still unpaid by then, that Sunday is skipped.</li>
           <li><strong>Holidays:</strong> We skip December 25, 26, 31, and January 1. That week is not charged and not delivered.</li>
           <li><strong>Price changes:</strong> A new price applies at the next weekly charge that is not already billed. Pause or cancel before that charge if you do not accept it.</li>
           <li><strong>Refunds:</strong> The first box is non-refundable. Later boxes are non-refundable after that week’s charge.</li>
           <li><strong>Promo and referral codes:</strong> A valid code discounts the first week only. Delivery is not discounted. Later weeks are regular price.</li>
+          <li><strong>Support:</strong> Need help with a plan, box, or billing? Email <a className="et-terms__link" href="mailto:hello@earthtableco.ca">hello@earthtableco.ca</a>.</li>
         </ul>
 
         <h3 className="et-terms__h3">General</h3>

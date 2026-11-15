@@ -6,7 +6,9 @@
  * Charge: Tuesday 9:00 AM ET (plan + delivery).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel: skip this Sunday while unpaid; once charged/locked it still
- * goes out (typically after Tuesday 9:00 AM ET). Plan-change: before Tuesday 9:00 AM ET.
+ * goes out (typically after Tuesday 9:00 AM ET). Plan size change: applies this
+ * Sunday only while that week is still unpaid; once paid (including the first
+ * box), the new size starts the following week — no mid-week upgrade/refund.
  *
  * Customer copy uses these standing weekday times. Calendar dates stay on
  * the box itself (confirmation, meal picker) via cutoff_label / charge_label.
@@ -17,6 +19,7 @@ export const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET'
 export const UNCHANGED_MEALS = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again."
 export const CHARGE_DAY_TIME = 'Tuesday at 9:00 AM ET'
 export const LOCK_DAY_TIME = 'Wednesday at 5:00 PM ET'
+export const SUPPORT_EMAIL = 'hello@earthtableco.ca'
 
 export function howItWorksCharge() {
   return 'Plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.'
@@ -26,8 +29,16 @@ export function howItWorksPause() {
   return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
+export function howItWorksPlanChange() {
+  return `Change plan size in My Subscriptions. If this Sunday is still unpaid, the new size applies to that box. Once a week is paid (including your first box), that Sunday stays as-is and the new size starts the following week — we don't charge or refund a mid-week plan difference.`
+}
+
 export function howItWorksMeals() {
   return `Change meals and extras for that week in My Subscriptions until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}`
+}
+
+export function howItWorksSupport() {
+  return `Need help with your plan, box, or billing? Email ${SUPPORT_EMAIL}.`
 }
 
 export function howItWorksFirstDelivery(firstDeliveryLabel) {
@@ -43,8 +54,10 @@ export function subscriptionDetailsItems({
   return [
     howItWorksCharge(),
     howItWorksPause(),
+    howItWorksPlanChange(),
     signingUp ? howItWorksFirstDelivery(firstDeliveryLabel) : null,
     howItWorksMeals(),
+    howItWorksSupport(),
   ].filter(Boolean)
 }
 

@@ -6,7 +6,9 @@
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel for this Sunday: skip if that week is still unpaid; once
  * charged or locked the box still goes out (usually after Tuesday 9:00 AM ET).
- * Plan-change for this Sunday: before Tuesday 9:00 AM ET.
+ * Plan size for this Sunday: only while that week is still unpaid; once paid
+ * (including first box), the new size starts the following week (no mid-week
+ * upgrade charge / downgrade refund).
  */
 
 const CADENCE = {

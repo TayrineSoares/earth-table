@@ -1473,12 +1473,12 @@ My Subscriptions: ${manageHref}`;
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're now on a ${nextPlan}. ${ThisSundayPhrase(sunday)} uses the new count — pick that many meals before ${cutoff}.`,
+      intro: `You're now on a ${nextPlan}. ${ThisSundayPhrase(sunday)} uses the new count — pick that many meals before ${cutoff}. Need help? Email hello@earthtableco.ca.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
       heading: `This Sunday stays as-is, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} stays on your ${planWeek}. The ${nextPlan} starts the following week.`,
+      intro: `${ThisSundayPhrase(sunday)} stays on your ${planWeek}. The ${nextPlan} starts the following week. Need help? Email hello@earthtableco.ca.`,
     },
   }[kind] || {
     subject: 'Your weekly plan',
