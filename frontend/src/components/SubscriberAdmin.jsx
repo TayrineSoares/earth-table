@@ -228,7 +228,7 @@ const toPrintBoxes = (weekRows, cycleKey) => {
     return {
       id: row.id,
       name: customerName(customer),
-      mealCount: Number(row.subscription_plans?.meal_count) || 0,
+      mealCount: Number(cycle.meal_count) || Number(row.subscription_plans?.meal_count) || 0,
       delivery: !!cycle.delivery,
       method: cycle.delivery ? 'Delivery' : 'Pickup',
       windowStart: win.start,
@@ -661,7 +661,9 @@ const SubscriberAdmin = () => {
                                     const addons = items.filter((item) => item.kind === 'addon');
                                     const noteText = cycleNote(row, planCycle);
                                     const kitchen = kitchenForRow(row, view);
-                                    const mealCount = Number(row.subscription_plans?.meal_count) || 0;
+                                    const mealCount = Number(planCycle.meal_count)
+                                      || Number(row.subscription_plans?.meal_count)
+                                      || 0;
                                     const selected = mealQty(meals);
                                     const mismatch = mealMismatchNote(selected, mealCount);
                                     const planFulfill = fulfillmentParts(planCycle);

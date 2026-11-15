@@ -19,6 +19,7 @@ const {
   firstBoxStillDue,
   ensureFirstBoxCycle,
   writeCyclePlanAndAddons,
+  recordPlanChange,
 } = require('./subscription');
 const {
   getEditWeek,
@@ -780,15 +781,22 @@ async function ensureFollowingWeekCycle(sub, nextPlan, settings, week, sourceCyc
     if (existing.status !== 'open') {
       throw new SubscriptionError(400, 'The following week is already locked. Try again after this Sunday.');
     }
+    const nextMealCount = Number(nextPlan.meal_count) || null;
     const { error: updErr } = await supabase
       .from('subscription_cycles')
       .update({
         plan_id: nextPlan.id,
         plan_price_cents: Number(nextPlan.price_cents) || 0,
+        meal_count: nextMealCount,
       })
       .eq('id', existing.id);
     if (updErr) throw updErr;
-    return { ...existing, plan_id: nextPlan.id, plan_price_cents: Number(nextPlan.price_cents) || 0 };
+    return {
+      ...existing,
+      plan_id: nextPlan.id,
+      plan_price_cents: Number(nextPlan.price_cents) || 0,
+      meal_count: nextMealCount,
+    };
   }
 
   const delivery = sourceCycle ? !!sourceCycle.delivery : !!sub.delivery;
@@ -798,6 +806,7 @@ async function ensureFollowingWeekCycle(sub, nextPlan, settings, week, sourceCyc
       subscription_id: sub.id,
       plan_id: nextPlan.id,
       plan_price_cents: Number(nextPlan.price_cents) || 0,
+      meal_count: Number(nextPlan.meal_count) || null,
       cutoff_at: cutoffAtForSunday(nextSunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
       delivery_date: nextSunday,
       pickup_date: delivery ? null : nextSunday,
@@ -854,9 +863,21 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
 
     const { error } = await supabase
       .from('subscriptions')
-      .update({ pending_plan_id: nextPlan.id })
+      .update({
+        pending_plan_id: nextPlan.id,
+        previous_plan_id: sub.plan_id,
+        plan_changed_at: new Date().toISOString(),
+      })
       .eq('id', sub.id);
     if (error) throw error;
+    await recordPlanChange({
+      subscriptionId: sub.id,
+      fromPlanId: sub.plan_id,
+      toPlanId: nextPlan.id,
+      timing: 'pending',
+      mealsQty: mealQty,
+      deliveryDate: following.delivery_date,
+    });
     try {
       await notifyManage(userId, {
         kind: 'plan_next',
@@ -936,6 +957,8 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     .update({
       plan_id: nextPlan.id,
       pending_plan_id: null,
+      previous_plan_id: sub.plan_id,
+      plan_changed_at: new Date().toISOString(),
     })
     .eq('id', sub.id);
   if (subErr) throw subErr;
@@ -946,9 +969,19 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       plan_id: nextPlan.id,
       plan_price_cents: newPrice,
       plan_paid_cents: alreadyPaid > 0 ? newPrice : cycle.plan_paid_cents,
+      meal_count: nextCount,
     })
     .eq('id', cycle.id);
   if (cycleErr) throw cycleErr;
+
+  await recordPlanChange({
+    subscriptionId: sub.id,
+    fromPlanId: sub.plan_id,
+    toPlanId: nextPlan.id,
+    timing: 'applied',
+    mealsQty: mealQty,
+    deliveryDate: cycle.delivery_date,
+  });
 
   try {
       await notifyManage(userId, {

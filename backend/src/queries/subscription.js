@@ -376,8 +376,34 @@ const CYCLE_ITEM_SELECT = `
 const CYCLE_SELECT = `
   id, subscription_id, status, order_id, cutoff_at, delivery_date, pickup_date, delivery,
   delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
-  plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents
+  plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
+  meal_count, meals_confirmed_at
 `;
+
+/** Best-effort audit row — never fail the customer-facing change. */
+async function recordPlanChange({
+  subscriptionId,
+  fromPlanId,
+  toPlanId,
+  timing,
+  mealsQty,
+  deliveryDate,
+}) {
+  if (!subscriptionId || !toPlanId || !timing) return;
+  const { error } = await supabase.from('subscription_plan_changes').insert({
+    subscription_id: subscriptionId,
+    from_plan_id: fromPlanId || null,
+    to_plan_id: toPlanId,
+    timing,
+    meals_qty: Number.isFinite(Number(mealsQty)) && Number(mealsQty) > 0
+      ? Number(mealsQty)
+      : null,
+    delivery_date: deliveryDate || null,
+  });
+  if (error) {
+    console.warn('[subscriptions] plan change history failed:', error.message);
+  }
+}
 
 async function attachCycleItems(cycles) {
   const rows = cycles || [];
@@ -447,15 +473,16 @@ async function copyPlanMealsIfEmpty(dest, src) {
 
   // Never copy a short/over box onto a different plan size (e.g. 10 → 15 upgrade).
   const srcQty = srcMeals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-  if (dest.plan_id) {
+  let need = Number(dest.meal_count) || 0;
+  if (!need && dest.plan_id) {
     try {
       const destPlan = await getPlanById(dest.plan_id);
-      const need = Number(destPlan?.meal_count) || 0;
-      if (need > 0 && srcQty !== need) return dest;
+      need = Number(destPlan?.meal_count) || 0;
     } catch (err) {
       console.warn('[subscriptions] copy meal-count check failed:', err.message);
     }
   }
+  if (need > 0 && srcQty !== need) return dest;
 
   const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
     srcMeals.map((item) => ({
@@ -496,6 +523,7 @@ async function ensureFirstBoxCycle(sub, cycles, settings, now = new Date()) {
         subscription_id: sub.id,
         plan_id: sub.plan_id,
         plan_price_cents: Number(plan?.price_cents) || Number(src?.plan_price_cents) || 0,
+        meal_count: Number(plan?.meal_count) || Number(src?.meal_count) || null,
         cutoff_at: cutoffAtForSunday(firstYmd, settings) || getSignupDates(now, settings || {}).cutoff_at,
         delivery_date: firstYmd,
         pickup_date: delivery ? null : firstYmd,
@@ -957,12 +985,14 @@ async function getOrCreateEditableCycle(sub) {
 
   const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
   const src = pickDisplayCycle(list, now);
+  const need = Number(plan?.meal_count) || 0;
   const { data: cycle, error } = await supabase
     .from('subscription_cycles')
     .insert({
       subscription_id: sub.id,
       plan_id: sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || 0,
+      meal_count: need || null,
       cutoff_at: week.cutoff_at,
       delivery_date: week.delivery_date,
       pickup_date: src?.delivery ? null : week.delivery_date,
@@ -987,7 +1017,8 @@ async function getOrCreateEditableCycle(sub) {
       .select('product_id, quantity, unit_price_cents, kind')
       .eq('cycle_id', src.id)
       .eq('kind', 'plan');
-    if (items && items.length) {
+    const srcQty = (items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    if (items && items.length && (!need || srcQty === need)) {
       const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
         items.map((item) => ({ ...item, cycle_id: cycle.id }))
       );
@@ -1098,6 +1129,16 @@ async function writeCyclePlanAndAddons(cycleId, meals, addons, { mealCount } = {
   const addonLines = qtyLines(addons);
   const resolvedAddons = addonLines.length ? await resolveLines(addonLines, { kind: 'addon' }) : [];
   await replaceCycleKindItems(cycleId, 'addon', resolvedAddons);
+
+  const stamp = { meals_confirmed_at: new Date().toISOString() };
+  if (need > 0) stamp.meal_count = need;
+  const { error: stampErr } = await supabase
+    .from('subscription_cycles')
+    .update(stamp)
+    .eq('id', cycleId);
+  if (stampErr) {
+    console.warn('[subscriptions] meals_confirmed_at stamp failed:', stampErr.message);
+  }
   return { mealQty };
 }
 
@@ -1418,6 +1459,7 @@ module.exports = {
   getPublicSignupInfo,
   replaceOpenCyclePlanAndAddons,
   writeCyclePlanAndAddons,
+  recordPlanChange,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
   runCardExpiryNotices,

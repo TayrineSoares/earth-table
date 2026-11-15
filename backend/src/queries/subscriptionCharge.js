@@ -229,7 +229,7 @@ async function ownerBoxFrom(sub, cycle) {
   const win = splitWin(!!cycle.delivery, cycle.pickup_time_slot);
   return {
     name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
-    mealCount: sub.subscription_plans?.meal_count,
+    mealCount: Number(cycle.meal_count) || sub.subscription_plans?.meal_count,
     orderId: cycle.order_id || null,
     cycleId: cycle.id,
     delivery: !!cycle.delivery,
@@ -314,6 +314,7 @@ async function ensureCycle(sub, sunday, settings) {
       subscription_id: sub.id,
       plan_id: sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || Number(src?.plan_price_cents) || 0,
+      meal_count: Number(plan?.meal_count) || Number(src?.meal_count) || null,
       cutoff_at: cutoffAtForSunday(sunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
       delivery_date: sunday,
       pickup_date: delivery ? null : sunday,
@@ -871,6 +872,7 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
       subscription_id: sub.id,
       plan_id: sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || Number(lockedCycle.plan_price_cents) || 0,
+      meal_count: Number(plan?.meal_count) || Number(lockedCycle.meal_count) || null,
       cutoff_at: cutoffAtForSunday(nextSunday, settings) || getSignupDates(new Date(), settings || {}).cutoff_at,
       delivery_date: nextSunday,
       pickup_date: delivery ? null : nextSunday,

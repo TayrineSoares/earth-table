@@ -795,6 +795,8 @@ async function completeSubscriptionSignup(session) {
       subscription_id: sub.id,
       plan_id: cart.plan_id,
       plan_price_cents: Number(cart.plan_price_cents) || 0,
+      meal_count: Number(cart.meal_count) || null,
+      meals_confirmed_at: new Date().toISOString(),
       cutoff_at: dates.cutoff_at || cart.cutoff_at,
       delivery_date: sunday,
       pickup_date: delivery ? null : sunday,
