@@ -44,6 +44,12 @@ const {
 } = require('./subscriptionWeek');
 const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
 const { unsubscribeUrl } = require('../emails/unsubscribeToken');
+const {
+  sumPlanMealQty,
+  resolvePlanMealNeed,
+  mealCountMismatch: mealCountMismatchOf,
+  canCopyOrSeedPlanMeals,
+} = require('../utils/mealCountMatch');
 
 const HST = 1.13;
 
@@ -555,10 +561,11 @@ async function sendLockNotice(sub, cycle, sunday, addonResult) {
 /** Plan size vs selected meals at lock — customer is already billed. */
 async function mealCountMismatch(sub, cycle) {
   const meals = (await cycleItemsByCycleId(cycle.id)).filter((item) => item.kind === 'plan');
-  const got = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-  const need = Number(cycle.meal_count) || Number(sub.subscription_plans?.meal_count) || 0;
-  if (!need || got === need) return null;
-  return { need, got, meals };
+  const got = sumPlanMealQty(meals);
+  const need = resolvePlanMealNeed(cycle.meal_count, sub.subscription_plans?.meal_count);
+  const mismatch = mealCountMismatchOf(got, need);
+  if (!mismatch) return null;
+  return { need: mismatch.need, got: mismatch.got, meals };
 }
 
 async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
@@ -955,10 +962,10 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
     throw error;
   }
   const meals = (await cycleItemsByCycleId(lockedCycle.id)).filter((item) => item.kind === 'plan');
-  const mealQty = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const mealQty = sumPlanMealQty(meals);
   const need = Number(plan?.meal_count) || 0;
   // Do not seed next week with a short/over box after a plan size change.
-  if (meals.length && (!need || mealQty === need)) {
+  if (meals.length && canCopyOrSeedPlanMeals(mealQty, need)) {
     await supabase.from('subscription_cycle_items').insert(
       meals.map((item) => ({
         cycle_id: next.id,

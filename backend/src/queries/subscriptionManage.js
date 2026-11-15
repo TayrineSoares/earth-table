@@ -848,9 +848,10 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
 
   // Plan changes must confirm meals before the change finishes.
   const { qtyLines } = require('./subscriptionCheckout');
+  const { planChangeMealsOk } = require('../utils/mealCountMatch');
   const mealLines = qtyLines(meals);
   const mealQty = mealLines.reduce((sum, line) => sum + line.quantity, 0);
-  if (mealQty !== nextCount) {
+  if (!planChangeMealsOk(mealQty, nextCount)) {
     throw new SubscriptionError(
       400,
       `Pick exactly ${nextCount} meal${nextCount === 1 ? '' : 's'} before finishing this plan change.`

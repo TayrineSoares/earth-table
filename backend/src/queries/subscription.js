@@ -472,7 +472,8 @@ async function copyPlanMealsIfEmpty(dest, src) {
   if (!srcMeals || !srcMeals.length) return dest;
 
   // Never copy a short/over box onto a different plan size (e.g. 10 → 15 upgrade).
-  const srcQty = srcMeals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const { sumPlanMealQty, canCopyOrSeedPlanMeals } = require('../utils/mealCountMatch');
+  const srcQty = sumPlanMealQty(srcMeals);
   let need = Number(dest.meal_count) || 0;
   if (!need && dest.plan_id) {
     try {
@@ -482,7 +483,7 @@ async function copyPlanMealsIfEmpty(dest, src) {
       console.warn('[subscriptions] copy meal-count check failed:', err.message);
     }
   }
-  if (need > 0 && srcQty !== need) return dest;
+  if (!canCopyOrSeedPlanMeals(srcQty, need)) return dest;
 
   const { error: copyErr } = await supabase.from('subscription_cycle_items').insert(
     srcMeals.map((item) => ({
