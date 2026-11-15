@@ -437,6 +437,31 @@ async function recordOpsEvent({
   }
 }
 
+/** Best-effort notes trail — never fail the customer save. */
+async function recordNotesHistory({
+  subscriptionId,
+  cycleId,
+  deliveryDate,
+  previousNote,
+  note,
+  source,
+}) {
+  const prev = previousNote != null ? String(previousNote) : null;
+  const next = note != null ? String(note) : null;
+  if ((prev || '') === (next || '')) return;
+  const { error } = await supabase.from('subscription_notes_history').insert({
+    subscription_id: subscriptionId || null,
+    cycle_id: cycleId || null,
+    delivery_date: deliveryDate || null,
+    previous_note: prev,
+    note: next,
+    source: source || null,
+  });
+  if (error) {
+    console.warn('[subscriptions] notes history failed:', error.message);
+  }
+}
+
 async function attachCycleItems(cycles) {
   const rows = cycles || [];
   if (!rows.length) return rows;
@@ -1255,18 +1280,29 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     if (cycle.delivery && (!specialNote || specialNote.length < 8)) {
       throw new SubscriptionError(400, 'Please enter your full delivery address.');
     }
-    const { error: subErr } = await supabase
-      .from('subscriptions')
-      .update({ special_note: specialNote })
-      .eq('id', sub.id);
-    if (subErr) throw subErr;
+    // Notes are per Sunday/cycle — never overwrite the subscription default or
+    // another week's locked box (e.g. edits after cutoff hit the following week).
+    const deliveryDate = week.delivery_date || cycle.delivery_date || null;
+    await recordNotesHistory({
+      subscriptionId: sub.id,
+      cycleId: cycle.id,
+      deliveryDate,
+      previousNote: cycle.special_note,
+      note: specialNote,
+      source: 'notes_only',
+    });
     const { error: cycleErr } = await supabase
       .from('subscription_cycles')
       .update({ special_note: specialNote })
       .eq('id', cycle.id);
     if (cycleErr) throw cycleErr;
     const updated = { ...cycle, special_note: specialNote };
-    return { ok: true, cycle: updated };
+    return {
+      ok: true,
+      cycle: updated,
+      week,
+      notes_for_delivery_date: deliveryDate,
+    };
   }
 
   const delivery = !!body.delivery;
@@ -1310,13 +1346,23 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     if (wasPickup) patch.delivery_fee_cents = 0;
   }
 
+  // Delivery prefs stay on the subscription as defaults for new weeks.
+  // special_note stays on the cycle only so each Sunday keeps its own notes.
+  await recordNotesHistory({
+    subscriptionId: sub.id,
+    cycleId: cycle.id,
+    deliveryDate: week.delivery_date || cycle.delivery_date || null,
+    previousNote: cycle.special_note,
+    note: specialNote,
+    source: 'fulfillment',
+  });
+
   const { error: subErr } = await supabase
     .from('subscriptions')
     .update({
       delivery: patch.delivery,
       delivery_postal_code: patch.delivery_postal_code,
       pickup_time_slot: patch.pickup_time_slot,
-      special_note: patch.special_note,
     })
     .eq('id', sub.id);
   if (subErr) throw subErr;
@@ -1506,6 +1552,7 @@ module.exports = {
   writeCyclePlanAndAddons,
   recordPlanChange,
   recordOpsEvent,
+  recordNotesHistory,
   updateOpenCycleFulfillment,
   getOwnedSubscription,
   runCardExpiryNotices,

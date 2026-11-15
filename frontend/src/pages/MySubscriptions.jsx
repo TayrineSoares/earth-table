@@ -561,14 +561,14 @@ const MySubscriptions = ({ user }) => {
     setPickupTime(cycle.pickup_time_slot || '')
     setDeliveryDate(locked)
     setPostalCode(cycle.delivery_postal_code || '')
-    setSpecialNote(cycle.special_note || row.special_note || '')
+    setSpecialNote(cycle.special_note || '')
   }
 
   const startNotesEdit = (row) => {
     const cycle = row.edit_cycle || row.cycle || {}
     setNotesEditingId(row.id)
     setEditingId(null)
-    setSpecialNote(cycle.special_note || row.special_note || '')
+    setSpecialNote(cycle.special_note || '')
   }
 
   const fulfillmentReady =
@@ -598,7 +598,22 @@ const MySubscriptions = ({ user }) => {
       })
       await load()
       setNotesEditingId(null)
-      setDialog(SAVED_DIALOG)
+      {
+        const editCycle = row.edit_cycle || row.cycle || {}
+        const nextBox = row.next_box_cycle || row.this_week_cycle || null
+        const following = Boolean(
+          editCycle?.id && nextBox?.id && String(editCycle.id) !== String(nextBox.id)
+        )
+        const nextLabel = sundayDatePart(row.week?.delivery_label || editCycle.delivery_date)
+        setDialog(following
+          ? {
+            icon: 'mail',
+            title: 'Notes saved for next Sunday',
+            body: `This Sunday's locked box keeps its notes. Your update applies to next Sunday${nextLabel ? `, ${nextLabel}` : ''}. Questions? Email hello@earthtableco.ca.`,
+            primaryLabel: 'Got it',
+          }
+          : SAVED_DIALOG)
+      }
     } catch (err) {
       console.error(err)
       setDialog({
@@ -1007,7 +1022,20 @@ const MySubscriptions = ({ user }) => {
                 ? 'my-sub-status my-sub-status--paused'
                 : 'my-sub-status my-sub-status--active'
             const boxForDetails = nextBoxCycle || cycle
-            const note = String(boxForDetails.special_note || row.special_note || '').trim()
+            const editCycle = row.edit_cycle || cycle
+            // Notes are per cycle — never fall back to subscription.special_note.
+            const note = String(boxForDetails.special_note || '').trim()
+            const notesEditFollowing = Boolean(
+              canEdit
+              && editCycle?.id
+              && boxForDetails?.id
+              && String(editCycle.id) !== String(boxForDetails.id)
+            )
+            const notesEditSunday = sundayDatePart(
+              notesEditFollowing
+                ? (row.week?.delivery_label || editCycle.delivery_date)
+                : (row.week?.delivery_label || boxForDetails.delivery_date || ymd)
+            )
             const location = isDelivery
               ? (boxForDetails.delivery_postal_code || '—')
               : PICKUP_ADDRESS
@@ -1212,10 +1240,18 @@ const MySubscriptions = ({ user }) => {
                                 : startNotesEdit(row)
                             )}
                           >
-                            {notesEditingId === row.id ? 'Close' : 'Edit'}
+                            {notesEditingId === row.id
+                              ? 'Close'
+                              : (notesEditFollowing ? 'Edit for next Sunday' : 'Edit')}
                           </button>
                         ) : null}
                       </DetailRow>
+                      {notesEditFollowing && notesEditingId !== row.id ? (
+                        <p className="my-sub-repeat-note">
+                          This Sunday&apos;s box is locked — its notes stay as shown. Edits apply only to next Sunday
+                          {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                        </p>
+                      ) : null}
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
                       <p className="my-sub-repeat-note">{UNCHANGED_MEALS}</p>
                       <DetailRow label="Pause or cancel by">
@@ -1327,7 +1363,21 @@ const MySubscriptions = ({ user }) => {
                   {notesEditingId === row.id && canEdit ? (
                     <div className="my-sub-notes-edit">
                       <div className="special-note-container">
-                        <label htmlFor={`sub-notes-${row.id}`} className="general-text">Notes</label>
+                        <label htmlFor={`sub-notes-${row.id}`} className="general-text">
+                          {notesEditFollowing
+                            ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
+                            : 'Notes'}
+                        </label>
+                        {notesEditFollowing ? (
+                          <p className="my-sub-repeat-note">
+                            This Sunday&apos;s locked box keeps the notes shown above. Saving here updates only next Sunday
+                            {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                          </p>
+                        ) : (
+                          <p className="my-sub-repeat-note">
+                            Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
+                          </p>
+                        )}
                         <textarea
                           className="special-note-input"
                           id={`sub-notes-${row.id}`}
@@ -1422,7 +1472,21 @@ const MySubscriptions = ({ user }) => {
                       )}
 
                       <div className="special-note-container">
-                        <label htmlFor={`sub-note-${row.id}`} className="general-text">Special Instructions </label>
+                        <label htmlFor={`sub-note-${row.id}`} className="general-text">
+                          {notesEditFollowing
+                            ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
+                            : 'Special Instructions '}
+                        </label>
+                        {notesEditFollowing ? (
+                          <p className="my-sub-repeat-note">
+                            This Sunday&apos;s locked box keeps its current notes. Saving here updates only next Sunday
+                            {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                          </p>
+                        ) : (
+                          <p className="my-sub-repeat-note">
+                            Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
+                          </p>
+                        )}
                         <textarea
                           className="special-note-input"
                           id={`sub-note-${row.id}`}

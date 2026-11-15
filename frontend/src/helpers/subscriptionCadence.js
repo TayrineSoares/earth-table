@@ -37,6 +37,10 @@ export function howItWorksMeals() {
   return `Change meals and extras for that week in My Subscriptions until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}`
 }
 
+export function howItWorksNotes() {
+  return `Notes (address, allergies, instructions) are saved per Sunday. If you don't change them, they carry over to the next week. After Wednesday at 5:00 PM ET, any edit applies only to the following week — this Sunday's locked box keeps the notes it already had. Questions? Email ${SUPPORT_EMAIL}.`
+}
+
 export function howItWorksSupport() {
   return `Need help with your plan, box, or billing? Email ${SUPPORT_EMAIL}.`
 }
@@ -57,6 +61,7 @@ export function subscriptionDetailsItems({
     howItWorksPlanChange(),
     signingUp ? howItWorksFirstDelivery(firstDeliveryLabel) : null,
     howItWorksMeals(),
+    howItWorksNotes(),
     howItWorksSupport(),
   ].filter(Boolean)
 }

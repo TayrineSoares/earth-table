@@ -94,7 +94,11 @@ const customerName = (customer) => {
 
 const subscriptionNote = (row) => String(row?.special_note || '').trim();
 
-const cycleNote = (row, cycle) => String(cycle?.special_note || row?.special_note || '').trim();
+// Prefer the cycle's own notes — each Sunday keeps its box notes.
+const cycleNote = (row, cycle) => {
+  if (cycle?.id) return String(cycle.special_note || '').trim();
+  return String(row?.special_note || '').trim();
+};
 
 const statusLabel = (row) => {
   if (row.status === 'paused' && row.pause_reason === 'payment_failed') return 'Payment failed';
