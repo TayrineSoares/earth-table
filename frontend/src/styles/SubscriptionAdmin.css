@@ -291,6 +291,15 @@
   border-top: 1px solid #D9C7B0;
 }
 
+.sub-admin-meal-warn {
+  margin: 0 0 10px;
+  font-family: var(--body-font);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #B42318;
+}
+
 .sub-admin-panel .promo-delete-button {
   padding: 6px 10px;
   font-size: 13px;
@@ -459,6 +468,13 @@
     font-size: 16px;
     font-weight: 700;
     margin: 0 0 8px;
+  }
+
+  .sub-admin-print-meal-warn {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #B42318;
   }
 
   .sub-admin-print-box p {

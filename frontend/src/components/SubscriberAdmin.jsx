@@ -113,6 +113,21 @@ const mealLabel = (count) => {
   return `${n} ${n === 1 ? 'meal' : 'meals'}`;
 };
 
+const mealQty = (items) => (
+  (items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+);
+
+/** Short/over box vs plan size — kitchen should call the customer. */
+const mealMismatchNote = (selected, planCount) => {
+  const need = Number(planCount) || 0;
+  const got = Number(selected) || 0;
+  if (!need || got === need) return '';
+  if (got < need) {
+    return `Only ${got} ${got === 1 ? 'meal' : 'meals'} selected — please contact customer`;
+  }
+  return `${got} meals selected (plan is ${need}) — please contact customer`;
+};
+
 const fulfillmentParts = (cycle) => {
   if (!cycle || (!cycle.delivery_date && !cycle.pickup_date && cycle.delivery == null)) {
     return { kind: null, meta: '' };
@@ -227,6 +242,7 @@ const toPrintBoxes = (weekRows, cycleKey) => {
       orderId: cycle.order_id || null,
       meals: items.filter((item) => item.kind === 'plan'),
       extras: items.filter((item) => item.kind === 'addon'),
+      selectedMealQty: mealQty(items.filter((item) => item.kind === 'plan')),
     };
   });
   return [...boxes.filter((row) => !row.delivery), ...boxes.filter((row) => row.delivery)];
@@ -646,6 +662,8 @@ const SubscriberAdmin = () => {
                                     const noteText = cycleNote(row, planCycle);
                                     const kitchen = kitchenForRow(row, view);
                                     const mealCount = Number(row.subscription_plans?.meal_count) || 0;
+                                    const selected = mealQty(meals);
+                                    const mismatch = mealMismatchNote(selected, mealCount);
                                     const planFulfill = fulfillmentParts(planCycle);
                                     return (
                                       <div key={row.id} className="sub-admin-plan-block">
@@ -671,6 +689,10 @@ const SubscriberAdmin = () => {
                                           </div>
                                         ) : null}
                                         <p className="order-details-col-title">Meals</p>
+                                        <p className="order-details-body">{mealLabel(mealCount)}</p>
+                                        {mismatch ? (
+                                          <p className="sub-admin-meal-warn" role="status">{mismatch}</p>
+                                        ) : null}
                                         {meals.length ? (
                                           <ul>
                                             {meals.map((item) => (
@@ -738,11 +760,16 @@ const SubscriberAdmin = () => {
           {' · '}
           {printBoxes.filter((row) => !row.delivery).length} pickup, {printBoxes.filter((row) => row.delivery).length} delivery
         </p>
-        {printBoxes.map((row, index) => (
+        {printBoxes.map((row, index) => {
+          const mismatch = mealMismatchNote(row.selectedMealQty, row.mealCount);
+          return (
           <div key={row.id} className="sub-admin-print-box">
             <p className="sub-admin-print-name">
               {index + 1}. {row.name} — {row.mealCount} meals
             </p>
+            {mismatch ? (
+              <p className="sub-admin-print-meal-warn">{mismatch}</p>
+            ) : null}
             <p>
               {row.method} {printSunday}, {row.windowStart} – {row.windowEnd}
             </p>
@@ -778,7 +805,8 @@ const SubscriberAdmin = () => {
               <p className="sub-admin-print-extras">-</p>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

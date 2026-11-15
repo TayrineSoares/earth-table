@@ -1551,6 +1551,20 @@ function boxMealCount(row) {
   return fromItems > 0 ? fromItems : '—';
 }
 
+function boxSelectedMealQty(row) {
+  return (row?.meals || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+}
+
+function boxMealMismatchNote(row) {
+  const need = Number(row?.mealCount) || 0;
+  const got = boxSelectedMealQty(row);
+  if (!need || got === need) return '';
+  if (got < need) {
+    return `Only ${got} ${got === 1 ? 'meal' : 'meals'} selected — please contact customer`;
+  }
+  return `${got} meals selected (plan is ${need}) — please contact customer`;
+}
+
 function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
   const pickup = boxes.filter((row) => !row.delivery);
   const delivery = boxes.filter((row) => row.delivery);
@@ -1562,6 +1576,7 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
   const block = (row, i) => {
     const name = String(row.name || '').trim() || 'Customer';
     const meals = boxMealCount(row);
+    const mismatch = boxMealMismatchNote(row);
     const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
     const start = row.windowStart || '—';
     const end = row.windowEnd || '—';
@@ -1575,9 +1590,13 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
       <p style="margin:0 0 10px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes || loc}</p>`
       : `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${PICKUP_ADDRESS}</p>
       ${notes ? `<p style="margin:0 0 10px; padding:8px 10px; background-color:${C_CREAM}; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes}</p>` : ''}`;
+    const warn = mismatch
+      ? `<p style="margin:0 0 8px; font-size:14px; font-weight:700; color:#B42318; font-family:${FONT};">${mismatch}</p>`
+      : '';
     return `
     <div style="margin:0 0 24px; padding:16px 0; border-top:1px solid ${C_LINE};">
       <p style="margin:0 0 8px; font-size:16px; font-weight:700; color:${C_INK}; font-family:${FONT};">${i}. ${name} — ${meals} meals</p>
+      ${warn}
       <p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${boxLine}</p>
       <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}${orderLine}</p>
       ${place}
@@ -1599,8 +1618,10 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
     const notes = String(row.notes || '').trim();
     const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
     const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
+    const mismatch = boxMealMismatchNote(row);
     return [
       `${i + 1}. ${String(row.name || '').trim() || 'Customer'} — ${boxMealCount(row)} meals`,
+      mismatch || '',
       `${method} ${sunday || 'Sunday'}, ${row.windowStart || '—'} – ${row.windowEnd || '—'}`,
       `${formatPhone(row.phone)} · ${row.email || '—'}${row.orderId ? ` · order #${row.orderId}` : ''}`,
       row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
