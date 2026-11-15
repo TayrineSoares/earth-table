@@ -899,12 +899,17 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     };
   }
 
-  const oldPrice = Number(cycle?.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
+  // Fail closed before any Stripe move — locked week must not charge then throw.
+  if (!cycle || cycle.status !== 'open') {
+    throw new SubscriptionError(400, 'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.');
+  }
+
+  const oldPrice = Number(cycle.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
   const newPrice = Number(nextPlan.price_cents) || 0;
-  const alreadyPaid = Number(cycle?.plan_paid_cents) || 0;
+  const alreadyPaid = Number(cycle.plan_paid_cents) || 0;
   const delta = newPrice - oldPrice;
 
-  if (cycle && alreadyPaid > 0 && delta !== 0) {
+  if (alreadyPaid > 0 && delta !== 0) {
     const stripe = getStripe();
     const amount = Math.round(Math.abs(delta) * HST);
     if (delta > 0 && amount >= 50) {
@@ -920,6 +925,8 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
           off_session: true,
           confirm: true,
           description: 'Subscription plan upgrade',
+          // Same cycle+plan retry must not double-charge if meals/plan write fails after.
+          idempotencyKey: `sub-upgrade-${cycle.id}-${nextPlan.id}`,
           metadata: {
             kind: 'subscription_upgrade',
             subscription_id: sub.id,
@@ -936,6 +943,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
           payment_intent: cycle.stripe_payment_intent_id,
           amount,
           reason: 'requested_by_customer',
+          idempotencyKey: `sub-downgrade-${cycle.id}-${nextPlan.id}`,
           metadata: { kind: 'subscription_downgrade', subscription_id: sub.id, cycle_id: cycle.id },
         });
       } catch (err) {
@@ -945,11 +953,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     }
   }
 
-  if (!cycle || cycle.status !== 'open') {
-    throw new SubscriptionError(400, 'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.');
-  }
-
-  // Meals first so a failed pick does not leave the subscription on the new plan.
+  // Meals after Stripe (with idempotency above) so a failed pick never leaves free extra meals.
   await writeCyclePlanAndAddons(cycle.id, meals, addons || [], { mealCount: nextCount });
 
   const { error: subErr } = await supabase

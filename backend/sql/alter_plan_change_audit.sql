@@ -1,6 +1,6 @@
 -- Plan-change / meal-count audit extras
--- Run once in the Supabase SQL editor. App code can start writing these later.
--- Does not change live charge/lock behavior by itself.
+-- REQUIRED before deploying hotfix-meal-count (app reads/writes these columns).
+-- Safe to re-run (IF NOT EXISTS). Run once in the Supabase SQL editor.
 
 -- ---------------------------------------------------------------------------
 -- subscription_cycles: freeze expected count for that Sunday + meal confirm stamp

@@ -568,6 +568,8 @@ async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
   const deliveryLabel = sundayLabelFromYmd(sunday);
   const user = await getUserByAuthId(sub.user_id);
 
+  const billed = Number(cycle.plan_paid_cents) > 0;
+
   if (user?.email) {
     try {
       const msg = renderSubscriptionMealMismatchEmail({
@@ -576,6 +578,7 @@ async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
         selectedCount: mismatch.got,
         deliveryLabel,
         meals: mealLines,
+        billed,
       });
       await sendCustomerEmail({ to: user.email, msg });
     } catch (err) {
@@ -596,6 +599,7 @@ async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
       deliveryLabel,
       orderId: cycle.order_id || null,
       meals: mealLines,
+      billed,
     });
     await sendOwnerEmail(msg);
   } catch (err) {

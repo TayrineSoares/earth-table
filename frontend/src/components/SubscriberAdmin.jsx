@@ -656,6 +656,7 @@ const SubscriberAdmin = () => {
                                 <section className="order-details-col" style={{ gridColumn: 'span 2' }}>
                                   {plans.map((row) => {
                                     const planCycle = cycleForRow(row, view) || {};
+                                    const hasCycle = Boolean(planCycle.id);
                                     const items = cycleItems(planCycle);
                                     const meals = items.filter((item) => item.kind === 'plan');
                                     const addons = items.filter((item) => item.kind === 'addon');
@@ -665,7 +666,10 @@ const SubscriberAdmin = () => {
                                       || Number(row.subscription_plans?.meal_count)
                                       || 0;
                                     const selected = mealQty(meals);
-                                    const mismatch = mealMismatchNote(selected, mealCount);
+                                    // No cycle in this Sunday view → don't alarm on "0 of plan".
+                                    const mismatch = hasCycle && planCycle.status !== 'skipped'
+                                      ? mealMismatchNote(selected, mealCount)
+                                      : '';
                                     const planFulfill = fulfillmentParts(planCycle);
                                     return (
                                       <div key={row.id} className="sub-admin-plan-block">
