@@ -974,10 +974,15 @@ const MySubscriptions = ({ user }) => {
                   : statusLocked
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
                     : row.meals_need_update
-                      ? `Pick exactly ${mealCount} meals for this Sunday before ${lockBy}.`
+                      ? (
+                        mealQty < mealCount
+                          ? `You're on ${mealsAWeek(mealCount)} but this box only has ${mealQty}. Choose exactly ${mealCount} before ${lockBy} or you may be short after you're charged.`
+                          : `You're on ${mealsAWeek(mealCount)} but this box has ${mealQty}. Bring it to exactly ${mealCount} before ${lockBy}.`
+                      )
                       : pendingPlan
                         ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
                         : ''
+            const mealsNeedUpdate = Boolean(row.meals_need_update && !paymentFailedPause && !statusLocked)
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
             const otherPlans = plans.filter((planRow) => planRow.id !== row.plan_id)
             const statusLabel = pending === 'paused'
@@ -1156,6 +1161,19 @@ const MySubscriptions = ({ user }) => {
                           >
                             Update your card
                           </button>
+                        </div>
+                      ) : mealsNeedUpdate && statusNote ? (
+                        <div className="my-sub-status-note my-sub-status-note--alert" role="status">
+                          <p>{statusNote}</p>
+                          {canEdit ? (
+                            <Link
+                              className="my-sub-edit-link"
+                              to={`/my-subscriptions/${row.id}/meals`}
+                              state={{ fresh: true }}
+                            >
+                              Fix meals
+                            </Link>
+                          ) : null}
                         </div>
                       ) : statusNote ? (
                         <p className="my-sub-status-note">{statusNote}</p>

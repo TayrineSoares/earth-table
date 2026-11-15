@@ -19,6 +19,8 @@ const {
   renderSubscriptionHolidaySkipEmail,
   renderSubscriptionChargeEmail,
   renderSubscriptionLockEmail,
+  renderSubscriptionMealMismatchEmail,
+  renderOwnerMealMismatchEmail,
   renderOwnerPaymentFailedEmail,
   formatDollars,
 } = require('../utils/emailTemplates');
@@ -527,9 +529,10 @@ async function sendLockNotice(sub, cycle, sunday, addonResult) {
   const discountLabel = discountCents > 0
     ? firstWeekDiscountLabel(sub.first_promo_code, discountKind)
     : '';
+  const planMealCount = Number(cycle.meal_count) || Number(sub.subscription_plans?.meal_count) || 0;
   const msg = renderSubscriptionLockEmail({
     firstName: user.first_name,
-    mealCount: sub.subscription_plans?.meal_count,
+    mealCount: planMealCount,
     delivery: !!cycle.delivery,
     deliveryLabel: sundayLabelFromYmd(sunday),
     pickupSlot: cycle.pickup_time_slot,
@@ -547,6 +550,57 @@ async function sendLockNotice(sub, cycle, sunday, addonResult) {
     last4: card?.last4,
   });
   await sendCustomerEmail({ to: user.email, msg });
+}
+
+/** Plan size vs selected meals at lock — customer is already billed. */
+async function mealCountMismatch(sub, cycle) {
+  const meals = (await cycleItemsByCycleId(cycle.id)).filter((item) => item.kind === 'plan');
+  const got = meals.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const need = Number(cycle.meal_count) || Number(sub.subscription_plans?.meal_count) || 0;
+  if (!need || got === need) return null;
+  return { need, got, meals };
+}
+
+async function sendMealMismatchNotices(sub, cycle, sunday, mismatch) {
+  if (!mismatch) return;
+  const labeled = await sluggedItems(mismatch.meals);
+  const mealLines = itemsByKind(labeled, 'plan');
+  const deliveryLabel = sundayLabelFromYmd(sunday);
+  const user = await getUserByAuthId(sub.user_id);
+
+  if (user?.email) {
+    try {
+      const msg = renderSubscriptionMealMismatchEmail({
+        firstName: user.first_name,
+        mealCount: mismatch.need,
+        selectedCount: mismatch.got,
+        deliveryLabel,
+        meals: mealLines,
+      });
+      await sendCustomerEmail({ to: user.email, msg });
+    } catch (err) {
+      console.warn('[subscriptions] meal-mismatch customer email failed:', sub.id, err.message);
+    }
+  }
+
+  try {
+    const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+      || user?.email
+      || 'Customer';
+    const msg = renderOwnerMealMismatchEmail({
+      customerName: name,
+      email: user?.email,
+      phone: user?.phone_number,
+      mealCount: mismatch.need,
+      selectedCount: mismatch.got,
+      deliveryLabel,
+      orderId: cycle.order_id || null,
+      meals: mealLines,
+    });
+    await sendOwnerEmail(msg);
+  } catch (err) {
+    console.warn('[subscriptions] meal-mismatch owner email failed:', sub.id, err.message);
+  }
 }
 
 async function runPlanCharge({ force = false, now = new Date() } = {}) {
@@ -930,8 +984,29 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
   let skipped = 0;
   let addonsCharged = 0;
   let emailed = 0;
+  let mealMismatches = 0;
   const emailedIds = await emailedIdsFor(sunday, 'thursday_lock');
   const failures = [];
+
+  async function maybeSendLockAndMismatch(sub, cycle, sundayYmd, addonResult) {
+    if (emailedIds.has(sub.id)) return;
+    try {
+      await sendLockNotice(sub, cycle, sundayYmd, addonResult);
+      emailedIds.add(sub.id);
+      emailed += 1;
+    } catch (err) {
+      console.warn('[subscriptions] Lock email failed:', sub.id, err.message);
+    }
+    try {
+      const mismatch = await mealCountMismatch(sub, cycle);
+      if (mismatch) {
+        await sendMealMismatchNotices(sub, cycle, sundayYmd, mismatch);
+        mealMismatches += 1;
+      }
+    } catch (err) {
+      console.warn('[subscriptions] Meal-mismatch notices failed:', sub.id, err.message);
+    }
+  }
 
   for (const sub of subs) {
     let cycle = await cycleForSunday(sub.id, sunday);
@@ -962,19 +1037,13 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
     if (cycle.status === 'locked') {
       if (linkedOrderId) cycle.order_id = linkedOrderId;
       locked += 1;
-      if (!emailedIds.has(sub.id)) {
-        try {
-          const addonPaid = Number(cycle.addon_paid_cents) || 0;
-          await sendLockNotice(sub, cycle, sunday, {
-            charged: addonPaid > 0,
-            due: addonPaid,
-            amount: Math.round(addonPaid * HST),
-          });
-          emailedIds.add(sub.id);
-          emailed += 1;
-        } catch (err) {
-          console.warn('[subscriptions] Lock email failed:', sub.id, err.message);
-        }
+      {
+        const addonPaid = Number(cycle.addon_paid_cents) || 0;
+        await maybeSendLockAndMismatch(sub, cycle, sunday, {
+          charged: addonPaid > 0,
+          due: addonPaid,
+          amount: Math.round(addonPaid * HST),
+        });
       }
       try {
         boxLines.push(await ownerBoxFrom(sub, cycle));
@@ -1017,15 +1086,7 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
       continue;
     }
 
-    if (!emailedIds.has(sub.id)) {
-      try {
-        await sendLockNotice(sub, cycle, sunday, addon);
-        emailedIds.add(sub.id);
-        emailed += 1;
-      } catch (err) {
-        console.warn('[subscriptions] Lock email failed:', sub.id, err.message);
-      }
-    }
+    await maybeSendLockAndMismatch(sub, cycle, sunday, addon);
 
     const pending = await applyPendingAfterLock(sub);
     if (!pending.cancelled && !pending.paused) {
@@ -1062,6 +1123,7 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
     addonsCharged,
     failed: failures.length,
     emailed,
+    meal_mismatches: mealMismatches,
     emailed_ids: [...emailedIds],
   };
   await recordRun(sunday, 'thursday_lock', stats);

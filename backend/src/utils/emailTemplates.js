@@ -2070,6 +2070,120 @@ function renderSubscriptionPriceEmail({
   return { subject, html, text };
 }
 
+/**
+ * Wednesday lock: meal qty does not match the billed plan size.
+ * Customer already paid — ask them to reply with the fix (extra meals or which to keep).
+ */
+function renderSubscriptionMealMismatchEmail({
+  firstName,
+  mealCount,
+  selectedCount,
+  deliveryLabel,
+  meals,
+} = {}) {
+  const name = firstName || 'there';
+  const need = Number(mealCount) || 0;
+  const got = Number(selectedCount) || 0;
+  const sunday = deliveryLabel || 'this Sunday';
+  const planWeek = mealsAWeek(need);
+  const short = got < need;
+  const diff = Math.abs(need - got);
+  const subject = short
+    ? `Action needed — only ${got} of ${need} meals locked for ${sunday}`
+    : `Action needed — ${got} meals locked on a ${need}-meal plan for ${sunday}`;
+  const heading = short
+    ? `We need ${diff} more meal${diff === 1 ? '' : 's'}, ${name}`
+    : `Too many meals on this box, ${name}`;
+  const introText = short
+    ? `Your ${planWeek} is already charged, but ${sunday}'s box locked with only ${got} meal${got === 1 ? '' : 's'}. Reply to this email (or write hello@earthtableco.ca) with the ${diff} extra meal${diff === 1 ? '' : 's'} you want and we'll add them.`
+    : `Your ${planWeek} is already charged, but ${sunday}'s box locked with ${got} meals (${diff} over). Reply to this email (or write hello@earthtableco.ca) to confirm which ${need} meal${need === 1 ? '' : 's'} to keep and we'll fix the box.`;
+
+  const html = wrapEmail(`
+      ${eyebrow("Weekly subscription")}
+      ${h1(heading)}
+      ${intro(introText)}
+      ${card(kvTable(`${kvRow('Plan', planWeek)}${kvRow('Selected', `${got} meal${got === 1 ? '' : 's'}`, { last: true })}`))}
+      ${h2("Meals on this box")}
+      ${itemListHtml(meals, '—')}
+      ${ctaLink(appUrl('/my-subscriptions'), "My Subscriptions →")}
+  `, {
+    preheader: introText,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `${heading}
+
+${introText}
+
+Plan: ${planWeek}
+Selected: ${got} meal${got === 1 ? '' : 's'}
+
+Meals on this box
+${itemLinesText(meals) || '—'}
+
+My Subscriptions: ${appUrl('/my-subscriptions')}
+
+Questions? Reply to this email or write to hello@earthtableco.ca.`;
+
+  return { subject, html, text };
+}
+
+function renderOwnerMealMismatchEmail({
+  customerName,
+  email,
+  phone,
+  mealCount,
+  selectedCount,
+  deliveryLabel,
+  orderId,
+  meals,
+} = {}) {
+  const name = String(customerName || '').trim() || 'Customer';
+  const need = Number(mealCount) || 0;
+  const got = Number(selectedCount) || 0;
+  const sunday = deliveryLabel || 'Sunday';
+  const short = got < need;
+  const diff = Math.abs(need - got);
+  const subject = short
+    ? `Meal mismatch — ${name}: ${got} of ${need} for ${sunday}`
+    : `Meal mismatch — ${name}: ${got} on ${need}-meal plan for ${sunday}`;
+  const body = short
+    ? `${name} is on a ${need}-meal plan and was charged for it, but ${sunday} locked with only ${got}. Ask them for the ${diff} extra meal${diff === 1 ? '' : 's'} (customer email asks them to reply).`
+    : `${name} is on a ${need}-meal plan and was charged for it, but ${sunday} locked with ${got} (${diff} over). Confirm which ${need} to keep (customer email asks them to reply).`;
+
+  const detailRows = `${kvRow('Customer', name)}${kvRow('Email', email || '—')}${kvRow('Phone', formatPhone(phone))}${kvRow('Sunday', sunday)}${kvRow('Plan', mealsAWeek(need))}${kvRow('Selected', `${got} meal${got === 1 ? '' : 's'}`)}${kvRow('Order', orderId ? `#${orderId}` : '—', { last: true })}`;
+  const html = wrapEmail(`
+      ${eyebrow("Kitchen")}
+      ${h1(`Meal count mismatch`)}
+      ${intro(body)}
+      ${card(kvTable(detailRows))}
+      ${h2("Meals on this box")}
+      ${itemListHtml(meals, '—')}
+  `, {
+    preheader: subject,
+    replyOk: true,
+    title: subject,
+  });
+
+  const text = `${subject}
+
+${body}
+
+Customer: ${name}
+Email: ${email || '—'}
+Phone: ${formatPhone(phone)}
+Sunday: ${sunday}
+Plan: ${mealsAWeek(need)}
+Selected: ${got}
+${orderId ? `Order: #${orderId}` : ''}
+
+Meals
+${itemLinesText(meals) || '—'}`;
+
+  return { subject, html, text };
+}
+
 module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
@@ -2090,6 +2204,8 @@ module.exports = {
   renderOwnerFulfillmentEmail,
   renderSubscriptionChargeEmail,
   renderSubscriptionLockEmail,
+  renderSubscriptionMealMismatchEmail,
+  renderOwnerMealMismatchEmail,
   renderSubscriptionDeadlineEmail,
   renderSubscriptionPriceEmail,
   renderPlanDiscontinuedEmail,
