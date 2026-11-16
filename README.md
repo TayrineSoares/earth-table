@@ -33,7 +33,16 @@ The frontend will run on `http://localhost:5173`
 
 ## Docs
 
-- [Weekly subscriptions (internal wiki)](docs/subscriptions.md) — end-to-end feature map, cadence, money rules, emails, and where to look in the code
+Internal feature wikis live under [`docs/`](docs/README.md):
+
+- [Subscriptions](docs/subscriptions.md) — weekly Subscribe & Save
+- [À la carte](docs/alacarte.md) — one-off cart → Stripe → orders
+- [Partners](docs/partners.md) — referrals, wallet, invoices
+- [Promos](docs/promos.md) — percent-off codes
+- [Catalog](docs/catalog.md) — products, categories, tags
+- [Fulfillment](docs/fulfillment.md) — pickup/delivery quotes
+- [Auth](docs/auth.md) — signup, profile, admin flag
+- [Site & admin](docs/site-and-admin.md) — marketing, contact, unsubscribe, Admin shell
 
 ## Notes
 
