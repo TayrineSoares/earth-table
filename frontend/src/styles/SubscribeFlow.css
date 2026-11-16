@@ -568,11 +568,16 @@
   padding-top: 56px;
 }
 
+.subscribe-cart-page .checkout-order-summary > .checkout-button {
+  margin-bottom: 4px;
+}
+
 .subscribe-cart-page .subscribe-cart-cancel {
   display: block;
   width: 100%;
-  max-width: 405px;
-  margin: 8px 0 0;
+  max-width: 415px;
+  margin: 0 0 24px;
+  padding-top: 0;
   text-align: center;
 }
 

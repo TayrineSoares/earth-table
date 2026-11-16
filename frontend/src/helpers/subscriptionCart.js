@@ -101,6 +101,8 @@ function emptyEditCart() {
     addons: [],
     planChangeId: null,
     planChangePending: false,
+    // Survives meals → add-ons → cart even if location.state is dropped.
+    resumeAfter: false,
   };
 }
 
@@ -119,6 +121,7 @@ function readEditCart(userId, subscriptionId) {
       ...parsed,
       meals: Array.isArray(parsed.meals) ? parsed.meals : [],
       addons: Array.isArray(parsed.addons) ? parsed.addons : [],
+      resumeAfter: Boolean(parsed.resumeAfter),
     };
   } catch {
     return emptyEditCart();
@@ -163,6 +166,7 @@ function seedEditCart(sub, cycle) {
     addons: seedLinesFromCycle(cycle, 'addon'),
     planChangeId: null,
     planChangePending: false,
+    resumeAfter: false,
   };
 }
 
@@ -182,6 +186,7 @@ function seedEditCartForPlanChange(sub, cycle, nextPlan, { pending = false } = {
     addons: pending ? [] : seedLinesFromCycle(cycle, 'addon'),
     planChangeId: nextPlan.id,
     planChangePending: Boolean(pending),
+    resumeAfter: false,
   };
 }
 

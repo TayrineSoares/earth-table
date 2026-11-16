@@ -264,7 +264,7 @@ const weekSaveCopy = (week, {
   }
   return {
     title: 'These changes are for this Sunday',
-    body: `These changes apply to this Sunday, ${sundayDate}. You can keep editing until ${cutoff}.${feeLine}`,
+    body: `These changes apply to this Sunday, ${sundayDate}. You can swap meals and add extras until ${cutoff}.${feeLine}`,
   };
 };
 

@@ -111,9 +111,13 @@ const SubscribeEditMeals = ({ user }) => {
           setIsLoading(false)
           return
         }
-        writeEditCart(userId, subscriptionId, nextCart)
+        const stamped = {
+          ...nextCart,
+          resumeAfter: Boolean(resumeAfter || nextCart.resumeAfter || stored.resumeAfter),
+        }
+        writeEditCart(userId, subscriptionId, stamped)
         setRow(found)
-        setEditCart(nextCart)
+        setEditCart(stamped)
         setProducts(nextProducts || [])
         setCategories(sortPlanMealCategories(nextCategories || []))
         setAllTags(nextTags || [])
@@ -135,10 +139,11 @@ const SubscribeEditMeals = ({ user }) => {
     return () => {
       cancelled = true
     }
-  }, [userId, subscriptionId, startFresh, planChangeFlow])
+  }, [userId, subscriptionId, startFresh, planChangeFlow, resumeAfter])
 
   const plan = row?.subscription_plans || {}
   const changingPlan = Boolean(editCart.planChangeId)
+  const shouldResume = Boolean(resumeAfter || editCart.resumeAfter)
   const picked = totalQty(editCart.meals)
   const need = Number(editCart.mealCount) || 0
   const exact = mealsExact(editCart)
@@ -154,7 +159,10 @@ const SubscribeEditMeals = ({ user }) => {
 
   const bump = (product, delta) => {
     setEditCart((prev) => {
-      const next = bumpMeal(prev, product, delta)
+      const next = {
+        ...bumpMeal(prev, product, delta),
+        resumeAfter: Boolean(shouldResume || prev.resumeAfter),
+      }
       writeEditCart(userId, subscriptionId, next)
       return next
     })
@@ -162,7 +170,11 @@ const SubscribeEditMeals = ({ user }) => {
 
   const startFreshMeals = () => {
     setEditCart((prev) => {
-      const next = { ...prev, meals: [] }
+      const next = {
+        ...prev,
+        meals: [],
+        resumeAfter: Boolean(shouldResume || prev.resumeAfter),
+      }
       writeEditCart(userId, subscriptionId, next)
       return next
     })
@@ -171,7 +183,7 @@ const SubscribeEditMeals = ({ user }) => {
   const onContinue = () => {
     if (!exact) return
     navigate(`/my-subscriptions/${subscriptionId}/addons`, {
-      state: resumeAfter ? { resumeAfter: true } : undefined,
+      state: shouldResume ? { resumeAfter: true } : undefined,
     })
   }
 
@@ -194,7 +206,7 @@ const SubscribeEditMeals = ({ user }) => {
           {row ? (
             <>
               <h1 className="subscribe-h1 subscribe-choose-title">
-                {changingPlan || resumeAfter ? 'Review your meals' : 'Choose your meals'}
+                {changingPlan || shouldResume ? 'Review your meals' : 'Choose your meals'}
               </h1>
               <p className="subscribe-plan-line">
                 {planLineCount} meals · {formatPlanPrice(planLinePrice)}/week ·{' '}
@@ -207,7 +219,7 @@ const SubscribeEditMeals = ({ user }) => {
                     ? (editCart.planChangePending
                       ? `You're switching to ${need} meals a week. Review and leave exactly ${need} for the following week — the plan change only saves when you confirm.`
                       : `You're switching to ${need} meals a week. Review and leave exactly ${need} for ${sundayLabel || 'this Sunday'} — the plan change only saves when you confirm.`)
-                    : resumeAfter
+                    : shouldResume
                       ? `Review this box and leave exactly ${need} meal${need === 1 ? '' : 's'}. The plan resumes after you save.`
                       : row.week?.cutoff_passed
                         ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`

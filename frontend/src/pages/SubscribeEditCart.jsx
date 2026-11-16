@@ -33,6 +33,7 @@ const SubscribeEditCart = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dialog, setDialog] = useState(null)
+  const shouldResume = Boolean(resumeAfter || editCart.resumeAfter)
 
   useEffect(() => {
     if (!user?.id) {
@@ -43,11 +44,15 @@ const SubscribeEditCart = ({ user }) => {
   useEffect(() => {
     if (!user?.id) return undefined
     const stored = readEditCart(user.id, subscriptionId)
+    const resumeFlow = Boolean(location.state?.resumeAfter || stored.resumeAfter || resumeAfter)
     if (!stored.subscriptionId || !mealsExact(stored)) {
-      navigate(`/my-subscriptions/${subscriptionId}/meals`, { replace: true })
+      navigate(`/my-subscriptions/${subscriptionId}/meals`, {
+        replace: true,
+        state: resumeFlow ? { resumeAfter: true } : undefined,
+      })
       return undefined
     }
-    setEditCart(stored)
+    setEditCart({ ...stored, resumeAfter: resumeFlow })
 
     let cancelled = false
     fetchMySubscriptions(user.id)
@@ -108,7 +113,7 @@ const SubscribeEditCart = ({ user }) => {
       ),
     })
 
-  const flowState = resumeAfter ? { resumeAfter: true } : undefined
+  const flowState = shouldResume ? { resumeAfter: true } : undefined
 
   const goBack = () => {
     if (saving) return
@@ -121,6 +126,7 @@ const SubscribeEditCart = ({ user }) => {
     setDialog(null)
     const meals = editCart.meals.map((item) => ({ id: item.id, quantity: item.quantity }))
     const addons = editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
+    const resumeFlow = Boolean(shouldResume || editCart.resumeAfter || location.state?.resumeAfter)
     try {
       if (changingPlan) {
         await changeSubscriptionPlan(user.id, subscriptionId, editCart.planChangeId, { meals, addons })
@@ -138,7 +144,7 @@ const SubscribeEditCart = ({ user }) => {
           }
           : {
             saved: true,
-            ...(resumeAfter ? { resumeAfter: true, resumeSubscriptionId: subscriptionId } : {}),
+            ...(resumeFlow ? { resumeAfter: true, resumeSubscriptionId: subscriptionId } : {}),
           },
       })
     } catch (err) {
@@ -224,7 +230,7 @@ const SubscribeEditCart = ({ user }) => {
               disabled={saving}
               onClick={onConfirm}
             >
-              {saving ? 'Saving…' : (resumeAfter ? 'Save and resume' : changingPlan ? 'Confirm plan change' : 'Confirm changes')}
+              {saving ? 'Saving…' : (shouldResume ? 'Save and resume' : changingPlan ? 'Confirm plan change' : 'Confirm changes')}
             </button>
             <button
               type="button"

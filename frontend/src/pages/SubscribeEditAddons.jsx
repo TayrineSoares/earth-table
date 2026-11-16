@@ -92,8 +92,12 @@ const SubscribeEditAddons = ({ user }) => {
         const nextCart = startFresh || stored.subscriptionId !== subscriptionId || !mealsExact(stored)
           ? seedEditCart(found, source)
           : stored
-        writeEditCart(userId, subscriptionId, nextCart)
-        setEditCart(nextCart)
+        const stamped = {
+          ...nextCart,
+          resumeAfter: Boolean(resumeAfter || nextCart.resumeAfter || stored.resumeAfter),
+        }
+        writeEditCart(userId, subscriptionId, stamped)
+        setEditCart(stamped)
         setProducts(nextProducts || [])
         setCategories(addonCategories(nextCategories || []))
         setAllTags(nextTags || [])
@@ -117,16 +121,20 @@ const SubscribeEditAddons = ({ user }) => {
     }
   }, [userId, subscriptionId, startFresh])
 
+  const shouldResume = Boolean(resumeAfter || editCart.resumeAfter)
+
   const bump = (product, delta) => {
     setEditCart((prev) => {
-      const next = bumpAddon(prev, product, delta)
+      const next = {
+        ...bumpAddon(prev, product, delta),
+        resumeAfter: Boolean(shouldResume || prev.resumeAfter),
+      }
       writeEditCart(userId, subscriptionId, next)
       return next
     })
   }
-
   const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`, {
-    state: resumeAfter ? { resumeAfter: true } : undefined,
+    state: shouldResume ? { resumeAfter: true } : undefined,
   })
   const addonCents = addonSubtotalCents(editCart)
   const extraCount = totalQty(editCart.addons)

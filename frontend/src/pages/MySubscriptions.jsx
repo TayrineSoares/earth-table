@@ -324,6 +324,7 @@ const MySubscriptions = ({ user }) => {
   rowsRef.current = rows
   const fetchedRef = useRef(fetchedUserId)
   fetchedRef.current = fetchedUserId
+  const resumeFlowRef = useRef(null)
 
   const applyMine = (data, plansList) => {
     if (!Array.isArray(data)) return
@@ -396,46 +397,60 @@ const MySubscriptions = ({ user }) => {
       return undefined
     }
     if (resumeId) {
-      let cancelled = false
+      // Clearing location.state remounts this effect — don't abort the in-flight resume.
+      if (resumeFlowRef.current === resumeId) return undefined
+      resumeFlowRef.current = resumeId
       navigate('/my-subscriptions', { replace: true, state: {} })
       ;(async () => {
         try {
           await load()
-        } catch (err) {
-          console.error(err)
-        }
-        if (cancelled) return
-        const row = rowsRef.current.find((item) => item.id === resumeId)
-        if (!row) {
+          const row = rowsRef.current.find((item) => item.id === resumeId)
+          if (!row) {
+            setDialog({
+              icon: 'mail',
+              title: 'Meals saved',
+              body: 'Your box is ready. Tap Resume when you want the plan active again.',
+              primaryLabel: 'OK',
+            })
+            return
+          }
+          setSavingId(row.id)
+          setStatusBusy({ id: row.id, action: 'resume' })
           setDialog({
             icon: 'mail',
-            title: 'Meals saved',
-            body: 'Your box is ready. Tap Resume when you want the plan active again.',
-            primaryLabel: 'OK',
+            title: 'Resuming…',
+            body: 'Saving your meals and turning the plan back on.',
+            primaryLabel: 'Resuming…',
+            busy: true,
           })
-          return
-        }
-        // Came from the resume → review-meals flow: reactivate automatically.
-        await persistStatus(row, 'resume')
-        if (cancelled) return
-        const fresh = rowsRef.current.find((item) => item.id === resumeId)
-        if (fresh?.status === 'active') {
+          await updateSubscriptionStatus(userId, resumeId, 'resume')
+          await load()
           setDialog({
             icon: 'mail',
             title: 'Plan resumed',
             body: 'Your meals are saved and the plan is active again.',
             primaryLabel: 'OK',
           })
+        } catch (err) {
+          console.error(err)
+          setDialog({
+            icon: 'alert',
+            title: 'Meals saved, but resume failed',
+            body: err.message || 'Your box is updated. Tap Resume to try activating again.',
+            primaryLabel: 'OK',
+          })
+        } finally {
+          resumeFlowRef.current = null
+          setSavingId(null)
+          setStatusBusy(null)
         }
       })()
-      return () => {
-        cancelled = true
-      }
+      return undefined
     }
     setDialog(SAVED_DIALOG)
     navigate('/my-subscriptions', { replace: true, state: {} })
     return undefined
-  }, [location.state, navigate])
+  }, [location.state, navigate, userId])
 
   const cardSession = searchParams.get('card_session')
   const cardUpdate = searchParams.get('card_update')
