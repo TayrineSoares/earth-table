@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Lottie from 'lottie-react'
 import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
@@ -26,6 +26,8 @@ import {
 const SubscribeEditCart = ({ user }) => {
   const { subscriptionId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [resumeAfter] = useState(() => location.state?.resumeAfter === true)
   const [row, setRow] = useState(null)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [isLoading, setIsLoading] = useState(true)
@@ -119,8 +121,16 @@ const SubscribeEditCart = ({ user }) => {
       clearEditCart(user.id, subscriptionId)
       navigate('/my-subscriptions', {
         state: changingPlan
-          ? { saved: true, planChanged: true, pendingPlan: Boolean(editCart.planChangePending) }
-          : { saved: true },
+          ? {
+            saved: true,
+            planChanged: true,
+            pendingPlan: Boolean(editCart.planChangePending),
+            planLabel: mealsAWeek(editCart.mealCount),
+          }
+          : {
+            saved: true,
+            ...(resumeAfter ? { resumeAfter: true, resumeSubscriptionId: subscriptionId } : {}),
+          },
       })
     } catch (err) {
       console.error(err)

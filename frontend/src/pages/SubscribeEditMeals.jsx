@@ -32,6 +32,7 @@ const SubscribeEditMeals = ({ user }) => {
   // Snapshot on first mount so Edit plan can reseed without a URL change (and a second load).
   const [startFresh] = useState(() => location.state?.fresh === true)
   const [planChangeFlow] = useState(() => location.state?.planChange === true)
+  const [resumeAfter] = useState(() => location.state?.resumeAfter === true)
   const [row, setRow] = useState(null)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
@@ -141,12 +142,15 @@ const SubscribeEditMeals = ({ user }) => {
   const picked = totalQty(editCart.meals)
   const need = Number(editCart.mealCount) || 0
   const exact = mealsExact(editCart)
+  const overCount = need > 0 && picked > need
+  const underCount = need > 0 && picked < need
   const atCap = need > 0 && picked >= need
   const sundayLabel = row?.week?.delivery_label || ''
   const cutoffLabel = row?.week?.cutoff_label || MEAL_LOCK_BY
   const trackPct = need > 0 ? Math.min(100, Math.round((picked / need) * 100)) : 0
   const planLineCount = changingPlan ? need : (Number(plan.meal_count) || need)
   const planLinePrice = changingPlan ? editCart.priceCents : plan.price_cents
+  const removeCount = overCount ? picked - need : 0
 
   const bump = (product, delta) => {
     setEditCart((prev) => {
@@ -158,7 +162,9 @@ const SubscribeEditMeals = ({ user }) => {
 
   const onContinue = () => {
     if (!exact) return
-    navigate(`/my-subscriptions/${subscriptionId}/addons`)
+    navigate(`/my-subscriptions/${subscriptionId}/addons`, {
+      state: resumeAfter ? { resumeAfter: true } : undefined,
+    })
   }
 
   if (isLoading) {
@@ -180,33 +186,38 @@ const SubscribeEditMeals = ({ user }) => {
           {row ? (
             <>
               <h1 className="subscribe-h1 subscribe-choose-title">
-                {changingPlan ? 'Confirm your meals' : 'Choose your meals'}
+                {changingPlan || resumeAfter ? 'Review your meals' : 'Choose your meals'}
               </h1>
               <p className="subscribe-plan-line">
                 {planLineCount} meals · {formatPlanPrice(planLinePrice)}/week ·{' '}
                 <Link className="subscribe-inline-link" to="/my-subscriptions">Back to My Subscriptions</Link>
               </p>
-              <p className={(!changingPlan && row.week?.cutoff_passed) ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
-                {changingPlan
-                  ? (editCart.planChangePending
-                    ? `You're switching to ${need} meals a week. Pick exactly ${need} for the following week — the plan change only saves when you confirm.`
-                    : `You're switching to ${need} meals a week. Pick exactly ${need} for ${sundayLabel || 'this Sunday'} — the plan change only saves when you confirm.`)
-                  : row.week?.cutoff_passed
-                    ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`
-                    : `Mix bowls, salads, main plates, and soups however you like — change anything until ${cutoffLabel}.`}
+              <p className={(overCount || (!changingPlan && row.week?.cutoff_passed)) ? 'subscribe-cutoff-note' : 'subscribe-subhead'}>
+                {overCount
+                  ? `You're switching to ${need} meals a week but this box still has ${picked}. Remove ${removeCount} meal${removeCount === 1 ? '' : 's'} to continue.`
+                  : changingPlan
+                    ? (editCart.planChangePending
+                      ? `You're switching to ${need} meals a week. Review and leave exactly ${need} for the following week — the plan change only saves when you confirm.`
+                      : `You're switching to ${need} meals a week. Review and leave exactly ${need} for ${sundayLabel || 'this Sunday'} — the plan change only saves when you confirm.`)
+                    : resumeAfter
+                      ? `Review this box and leave exactly ${need} meal${need === 1 ? '' : 's'}. The plan resumes after you save.`
+                      : row.week?.cutoff_passed
+                        ? `This week's cutoff has passed. Mix bowls, salads, main plates, and soups however you like for ${sundayLabel}.`
+                        : `Mix bowls, salads, main plates, and soups however you like — change anything until ${cutoffLabel}.`}
               </p>
               <div
                 className="subscribe-meal-track"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={need}
-                aria-valuenow={picked}
+                aria-valuenow={Math.min(picked, need)}
                 aria-label={`${picked} of ${need} meals chosen`}
               >
                 <span className="subscribe-meal-track-fill" style={{ width: `${trackPct}%` }} />
               </div>
               <p className="subscribe-meal-count" aria-live="polite">
                 {picked} of {need} chosen{sundayLabel ? ` for ${sundayLabel}` : ''}
+                {overCount ? ` — remove ${removeCount}` : underCount ? ` — add ${need - picked}` : ''}
               </p>
 
               <SubscribeCatalog
@@ -223,7 +234,11 @@ const SubscribeEditMeals = ({ user }) => {
 
               <div className="subscribe-flow-bar">
                 <p className="subscribe-progress" aria-live="polite">
-                  {picked} of {need} meals selected
+                  {overCount
+                    ? `Remove ${removeCount} meal${removeCount === 1 ? '' : 's'} to continue`
+                    : underCount
+                      ? `Add ${need - picked} more meal${need - picked === 1 ? '' : 's'} to continue`
+                      : `${picked} of ${need} meals selected`}
                 </p>
                 <button
                   type="button"

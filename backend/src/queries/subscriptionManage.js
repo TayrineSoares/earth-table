@@ -18,6 +18,8 @@ const {
   firstBoxSunday,
   firstBoxStillDue,
   ensureFirstBoxCycle,
+  getOrCreateEditableCycle,
+  planMealItems,
   writeCyclePlanAndAddons,
   recordPlanChange,
 } = require('./subscription');
@@ -273,25 +275,44 @@ async function pauseSubscription(userId, subscriptionId) {
     };
   }
 
-  const alreadyPaid = Boolean(cycle && Number(cycle.plan_paid_cents) > 0);
-  const alreadyLocked = cycle?.status === 'locked';
+  // Prefer the open cycle for the live cook Sunday (e.g. opened during resume
+  // meal review). Resume is not a new first box — pause before Tuesday skips it.
+  const openForWeek = (cycles || []).find((row) => (
+    row
+    && String(row.delivery_date) === String(week.delivery_date)
+    && row.status === 'open'
+  )) || null;
+  const target = openForWeek || cycle;
+  const alreadyPaid = Boolean(target && Number(target.plan_paid_cents) > 0);
+  const alreadyLocked = target?.status === 'locked';
 
   // Keep vs skip is decided by money/lock, not the clock — avoids the Tue 9:00 AM
   // race with the charge job. Clock copy still says "before Tuesday 9am"; after
   // that the charge usually lands first so pause keeps the box.
   if (alreadyPaid || alreadyLocked) {
-    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle });
+    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: target });
   }
 
-  const skipResult = await skipOpenCycle(cycle);
-  const after = skipResult.cycle || cycle;
-  if (
-    !skipResult.skipped
-    && after
-    && (Number(after.plan_paid_cents) > 0 || after.status === 'locked')
-  ) {
+  const firstYmd = firstBoxSunday(sub, settings || {}, now, cycles);
+  // Skip every unpaid open week so a resumed plan can pause again before Tuesday
+  // without leaving a chargeable box behind.
+  let keptAfterRace = null;
+  for (const row of cycles) {
+    if (!row || row.status !== 'open' || Number(row.plan_paid_cents) > 0) continue;
+    if (firstYmd && String(row.delivery_date) === String(firstYmd)) continue;
+    const skipResult = await skipOpenCycle(row);
+    const after = skipResult.cycle || row;
+    if (
+      !skipResult.skipped
+      && after
+      && (Number(after.plan_paid_cents) > 0 || after.status === 'locked')
+    ) {
+      keptAfterRace = after;
+    }
+  }
+  if (keptAfterRace) {
     // Charge (or lock) won the race while we paused — keep this Sunday.
-    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: after });
+    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: keptAfterRace });
   }
 
   const { error } = await supabase
@@ -319,6 +340,21 @@ async function pauseSubscription(userId, subscriptionId) {
   return { ok: true, status: 'paused', pending: false, week, charge };
 }
 
+async function assertResumeMealsReady(sub) {
+  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const need = Number(plan?.meal_count) || 0;
+  if (need <= 0) return;
+  const { cycle, week } = await getOrCreateEditableCycle(sub);
+  if (!cycle || cycle.status !== 'open') return;
+  const qty = planMealItems(cycle).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  if (qty === need) return;
+  const lockBy = week?.cutoff_label || 'Wednesday at 5:00 PM ET';
+  throw new SubscriptionError(
+    400,
+    `Choose exactly ${need} meal${need === 1 ? '' : 's'} for this box before resuming (now ${qty}). Save meals before ${lockBy}, then resume. Questions? Email hello@earthtableco.ca.`
+  );
+}
+
 async function resumeSubscription(userId, subscriptionId) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
   if (sub.status === 'cancelled') {
@@ -334,6 +370,7 @@ async function resumeSubscription(userId, subscriptionId) {
   const { week, charge } = await currentCycleFor(sub);
 
   if (sub.status === 'paused' && sub.pause_reason === 'payment_failed') {
+    await assertResumeMealsReady(sub);
     try {
       const { retryFailedCharge } = require('./subscriptionCharge');
       const retried = await retryFailedCharge(sub);
@@ -376,6 +413,8 @@ async function resumeSubscription(userId, subscriptionId) {
   if (sub.status !== 'paused') {
     return { ok: true, status: sub.status, pending: false };
   }
+
+  await assertResumeMealsReady(sub);
 
   const { error } = await supabase
     .from('subscriptions')

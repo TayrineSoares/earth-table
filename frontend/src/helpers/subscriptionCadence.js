@@ -26,7 +26,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be paused or cancelled. After that — including after you resume — pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume is not a new first box. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksPlanChange() {
@@ -99,10 +99,11 @@ export function pausedBanner(chargeLabel, { firstBoxLabel, nextBoxLabel } = {}) 
   if (firstBoxLabel) {
     return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Wednesday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
   }
+  // nextBoxLabel only when that Sunday is already paid/locked — unpaid weeks are skipped.
   if (nextBoxLabel) {
     return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${chargeLabel || PAUSE_CANCEL_BY} for a later Sunday.`
   }
-  return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box.`
+  return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box. You can pause again anytime before that charge — resume is not a new first box.`
 }
 
 /** Pause after this Sunday was already charged/locked — box still runs. */

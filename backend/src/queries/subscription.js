@@ -314,9 +314,17 @@ function firstBoxStillDue(sub, settings, now = new Date(), cycles) {
 function canEditOpenBox(sub, settings, now = new Date(), cycles) {
   if (sub.status === 'active') return true;
   if (sub.status !== 'paused') return false;
-  const ymd = firstBoxSunday(sub, settings, now, cycles);
-  if (!ymd || String(ymd) < torontoYmd(now)) return false;
-  return !lockPassedForSunday(ymd, now, settings);
+  // Paused plans can set meals for the live cook week so resume is never short.
+  const open = earliestOpenCycle(cycles);
+  if (open?.delivery_date) {
+    return !lockPassedForSunday(open.delivery_date, now, settings);
+  }
+  const firstDueYmd = firstBoxSunday(sub, settings, now, cycles);
+  if (firstDueYmd && String(firstDueYmd) >= torontoYmd(now)) {
+    return !lockPassedForSunday(firstDueYmd, now, settings);
+  }
+  const signup = getSignupDates(now, settings || {});
+  return !lockPassedForSunday(signup.first_delivery_date, now, settings);
 }
 
 function upcomingReceivingCycles(cycles, now, createdAt, settings, firstBoxYmd) {
@@ -804,7 +812,12 @@ async function listMine(userId) {
     const addonPromoPercent = storedPct > 0
       ? storedPct
       : (shown && firstYmd && String(shown.delivery_date) === String(firstYmd) ? firstWeekPct : 0);
-    const nextBoxCycle = receiving || thisWeekCycle || (firstDue ? ensured.cycle : null) || null;
+    // Manual pause: never treat an unpaid open week as "still receiving" — that
+    // week should be skipped (or was opened only to review meals before resume).
+    // Resume is not a new first box; only paid/locked cycles go out while paused.
+    const nextBoxCycle = (manualPause && !firstDue)
+      ? (receiving || null)
+      : (receiving || thisWeekCycle || (firstDue ? ensured.cycle : null) || null);
     const { stripe_payment_method_id: _pm, ...publicSub } = sub;
     void _pm;
     const lookedUp = cardMap[sub.stripe_payment_method_id] || null;
@@ -1575,5 +1588,7 @@ module.exports = {
   firstBoxStillDue,
   canEditOpenBox,
   ensureFirstBoxCycle,
+  getOrCreateEditableCycle,
+  planMealItems,
   reopenSkippedCycle,
 };

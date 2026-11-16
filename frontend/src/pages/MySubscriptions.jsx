@@ -381,18 +381,58 @@ const MySubscriptions = ({ user }) => {
 
   useEffect(() => {
     if (!location.state?.saved) return undefined
+    const resumeId = location.state.resumeAfter ? (location.state.resumeSubscriptionId || null) : null
     if (location.state.planChanged) {
+      const planLabel = location.state.planLabel || 'your new plan'
       setDialog({
         icon: 'mail',
         title: location.state.pendingPlan ? 'Plan change saved' : 'Plan updated',
         body: location.state.pendingPlan
-          ? 'This Sunday stays as-is. Your new plan and meals start the following week.'
-          : 'Your plan and meals for this Sunday are updated.',
+          ? `This Sunday stays as-is. ${planLabel} and these meals start the following week.`
+          : `You're now on ${planLabel}. Your meals for this Sunday are saved.`,
         primaryLabel: 'OK',
       })
-    } else {
-      setDialog(SAVED_DIALOG)
+      navigate('/my-subscriptions', { replace: true, state: {} })
+      return undefined
     }
+    if (resumeId) {
+      let cancelled = false
+      navigate('/my-subscriptions', { replace: true, state: {} })
+      ;(async () => {
+        try {
+          await load()
+        } catch (err) {
+          console.error(err)
+        }
+        if (cancelled) return
+        const row = rowsRef.current.find((item) => item.id === resumeId)
+        if (!row) {
+          setDialog({
+            icon: 'mail',
+            title: 'Meals saved',
+            body: 'Your box is ready. Tap Resume when you want the plan active again.',
+            primaryLabel: 'OK',
+          })
+          return
+        }
+        // Came from the resume → review-meals flow: reactivate automatically.
+        await persistStatus(row, 'resume')
+        if (cancelled) return
+        const fresh = rowsRef.current.find((item) => item.id === resumeId)
+        if (fresh?.status === 'active') {
+          setDialog({
+            icon: 'mail',
+            title: 'Plan resumed',
+            body: 'Your meals are saved and the plan is active again.',
+            primaryLabel: 'OK',
+          })
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }
+    setDialog(SAVED_DIALOG)
     navigate('/my-subscriptions', { replace: true, state: {} })
     return undefined
   }, [location.state, navigate])
@@ -720,6 +760,35 @@ const MySubscriptions = ({ user }) => {
       })
       return
     }
+    // Normal resume (and payment-failed): always review meals first, then reactivate.
+    if (action === 'resume' && !row.pending_status) {
+      const mealCount = Number(row.subscription_plans?.meal_count) || 0
+      const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
+      const sunday = sundayDatePart(row.week?.delivery_label)
+        || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
+      const when = row.week?.cutoff_passed
+        ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+        : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+      setDialog({
+        icon: 'mail',
+        title: 'Review your meals first',
+        body: [
+          when,
+          mealCount
+            ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
+            : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`,
+          row.pause_reason === 'payment_failed'
+            ? `After meals are saved we charge the unpaid box to the card on file.`
+            : null,
+        ].filter(Boolean),
+        primaryLabel: 'Review meals',
+        secondaryLabel: 'Not now',
+        onPrimary: () => navigate(`/my-subscriptions/${row.id}/meals`, {
+          state: { fresh: true, resumeAfter: true },
+        }),
+      })
+      return
+    }
     const boxCycle = row.next_box_cycle || row.this_week_cycle || null
     // Same rule as the API: keep this Sunday only if already charged or locked.
     const thisSundayCommitted = Boolean(
@@ -777,16 +846,9 @@ const MySubscriptions = ({ user }) => {
           ],
         },
       resume: {
-        title: row.pause_reason === 'payment_failed' ? 'Charge this box now?' : 'Resume this plan?',
-        body: row.pause_reason === 'payment_failed'
-          ? `We'll charge the unpaid box to the card on file. Update and retry before ${MEAL_LOCK_BY} to keep this Sunday; after that the week is skipped.`
-          : row.pending_status
-            ? 'This Sunday still goes out, and the pending pause will be cleared.'
-            : row.first_box_protected
-              ? 'Your first box still goes out. Weekly charges resume for Sundays after that.'
-              : row.week?.cutoff_passed
-                ? `Your weekly plan will be active again. Because this week's cutoff has passed, that only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
-                : `Your weekly plan will be active again. That applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}, and weekly charges resume.`,
+        // Only pending-pause clear reaches here (meal review is handled above).
+        title: 'Resume this plan?',
+        body: 'This Sunday still goes out, and the pending pause will be cleared.',
       },
     }[action]
     setDialog({
@@ -821,13 +883,22 @@ const MySubscriptions = ({ user }) => {
   const confirmPlan = (row, plan) => {
     const pending = planChangePendingFor(row)
     const sunday = sundayDatePart(row.week?.delivery_label)
+    const currentCount = Number(row.subscription_plans?.meal_count) || 0
+    const nextCount = Number(plan.meal_count) || 0
+    const downgrade = nextCount > 0 && currentCount > nextCount
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
-      body: pending
-        ? `This Sunday, ${sunday}, stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week — next you'll confirm exactly ${plan.meal_count} meals for that box before the change is saved. Need help? Email hello@earthtableco.ca.`
-        : `This Sunday, ${sunday}, will use the new plan. Next you'll confirm exactly ${plan.meal_count} meals — the change only finishes when that count is saved. Need help? Email hello@earthtableco.ca.`,
-      primaryLabel: 'Choose meals',
+      body: [
+        pending
+          ? `This Sunday, ${sunday}, stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week.`
+          : `This Sunday, ${sunday}, will use the new plan.`,
+        downgrade
+          ? `Next you'll review meals and remove extras until exactly ${nextCount} remain — you can't continue until the count matches.`
+          : `Next you'll review meals and leave exactly ${nextCount} for that box — the change only finishes when you confirm.`,
+        'Need help? Email hello@earthtableco.ca.',
+      ],
+      primaryLabel: 'Review meals',
       secondaryLabel: 'Never mind',
       onPrimary: () => startPlanChange(row, plan),
     })

@@ -31,6 +31,7 @@ const SubscribeEditAddons = ({ user }) => {
   const location = useLocation()
   const userId = user?.id
   const [startFresh] = useState(() => location.state?.fresh === true)
+  const [resumeAfter] = useState(() => location.state?.resumeAfter === true)
   const [editCart, setEditCart] = useState(emptyEditCart)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
@@ -124,7 +125,9 @@ const SubscribeEditAddons = ({ user }) => {
     })
   }
 
-  const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`)
+  const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`, {
+    state: resumeAfter ? { resumeAfter: true } : undefined,
+  })
   const addonCents = addonSubtotalCents(editCart)
   const extraCount = totalQty(editCart.addons)
   const extraLine = addonCents > 0
