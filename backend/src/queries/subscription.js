@@ -649,7 +649,11 @@ async function cardsByPaymentMethodId(ids) {
     try {
       const pm = await stripe.paymentMethods.retrieve(id);
       const last4 = pm.card?.last4;
-      if (!last4) return;
+      if (!last4) {
+        // Stored PM exists but Stripe has no usable card — force update in UI.
+        map[id] = { needsUpdate: true };
+        return;
+      }
       map[id] = {
         brand: String(pm.card.brand || 'card'),
         last4,
@@ -658,6 +662,8 @@ async function cardsByPaymentMethodId(ids) {
       };
     } catch (err) {
       console.warn('[subscriptions] card lookup failed:', err.message);
+      // Dead PM after key rotate / deleted customer — never treat as "no card".
+      map[id] = { needsUpdate: true };
     }
   }));
   return map;
@@ -801,9 +807,17 @@ async function listMine(userId) {
     const nextBoxCycle = receiving || thisWeekCycle || (firstDue ? ensured.cycle : null) || null;
     const { stripe_payment_method_id: _pm, ...publicSub } = sub;
     void _pm;
+    const lookedUp = cardMap[sub.stripe_payment_method_id] || null;
+    // Active/paused plans must always surface a card state — never a blank "no card".
+    const card = lookedUp
+      || (
+        (sub.status === 'active' || sub.status === 'paused')
+          ? { needsUpdate: true }
+          : null
+      );
     return {
       ...publicSub,
-      card: cardMap[sub.stripe_payment_method_id] || null,
+      card,
       cycle: shown,
       edit_cycle: current,
       this_week_date: thisWeekCycle?.delivery_date || null,

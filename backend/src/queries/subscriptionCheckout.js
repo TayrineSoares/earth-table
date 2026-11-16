@@ -979,15 +979,31 @@ async function createCardSetupCheckout(userId, subscriptionId) {
   if (sub.status === 'cancelled') {
     throw new SubscriptionError(400, 'This subscription is cancelled.');
   }
-  if (!sub.stripe_customer_id) {
-    throw new SubscriptionError(400, 'No card on file yet. Email hello@earthtableco.ca.');
+  const { getUserByAuthId } = require('./user');
+  const user = await getUserByAuthId(userId);
+  if (!user) throw new SubscriptionError(400, 'Account not found.');
+
+  // Recreate Stripe customer when the stored id is from an old/test account
+  // (common after rotating keys) — same recovery as signup.
+  let customerId = await getOrCreateStripeCustomer(user, user.email);
+  // Sync customer id only — keep payment_method_id until setup succeeds so the
+  // plan never sits in a permanent "no card" state if Checkout is cancelled.
+  if (customerId && customerId !== sub.stripe_customer_id) {
+    const { error: syncErr } = await supabase
+      .from('subscriptions')
+      .update({ stripe_customer_id: customerId })
+      .eq('id', sub.id)
+      .eq('user_id', userId);
+    if (syncErr) throw syncErr;
   }
-  const settings = await getSettings();
-  const dates = getSignupDates(new Date(), settings || {});
+  if (!customerId) {
+    throw new SubscriptionError(400, 'Could not start card update. Email hello@earthtableco.ca.');
+  }
+
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     mode: 'setup',
-    customer: sub.stripe_customer_id,
+    customer: customerId,
     payment_method_types: ['card'],
     success_url: `${frontendUrl()}/my-subscriptions?card_session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${frontendUrl()}/my-subscriptions?card_update=cancelled`,

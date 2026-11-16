@@ -97,11 +97,13 @@ function cacheFor(userId) {
 }
 
 const cardLabel = (card) => {
-  if (!card?.last4) return 'No card on file'
+  if (card?.needsUpdate || !card?.last4) return 'Card needs updating'
   const brand = String(card.brand || 'card')
   const nice = brand.charAt(0).toUpperCase() + brand.slice(1)
   return `${nice} •••• ${card.last4}`
 }
+
+const cardNeedsUpdate = (card) => Boolean(card?.needsUpdate || !card?.last4)
 
 function shortWeekdayDate(ymd) {
   const [y, m, d] = String(ymd || '').split('-').map(Number)
@@ -430,9 +432,6 @@ const MySubscriptions = ({ user }) => {
         const result = await fetchCardSetup(sessionId)
         if (cancelled) return
         if (result?.ready) {
-          setSearchParams({}, { replace: true })
-          await load()
-          if (cancelled) return
           const retry = result.retry
           let title = 'Card updated'
           let body = 'This weekly plan will use the new card for the next charge.'
@@ -448,12 +447,16 @@ const MySubscriptions = ({ user }) => {
             title = 'You\'re back on'
             body = `Your card is saved and the plan is active again. If this Sunday is still unpaid and ${MEAL_LOCK_BY} has not passed, we try the charge now. Otherwise the next charge is ${CHARGE_DAY_TIME}.`
           }
+          // Show success before clearing ?card_session — clearing that param
+          // remounts this effect and would cancel before setDialog runs.
           setDialog({
             icon: retry && retry.ok === false ? 'alert' : 'mail',
             title,
             body,
             primaryLabel: 'OK',
           })
+          setSearchParams({}, { replace: true })
+          await load()
           return
         }
         if (result?.status === 'expired') break
@@ -706,6 +709,17 @@ const MySubscriptions = ({ user }) => {
 
   const confirmStatus = (row, action) => {
     if (savingId || statusLockRef.current) return
+    if (action === 'resume' && cardNeedsUpdate(row.card)) {
+      setDialog({
+        icon: 'alert',
+        title: 'Update your card first',
+        body: 'This plan needs a card on file before you can resume. Questions? Email hello@earthtableco.ca.',
+        primaryLabel: 'Update card',
+        secondaryLabel: 'Not now',
+        onPrimary: () => changeCard(row),
+      })
+      return
+    }
     const boxCycle = row.next_box_cycle || row.this_week_cycle || null
     // Same rule as the API: keep this Sunday only if already charged or locked.
     const thisSundayCommitted = Boolean(
@@ -970,6 +984,7 @@ const MySubscriptions = ({ user }) => {
             const canEdit = Boolean(row.can_edit)
             const isPaused = row.status === 'paused'
             const paymentFailedPause = isPaused && row.pause_reason === 'payment_failed'
+            const needsCardUpdate = cardNeedsUpdate(row.card)
             const pending = row.pending_status
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
@@ -982,7 +997,7 @@ const MySubscriptions = ({ user }) => {
             const nextBoxShort = row.next_box_date
               ? shortWeekdayDate(row.next_box_date)
               : (row.first_box_protected ? row.first_delivery_label : '')
-            const statusNote = paymentFailedPause
+            const statusNote = paymentFailedPause || needsCardUpdate
               ? ''
               : pending === 'paused'
                 ? pausingAfterCutoffBanner(nextBoxShort || sundayDatePart(row.week?.delivery_label))
@@ -1197,6 +1212,20 @@ const MySubscriptions = ({ user }) => {
                             Update your card
                           </button>
                         </div>
+                      ) : needsCardUpdate ? (
+                        <div className="my-sub-status-note my-sub-status-note--alert" role="status">
+                          <p>
+                            This plan needs a card on file before the next charge or resume. Questions? Email hello@earthtableco.ca.
+                          </p>
+                          <button
+                            type="button"
+                            className="my-sub-edit-link"
+                            disabled={savingId === row.id}
+                            onClick={() => changeCard(row)}
+                          >
+                            Update your card
+                          </button>
+                        </div>
                       ) : mealsNeedUpdate && statusNote ? (
                         <div className="my-sub-status-note my-sub-status-note--alert" role="status">
                           <p>{statusNote}</p>
@@ -1263,11 +1292,11 @@ const MySubscriptions = ({ user }) => {
                         {cardLabel(row.card)}
                         <button
                           type="button"
-                          className={`my-sub-edit-link${paymentFailedPause ? ' my-sub-edit-link--alert' : ''}`}
+                          className={`my-sub-edit-link${paymentFailedPause || needsCardUpdate ? ' my-sub-edit-link--alert' : ''}`}
                           disabled={savingId === row.id}
                           onClick={() => changeCard(row)}
                         >
-                          Edit
+                          {needsCardUpdate ? 'Update card' : 'Edit'}
                         </button>
                       </DetailRow>
                       {expiry ? (

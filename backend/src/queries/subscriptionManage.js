@@ -324,6 +324,12 @@ async function resumeSubscription(userId, subscriptionId) {
   if (sub.status === 'cancelled') {
     throw new SubscriptionError(400, 'This subscription is cancelled. Start a new plan from Subscribe & Save.');
   }
+  if (!sub.stripe_payment_method_id || !sub.stripe_customer_id) {
+    throw new SubscriptionError(
+      400,
+      'Update your card before resuming. Questions? Email hello@earthtableco.ca.'
+    );
+  }
 
   const { week, charge } = await currentCycleFor(sub);
 
