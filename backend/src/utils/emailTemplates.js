@@ -1061,6 +1061,7 @@ function renderSubscriptionWelcomeEmail({
   pickupSlot,
   subscriptionId,
   notes,
+  meals,
   addons,
   discountCode,
   discountKind,
@@ -1106,7 +1107,7 @@ function renderSubscriptionWelcomeEmail({
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
-      ${h1(`You're all set, ${name}`)}
+      ${h1(`Welcome to weekly plans, ${name}`)}
       ${intro(`Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed Wednesday at 5:00 PM ET.`)}
       ${savingsLine ? `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT};">${savingsLine}</p>` : ''}
       ${card(kvTable(`
@@ -1117,7 +1118,9 @@ function renderSubscriptionWelcomeEmail({
         ${kvRow("Notes", note)}
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
-      ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : ''}
+      ${h2("Meals")}
+      ${itemListHtml(meals, '—')}
+      ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : `${h2("Add-ons")}${itemListHtml([], 'None this week.')}`}
       ${ctaLink(manageHref, "Manage my subscription")}
       <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}</p>
   `, {
@@ -1128,9 +1131,9 @@ function renderSubscriptionWelcomeEmail({
 
   const addonText = showAddons
     ? `\nAdd-ons\n${itemLinesText(addons) || ''}${addonRegular > 0 ? `\nAdd-ons: ${formatDollars(addonRegular)}` : ''}${addonOff > 0 && label ? `\n${label} · first week only: −${formatDollars(addonOff)}` : ''}\nBilled: ${cutoff}\n`
-    : '';
+    : `\nAdd-ons\nNone this week.\n`;
 
-  const text = `You're all set, ${name}
+  const text = `Welcome to weekly plans, ${name}
 
 Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed Wednesday at 5:00 PM ET.
 ${savingsLine ? `\n${savingsLine}\n` : ''}
@@ -1138,6 +1141,9 @@ Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceC
 This Sunday: ${fulfillment}
 Notes: ${note}
 Change your meals by: ${cutoff}
+
+Meals
+${itemLinesText(meals) || '—'}
 ${addonText}
 Manage my subscription: ${manageHref}
 
@@ -1350,6 +1356,7 @@ function renderSubscriptionManageEmail(payload = {}) {
     kind,
     firstName,
     mealCount,
+    oldMealCount,
     nextMealCount,
     deliveryLabel,
     fulfillmentDate,
@@ -1367,6 +1374,11 @@ function renderSubscriptionManageEmail(payload = {}) {
   const cutoff = MEAL_LOCK_BY;
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
+  const previousPlan = mealsAWeek(
+    oldMealCount != null
+      ? oldMealCount
+      : (kind === 'plan_next' ? mealCount : null)
+  );
 
   if (kind === 'fulfillment_delivery' || kind === 'fulfillment_pickup') {
     const toDelivery = kind === 'fulfillment_delivery';
@@ -1468,17 +1480,17 @@ My Subscriptions: ${manageHref}`;
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,
-      intro: `Your ${planWeek} is active again. Weekly boxes continue each week.`,
+      intro: `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}.`,
     },
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're now on a ${nextPlan}. ${ThisSundayPhrase(sunday)} uses the new count — pick that many meals before ${cutoff}. Need help? Email hello@earthtableco.ca.`,
+      intro: `You're moving from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Here's what's set for ${thisSundayPhrase(sunday)}. Need help? Email hello@earthtableco.ca.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
       heading: `This Sunday stays as-is, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} stays on your ${planWeek}. The ${nextPlan} starts the following week. Need help? Email hello@earthtableco.ca.`,
+      intro: `${ThisSundayPhrase(sunday)} stays on your ${previousPlan || planWeek}. You're moving to a ${nextPlan} starting the following week with these meals. Need help? Email hello@earthtableco.ca.`,
     },
   }[kind] || {
     subject: 'Your weekly plan',
@@ -1487,11 +1499,41 @@ My Subscriptions: ${manageHref}`;
   };
 
   const unsubscribeHref = kind === 'pause_nudge' ? payload.unsubscribeHref : '';
+  const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
+  const showPlanChange = kind === 'plan_now' || kind === 'plan_next';
+  const meals = payload.meals || [];
+  const addons = payload.addons || [];
+  const planChangeHtml = showPlanChange
+    ? card(kvTable(`
+        ${kvRow('Previous plan', previousPlan || '—')}
+        ${kvRow('New plan', nextPlan || '—', { last: true })}
+      `))
+    : '';
+  const planChangeText = showPlanChange
+    ? `
+
+Previous plan: ${previousPlan || '—'}
+New plan: ${nextPlan || '—'}`
+    : '';
+  const boxHtml = showBox
+    ? `${h2('Meals')}${itemListHtml(meals, '—')}${h2('Add-ons')}${itemListHtml(addons, 'None this week.')}`
+    : '';
+  const boxText = showBox
+    ? `
+
+Meals
+${itemLinesText(meals) || '—'}
+
+Add-ons
+${itemLinesText(addons) || 'None this week.'}`
+    : '';
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(copy.heading)}
       ${intro(copy.intro)}
+      ${planChangeHtml}
+      ${boxHtml}
       ${ctaLink(manageHref, "My Subscriptions →")}
   `, {
     preheader: copy.subject,
@@ -1502,7 +1544,7 @@ My Subscriptions: ${manageHref}`;
 
   const text = `${copy.heading}
 
-${copy.intro}
+${copy.intro}${planChangeText}${boxText}
 
 My Subscriptions: ${manageHref}
 

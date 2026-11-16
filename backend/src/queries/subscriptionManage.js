@@ -217,6 +217,62 @@ async function notifyManage(userId, payload) {
   return true;
 }
 
+/** Load meal/addon lines for resume email — by cycle id only (no nested embeds). */
+async function labeledBoxItemsForCycle(cycleId) {
+  const id = String(cycleId || '');
+  if (!id) return { meals: [], addons: [] };
+  const { data, error } = await supabase
+    .from('subscription_cycle_items')
+    .select('cycle_id, product_id, quantity, kind')
+    .eq('cycle_id', id);
+  if (error) throw error;
+  const rows = (data || []).filter((item) => String(item.cycle_id) === id);
+  const productIds = [...new Set(rows.map((item) => Number(item.product_id)).filter((n) => n > 0))];
+  let names = new Map();
+  if (productIds.length) {
+    const { data: products, error: productErr } = await supabase
+      .from('products')
+      .select('id, slug')
+      .in('id', productIds);
+    if (productErr) throw productErr;
+    names = new Map((products || []).map((row) => [Number(row.id), row.slug]));
+  }
+  const mapped = rows.map((item) => ({
+    slug: names.get(Number(item.product_id)) || 'Item',
+    quantity: item.quantity,
+    kind: item.kind,
+  }));
+  return {
+    meals: mapped.filter((item) => item.kind === 'plan'),
+    addons: mapped.filter((item) => item.kind === 'addon'),
+  };
+}
+
+async function resumeNotifyPayload(sub, week, charge) {
+  let meals = [];
+  let addons = [];
+  let deliveryLabel = week?.delivery_label;
+  try {
+    const editable = await getOrCreateEditableCycle(sub);
+    if (editable?.week?.delivery_label) deliveryLabel = editable.week.delivery_label;
+    if (editable?.cycle?.id) {
+      const box = await labeledBoxItemsForCycle(editable.cycle.id);
+      meals = box.meals;
+      addons = box.addons;
+    }
+  } catch (err) {
+    console.warn('[subscriptions] resume box items failed:', err.message);
+  }
+  return {
+    kind: 'resume',
+    mealCount: sub.subscription_plans?.meal_count,
+    deliveryLabel,
+    chargeLabel: charge?.charge_label,
+    meals,
+    addons,
+  };
+}
+
 async function pauseSubscription(userId, subscriptionId) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
   if (sub.status === 'cancelled') {
@@ -404,12 +460,7 @@ async function resumeSubscription(userId, subscriptionId) {
       .eq('id', sub.id);
     if (error) throw error;
     try {
-      await notifyManage(userId, {
-        kind: 'resume',
-        mealCount: sub.subscription_plans?.meal_count,
-        deliveryLabel: week.delivery_label,
-        chargeLabel: charge.charge_label,
-      });
+      await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
     } catch (err) {
       console.warn('[subscriptions] resume email failed:', err.message);
     }
@@ -434,12 +485,7 @@ async function resumeSubscription(userId, subscriptionId) {
   if (error) throw error;
 
   try {
-    await notifyManage(userId, {
-      kind: 'resume',
-      mealCount: sub.subscription_plans?.meal_count,
-      deliveryLabel: week.delivery_label,
-      chargeLabel: charge.charge_label,
-    });
+    await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
   } catch (err) {
     console.warn('[subscriptions] resume email failed:', err.message);
   }
@@ -939,12 +985,16 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       deliveryDate: following.delivery_date,
     });
     try {
+      const box = await labeledBoxItemsForCycle(following.id);
       await notifyManage(userId, {
         kind: 'plan_next',
         mealCount: currentCount,
+        oldMealCount: currentCount,
         nextMealCount: nextCount,
         deliveryLabel: week.delivery_label,
         chargeLabel: charge.charge_label,
+        meals: box.meals,
+        addons: box.addons,
       });
     } catch (err) {
       console.warn('[subscriptions] plan-change email failed:', err.message);
@@ -998,13 +1048,17 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
   });
 
   try {
+    const box = await labeledBoxItemsForCycle(cycle.id);
     await notifyManage(userId, {
       kind: 'plan_now',
       mealCount: nextCount,
+      oldMealCount: currentCount,
       nextMealCount: nextCount,
       deliveryLabel: week.delivery_label,
       chargeLabel: charge.charge_label,
       cutoffLabel: week.cutoff_label,
+      meals: box.meals,
+      addons: box.addons,
     });
   } catch (err) {
     console.warn('[subscriptions] plan-change email failed:', err.message);
