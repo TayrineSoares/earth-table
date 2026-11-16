@@ -1,0 +1,708 @@
+const path = require('path');
+const fs = require('fs');
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const supabase = require('./supabase/db');
+const { createOrderWithProducts, getOrderByStripeSessionId } = require('./src/queries/order');
+const { sendEmail, ownerNotificationEmails } = require('./src/utils/email');
+const {
+  renderCustomerOrderEmail,
+  renderOwnerOrderEmail,
+  renderPartnerCodeUsedEmail,
+} = require('./src/utils/emailTemplates');
+const { completeSubscriptionSignup, completeCardSetup } = require('./src/queries/subscriptionCheckout');
+
+const categoriesRouter = require('./src/routes/categoriesRoutes');
+const productsRouter = require('./src/routes/productsRoutes');
+const ordersRouter = require('./src/routes/ordersRoutes');
+const usersRouter = require('./src/routes/usersRoutes');
+const loginRouter = require('./src/routes/loginRoutes');
+const registerRouter = require('./src/routes/registerRoutes');
+const logoutRouter = require('./src/routes/logoutRoutes');
+const contactRouter = require('./src/routes/contactRoutes');
+const tagsRouter = require('./src/routes/tagsRoutes');
+const cartRouter = require('./src/routes/cartRoutes');
+const deliveryQuote = require('./api/delivery/quote');
+const promoRouter = require('./src/routes/promoRoutes');
+const partnerRouter = require('./src/routes/partnerRoutes');
+const cronRouter = require('./src/routes/cronRoutes');
+const subscriptionRouter = require('./src/routes/subscriptionRoutes');
+const emailRouter = require('./src/routes/emailRoutes');
+const { getUserByAuthId } = require('./src/queries/user');
+const { getServerDeliveryQuote } = require('./src/lib/deliveryQuote');
+
+const {
+  getActiveReferralByCode,
+  getPartnerById,
+  getPartnerByUserId,
+  getPartnerWalletByUserId,
+  recordReferralEarn,
+  recordCreditRedeem,
+} = require('./src/queries/partner');
+const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
+const { ensureStripePromotionCode } = require('./src/stripePromo');
+
+require('dotenv').config();
+
+const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+const app = express();
+
+// single source of truth for where the frontend lives
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+
+// BLOCKED HOLIDAYS FOR DELIVERY AND PICKUP 
+const BLOCKED_MMDD = new Set(["12-25", "12-26", "12-31", "01-01"]);
+
+const isBlockedHoliday = (yyyyMmDd) => {
+  if (!yyyyMmDd) return false;
+
+  const parts = String(yyyyMmDd).split("-");
+  if (parts.length !== 3) return false;
+
+  const mm = parts[1];
+  const dd = parts[2];
+  return BLOCKED_MMDD.has(`${mm}-${dd}`);
+};
+
+const holidayError = (type) =>
+  `${type} is unavailable on holidays (Dec 25, Dec 26, Dec 31, Jan 1).`;
+
+
+
+// --- Stripe Webhook Handler (shared) ---
+// IMPORTANT: This handler expects the request body to be raw (NOT JSON-parsed).
+const stripeWebhookHandler = async (request, response) => {
+  console.log('[webhook] Express handler active at path:', request.path);
+  const sig = request.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+  } catch (err) {
+    console.error(`[webhook] signature verification failed: ${err.message}`);
+    return response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    if (event.type !== 'checkout.session.completed') {
+      console.log('[webhook] skipped event:', event.type);
+      return response.status(200).send('ok');
+    }
+
+    console.log('[webhook] checkout.session.completed received');
+    const session = event.data.object;
+    const md = session.metadata || {};
+
+    // Subscription signups must not create a kitchen order (those wait until Wednesday lock).
+    if (String(md.kind || '') === 'subscription') {
+      await completeSubscriptionSignup(session);
+      return response.status(200).send('ok');
+    }
+
+    if (String(md.kind || '') === 'subscription_card') {
+      await completeCardSetup(session);
+      return response.status(200).send('ok');
+    }
+
+    // Idempotency guard: bail if we already created an order for this session
+    const existing = await getOrderByStripeSessionId(session.id);
+    if (existing) {
+      console.log('[webhook] order already exists for session:', session.id);
+      return response.status(200).send('ok');
+    }
+
+    // Try to load the big payload from checkout_drafts via metadata.draft_id
+    const draftId = md.draft_id || null;
+    let draft = null;
+    if (draftId) {
+      const { data: d, error: dErr } = await supabase
+        .from('checkout_drafts')
+        .select('*')
+        .eq('id', draftId)
+        .maybeSingle();
+
+      if (!dErr && d) draft = d;
+      console.log('[webhook] using draft_id:', draftId, 'found:', !!d);
+    } else {
+      console.log('[webhook] no draft_id present in metadata');
+    }
+
+    // Derive values with sane fallbacks (prefer draft when present)
+    const delivery = draft?.delivery ?? (String(md.delivery).toLowerCase() === 'true');
+    const deliveryDate = draft?.delivery_date || md.delivery_date || null;
+    const deliveryPostal = md.delivery_postal_code || draft?.delivery_postal_code || '';
+    const deliveryKm = md.delivery_km || '';
+    const deliveryFeeCentsServer = md.delivery_fee_cents_server || '0';
+
+    const pickupDate = md.pickup_date || null;
+    const pickupSlot = md.pickup_time_slot || null;
+
+    const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
+
+    // --- Holiday blocking (safety net) ---
+    if (pickupDate && isBlockedHoliday(pickupDate)) {
+      console.warn("[webhook] blocked holiday pickup date:", pickupDate);
+      return response.status(200).send("ok");
+    }
+
+    if (delivery && deliveryDate && isBlockedHoliday(deliveryDate)) {
+      console.warn("[webhook] blocked holiday delivery date:", deliveryDate);
+      return response.status(200).send("ok");
+    }
+
+    // Cart: from draft if available; otherwise parse metadata.cart (legacy fallback)
+    let cart = Array.isArray(draft?.cart) ? draft.cart : [];
+    if (!cart.length && md.cart) {
+      try { cart = JSON.parse(md.cart); } catch { cart = []; }
+    }
+
+    // console.log('[webhook] delivery:', delivery, 'delivery_date:', deliveryDate);
+
+    // Buyer info
+    let buyerPhoneNumber = session.customer_details?.phone || null;
+    const email =
+      session.customer_email ||
+      session.customer_details?.email ||
+      md.email ||
+      'unknown';
+    const buyerName = session.customer_details?.name || '';
+    const userId = md.userId || null;
+    let buyerUser = null;
+
+    if (userId) {
+      try {
+        buyerUser = await getUserByAuthId(userId);
+        if (buyerUser) {
+          buyerPhoneNumber = buyerUser.phone_number || buyerPhoneNumber;
+        }
+      } catch (e) {
+        console.warn('[webhook] getUserByAuthId failed (non-fatal):', e.message);
+      }
+    }
+
+    // Create order
+    try {
+      let referralPartnerId = md.referral_partner_id || null;
+      let referralCode = md.referral_code || null;
+      let referralPartner = null;
+      if (referralPartnerId) {
+        referralPartner = await getPartnerById(referralPartnerId);
+        if (referralPartner && userId && referralPartner.user_id === userId) {
+          console.warn('[webhook] skipped self-referral on order', referralPartnerId);
+          referralPartnerId = null;
+          referralCode = null;
+          referralPartner = null;
+        }
+      }
+
+      const order = await createOrderWithProducts({
+        user_id: userId || null,
+        buyer_email: email,
+        buyer_name: buyerName,
+        buyer_phone_number: buyerPhoneNumber,
+
+        // store raw Stripe info
+        buyer_stripe_payment_info: JSON.stringify({
+          session_id: session.id,
+          payment_intent: session.payment_intent,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          payment_status: session.payment_status,
+          customer_name: session.customer_details?.name || '',
+          customer_phone: session.customer_details?.phone || '',
+          customer_address: session.customer_details?.address || {},
+          draft_id: draftId || null,
+          delivery_meta: {
+            postal_code: deliveryPostal,
+            km: deliveryKm,
+            fee_cents_server: Number(deliveryFeeCentsServer || 0),
+            delivery_flag: delivery,
+          },
+          ...(md.discount_code
+            ? {
+                discount_meta: {
+                  kind: md.discount_kind || (referralCode ? 'referral' : 'promo'),
+                  code: md.discount_code,
+                  percent: Number(md.discount_pct) || null,
+                  amount_off_cents: Number(md.discount_off_cents) || 0,
+                },
+              }
+            : {}),
+        }),
+
+        status: session.payment_status,
+        stripe_session_id: session.id,
+        total_cents: session.amount_total,
+
+        // order data
+        products: cart,
+        pickup_date: pickupDate,
+        pickup_time_slot: pickupSlot,
+        delivery,
+        delivery_date: deliveryDate,
+        special_note: specialNote,
+        referral_partner_id: referralPartnerId,
+        referral_code: referralCode,
+        credit_applied_cents: Number(md.credit_applied_cents) || 0,
+        item_subtotal_cents: Number.isFinite(Number(md.item_subtotal_cents))
+          ? Number(md.item_subtotal_cents)
+          : null,
+      });
+
+      let earnRow = null;
+      if (referralPartnerId && order?.id) {
+        try {
+          earnRow = await recordReferralEarn({
+            partnerId: referralPartnerId,
+            orderId: order.id,
+            itemSubtotalCents: Number(md.item_subtotal_cents) || 0,
+            payoutType: referralPartner?.payout_type || 'cash',
+          });
+        } catch (e) {
+          console.warn('[webhook] recordReferralEarn failed:', e.message);
+        }
+      }
+
+      const creditAppliedCents = Number(md.credit_applied_cents) || 0;
+      if (creditAppliedCents > 0 && userId && order?.id) {
+        try {
+          const buyerPartner = await getPartnerByUserId(userId);
+          if (buyerPartner) {
+            await recordCreditRedeem({
+              partnerId: buyerPartner.id,
+              orderId: order.id,
+              requestedCents: creditAppliedCents,
+            });
+          }
+        } catch (e) {
+          console.warn('[webhook] recordCreditRedeem failed:', e.message);
+        }
+      }
+
+      // Promo was applied at checkout; bump global usage only after the order is saved.
+      const promoId = md.promo_id || null;
+      if (promoId) {
+        try {
+          await incrementPromoUsedCount(promoId);
+        } catch (e) {
+          console.warn('[webhook] incrementPromoUsedCount failed:', e.message);
+        }
+      }
+
+      // Fetch full order for emails
+      const detailedOrder = await getOrderByStripeSessionId(session.id);
+      if (buyerUser) detailedOrder.user = buyerUser;
+      detailedOrder.cardholder_name = session.customer_details?.name || detailedOrder.buyer_name;
+
+      let partnerUser = null;
+      if (referralPartner) {
+        try {
+          partnerUser = await getUserByAuthId(referralPartner.user_id);
+        } catch (e) {
+          console.warn('[webhook] get partner user failed (non-fatal):', e.message);
+        }
+      }
+
+      const partnerEarn = referralPartner
+        ? {
+            name: [partnerUser?.first_name, partnerUser?.last_name].filter(Boolean).join(' ') || 'Partner',
+            first_name: partnerUser?.first_name || null,
+            code: (referralPartner.referral_code || referralCode || '').toUpperCase(),
+            cashback_cents: earnRow?.amount_cents
+              ?? Math.floor(
+                (Number(detailedOrder?.item_subtotal_cents) || 0)
+                * (Number.isFinite(Number(referralPartner.cashback_percent))
+                  ? Number(referralPartner.cashback_percent)
+                  : 10)
+                / 100
+              ),
+            item_subtotal_cents: Number(detailedOrder?.item_subtotal_cents) || 0,
+          }
+        : null;
+
+      // Customer email
+      const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
+      await sendEmail({
+        to: email,
+        subject,
+        html,
+        text,
+        replyTo: 'hello@earthtableco.ca',
+      });
+
+      // Owner email(s)
+      const ownerTo = ownerNotificationEmails();
+
+      const ownerMsg = renderOwnerOrderEmail(detailedOrder, { partnerEarn });
+      if (ownerTo.length) {
+        await sendEmail({
+          to: ownerTo,
+          subject: ownerMsg.subject,
+          html: ownerMsg.html,
+          text: ownerMsg.text,
+        });
+      }
+
+      if (earnRow && referralPartner) {
+        try {
+          if (partnerUser?.email) {
+            const partnerMsg = renderPartnerCodeUsedEmail({
+              partner: referralPartner,
+              partnerUser,
+              order: detailedOrder,
+              earn: earnRow,
+            });
+            await sendEmail({
+              to: partnerUser.email,
+              subject: partnerMsg.subject,
+              html: partnerMsg.html,
+              text: partnerMsg.text,
+              replyTo: 'hello@earthtableco.ca',
+            });
+          } else {
+            console.warn('[webhook] partner has no email; skipped code-used notice');
+          }
+        } catch (e) {
+          console.warn('[webhook] partner code-used email failed (non-fatal):', e.message);
+        }
+      }
+
+      // Best-effort cleanup: remove the draft now that it's used
+      if (draftId) {
+        await supabase.from('checkout_drafts').delete().eq('id', draftId);
+      }
+    } catch (err) {
+      console.error('[webhook] Failed to save order or send emails:', err.message);
+      // Still 200 so Stripe won't retry forever if it's a non-retriable error.
+      
+    }
+
+    return response.status(200).send('ok');
+  } catch (err) {
+    console.error('[webhook] processing error:', err);
+    return response.status(500).send('Server error');
+  }
+};
+
+// --- Mount webhook routes BEFORE express.json() ---
+app.post('/webhook',     express.raw({ type: 'application/json' }), stripeWebhookHandler);
+app.post('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
+// CORS & middleware
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:8080',
+    'https://www.earthtableco.ca',
+    'https://earth-table-frontend.vercel.app',
+  ],
+  credentials: true
+}));
+
+app.use(morgan('dev'));
+app.use(express.json());
+
+// Test and root routes
+app.get('/', (req, res) => {
+  res.send('Backend is running');
+});
+
+app.get('/cart', (req, res) => {
+  res.json({
+    message: 'Cart route works!',
+    items: []
+  });
+});
+
+const STRIPE_MIN_CENTS = 50;
+
+function lineItemsTotalCents(items) {
+  return (items || []).reduce((sum, item) => {
+    const unit = Number(item?.price_data?.unit_amount) || 0;
+    const qty = Number(item?.quantity) || 0;
+    return sum + unit * qty;
+  }, 0);
+}
+
+// Stripe Checkout does not allow negative line items. Reduce unit_amounts instead.
+function applyStoreCreditToItems(items, creditCents) {
+  let left = Math.max(0, Math.floor(Number(creditCents) || 0));
+  if (!left) return 0;
+
+  for (let i = items.length - 1; i >= 0 && left > 0; i--) {
+    const item = items[i];
+    const qty = Number(item.quantity) || 1;
+    const unit = Number(item.price_data?.unit_amount) || 0;
+    const line = unit * qty;
+    if (line <= 0) continue;
+
+    const take = Math.min(line, left);
+    const newLine = line - take;
+    item.price_data.unit_amount = Math.floor(newLine / qty);
+    const actualNewLine = item.price_data.unit_amount * qty;
+    left -= (line - actualNewLine);
+  }
+
+  return Math.max(0, Math.floor(Number(creditCents) || 0) - left);
+}
+
+// Create Checkout Session
+const createCheckoutSession = async (req, res) => {
+  const {
+    cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
+    delivery, delivery_postal_code, delivery_date, promoCode,
+  } = req.body;
+
+  // console.log('[checkout] delivery:', delivery, 'postal:', delivery_postal_code);
+  // console.log('[checkout] delivery_date:', delivery_date);
+
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  try {
+    // --- Promo validation FIRST → compute discountFactor ---
+    const normalize = s => (s || '').trim();
+    let discountFactor = 1; // default: no discount
+
+    // --- Holiday blocking (source of truth) ---
+    if (pickup_date && isBlockedHoliday(pickup_date)) {
+      return res.status(400).json({ error: holidayError("Pickup") });
+    }
+
+    if (delivery && delivery_date && isBlockedHoliday(delivery_date)) {
+      return res.status(400).json({ error: holidayError("Delivery") });
+    }
+
+    
+    // Same rules as POST /promo/validate — never trust the client to have validated alone.
+    const itemSubtotalCents = (cartItems || []).reduce((sum, item) => {
+      return sum + (Number(item.price_cents) || 0) * (Number(item.quantity) || 0);
+    }, 0);
+
+    if (promoCode && normalize(promoCode)) {
+      const referralResult = await getActiveReferralByCode(
+        normalize(promoCode),
+        userId || null,
+        itemSubtotalCents
+      );
+      if (referralResult.found) {
+        if (!referralResult.ok) {
+          return res.status(400).json({ error: referralResult.message });
+        }
+        const pct = referralResult.discountPercentage;
+        discountFactor = (100 - pct) / 100;
+        req._etReferral = {
+          partnerId: referralResult.partner.id,
+          code: (referralResult.partner.referral_code || '').toUpperCase(),
+          pct,
+        };
+      } else {
+        const promoResult = await getActivePromoByCode(normalize(promoCode), userId || null);
+        if (!promoResult.ok) {
+          return res.status(400).json({ error: promoResult.message });
+        }
+        const promo = promoResult.promo;
+        const pct = promo.discount_percentage;
+        discountFactor = (100 - pct) / 100;
+        req._etPromo = { code: promo.code, pct, id: promo.id };
+      }
+    }
+
+    // --- Build line items (DISCOUNT BEFORE TAX) ---
+    // price_cents = pre-tax price
+    // Apply discount to pre-tax, THEN apply 13% tax
+    let discountOffCents = 0;
+    const items = cartItems.map(item => {
+      const base = Number(item.price_cents) || 0;                     // pre-tax
+      const discountedPreTax = Math.floor(base * discountFactor);     // apply promo BEFORE tax
+      const qty = Number(item.quantity) || 0;
+      discountOffCents += Math.max(0, base - discountedPreTax) * qty;
+      const unitWithTax = Math.round(discountedPreTax * 1.13);        // 13% tax after discount
+      return {
+        price_data: {
+          currency: 'cad',
+          product_data: { name: `${item.slug} (includes tax)`, images: [item.image_url] },
+          unit_amount: Math.max(0, unitWithTax),
+        },
+        quantity: item.quantity,
+      };
+    });
+
+
+    let deliveryFeeCentsServer = 0;
+    let deliveryKm = null;
+
+    if (delivery) {
+      // require a valid delivery_date when delivery is selected
+      if (!delivery_date || !ISO_DATE.test(delivery_date)) {
+        return res.status(400).json({ error: "delivery_date (YYYY-MM-DD) is required for delivery." });
+      }
+      if (!special_note || special_note.trim().length < 8) {
+        return res.status(400).json({ error: "Please enter your full delivery address." });
+      }
+
+      const quote = await getServerDeliveryQuote(delivery_postal_code);
+      if (!quote.ok) {
+        return res.status(400).json({
+          error: quote.reason === 'OUT_OF_ZONE'
+            ? 'Delivery not available for this address.'
+            : 'Invalid delivery postal code.',
+        });
+      }
+
+
+      
+      deliveryFeeCentsServer = quote.fee_cents;
+
+      deliveryKm = quote.km;
+
+      // console.log('[delivery] postal:', delivery_postal_code, 'km:', deliveryKm, 'fee_cents:', deliveryFeeCentsServer);
+
+      // Push delivery fee line item (includes tax)
+      items.push({
+        price_data: {
+          currency: 'cad',
+          product_data: { name: 'Delivery fee (includes tax)' },
+          unit_amount: Math.round(deliveryFeeCentsServer * 1.13),
+
+        },
+        quantity: 1,
+      });
+    }
+
+    let creditAppliedCents = 0;
+    if (userId) {
+      try {
+        const wallet = await getPartnerWalletByUserId(userId);
+        const available = Math.max(0, Number(wallet?.available_credit_cents) || 0);
+        if (wallet && available > 0) {
+          const itemsTotal = lineItemsTotalCents(items);
+          const maxCredit = Math.max(0, itemsTotal - STRIPE_MIN_CENTS);
+          const toApply = Math.min(available, maxCredit);
+          if (toApply > 0) {
+            creditAppliedCents = applyStoreCreditToItems(items, toApply);
+            req._etCredit = { partnerId: wallet.id, amountCents: creditAppliedCents };
+          }
+        }
+      } catch (e) {
+        console.warn('[checkout] store credit lookup failed (non-fatal):', e.message);
+      }
+    }
+
+    // Stash large payload in DB, keep Stripe metadata small
+    const { data: draft, error: draftErr } = await supabase
+      .from('checkout_drafts')
+      .insert([{
+        user_id: userId || null,
+        email: email || null,
+        cart: cartItems,          // full cart (no metadata limit here)
+        special_note,             // long text ok
+        delivery: !!delivery,
+        delivery_date: delivery ? delivery_date : null,
+        delivery_postal_code: delivery_postal_code || null,
+      }])
+      .select('id')
+      .single();
+
+    if (draftErr) {
+      console.error('Failed to create checkout_draft', draftErr);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: items,
+      mode: 'payment',
+      success_url: `${FRONTEND_URL}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/cart`,
+      ...(email ? { customer_email: email } : {}),
+      phone_number_collection: { enabled: true },
+      // Keep metadata tiny — Stripe limit applies
+      metadata: {
+        draft_id: draft.id,   // reference to big payload in DB
+        email: email || '',
+        userId: userId || '',
+        pickup_date: pickup_date || '',
+        pickup_time_slot: pickup_time_slot || '',
+        delivery: delivery ? 'true' : 'false',
+        delivery_date: delivery ? delivery_date : '',
+        delivery_postal_code: delivery_postal_code || '',
+        delivery_fee_cents_server: String(deliveryFeeCentsServer || 0),
+        delivery_km: deliveryKm != null ? String(deliveryKm) : '',
+        item_subtotal_cents: String(itemSubtotalCents || 0),
+        ...(creditAppliedCents > 0
+          ? { credit_applied_cents: String(creditAppliedCents) }
+          : {}),
+        ...(req._etPromo?.id != null ? { promo_id: String(req._etPromo.id) } : {}),
+        ...(req._etReferral?.partnerId
+          ? {
+              referral_partner_id: String(req._etReferral.partnerId),
+              referral_code: req._etReferral.code || '',
+            }
+          : {}),
+        ...(req._etReferral || req._etPromo
+          ? {
+              discount_kind: req._etReferral ? 'referral' : 'promo',
+              discount_code: req._etReferral?.code || req._etPromo?.code || '',
+              discount_pct: String(req._etReferral?.pct ?? req._etPromo?.pct ?? ''),
+              discount_off_cents: String(discountOffCents || 0),
+            }
+          : {}),
+      },
+    });
+
+    return res.json({ url: session.url });
+  } catch (error) {
+    console.error('Stripe session creation failed', {
+      type: error?.type,
+      code: error?.code,
+      param: error?.param,
+      message: error?.message,
+      raw: error?.raw?.message,
+    });
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// register BOTH paths for session creation
+app.post('/create-checkout-session', createCheckoutSession);
+app.post('/api/create-checkout-session', createCheckoutSession);
+
+// ROUTES
+app.use('/categories', categoriesRouter);
+app.use('/products', productsRouter);
+app.use('/orders', ordersRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/users', usersRouter);
+app.use('/login', loginRouter);
+app.use('/register', registerRouter);
+app.use('/logout', logoutRouter);
+app.use('/contact', contactRouter);
+app.use('/tags', tagsRouter);
+app.use('/cart', cartRouter);
+
+const emailPreviewDir = path.join(__dirname, 'email-previews');
+if (fs.existsSync(emailPreviewDir)) {
+  app.use('/email-previews', express.static(emailPreviewDir));
+  app.use('/assets/email', express.static(path.join(__dirname, 'assets/email')));
+}
+
+app.use('/promo', promoRouter);
+app.use('/api/promo', promoRouter);
+app.use('/partners', partnerRouter);
+app.use('/api/partners', partnerRouter);
+app.use('/subscriptions', subscriptionRouter);
+app.use('/api/subscriptions', subscriptionRouter);
+app.use('/cron', cronRouter);
+app.use('/api/cron', cronRouter);
+app.use('/email', emailRouter);
+app.use('/api/email', emailRouter);
+
+app.post('/delivery/quote', deliveryQuote);
+app.post('/api/delivery/quote', deliveryQuote);
+
+module.exports = app;

@@ -1,119 +1,94 @@
+import { authFetch } from './authFetch';
 
-
-// USERS FUNCTIONS
-
-//Fetches whole user info object
 const fetchUserByAuthId = async (authUserId) => {
-
   if (!authUserId) {
-    throw new Error("authUserId is required");
+    throw new Error('authUserId is required');
   }
 
-  const res = await fetch(`/api/users/${authUserId}`);
+  const res = await authFetch(`/api/users/${authUserId}`);
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to fetch user");
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch user');
 
   return data;
 };
 
-// Fetch all users
 const fetchAllUsers = async () => {
-  const res = await fetch('/api/users');
+  const res = await authFetch('/api/users');
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to fetch users");
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch users');
 
   return data;
 };
 
-// Update user's admin permission 
 const updateUserAdmin = async (authUserId, isAdmin) => {
-  const res = await fetch(`/api/users/${authUserId}`, {
-    method: 'PATCH', 
+  const res = await authFetch(`/api/users/${authUserId}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_admin: isAdmin }),
-
   });
 
-  const data = await res.json(); 
+  const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to update admin status");
+  if (!res.ok) throw new Error(data.error || 'Failed to update admin status');
   return data;
+};
 
-}
-
-
-// -------------------------------------
-// CATEGORIES FUNCTIONS 
-
-//Fetch ALL categories
 const fetchAllCategories = async () => {
   const res = await fetch('/api/categories');
-  const data = await res.json(); 
+  const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to fetch user");
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch categories');
 
   return data;
-}
+};
 
-
-// Add New Category 
 const addCategory = async (categoryData) => {
-  const res = await fetch('/api/categories', {
+  const res = await authFetch('/api/categories', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(categoryData),
   });
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to add category");
+  if (!res.ok) throw new Error(data.error || 'Failed to add category');
 
   return data;
 };
 
-
-// Update an existing category 
 const updateCategory = async (categoryToUpdate) => {
-  const res = await fetch(`/api/categories/${categoryToUpdate.id}` , {
+  const res = await authFetch(`/api/categories/${categoryToUpdate.id}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    }, 
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(categoryToUpdate),
   });
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to update category");
+  if (!res.ok) throw new Error(data.error || 'Failed to update category');
 
   return data;
-
 };
 
-//Delete an existing category 
 const deleteCategory = async (id) => {
-  const res = await fetch(`/api/categories/${id}` , {
+  const res = await authFetch(`/api/categories/${id}`, {
     method: 'DELETE',
   });
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to delete category");
+  if (!res.ok) throw new Error(data.error || 'Failed to delete category');
 
   return data;
+};
 
-}
-
-// Upload a category image 
 const uploadCategoryImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
 
-  const res = await fetch('/api/categories/upload', {
+  const res = await authFetch('/api/categories/upload', {
     method: 'POST',
     body: formData,
   });
@@ -124,12 +99,6 @@ const uploadCategoryImage = async (file) => {
   return data.url;
 };
 
-
-
-//------------------------------------------------------
-// PRODUCTS FUNCTIONS
-
-//Fetch ALL products 
 const fetchAllProducts = async () => {
   const res = await fetch('/api/products');
 
@@ -140,31 +109,24 @@ const fetchAllProducts = async () => {
 
   const data = await res.json();
   return data;
-
 };
 
-//Add a new product
 const addProduct = async (productData) => {
-  const res = await fetch('/api/products', {
+  const res = await authFetch('/api/products', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(productData),
-
   });
 
-  const data = await res.json(); 
-  if (!res.ok) throw new Error(data.error || "Failed to add product");
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to add product');
   return data;
-
 };
 
-//Update an existing product
 const updateProduct = async (updatedProduct) => {
-  const res = await fetch(`/api/products/${updatedProduct.id}`, {
+  const res = await authFetch(`/api/products/${updatedProduct.id}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updatedProduct),
   });
 
@@ -175,30 +137,27 @@ const updateProduct = async (updatedProduct) => {
   return data;
 };
 
-// Archive a product 
 const toggleProductActive = async (id, makeActive) => {
   try {
-    const res = await fetch(`/api/products/${id}/archive`, {
+    const res = await authFetch(`/api/products/${id}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !!makeActive })
+      body: JSON.stringify({ active: !!makeActive }),
     });
 
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Archive toggle failed');
-    return json.product; // { id, slug, is_active }
+    return json.product;
   } catch (err) {
     throw new Error(err.message || 'Network error while archiving product');
   }
+};
 
-}
-
-//Upload a produc image 
 const uploadProductImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
 
-  const res = await fetch('/api/products/upload', {
+  const res = await authFetch('/api/products/upload', {
     method: 'POST',
     body: formData,
   });
@@ -209,55 +168,45 @@ const uploadProductImage = async (file) => {
   return data.url;
 };
 
-//------------------------------------------------------------------------------
-// TAGS FUNCTIONS
-
-// fetch all tags 
 const fetchAllTags = async () => {
   const res = await fetch('/api/tags');
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to fetch tags");
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch tags');
 
   return data;
 };
 
-// fetch tags for a specific product by id 
 const fetchProductTags = async (productId) => {
   const res = await fetch(`/api/products/${productId}/tags`);
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.error || "Failed to fetch product tags");
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch product tags');
 
-  return data.tag_ids; 
+  return data.tag_ids;
 };
 
-// update tags of a selected product
 const updateProductTags = async (productId, tagIds) => {
-  const res = await fetch(`/api/products/${productId}/tags`, {
+  const res = await authFetch(`/api/products/${productId}/tags`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tag_ids: tagIds }),
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update product tags");
+  if (!res.ok) throw new Error(data.error || 'Failed to update product tags');
 
   return data;
 };
 
-
-
-export { 
-  fetchUserByAuthId, 
-  fetchAllCategories, 
-  addCategory, 
-  updateCategory, 
-  deleteCategory, 
+export {
+  fetchUserByAuthId,
+  fetchAllCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory,
   uploadCategoryImage,
-  fetchAllUsers, 
+  fetchAllUsers,
   updateUserAdmin,
   fetchAllProducts,
   addProduct,
@@ -265,8 +214,6 @@ export {
   uploadProductImage,
   fetchAllTags,
   fetchProductTags,
-  updateProductTags, 
+  updateProductTags,
   toggleProductActive,
-
-
-}; 
+};

@@ -4,43 +4,45 @@ const router = express.Router();
 const {
   getAllOrders,
   getOrderById,
-  getOrderByUserId, 
+  getOrderByUserId,
   getOrderByStripeSessionId,
   setOrderPickedUp,
-} = require('../queries/order')
+} = require('../queries/order');
 
-const { getProductsForOrder } = require('../queries/order_product')
+const { getProductsForOrder } = require('../queries/order_product');
+const {
+  requireAuth,
+  requireAdmin,
+  requireSelfOrAdmin,
+  loadCallerUserRow,
+  isAdminUser,
+} = require('../middleware/requireAuth');
 
-// MORE SPECIFIC ROUTES GO FIRST
-// if in the future add a GET route at /:id/picked-up, make sure it's above the generic GET /:id to avoid matching issues
+async function assertOrderReadable(req, order) {
+  await loadCallerUserRow(req);
+  if (isAdminUser(req)) return true;
+  if (order?.user_id && order.user_id === req.user.id) return true;
+  return false;
+}
 
-// GET ALL ORDERS 
-router.get('/', async (req, res) => {
+// GET ALL ORDERS — admin
+router.get('/', requireAdmin, async (req, res) => {
   try {
-    const allOrders = await getAllOrders(); 
+    const allOrders = await getAllOrders();
     res.json(allOrders);
   } catch (error) {
     console.error(error);
-    res.status(500).json({error: error.message});
+    res.status(500).json({ error: error.message });
   }
-}); 
+});
 
-// GET ORDER BY STRIPE SESSION ID (FOR CONFIRMATION PAGE RIGHT AFTER PAYMENT)
+// GET ORDER BY STRIPE SESSION ID (public capability URL)
 router.get('/session/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
 
   try {
     const order = await getOrderByStripeSessionId(sessionId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-
-    // console.log('[orders/session]', {
-    //   sessionId,
-    //   id: order.id,
-    //   delivery: order.delivery,
-    //   type: typeof order.delivery,
-    //   status: order.status,
-    // });
-
     res.json(order);
   } catch (error) {
     console.error('Error fetching order:', error);
@@ -48,10 +50,28 @@ router.get('/session/:sessionId', async (req, res) => {
   }
 });
 
-// GET PRODUCTS FOR AN ORDER
-router.get('/:id/products', async (req, res) => {
+// GET ORDERS BY USER ID — self or admin
+router.get('/user/:id', requireAuth, requireSelfOrAdmin('id'), async (req, res) => {
+  const authUserId = req.params.id;
+
+  try {
+    const userOrders = await getOrderByUserId(authUserId);
+    res.json(userOrders);
+  } catch (error) {
+    console.error('Failed to fetch orders by authUserId:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET PRODUCTS FOR AN ORDER — owner or admin
+router.get('/:id/products', requireAuth, async (req, res) => {
   try {
     const orderId = req.params.id;
+    const order = await getOrderById(orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!(await assertOrderReadable(req, order))) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const products = await getProductsForOrder(orderId);
     res.json(products);
   } catch (error) {
@@ -60,38 +80,26 @@ router.get('/:id/products', async (req, res) => {
   }
 });
 
-// GET ORDERS BY USER ID 
-router.get('/user/:id', async (req, res) => {
-  const authUserId = req.params.id;
-
+// GET ORDER BY ID — owner or admin
+router.get('/:id', requireAuth, async (req, res) => {
   try {
-    
-    const userOrders = await getOrderByUserId(authUserId);
-    res.json(userOrders);
-
+    const orderId = req.params.id;
+    const order = await getOrderById(orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!(await assertOrderReadable(req, order))) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    res.json(order);
   } catch (error) {
-    console.error("Failed to fetch orders by authUserId:", error.message);
-    res.status(500).json({error: error.message});
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET ORDER BY ID 
-router.get('/:id', async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const order = await getOrderById(orderId); 
-    res.json(order);
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({error: error.message});
-  }
-}); 
-
-// Mark picked up
-router.patch('/:id/picked-up', async (req, res) => {
+// Mark picked up — admin
+router.patch('/:id/picked-up', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const { picked_up } = req.body; // boolean
+  const { picked_up } = req.body;
   try {
     const updated = await setOrderPickedUp(id, picked_up);
     res.json(updated);
@@ -101,6 +109,4 @@ router.patch('/:id/picked-up', async (req, res) => {
   }
 });
 
-
-
-module.exports = router
+module.exports = router;

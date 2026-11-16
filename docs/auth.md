@@ -68,15 +68,18 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 | POST | `/api/register/confirmation` | Needs Bearer |
 | POST | `/api/register/auth/resend-confirmation` | |
 | POST | `/api/login`, `/api/login/reset-password` | Backend login largely unused by UI |
-| GET/PATCH | `/api/users`, `/api/users/:auth_user_id` | No session bind on PATCH |
+| GET | `/api/users` | Admin Bearer required |
+| GET/PATCH | `/api/users/me` | Bearer; self profile |
+| GET/PATCH | `/api/users/:auth_user_id` | Bearer; self or admin. Non-admins cannot set `is_admin` |
 | POST | `/api/logout` | |
 
 ---
 
 ## Admin
 
-- Promote/demote via **Users** tab only (`UserAdmin.jsx`).
-- Catalog/order/partner write APIs rely on UI `is_admin` check, not route middleware (same class of gap as subscription `userId` trust — deferred auth hardening).
+- Promote/demote via **Users** tab only (`UserAdmin.jsx`); API requires admin Bearer and strips `is_admin` for non-admins.
+- Catalog writes, partner admin, orders list/picked-up, and subscription admin/settings use `requireAdmin` (Bearer + `users.is_admin`). Customer subscription manage still trusts client `userId` until the next auth PR.
+- Client helpers: `frontend/src/helpers/authFetch.js` (Bearer + 401 refresh-once).
 
 ---
 
@@ -90,6 +93,8 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 | Profile fields | `Profile.jsx` + `userHelpers.js` |
 | is_admin toggle | `UserAdmin.jsx` / `adminHelpers.updateUserAdmin` |
 | Session + cart keys | `App.jsx` |
+| Authenticated fetch | `authFetch.js` |
+| API auth middleware | `backend/src/middleware/requireAuth.js` |
 
 ---
 
@@ -98,7 +103,7 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 1. Login is client-side; register is server-side.
 2. Duplicate email often detected via empty `identities`.
 3. `email_prefs` editable via API/unsubscribe; Profile form does not expose reminder toggles.
-4. Users/admin PATCH is not ownership-authenticated server-side.
+4. Users GET/PATCH require Bearer; self-or-admin on `:auth_user_id`. Prefer `/users/me` for profile.
 5. Cart keys merge guest → user on login (`cart_guest` → `cart_{id}`).
 
 ---

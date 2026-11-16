@@ -1,5 +1,8 @@
 const crypto = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
+const {
+  authUserFromBearer,
+  loadCallerUserRow,
+} = require('./requireAuth');
 const { getUserByAuthId } = require('../queries/user');
 
 function secretsEqual(a, b) {
@@ -19,22 +22,12 @@ function cronAuthorized(req) {
 }
 
 async function adminUserFromBearer(req) {
-  const header = req.get('authorization') || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  if (!token) return null;
-
-  const url = process.env.SUPABASE_PROJECT_URL;
-  const anon = process.env.SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
-
-  const userClient = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: { user }, error } = await userClient.auth.getUser();
-  if (error || !user?.id) return null;
-
+  const user = await authUserFromBearer(req);
+  if (!user?.id) return null;
+  req.user = user;
   const row = await getUserByAuthId(user.id);
   if (!row?.is_admin) return null;
+  req.userRow = row;
   return row;
 }
 
@@ -61,4 +54,7 @@ async function requireAdminOrCron(req, res, next) {
 module.exports = {
   requireAdminOrCron,
   cronAuthorized,
+  adminUserFromBearer,
+  // re-export for callers that previously only used this file
+  loadCallerUserRow,
 };

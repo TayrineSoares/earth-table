@@ -27,5 +27,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "supertest": "^7.3.2"
+  }
 }

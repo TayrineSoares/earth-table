@@ -183,19 +183,20 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/plans`, `/plans?active=1`, `/plans/:id` | Public catalog |
-| GET | `/dates`, `/settings` | Public / shared |
-| PATCH | `/settings` | Test clocks (Admin UI) |
+| GET | `/dates` | Public signup cadence |
+| GET | `/settings` | Admin Bearer; includes `test_charge_at` / `test_lock_at` |
+| PATCH | `/settings` | Admin Bearer; test clocks |
 | GET | `/mine/:userId` | Manage payload |
-| GET | `/admin` | Kitchen/subscriber board data |
+| GET | `/admin` | Admin Bearer; kitchen/subscriber board data |
 | POST | `/admin/run-charge`, `/admin/run-lock` | **`requireAdminOrCron`** |
 | POST | `/checkout` | Signup |
 | GET | `/signup/:sessionId` | Confirm poll |
 | POST | `/:id/card-setup` | Body `userId` + ownership |
 | GET | `/card-setup/:sessionId` | |
 | PATCH | `/:id/items`, `/:id/fulfillment`, `/:id/status`, `/:id/plan` | Body `userId` + `getOwnedSubscription` |
-| POST | `/plans` | Create |
-| PATCH | `/plans/:id` | Price gated by `ALLOW_PLAN_PRICE_CHANGE` |
-| POST | `/plans/:id/discontinue` | Gated by `ALLOW_PLAN_DISCONTINUE` |
+| POST | `/plans` | Admin Bearer; create |
+| PATCH | `/plans/:id` | Admin Bearer; price gated by `ALLOW_PLAN_PRICE_CHANGE` |
+| POST | `/plans/:id/discontinue` | Admin Bearer; gated by `ALLOW_PLAN_DISCONTINUE` |
 
 ### Cron (`/api/cron`, `CRON_SECRET`)
 - `/subscription-charge` → `runPlanCharge`
@@ -204,8 +205,8 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 - `/subscription-card-expiry` → `runCardExpiryNotices`
 - `/subscription-deadline-notice` → `sendDeadlineNotice` (one-shot)
 
-### Auth note (known gap)
-Manage routes trust client-supplied `userId` plus row ownership. Session binding is deferred to a broader auth PR — not subscription-only.
+### Auth note
+Admin list/settings/plan mutations require admin Bearer (PR1). Customer manage/checkout still trust client-supplied `userId` plus row ownership — session bind is the next auth PR.
 
 ---
 

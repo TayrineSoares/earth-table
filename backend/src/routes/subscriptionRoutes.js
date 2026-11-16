@@ -30,6 +30,7 @@ const {
 } = require('../queries/subscriptionManage');
 const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
 const { requireAdminOrCron } = require('../middleware/requireAdminOrCron');
+const { requireAdmin } = require('../middleware/requireAuth');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -73,7 +74,7 @@ router.get('/mine/:userId', async (req, res) => {
   }
 });
 
-router.get('/admin', async (req, res) => {
+router.get('/admin', requireAdmin, async (req, res) => {
   try {
     const rows = await listAll();
     res.json(rows);
@@ -195,7 +196,7 @@ router.patch('/:id/plan', async (req, res) => {
   }
 });
 
-router.post('/plans', async (req, res) => {
+router.post('/plans', requireAdmin, async (req, res) => {
   try {
     const plan = await createPlan(req.body || {});
     res.status(201).json(plan);
@@ -204,7 +205,7 @@ router.post('/plans', async (req, res) => {
   }
 });
 
-router.patch('/plans/:id', async (req, res) => {
+router.patch('/plans/:id', requireAdmin, async (req, res) => {
   try {
     const result = await updatePlan(req.params.id, req.body || {});
     res.json(result);
@@ -213,7 +214,7 @@ router.patch('/plans/:id', async (req, res) => {
   }
 });
 
-router.post('/plans/:id/discontinue', async (req, res) => {
+router.post('/plans/:id/discontinue', requireAdmin, async (req, res) => {
   try {
     const result = await discontinuePlan(req.params.id);
     res.json(result);
@@ -232,7 +233,7 @@ router.get('/dates', async (req, res) => {
   }
 });
 
-router.get('/settings', async (req, res) => {
+router.get('/settings', requireAdmin, async (req, res) => {
   try {
     const settings = await getSettings();
     res.json(settings || {});
@@ -241,7 +242,7 @@ router.get('/settings', async (req, res) => {
   }
 });
 
-router.patch('/settings', async (req, res) => {
+router.patch('/settings', requireAdmin, async (req, res) => {
   try {
     const settings = await updateSettings(req.body || {});
     res.json(settings);

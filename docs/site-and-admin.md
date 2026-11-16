@@ -86,7 +86,7 @@ Tabs lazy-render by `activeTab`; without `?tab=` the board shows header/tabs unt
 
 1. Unsubscribe secret is `CRON_SECRET` (ops coupling).
 2. Contact has no DB persistence (email only).
-3. Admin write APIs across tabs are mostly UI-gated, not route-middleware-gated — see [auth.md](./auth.md).
+3. Admin write/list APIs for catalog, partners, orders list, users, and subscription admin/settings require admin Bearer (`requireAdmin`). Customer subscription manage / checkout still pending the next auth PR — see [auth.md](./auth.md).
 4. `SubscribeSaveBand` is marketing CTA into subscriptions, not a separate product.
 
 ---

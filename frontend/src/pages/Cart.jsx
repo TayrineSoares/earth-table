@@ -10,6 +10,7 @@ import { Trash2 } from 'lucide-react';
 import "../styles/Cart.css"
 import "../styles/SubscribeFlow.css"
 import { Link } from "react-router-dom";
+import { fetchPartnerWalletByUser } from '../helpers/partnerHelpers';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -71,12 +72,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       }
 
       try {
-        const res = await fetch(`/api/partners/by-user/${userId}`);
-        if (!res.ok) {
-          if (!cancelled) setPartnerWallet(null);
-          return;
-        }
-        const data = await res.json();
+        const data = await fetchPartnerWalletByUser(userId);
         if (!cancelled) setPartnerWallet(data);
       } catch (err) {
         console.error('[cart] partner wallet fetch failed', err);

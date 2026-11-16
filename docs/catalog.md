@@ -101,7 +101,7 @@ Local Vite rewrites `/api/*` → backend `/*`; production mounts Express under `
 - Tags: assign only; no tag admin UI.
 - Price stored cents; form edits dollars.
 - No route hard-deletes products (`deleteProductById` unused by routes).
-- Write routes are **not** admin-JWT gated (UI `is_admin` gate only) — same class of gap as other manage APIs.
+- Write routes require admin Bearer (`requireAdmin`). Public GETs stay open.
 
 ---
 

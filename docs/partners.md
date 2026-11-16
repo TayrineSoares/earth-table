@@ -119,16 +119,16 @@ Same validate on `SubscribeCart.jsx`. Signup stores first-week promo fields; ear
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/partners` | Admin list + wallet bags |
-| POST | `/api/partners` | Create + welcome mail |
-| GET | `/api/partners/:id` | Admin detail + months |
-| PATCH | `/api/partners/:id` | `active`, code, rates |
-| GET | `/api/partners/by-user/:auth_user_id` | Wallet summary |
-| GET | `/api/partners/by-user/:auth_user_id/detail` | Profile months |
-| PATCH | `/api/partners/by-user/:auth_user_id/payout-preference` | `{ payout_type }` |
-| GET | `/api/partners/invoices/:invoiceId/pdf` | PDF |
-| PATCH | `/api/partners/invoices/:invoiceId` | `{ paid: boolean }` |
-| POST | `/api/promo/validate` | Shared; referral branch first |
+| GET | `/api/partners` | Admin Bearer; list + wallet bags |
+| POST | `/api/partners` | Admin Bearer; create + welcome mail |
+| GET | `/api/partners/:id` | Admin Bearer; detail + months |
+| PATCH | `/api/partners/:id` | Admin Bearer; `active`, code, rates |
+| GET | `/api/partners/by-user/:auth_user_id` | Bearer; self or admin; wallet summary |
+| GET | `/api/partners/by-user/:auth_user_id/detail` | Bearer; self or admin; Profile months |
+| PATCH | `/api/partners/by-user/:auth_user_id/payout-preference` | Bearer; self or admin; `{ payout_type }` |
+| GET | `/api/partners/invoices/:invoiceId/pdf` | Bearer; invoice owner or admin; blob download from UI |
+| PATCH | `/api/partners/invoices/:invoiceId` | Admin Bearer; `{ paid: boolean }` |
+| POST | `/api/promo/validate` | Shared; referral branch first (identity bind still open) |
 
 Cron: `GET|POST /api/cron/partner-monthly` (`CRON_SECRET`; optional `period=YYYY-MM`). Schedule: `0 8 1 * *` UTC in `vercel.json`.
 
@@ -148,7 +148,7 @@ Admin → **Partners** tab: create (user search, code, discount %, cashback %), 
 | `renderPartnerCodeUsedEmail` | Successful referral earn |
 | `renderPartnerMonthlyInvoiceEmail` / `renderAdminMonthlyInvoiceEmail` | Month close |
 
-PDF is on-demand via API (emails tell partners to download; cron does not attach PDF). Filename: `earth-table-partner-{CODE}-{YYYY-MM}.pdf`.
+PDF is on-demand via authenticated API (emails tell partners to download; cron does not attach PDF). UI uses `downloadInvoicePdf` (Bearer → blob), not a bare `<a href>`. Filename: `earth-table-partner-{CODE}-{YYYY-MM}.pdf`.
 
 ---
 

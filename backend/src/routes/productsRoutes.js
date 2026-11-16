@@ -1,40 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const upload = multer(); 
+const upload = multer();
 
 const {
   getAllProducts,
   getProductById,
-  getProductsByCategory, 
+  getProductsByCategory,
   createProduct,
-  deleteProductById,
   updateProductById,
   uploadProductImage,
-  updateProductTags, 
+  updateProductTags,
   getProductTags,
   setProductActive,
-} = require('../queries/product')
+} = require('../queries/product');
+const { requireAdmin, unlessPublic } = require('../middleware/requireAuth');
 
+// Default-deny: non-GET mutations require admin. Public GETs stay open.
+router.use(unlessPublic([{ method: 'GET' }], requireAdmin));
 
-// GET /products        ALL PRODUCTS
 router.get('/', async (req, res) => {
   try {
     const allProducts = await getAllProducts();
     res.json(allProducts);
   } catch (error) {
     console.error(error);
-    res.status(500).json({error: error.message})
+    res.status(500).json({ error: error.message });
   }
 });
 
-// POST /products
 router.post('/', async (req, res) => {
-  const { slug, description, price_cents, image_url, category_id, is_available, tag_ids = [] } = req.body;
-
+  const {
+    slug, description, price_cents, image_url, category_id, is_available, tag_ids = [],
+  } = req.body;
 
   try {
-    const newProduct = await createProduct({ slug, description, price_cents, image_url, category_id, is_available, tag_ids });
+    const newProduct = await createProduct({
+      slug, description, price_cents, image_url, category_id, is_available, tag_ids,
+    });
     res.status(201).json(newProduct);
   } catch (error) {
     console.error('Error creating product:', error.message);
@@ -43,7 +46,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH /products/:id/archive
 router.patch('/:id/archive', async (req, res) => {
   const id = Number(req.params.id);
   const { active } = req.body;
@@ -61,8 +63,6 @@ router.patch('/:id/archive', async (req, res) => {
   }
 });
 
-
-// PATCH /products/:id — Update product
 router.patch('/:id', async (req, res) => {
   const id = req.params.id;
   const { tag_ids = [], ...updatedData } = req.body;
@@ -79,11 +79,10 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// GET /products/:id    SINGLE PRODUCT BY ID
 router.get('/:id', async (req, res) => {
   try {
-    const id = req.params.id; 
-    const product = await getProductById(id); 
+    const id = req.params.id;
+    const product = await getProductById(id);
     res.json(product);
   } catch (error) {
     console.error(error);
@@ -91,7 +90,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-//GET /products/category/:categoryId      PRODUCTS BY CATEGORY
 router.get('/category/:categoryId', async (req, res) => {
   try {
     const categoryId = req.params.categoryId;
@@ -101,9 +99,8 @@ router.get('/category/:categoryId', async (req, res) => {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
-}); 
+});
 
-// UPLOAD PRODUCT IMAGE
 router.post('/upload', upload.single('image'), async (req, res) => {
   try {
     const file = req.file;
@@ -116,9 +113,8 @@ router.post('/upload', upload.single('image'), async (req, res) => {
   }
 });
 
-// POST /products/:id/tags
 router.post('/:id/tags', async (req, res) => {
-  const productId = parseInt(req.params.id); 
+  const productId = parseInt(req.params.id, 10);
   const { tag_ids } = req.body;
 
   if (!Array.isArray(tag_ids)) {
@@ -134,10 +130,8 @@ router.post('/:id/tags', async (req, res) => {
   }
 });
 
-
-// GET /products/:id/tags
 router.get('/:id/tags', async (req, res) => {
-  const productId = parseInt(req.params.id);
+  const productId = parseInt(req.params.id, 10);
 
   try {
     const tagIds = await getProductTags(productId);
@@ -147,7 +141,5 @@ router.get('/:id/tags', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 module.exports = router;

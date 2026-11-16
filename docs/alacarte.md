@@ -330,12 +330,12 @@ If catalog match fails, insert may skip rows but `cart_meta` still lands on the 
 | `POST` | `/webhook`, `/api/webhook` | Stripe events (raw body) |
 | `POST` | `/delivery/quote`, `/api/delivery/quote` | Distance / fee preview |
 | `POST` | `/promo/validate`, `/api/promo/validate` | Promo or referral preview |
-| `GET` | `/api/orders` | Admin list (à la carte only) |
-| `GET` | `/api/orders/session/:sessionId` | Confirmation |
-| `GET` | `/api/orders/user/:id` | Order history |
-| `GET` | `/api/orders/:id` | Admin detail |
-| `GET` | `/api/orders/:id/products` | Line products |
-| `PATCH` | `/api/orders/:id/picked-up` | Admin fulfilled toggle |
+| `GET` | `/api/orders` | Admin Bearer; list (à la carte only) |
+| `GET` | `/api/orders/session/:sessionId` | Public confirmation (capability URL) |
+| `GET` | `/api/orders/user/:id` | Bearer; self or admin; order history |
+| `GET` | `/api/orders/:id` | Bearer; owner or admin |
+| `GET` | `/api/orders/:id/products` | Bearer; owner or admin |
+| `PATCH` | `/api/orders/:id/picked-up` | Admin Bearer; fulfilled toggle |
 | `GET` | `/api/partners/by-user/:userId` | Cart store-credit preview |
 | `GET` | `/cart` | **Stub** health JSON |
 | `*` | `/cart/:userId`, `/cart/add`, … | **Legacy DB cart** — unused by FE |

@@ -3,9 +3,19 @@ const router = express.Router();
 const multer = require('multer');
 const upload = multer();
 
-const { getAllCategories, getHomepageCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage } = require('../queries/category');
+const {
+  getAllCategories,
+  getHomepageCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  uploadCategoryImage,
+} = require('../queries/category');
+const { requireAdmin, unlessPublic } = require('../middleware/requireAuth');
 
-// GET /categories
+// Default-deny: non-GET mutations require admin. Public GETs stay open.
+router.use(unlessPublic([{ method: 'GET' }], requireAdmin));
+
 router.get('/', async (req, res) => {
   try {
     const categories = await getAllCategories();
@@ -16,19 +26,16 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /categories/homepage
 router.get('/homepage', async (req, res) => {
   try {
-    const homepageCategories = await getHomepageCategories(); 
+    const homepageCategories = await getHomepageCategories();
     res.json(homepageCategories);
   } catch (error) {
     console.error('Error fetching homepage categories:', error.message);
     res.status(500).json({ error: error.message });
-
   }
 });
 
-// POST /categories 
 router.post('/', async (req, res) => {
   const { name, image_url, description, show_on_homepage } = req.body;
 
@@ -37,7 +44,7 @@ router.post('/', async (req, res) => {
       name,
       image_url,
       description,
-      show_on_homepage
+      show_on_homepage,
     });
 
     res.status(201).json(newCategory);
@@ -47,23 +54,19 @@ router.post('/', async (req, res) => {
   }
 });
 
-//PATCH /categories/:id
 router.patch('/:id', async (req, res) => {
   const categoryId = req.params.id;
-  const updatedFields = req.body; 
+  const updatedFields = req.body;
 
   try {
     const updatedCategory = await updateCategory(categoryId, updatedFields);
     res.json(updatedCategory);
-
   } catch (error) {
-    console.error("Error updating category:", error);
+    console.error('Error updating category:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
-//DELETE /categories/:id
 router.delete('/:id', async (req, res) => {
   const categoryId = req.params.id;
 
@@ -71,12 +74,11 @@ router.delete('/:id', async (req, res) => {
     await deleteCategory(categoryId);
     res.json({ message: `Category ${categoryId} deleted` });
   } catch (error) {
-    console.error("Error deleting category:", error);
+    console.error('Error deleting category:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// UPLOAD CATEGORY IMAGE
 router.post('/upload', upload.single('image'), async (req, res) => {
   try {
     const file = req.file;

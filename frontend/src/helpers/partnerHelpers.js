@@ -1,3 +1,5 @@
+import { authFetch } from './authFetch';
+
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -7,17 +9,23 @@ async function parseJson(res) {
 }
 
 const fetchPartners = async () => {
-  const res = await fetch('/api/partners');
+  const res = await authFetch('/api/partners');
   return parseJson(res);
 };
 
 const fetchPartnerDetail = async (partnerId) => {
-  const res = await fetch(`/api/partners/${partnerId}`);
+  const res = await authFetch(`/api/partners/${partnerId}`);
   return parseJson(res);
 };
 
 const fetchPartnerDetailByUser = async (authUserId) => {
-  const res = await fetch(`/api/partners/by-user/${authUserId}/detail`);
+  const res = await authFetch(`/api/partners/by-user/${authUserId}/detail`);
+  if (res.status === 404) return null;
+  return parseJson(res);
+};
+
+const fetchPartnerWalletByUser = async (authUserId) => {
+  const res = await authFetch(`/api/partners/by-user/${authUserId}`);
   if (res.status === 404) return null;
   return parseJson(res);
 };
@@ -28,7 +36,7 @@ const createPartner = async ({
   discount_percent,
   cashback_percent,
 }) => {
-  const res = await fetch('/api/partners', {
+  const res = await authFetch('/api/partners', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -42,7 +50,7 @@ const createPartner = async ({
 };
 
 const updatePartner = async (partnerId, body) => {
-  const res = await fetch(`/api/partners/${partnerId}`, {
+  const res = await authFetch(`/api/partners/${partnerId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -60,7 +68,7 @@ const updatePartnerRates = (partnerId, { discount_percent, cashback_percent }) =
   updatePartner(partnerId, { discount_percent, cashback_percent });
 
 const setInvoicePaid = async (invoiceId, paid) => {
-  const res = await fetch(`/api/partners/invoices/${invoiceId}`, {
+  const res = await authFetch(`/api/partners/invoices/${invoiceId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ paid: !!paid }),
@@ -71,12 +79,33 @@ const setInvoicePaid = async (invoiceId, paid) => {
 const setPayoutPreference = async (authUserId, payoutType) => {
   if (!authUserId) throw new Error('authUserId is required');
 
-  const res = await fetch(`/api/partners/by-user/${authUserId}/payout-preference`, {
+  const res = await authFetch(`/api/partners/by-user/${authUserId}/payout-preference`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ payout_type: payoutType }),
   });
   return parseJson(res);
+};
+
+const downloadInvoicePdf = async (invoiceId) => {
+  if (!invoiceId) throw new Error('invoiceId is required');
+  const res = await authFetch(`/api/partners/invoices/${invoiceId}/pdf`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to download invoice');
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="([^"]+)"/i);
+  const filename = match?.[1] || `earth-table-invoice-${invoiceId}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 };
 
 const formatCents = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -147,12 +176,14 @@ export {
   fetchPartners,
   fetchPartnerDetail,
   fetchPartnerDetailByUser,
+  fetchPartnerWalletByUser,
   createPartner,
   setPartnerActive,
   updatePartnerCode,
   updatePartnerRates,
   setPayoutPreference,
   setInvoicePaid,
+  downloadInvoicePdf,
   formatCents,
   formatPayoutLabel,
   formatInvoiceSummary,

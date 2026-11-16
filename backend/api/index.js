@@ -1,5 +1,5 @@
 const express = require('express');
-const app = require('../server'); // your existing Express app
+const app = require('../app');
 
 // mount your app at /api so routes like /categories still match
 const handler = express();

@@ -1,5 +1,5 @@
-import { supabase } from '../supabaseClient'
 import { MEAL_LOCK_BY } from './subscriptionCadence'
+import { authFetch, authHeaders } from './authFetch'
 
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
@@ -7,15 +7,6 @@ async function parseJson(res) {
     throw new Error(data.error || data.message || 'Subscription request failed');
   }
   return data;
-}
-
-async function adminAuthHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) {
-    throw new Error('Sign in as an admin to run this job.');
-  }
-  return { Authorization: `Bearer ${token}` };
 }
 
 /** "cilantro lime chicken bowl" -> "Cilantro Lime Chicken Bowl" */
@@ -45,7 +36,7 @@ const fetchSubscriptionPlans = async ({ activeOnly = false } = {}) => {
 };
 
 const createSubscriptionPlan = async (body) => {
-  const res = await fetch('/api/subscriptions/plans', {
+  const res = await authFetch('/api/subscriptions/plans', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -54,7 +45,7 @@ const createSubscriptionPlan = async (body) => {
 };
 
 const updateSubscriptionPlan = async (planId, body) => {
-  const res = await fetch(`/api/subscriptions/plans/${planId}`, {
+  const res = await authFetch(`/api/subscriptions/plans/${planId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -63,19 +54,19 @@ const updateSubscriptionPlan = async (planId, body) => {
 };
 
 const discontinueSubscriptionPlan = async (planId) => {
-  const res = await fetch(`/api/subscriptions/plans/${planId}/discontinue`, {
+  const res = await authFetch(`/api/subscriptions/plans/${planId}/discontinue`, {
     method: 'POST',
   });
   return parseJson(res);
 };
 
 const fetchSubscriptionSettings = async () => {
-  const res = await fetch('/api/subscriptions/settings');
+  const res = await authFetch('/api/subscriptions/settings');
   return parseJson(res);
 };
 
 const updateSubscriptionSettings = async (body) => {
-  const res = await fetch('/api/subscriptions/settings', {
+  const res = await authFetch('/api/subscriptions/settings', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -84,13 +75,13 @@ const updateSubscriptionSettings = async (body) => {
 };
 
 const runSubscriptionCharge = async () => {
-  const headers = await adminAuthHeaders();
+  const headers = await authHeaders();
   const res = await fetch('/api/subscriptions/admin/run-charge', { method: 'POST', headers });
   return parseJson(res);
 };
 
 const runSubscriptionLock = async () => {
-  const headers = await adminAuthHeaders();
+  const headers = await authHeaders();
   const res = await fetch('/api/subscriptions/admin/run-lock', { method: 'POST', headers });
   return parseJson(res);
 };
@@ -126,7 +117,7 @@ const titleCaseAdminRow = (row) => ({
 });
 
 const fetchAdminSubscriptions = async () => {
-  const res = await fetch('/api/subscriptions/admin');
+  const res = await authFetch('/api/subscriptions/admin');
   const data = await parseJson(res);
   if (Array.isArray(data)) {
     return { meta: {}, subscriptions: data.map(titleCaseAdminRow) };

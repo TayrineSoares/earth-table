@@ -19,6 +19,13 @@ const {
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,
 } = require('../utils/emailTemplates');
+const {
+  requireAuth,
+  requireAdmin,
+  requireSelfOrAdmin,
+  loadCallerUserRow,
+  isAdminUser,
+} = require('../middleware/requireAuth');
 
 function handlePartnerError(res, err, label) {
   if (err instanceof PartnerError) {
@@ -71,7 +78,10 @@ async function sendPartnerWelcomeEmails(partner) {
   }
 }
 
-router.get('/', async (req, res) => {
+// Default-deny: every partners route requires a valid session.
+router.use(requireAuth);
+
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const partners = await listPartners();
     res.json(partners);
@@ -80,7 +90,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/by-user/:auth_user_id', async (req, res) => {
+router.get('/by-user/:auth_user_id', requireSelfOrAdmin('auth_user_id'), async (req, res) => {
   try {
     const partner = await getPartnerWalletByUserId(req.params.auth_user_id);
     if (!partner) {
@@ -92,7 +102,7 @@ router.get('/by-user/:auth_user_id', async (req, res) => {
   }
 });
 
-router.get('/by-user/:auth_user_id/detail', async (req, res) => {
+router.get('/by-user/:auth_user_id/detail', requireSelfOrAdmin('auth_user_id'), async (req, res) => {
   try {
     const partner = await getPartnerDetailByUserId(req.params.auth_user_id);
     if (!partner) {
@@ -104,7 +114,7 @@ router.get('/by-user/:auth_user_id/detail', async (req, res) => {
   }
 });
 
-router.patch('/by-user/:auth_user_id/payout-preference', async (req, res) => {
+router.patch('/by-user/:auth_user_id/payout-preference', requireSelfOrAdmin('auth_user_id'), async (req, res) => {
   try {
     const updated = await setPayoutPreference(
       req.params.auth_user_id,
@@ -116,7 +126,7 @@ router.patch('/by-user/:auth_user_id/payout-preference', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const partner = await createPartner(req.body || {});
     try {
@@ -136,6 +146,13 @@ router.get('/invoices/:invoiceId/pdf', async (req, res) => {
     if (!payload) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
+
+    await loadCallerUserRow(req);
+    const ownerId = payload.partner?.user_id;
+    if (!isAdminUser(req) && ownerId !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const pdf = await renderPartnerInvoicePdf(payload);
     const filename = invoicePdfFilename(payload.periodKey, payload.partner?.referral_code);
     res.setHeader('Content-Type', 'application/pdf');
@@ -149,7 +166,7 @@ router.get('/invoices/:invoiceId/pdf', async (req, res) => {
   }
 });
 
-router.patch('/invoices/:invoiceId', async (req, res) => {
+router.patch('/invoices/:invoiceId', requireAdmin, async (req, res) => {
   try {
     const paid = req.body?.paid;
     const updated = await setInvoicePaid(req.params.invoiceId, paid);
@@ -159,7 +176,7 @@ router.patch('/invoices/:invoiceId', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAdmin, async (req, res) => {
   try {
     const partner = await getPartnerAdminDetail(req.params.id);
     if (!partner) {
@@ -171,7 +188,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireAdmin, async (req, res) => {
   try {
     const {
       active,

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import {
+  downloadInvoicePdf,
   formatCents,
   formatOrderDate,
   formatPayoutLabel,
@@ -10,6 +11,7 @@ import '../styles/PartnerAdmin.css';
 const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
   const [openedClosed, setOpenedClosed] = useState({});
   const [savingPaidId, setSavingPaidId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   if (!months.length) {
     return <p className="partner-empty">No invoices or monthly cashback yet.</p>;
@@ -25,6 +27,19 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
       alert(err.message || 'Failed to update invoice.');
     } finally {
       setSavingPaidId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (invoice) => {
+    if (!invoice?.id) return;
+    setDownloadingId(invoice.id);
+    try {
+      await downloadInvoicePdf(invoice.id);
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      alert(err.message || 'Failed to download invoice.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -58,12 +73,14 @@ const PartnerMonthList = ({ months = [], isAdmin = false, onMarkPaid }) => {
                   <span className="partner-month-badge is-open">Open</span>
                 )}
                 {month.invoice?.id && (
-                  <a
+                  <button
+                    type="button"
                     className="partner-month-badge is-download"
-                    href={`/api/partners/invoices/${month.invoice.id}/pdf`}
+                    disabled={downloadingId === month.invoice.id}
+                    onClick={() => handleDownloadPdf(month.invoice)}
                   >
-                    Download invoice
-                  </a>
+                    {downloadingId === month.invoice.id ? 'Downloading…' : 'Download invoice'}
+                  </button>
                 )}
                 {month.invoice?.id && isAdmin && (
                   <button
