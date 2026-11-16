@@ -1096,16 +1096,27 @@ const MySubscriptions = ({ user }) => {
                 promo_percent: Number(row.addon_promo_percent) || Number(nextBoxCycle.promo_percent) || 0,
               })
               : null
+            const editCycle = row.edit_cycle || null
             const editLines = cycleLineItems({
+              ...(editCycle || cycle),
+              promo_percent: Number(row.addon_promo_percent)
+                || Number((editCycle || cycle).promo_percent)
+                || 0,
+            })
+            const displayLines = cycleLineItems({
               ...cycle,
               promo_percent: Number(row.addon_promo_percent) || Number(cycle.promo_percent) || 0,
             })
-            const meals = editLines.meals
-            const addons = editLines.addons
-            const mealQty = editLines.mealQty
-            const extrasCents = editLines.extrasCents
-            const extrasDueCents = editLines.extrasDueCents
-            const mealCount = Number(row.edit_meal_count) || Number(plan.meal_count) || 0
+            const meals = displayLines.meals
+            const addons = displayLines.addons
+            const mealQty = displayLines.mealQty
+            const extrasCents = displayLines.extrasCents
+            const extrasDueCents = displayLines.extrasDueCents
+            const currentPlanCount = Number(plan.meal_count) || 0
+            const editMealCount = Number(row.edit_meal_count) || currentPlanCount
+            const nextBoxMealCount = Number(nextBoxCycle?.meal_count) || currentPlanCount
+            const followingMealCount = Number(editCycle?.meal_count) || editMealCount
+            const editNeedQty = editLines.mealQty
             const isDelivery = !!(nextBoxCycle || cycle).delivery
             const lockedCycle = row.this_week_cycle
             const statusLocked = Boolean(
@@ -1155,9 +1166,9 @@ const MySubscriptions = ({ user }) => {
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${editTargetSundayDate(row)}.`
                     : row.meals_need_update
                       ? (
-                        mealQty < mealCount
-                          ? `You're on ${mealsAWeek(mealCount)} but this box only has ${mealQty}. Choose exactly ${mealCount} before ${lockBy} or you may be short after you're charged.`
-                          : `You're on ${mealsAWeek(mealCount)} but this box has ${mealQty}. Bring it to exactly ${mealCount} before ${lockBy}.`
+                        editNeedQty < editMealCount
+                          ? `You're on ${mealsAWeek(editMealCount)} but this box only has ${editNeedQty}. Choose exactly ${editMealCount} before ${lockBy} or you may be short after you're charged.`
+                          : `You're on ${mealsAWeek(editMealCount)} but this box has ${editNeedQty}. Bring it to exactly ${editMealCount} before ${lockBy}.`
                       )
                       : pendingPlan
                         ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
@@ -1186,14 +1197,14 @@ const MySubscriptions = ({ user }) => {
                 ? 'my-sub-status my-sub-status--paused'
                 : 'my-sub-status my-sub-status--active'
             const boxForDetails = nextBoxCycle || cycle
-            const editCycle = row.edit_cycle || cycle
+            const notesEditCycle = editCycle || cycle
             // Notes are per cycle — never fall back to subscription.special_note.
             const note = String(boxForDetails.special_note || '').trim()
             const notesEditFollowing = Boolean(
               canEdit
-              && editCycle?.id
+              && notesEditCycle?.id
               && boxForDetails?.id
-              && String(editCycle.id) !== String(boxForDetails.id)
+              && String(notesEditCycle.id) !== String(boxForDetails.id)
             )
             const notesEditSunday = notesEditFollowing
               ? editTargetSundayDate(row)
@@ -1225,7 +1236,7 @@ const MySubscriptions = ({ user }) => {
               <CycleItems
                 meals={nextBoxLines ? nextBoxLines.meals : meals}
                 mealQty={nextBoxLines ? nextBoxLines.mealQty : mealQty}
-                mealCount={mealCount}
+                mealCount={nextBoxMealCount}
                 addons={nextBoxLines ? nextBoxLines.addons : addons}
                 extrasCents={nextBoxLines ? nextBoxLines.extrasCents : extrasCents}
                 extrasDueCents={nextBoxLines ? nextBoxLines.extrasDueCents : extrasDueCents}
@@ -1255,19 +1266,19 @@ const MySubscriptions = ({ user }) => {
             const followingUsesRepeat = Boolean(
               showingFollowingWeek
               && lockedLines
-              && !meals.length
+              && !editLines.meals.length
               && lockedLines.meals.length
             )
-            const followingMeals = followingUsesRepeat ? lockedLines.meals : meals
-            const followingMealQty = followingUsesRepeat ? lockedLines.mealQty : mealQty
+            const followingMeals = followingUsesRepeat ? lockedLines.meals : editLines.meals
+            const followingMealQty = followingUsesRepeat ? lockedLines.mealQty : editLines.mealQty
             const followingWeekItems = (
               <CycleItems
                 meals={followingMeals}
                 mealQty={followingMealQty}
-                mealCount={mealCount}
-                addons={addons}
-                extrasCents={extrasCents}
-                extrasDueCents={extrasDueCents}
+                mealCount={followingMealCount}
+                addons={editLines.addons}
+                extrasCents={editLines.extrasCents}
+                extrasDueCents={editLines.extrasDueCents}
                 extrasPromoLabel={extrasPromoLabel}
                 canEdit={canEdit}
                 subscriptionId={row.id}
@@ -1310,7 +1321,7 @@ const MySubscriptions = ({ user }) => {
                           {followingWeekLabel}
                         </button>
                         <div className="my-sub-section-head-actions">
-                          <p className="my-sub-section-count">{followingMealQty} of {mealCount}</p>
+                          <p className="my-sub-section-count">{followingMealQty} of {followingMealCount}</p>
                           {canEdit ? (
                             <>
                               <button

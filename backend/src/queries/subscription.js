@@ -833,17 +833,21 @@ async function listMine(userId) {
       : (receiving?.delivery_date || week.delivery_date);
     const charge = getChargeDeadline(now, settings || {}, chargeSunday);
     const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
-    const editPlanCount = (
-      current
-      && sub.pending_plan_id
-      && String(current.plan_id) === String(sub.pending_plan_id)
-    )
-      ? (Number(sub.pending_plan?.meal_count) || mealCount)
-      : mealCount;
-    const editItems = (current || shown)?.subscription_cycle_items || [];
-    const planMeals = editItems
-      .filter((item) => item.kind === 'plan')
-      .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    // Count for the editable cycle only — never compare a pending next-week
+    // box (new size) against the still-current plan (old size), or vice versa.
+    const editPlanCount = (() => {
+      if (!current) return mealCount;
+      if (
+        sub.pending_plan_id
+        && String(current.plan_id) === String(sub.pending_plan_id)
+      ) {
+        return Number(sub.pending_plan?.meal_count) || Number(current.meal_count) || mealCount;
+      }
+      return Number(current.meal_count) || mealCount;
+    })();
+    const planMeals = current
+      ? planMealItems(current).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+      : 0;
     const today = torontoYmd(now);
     const showFirstDelivery = Boolean(firstDue && firstYmd && String(firstYmd) >= today);
     const storedPct = Number(shown?.promo_percent) || 0;
@@ -881,7 +885,12 @@ async function listMine(userId) {
       charge,
       can_edit: editable,
       edit_meal_count: editPlanCount,
-      meals_need_update: editable && editPlanCount > 0 && planMeals !== editPlanCount,
+      meals_need_update: Boolean(
+        editable
+        && current
+        && editPlanCount > 0
+        && planMeals !== editPlanCount
+      ),
       addon_promo_percent: addonPromoPercent,
       first_promo_kind: sub.first_promo_code
         ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
