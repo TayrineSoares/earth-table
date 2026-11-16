@@ -22,6 +22,7 @@ const {
   renderSubscriptionHolidaySkipEmail,
   renderOwnerLockEmail,
   renderOwnerFulfillmentEmail,
+  renderOwnerSubscriptionEventEmail,
   renderOwnerPaymentFailedEmail,
 } = require('../src/utils/emailTemplates');
 
@@ -150,12 +151,12 @@ const subMail = {
   mealCount: 10,
   planPriceCents: 18000,
   delivery: false,
-  deliveryLabel: 'Sunday, September 20',
+  deliveryLabel: 'Sunday, November 22',
   pickupSlot: '10:00-13:00',
-  cutoffLabel: 'Wednesday, September 16 at 5:00 PM ET',
-  chargeLabel: 'Tuesday, September 15 at 9:00 AM ET',
+  cutoffLabel: 'Wednesday, November 18 at 5:00 PM ET',
+  chargeLabel: 'Tuesday, November 17 at 9:00 AM ET',
   subscriptionId: 'preview',
-  subscribedAtLabel: 'Wednesday, September 16, 2026 at 2:14 PM',
+  subscribedAtLabel: 'Monday, November 16, 2026 at 2:14 PM',
   paidCents: 20340,
   meals: [
     { slug: 'Harvest Bowl', quantity: 4 },
@@ -246,7 +247,7 @@ write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   kind: 'card_expiry',
   cardBrand: 'visa',
   last4: '4242',
-  expMonth: '10',
+  expMonth: '12',
   expYear: 2026,
 }).html);
 write('13-subscription-charge.html', renderSubscriptionChargeEmail({
@@ -293,8 +294,44 @@ write('15b-holiday-owner.html', renderSubscriptionHolidaySkipEmail({
   nextSunday: 'Sunday, January 3',
   owner: true,
 }).html);
+write('17-owner-paused.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'pause_now',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+}).html);
+write('17b-owner-paused-next.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'pause_next',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+}).html);
+write('17c-owner-resumed.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'resume',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+}).html);
+write('18-owner-plan.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'plan_now',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+  mealCount: 15,
+  oldMealCount: 10,
+  nextMealCount: 15,
+}).html);
+write('18b-owner-plan-next.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'plan_next',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+  mealCount: 10,
+  oldMealCount: 10,
+  nextMealCount: 15,
+}).html);
 write('16-owner-lock.html', renderOwnerLockEmail({
-  sunday: 'Sunday, September 20',
+  sunday: subMail.deliveryLabel,
   boxes: [
     {
       name: 'Tayrine Soares',
@@ -329,7 +366,7 @@ write('19-owner-fulfillment.html', renderOwnerFulfillmentEmail({
   customerName: 'Tayrine Soares',
   oldMethod: 'pickup',
   newMethod: 'delivery',
-  fulfillmentDate: 'Sunday, September 20',
+  fulfillmentDate: 'Sunday, November 22',
   address: '12 Bartlett Ave, Toronto',
   windowStart: '11:00 AM',
   windowEnd: '6:00 PM',
@@ -337,12 +374,12 @@ write('19-owner-fulfillment.html', renderOwnerFulfillmentEmail({
 write('20-owner-payment-failed.html', renderOwnerPaymentFailedEmail({
   customerName: 'Tayrine Soares',
   amount: '$180.00',
-  fulfillmentDate: 'Sunday, September 20',
+  fulfillmentDate: 'Sunday, November 22',
   cardBrand: 'visa',
   last4: '4242',
   declineReason: 'insufficient_funds',
-  dateTime: 'Tuesday, September 15, 2026 at 9:01 AM',
-  cutoffDateTime: 'Wednesday, September 16 at 5:00 PM ET',
+  dateTime: 'Tuesday, November 17, 2026 at 9:01 AM',
+  cutoffDateTime: 'Wednesday, November 18 at 5:00 PM ET',
 }).html);
 
 const labels = {
@@ -377,6 +414,11 @@ const labels = {
   '15-holiday-user.html': 'Holiday skip (customer)',
   '15b-holiday-owner.html': 'Holiday skip (owner)',
   '16-owner-lock.html': '14. Owner Wednesday prep',
+  '17-owner-paused.html': '15. Owner paused',
+  '17b-owner-paused-next.html': '15. Owner paused after this Sunday',
+  '17c-owner-resumed.html': '15. Owner resumed',
+  '18-owner-plan.html': '16. Owner plan changed',
+  '18b-owner-plan-next.html': '16. Owner plan change next week',
   '19-owner-fulfillment.html': '17. Owner fulfillment',
   '20-owner-payment-failed.html': '18. Owner payment failed',
 };

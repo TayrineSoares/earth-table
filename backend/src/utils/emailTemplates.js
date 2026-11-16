@@ -1108,7 +1108,7 @@ function renderSubscriptionWelcomeEmail({
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
       ${h1(`Welcome to weekly plans, ${name}`)}
-      ${intro(`Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed Wednesday at 5:00 PM ET.`)}
+      ${intro(`Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed ${MEAL_LOCK_BY}.`)}
       ${savingsLine ? `<p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT};">${savingsLine}</p>` : ''}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
@@ -1122,7 +1122,7 @@ function renderSubscriptionWelcomeEmail({
       ${itemListHtml(meals, '—')}
       ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : `${h2("Add-ons")}${itemListHtml([], 'None this week.')}`}
       ${ctaLink(manageHref, "Manage my subscription")}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every ${PAUSE_CANCEL_BY}. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1135,7 +1135,7 @@ function renderSubscriptionWelcomeEmail({
 
   const text = `Welcome to weekly plans, ${name}
 
-Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed Wednesday at 5:00 PM ET.
+Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on the box are billed ${MEAL_LOCK_BY}.
 ${savingsLine ? `\n${savingsLine}\n` : ''}
 Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceCents)}/week + HST` : ''}${planOff > 0 && label ? `\n${label} · first week only: −${formatDollars(planOff)}` : (planOff === 0 && addonOff === 0 && saved > 0 && label ? `\n${label} · first week only: −${formatDollars(saved)}` : '')}
 This Sunday: ${fulfillment}
@@ -1147,7 +1147,7 @@ ${itemLinesText(meals) || '—'}
 ${addonText}
 Manage my subscription: ${manageHref}
 
-Your plan renews every week. Plan and delivery are charged every Tuesday at 9:00 AM ET. Change meals and extras until Wednesday at 5:00 PM ET. ${UNCHANGED_MEALS}
+Your plan renews every week. Plan and delivery are charged every ${PAUSE_CANCEL_BY}. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}
 
 Questions? Reply to this email or write to hello@earthtableco.ca.`;
 
@@ -1895,6 +1895,122 @@ function brandLabel(brand) {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+/**
+ * Owner copy when a subscriber pauses, resumes, or changes plan size.
+ */
+function renderOwnerSubscriptionEventEmail({
+  kind,
+  customerName,
+  email,
+  mealCount,
+  oldMealCount,
+  nextMealCount,
+  deliveryLabel,
+  meals,
+  addons,
+} = {}) {
+  const name = customerName || 'Customer';
+  const contact = String(email || '').trim() || '—';
+  const sunday = deliveryLabel || 'this Sunday';
+  const planWeek = mealsAWeek(mealCount);
+  const previousPlan = mealsAWeek(
+    oldMealCount != null
+      ? oldMealCount
+      : (kind === 'plan_next' ? mealCount : null)
+  );
+  const nextPlan = mealsAWeek(nextMealCount);
+  const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
+  const showPlan = kind === 'plan_now' || kind === 'plan_next';
+
+  const copy = {
+    pause_now: {
+      subject: `Paused — ${name}`,
+      heading: 'Subscription paused',
+      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} will not go out.`,
+    },
+    pause_first: {
+      subject: `Paused after first box — ${name}`,
+      heading: 'Subscription paused',
+      intro: `<strong>${name}</strong> paused. First box on ${sunday} still goes out; later weeks are paused.`,
+    },
+    pause_next: {
+      subject: `Paused after this Sunday — ${name}`,
+      heading: 'Subscription paused',
+      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} still goes out; later weeks are paused.`,
+    },
+    cancel_now: {
+      subject: `Paused — ${name}`,
+      heading: 'Subscription paused',
+      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} will not go out.`,
+    },
+    cancel_next: {
+      subject: `Paused after this Sunday — ${name}`,
+      heading: 'Subscription paused',
+      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} still goes out; later weeks are paused.`,
+    },
+    resume: {
+      subject: `Resumed — ${name}`,
+      heading: 'Subscription resumed',
+      intro: `<strong>${name}</strong> resumed their ${planWeek}. Box: ${sunday}.`,
+    },
+    plan_now: {
+      subject: `Plan changed — ${name}`,
+      heading: 'Plan changed',
+      intro: `<strong>${name}</strong> moved from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Applies to ${sunday}.`,
+    },
+    plan_next: {
+      subject: `Plan change next week — ${name}`,
+      heading: 'Plan change next week',
+      intro: `<strong>${name}</strong> moves from a ${previousPlan || planWeek} to a ${nextPlan} starting after ${sunday}.`,
+    },
+  }[kind] || {
+    subject: `Subscription update — ${name}`,
+    heading: 'Subscription update',
+    intro: `<strong>${name}</strong> updated their weekly plan.`,
+  };
+
+  const planHtml = showPlan
+    ? card(kvTable(`${kvRow('New plan', nextPlan || '—', { last: true })}`))
+    : '';
+  const boxHtml = showBox
+    ? `${h2('Meals')}${itemListHtml(meals, '—')}${h2('Add-ons')}${itemListHtml(addons, 'None this week.')}`
+    : '';
+  const planText = showPlan ? `\nNew plan: ${nextPlan || '—'}` : '';
+  const boxText = showBox
+    ? `\n\nMeals\n${itemLinesText(meals) || '—'}\n\nAdd-ons\n${itemLinesText(addons) || 'None this week.'}`
+    : '';
+
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1(copy.heading)}
+      ${intro(copy.intro)}
+      ${card(kvTable(`
+        ${kvRow('Customer', name)}
+        ${kvRow('Email', contact)}
+        ${kvRow('Plan', planWeek || '—', { last: true })}
+      `))}
+      ${planHtml}
+      ${boxHtml}
+      ${ctaLink(appUrl('/admin'), 'View Admin →')}
+  `, {
+    preheader: copy.subject,
+    replyOk: true,
+    title: copy.subject,
+  });
+
+  const text = `${copy.heading}
+
+${String(copy.intro).replace(/<\/?strong>/g, '')}
+
+Customer: ${name}
+Email: ${contact}
+Plan: ${planWeek || '—'}${planText}${boxText}
+
+Admin: ${appUrl('/admin')}`;
+
+  return { subject: copy.subject, html, text };
+}
+
 function renderOwnerFulfillmentEmail({
   customerName,
   oldMethod,
@@ -2247,6 +2363,7 @@ module.exports = {
   renderOwnerLockEmail,
   renderOwnerPaymentFailedEmail,
   renderOwnerFulfillmentEmail,
+  renderOwnerSubscriptionEventEmail,
   renderSubscriptionChargeEmail,
   renderSubscriptionLockEmail,
   renderSubscriptionMealMismatchEmail,

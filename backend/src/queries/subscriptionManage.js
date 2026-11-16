@@ -5,9 +5,13 @@
 
 const supabase = require('../../supabase/db');
 const { sendEmail } = require('../utils/email');
-const { renderSubscriptionManageEmail, renderSubscriptionDeadlineEmail } = require('../utils/emailTemplates');
+const {
+  renderSubscriptionManageEmail,
+  renderSubscriptionDeadlineEmail,
+  renderOwnerSubscriptionEventEmail,
+} = require('../utils/emailTemplates');
 const { getUserByAuthId, updateUserByAuthId } = require('./user');
-const { emailPrefOn, sendCustomerEmail } = require('../emails/sendSubscriptionMail');
+const { emailPrefOn, sendCustomerEmail, sendOwnerEmail } = require('../emails/sendSubscriptionMail');
 const { unsubscribeUrl } = require('../emails/unsubscribeToken');
 const { CADENCE } = require('../emails/subscriptionEmailSpec');
 const {
@@ -195,26 +199,56 @@ async function applyPendingStatus(userId, sub, pending, week, charge, { cycle } 
   };
 }
 
+const OWNER_MANAGE_KINDS = new Set([
+  'pause_now',
+  'pause_first',
+  'pause_next',
+  'cancel_now',
+  'cancel_next',
+  'resume',
+  'plan_now',
+  'plan_next',
+]);
+
 async function notifyManage(userId, payload) {
   const user = await getUserByAuthId(userId);
   const email = user?.email;
-  if (!email) return false;
   if (payload.kind === 'pause_nudge' && !emailPrefOn(user, 'pause_reminder')) {
     return false;
   }
-  const msg = renderSubscriptionManageEmail({
-    ...payload,
-    firstName: user.first_name,
-    unsubscribeHref: payload.kind === 'pause_nudge' ? unsubscribeUrl(userId) : undefined,
-  });
-  await sendEmail({
-    to: email,
-    subject: msg.subject,
-    html: msg.html,
-    text: msg.text,
-    replyTo: 'hello@earthtableco.ca',
-  });
-  return true;
+  if (email) {
+    const msg = renderSubscriptionManageEmail({
+      ...payload,
+      firstName: user.first_name,
+      unsubscribeHref: payload.kind === 'pause_nudge' ? unsubscribeUrl(userId) : undefined,
+    });
+    await sendEmail({
+      to: email,
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      replyTo: 'hello@earthtableco.ca',
+    });
+  } else if (!OWNER_MANAGE_KINDS.has(payload.kind)) {
+    return false;
+  }
+
+  if (OWNER_MANAGE_KINDS.has(payload.kind)) {
+    try {
+      const customerName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+        || email
+        || 'Customer';
+      const ownerMsg = renderOwnerSubscriptionEventEmail({
+        ...payload,
+        customerName,
+        email,
+      });
+      await sendOwnerEmail(ownerMsg);
+    } catch (err) {
+      console.warn('[subscriptions] owner manage email failed:', err.message);
+    }
+  }
+  return Boolean(email);
 }
 
 /** Load meal/addon lines for resume email — by cycle id only (no nested embeds). */
