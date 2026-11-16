@@ -1477,6 +1477,11 @@ My Subscriptions: ${manageHref}`;
       heading: `We could not charge this week, ${name}`,
       intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} (meal lock) to keep the box. If it is still unpaid by then, this Sunday is skipped and the plan stays paused.`,
     },
+    addons_dropped: {
+      subject: `This Sunday's add-ons were not charged`,
+      heading: `Add-ons were left off this box, ${name}`,
+      intro: `We could not charge add-ons for ${thisSundayPhrase(sunday)}, so they were removed from this week's box. Your plan meals still go out. Update your card in My Subscriptions before the next week if you want extras again. Questions? Email hello@earthtableco.ca.`,
+    },
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,

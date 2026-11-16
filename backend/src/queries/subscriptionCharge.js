@@ -844,6 +844,61 @@ async function chargeAddons(sub, cycle, sunday) {
   return { charged: true, amount, due };
 }
 
+/** Drop unpaid extras so the kitchen never cooks what Stripe declined. */
+async function stripUnpaidAddonsAfterChargeFailure(sub, cycle, sunday, err) {
+  const alreadyPaid = Number(cycle.addon_paid_cents) || 0;
+  const when = sundayLabelFromYmd(sunday);
+  const reason = declineReasonFrom(err);
+  const user = await getUserByAuthId(sub.user_id);
+  const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+    || user?.email
+    || 'Customer';
+
+  if (alreadyPaid > 0) {
+    try {
+      await sendOwnerEmail({
+        subject: `Add-on charge failed — ${name}, ${when}`,
+        html: `<p><strong>${name}</strong>: add-on charge failed (${reason}) for ${when}. Some add-ons were already paid — check Admin before the kitchen run.</p>`,
+        text: `${name}: add-on charge failed (${reason}) for ${when}. Some add-ons were already paid — check Admin.`,
+      });
+    } catch (mailErr) {
+      console.warn('[subscriptions] addon-fail owner email failed:', mailErr.message);
+    }
+    return { stripped: false };
+  }
+
+  const { error } = await supabase
+    .from('subscription_cycle_items')
+    .delete()
+    .eq('cycle_id', cycle.id)
+    .eq('kind', 'addon');
+  if (error) throw error;
+  if (Array.isArray(cycle.subscription_cycle_items)) {
+    cycle.subscription_cycle_items = cycle.subscription_cycle_items.filter((item) => item.kind !== 'addon');
+  }
+
+  try {
+    await notifyUser(sub.user_id, {
+      kind: 'addons_dropped',
+      mealCount: sub.subscription_plans?.meal_count,
+      deliveryLabel: when,
+      fulfillmentDate: when,
+    });
+  } catch (mailErr) {
+    console.warn('[subscriptions] addon-dropped customer email failed:', mailErr.message);
+  }
+  try {
+    await sendOwnerEmail({
+      subject: `Add-on charge failed — ${name}, ${when}`,
+      html: `<p><strong>${name}</strong>: add-on charge failed (${reason}) for ${when}. Unpaid extras were removed; plan meals still lock.</p>`,
+      text: `${name}: add-on charge failed (${reason}) for ${when}. Unpaid extras removed; plan meals still lock.`,
+    });
+  } catch (mailErr) {
+    console.warn('[subscriptions] addon-fail owner email failed:', mailErr.message);
+  }
+  return { stripped: true };
+}
+
 async function orderIdForThisCycle(cycle) {
   const cycleId = cycle?.id;
   if (!cycleId) return null;
@@ -1135,6 +1190,12 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
     } catch (err) {
       failures.push({ subscription_id: sub.id, error: `addons: ${err.message || err}` });
       console.warn('[subscriptions] Lock add-on charge failed:', sub.id, err.message);
+      try {
+        await stripUnpaidAddonsAfterChargeFailure(sub, cycle, sunday, err);
+      } catch (stripErr) {
+        failures.push({ subscription_id: sub.id, error: `addon strip: ${stripErr.message || stripErr}` });
+        console.warn('[subscriptions] Could not strip unpaid add-ons:', sub.id, stripErr.message);
+      }
     }
 
     try {

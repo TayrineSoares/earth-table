@@ -39,12 +39,6 @@ const {
   pauseNudgeWeek,
 } = require('./subscriptionWeek');
 
-const HST = 1.13;
-
-function getStripe() {
-  return require('stripe')(process.env.STRIPE_SECRET_SK);
-}
-
 function pickUpcoming(rows, now) {
   const today = torontoYmd(now);
   const list = [...(rows || [])];
@@ -75,28 +69,6 @@ async function currentCycleFor(sub) {
     || open
     || display;
   return { week, charge, cycle };
-}
-
-function skipRefundCents(cycle) {
-  if (!cycle) return 0;
-  const plan = Number(cycle.plan_paid_cents) || 0;
-  const fee = Number(cycle.delivery_fee_cents) || 0;
-  // Skip means the box will not go out. Refund plan + delivery (with tax).
-  return Math.round(plan * HST) + Math.round(fee * HST);
-}
-
-async function refundSkip(cycle, subscriptionId) {
-  const amount = skipRefundCents(cycle);
-  const piId = cycle?.stripe_payment_intent_id;
-  if (!piId || amount < 50) return { refunded_cents: 0 };
-  const stripe = getStripe();
-  await stripe.refunds.create({
-    payment_intent: piId,
-    amount,
-    reason: 'requested_by_customer',
-    metadata: { kind: 'subscription_skip', subscription_id: subscriptionId, cycle_id: cycle.id },
-  });
-  return { refunded_cents: amount };
 }
 
 /**
@@ -506,10 +478,8 @@ async function cancelSubscription(userId, subscriptionId) {
 
 /**
  * Force-cancel one subscription because its plan was discontinued.
- * Timing matches pause (skip vs keep this Sunday), but terminal state is
- * status=cancelled + cancelled_reason=plan_discontinued.
- * Before Tuesday: refund plan+delivery via refundSkip when already paid
- * (including first-box signup charge). Add-ons are never refunded.
+ * Same skip-vs-keep rule as pause (paid/locked, not the Tuesday clock).
+ * Never refunds — first box is non-refundable; a paid open Sunday still ships.
  */
 async function cancelForPlanDiscontinued(sub) {
   if (!sub?.id) throw new SubscriptionError(400, 'Subscription id is required.');
@@ -522,8 +492,7 @@ async function cancelForPlanDiscontinued(sub) {
   const alreadyLocked = cycle?.status === 'locked';
   const reason = 'plan_discontinued';
 
-  // Already locked: this Sunday is fulfilled. Cancel now and skip any later open weeks.
-  if (alreadyLocked) {
+  async function skipLaterOpenWeeks() {
     const today = torontoYmd(new Date());
     const { data: openRows, error: openErr } = await supabase
       .from('subscription_cycles')
@@ -535,7 +504,9 @@ async function cancelForPlanDiscontinued(sub) {
     for (const row of openRows || []) {
       await skipOpenCycle(row);
     }
+  }
 
+  async function cancelNow({ keptLockedSunday = false } = {}) {
     const { error } = await supabase
       .from('subscriptions')
       .update({
@@ -554,12 +525,11 @@ async function cancelForPlanDiscontinued(sub) {
       week,
       charge,
       user_id: sub.user_id,
-      kept_locked_sunday: true,
+      kept_locked_sunday: keptLockedSunday,
     };
   }
 
-  // After Tuesday charge window (cycle still open/charged): keep this Sunday via pending.
-  if (!charge.before_wednesday) {
+  async function pendingCancel() {
     const { error } = await supabase
       .from('subscriptions')
       .update({
@@ -578,42 +548,46 @@ async function cancelForPlanDiscontinued(sub) {
     };
   }
 
-  let refunded_cents = 0;
-  if (alreadyPaid) {
-    try {
-      const refund = await refundSkip(cycle, sub.id);
-      refunded_cents = Number(refund.refunded_cents) || 0;
-    } catch (err) {
-      console.error('[subscriptions] discontinue refund failed', sub.id, err.message);
-      throw new SubscriptionError(
-        402,
-        'We could not refund this subscription. Try again or email hello@earthtableco.ca.'
-      );
-    }
+  // Already locked: this Sunday is fulfilled. Cancel now and skip any later open weeks.
+  if (alreadyLocked) {
+    await skipLaterOpenWeeks();
+    return cancelNow({ keptLockedSunday: true });
   }
 
-  await skipOpenCycle(cycle);
+  // Paid open week: keep this Sunday (no refund), cancel after Wednesday lock.
+  if (alreadyPaid) {
+    return pendingCancel();
+  }
 
-  const { error } = await supabase
-    .from('subscriptions')
-    .update({
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      cancelled_reason: reason,
-      pending_status: null,
-      pause_reason: null,
-    })
-    .eq('id', sub.id);
-  if (error) throw error;
+  // Unpaid: skip every open unpaid week. If the charge job wins the race, keep that Sunday.
+  const { data: openRows, error: openErr } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', sub.id)
+    .eq('status', 'open');
+  if (openErr) throw openErr;
 
-  return {
-    ok: true,
-    pending: false,
-    refunded_cents,
-    week,
-    charge,
-    user_id: sub.user_id,
-  };
+  let keptAfterRace = null;
+  for (const row of openRows || []) {
+    if (!row || Number(row.plan_paid_cents) > 0) {
+      if (row && Number(row.plan_paid_cents) > 0) keptAfterRace = row;
+      continue;
+    }
+    const skipResult = await skipOpenCycle(row);
+    const after = skipResult.cycle || row;
+    if (
+      !skipResult.skipped
+      && after
+      && (Number(after.plan_paid_cents) > 0 || after.status === 'locked')
+    ) {
+      keptAfterRace = after;
+    }
+  }
+  if (keptAfterRace) {
+    return pendingCancel();
+  }
+
+  return cancelNow();
 }
 
 /**
