@@ -160,6 +160,14 @@ const SubscribeEditMeals = ({ user }) => {
     })
   }
 
+  const startFreshMeals = () => {
+    setEditCart((prev) => {
+      const next = { ...prev, meals: [] }
+      writeEditCart(userId, subscriptionId, next)
+      return next
+    })
+  }
+
   const onContinue = () => {
     if (!exact) return
     navigate(`/my-subscriptions/${subscriptionId}/addons`, {
@@ -219,6 +227,20 @@ const SubscribeEditMeals = ({ user }) => {
                 {picked} of {need} chosen{sundayLabel ? ` for ${sundayLabel}` : ''}
                 {overCount ? ` — remove ${removeCount}` : underCount ? ` — add ${need - picked}` : ''}
               </p>
+              {picked > 0 ? (
+                <p className="subscribe-subhead">
+                  Starting from your last box.
+                  {' '}
+                  <button
+                    type="button"
+                    className="subscribe-text-button"
+                    onClick={startFreshMeals}
+                  >
+                    Start fresh
+                  </button>
+                  {' '}to clear and pick again.
+                </p>
+              ) : null}
 
               <SubscribeCatalog
                 categories={categories}

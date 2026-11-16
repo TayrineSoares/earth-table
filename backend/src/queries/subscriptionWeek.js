@@ -514,7 +514,16 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
     const nextSunday = nextOpenSunday(currentCycle.delivery_date);
     // Long-paused plans: the "Sunday after last locked/skipped" can be weeks
     // in the past. Use the live calendar week instead of Oct-stale labels.
-    if (String(nextSunday) < String(signup.first_delivery_date)) {
+    const jumpedPastCalendar = String(nextSunday) < String(signup.first_delivery_date);
+    // Pause before Tuesday skips this Sunday unpaid — keep that same calendar
+    // Sunday for resume/review until lock, instead of jumping to next week.
+    const unpaidSkipOfLiveWeek = (
+      currentCycle.status === 'skipped'
+      && Number(currentCycle.plan_paid_cents || 0) <= 0
+      && String(currentCycle.delivery_date) === String(signup.first_delivery_date)
+      && !signup.cutoff_passed
+    );
+    if (jumpedPastCalendar || unpaidSkipOfLiveWeek) {
       return {
         applies_to: signup.cutoff_passed ? 'next_week' : 'this_sunday',
         cutoff_passed: signup.cutoff_passed,

@@ -1092,7 +1092,13 @@ const MySubscriptions = ({ user }) => {
                       : pendingPlan
                         ? `Starting next week: ${mealsAWeek(pendingPlan.meal_count)} (${formatPlanPrice(pendingPlan.price_cents)}/week).`
                         : ''
-            const mealsNeedUpdate = Boolean(row.meals_need_update && !paymentFailedPause && !statusLocked)
+            // Paused plans review meals on Resume — don't red-alert "Fix meals" here.
+            const mealsNeedUpdate = Boolean(
+              row.meals_need_update
+              && !paymentFailedPause
+              && !statusLocked
+              && !isPaused
+            )
             const deliveryWithTax = Math.round(deliveryFeeCents * (1 + HST_RATE))
             const otherPlans = plans.filter((planRow) => planRow.id !== row.plan_id)
             const statusLabel = pending === 'paused'

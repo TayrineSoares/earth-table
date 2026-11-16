@@ -563,7 +563,9 @@
 }
 
 .subscribe-cart-page .subscribe-cart-items {
-  margin-top: 0;
+  /* Match left-column breathing room under the hero; don't sit flush to the banner. */
+  margin-top: 12px;
+  padding-top: 56px;
 }
 
 .subscribe-cart-page .checkout-order-summary > .subscribe-summary-heading-row:first-child,

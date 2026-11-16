@@ -137,18 +137,29 @@ function clearEditCart(userId, subscriptionId) {
   localStorage.removeItem(editCartKey(userId, subscriptionId));
 }
 
+/** Prefer the editable cycle, then last box / meal seed so resume can keep selections. */
+function seedPlanMeals(sub, cycle) {
+  const fromCycle = seedLinesFromCycle(cycle, 'plan');
+  if (fromCycle.length) return fromCycle;
+  const fromEdit = seedLinesFromCycle(sub?.edit_cycle, 'plan');
+  if (fromEdit.length) return fromEdit;
+  const fromLastBox = seedLinesFromCycle(sub?.this_week_cycle, 'plan');
+  if (fromLastBox.length) return fromLastBox;
+  return seedLinesFromCycle(sub?.meal_seed_cycle, 'plan');
+}
+
 /** Start an edit draft from the cycle they can still change. */
 function seedEditCart(sub, cycle) {
   const plan = sub?.subscription_plans || {};
-  const fromCycle = seedLinesFromCycle(cycle, 'plan');
-  const fromLastBox = seedLinesFromCycle(sub?.this_week_cycle, 'plan');
   return {
     subscriptionId: sub.id,
     planId: sub.plan_id,
     planName: plan.name || '',
     mealCount: Number(plan.meal_count) || 0,
     priceCents: Number(plan.price_cents) || 0,
-    meals: fromCycle.length ? fromCycle : fromLastBox,
+    // Keep last plan meals when the open week is empty (resume review).
+    meals: seedPlanMeals(sub, cycle),
+    // Add-ons stay on the editable cycle only — they do not carry from older boxes.
     addons: seedLinesFromCycle(cycle, 'addon'),
     planChangeId: null,
     planChangePending: false,
@@ -160,16 +171,13 @@ function seedEditCart(sub, cycle) {
  * point so they can top up or trim to the exact count before the change commits.
  */
 function seedEditCartForPlanChange(sub, cycle, nextPlan, { pending = false } = {}) {
-  const fromCycle = seedLinesFromCycle(cycle, 'plan');
-  const fromLastBox = seedLinesFromCycle(sub?.this_week_cycle, 'plan');
-  const meals = fromCycle.length ? fromCycle : fromLastBox;
   return {
     subscriptionId: sub.id,
     planId: nextPlan.id,
     planName: nextPlan.name || '',
     mealCount: Number(nextPlan.meal_count) || 0,
     priceCents: Number(nextPlan.price_cents) || 0,
-    meals,
+    meals: seedPlanMeals(sub, cycle),
     // Pending switch is for the following week — add-ons do not carry.
     addons: pending ? [] : seedLinesFromCycle(cycle, 'addon'),
     planChangeId: nextPlan.id,

@@ -508,6 +508,18 @@ function previousCycleFromList(cycles, dest) {
     .sort((a, b) => String(b.delivery_date).localeCompare(String(a.delivery_date)))[0] || null;
 }
 
+/** Newest cycle that still has plan meals — used to seed resume / plan-change review. */
+function latestCycleWithPlanMeals(cycles, excludeId = null) {
+  return [...(cycles || [])]
+    .filter((row) => (
+      row
+      && row.id
+      && String(row.id) !== String(excludeId || '')
+      && planMealItems(row).length
+    ))
+    .sort((a, b) => String(b.delivery_date || '').localeCompare(String(a.delivery_date || '')))[0] || null;
+}
+
 /** Open following-week boxes start as last week's meals. Add-ons never carry. */
 async function copyPlanMealsIfEmpty(dest, src) {
   if (!dest?.id || !src?.id || String(dest.id) === String(src.id) || dest.status !== 'open') {
@@ -778,11 +790,7 @@ async function listMine(userId) {
       current = null;
     }
     const mealSource = previousCycleFromList(list, current)
-      || (list || []).find((row) => (
-        row
-        && String(row.id) !== String(current?.id || '')
-        && planMealItems(row).length
-      ))
+      || latestCycleWithPlanMeals(list, current?.id)
       || thisWeekCycle;
     if (current?.id && mealSource?.id) {
       current = await copyPlanMealsIfEmpty(current, mealSource);
@@ -797,6 +805,10 @@ async function listMine(userId) {
       promo_percent: 0,
       subscription_cycle_items: [],
     };
+    // Last box with meals (even if skipped/locked) so resume review can keep selections.
+    const mealSeedCycle = (planMealItems(shown).length ? shown : null)
+      || mealSource
+      || latestCycleWithPlanMeals(list);
     const chargeSunday = firstDue && sub.status === 'paused'
       ? nextOpenSunday(firstYmd)
       : (receiving?.delivery_date || week.delivery_date);
@@ -833,6 +845,7 @@ async function listMine(userId) {
       card,
       cycle: shown,
       edit_cycle: current,
+      meal_seed_cycle: mealSeedCycle || null,
       this_week_date: thisWeekCycle?.delivery_date || null,
       this_week_cycle: thisWeekCycle,
       next_box_date: nextBoxCycle?.delivery_date || (firstDue ? firstYmd : null),
@@ -1060,7 +1073,18 @@ async function getOrCreateEditableCycle(sub) {
 
   let existing = (list || []).find((row) => String(row.delivery_date) === String(week.delivery_date)) || null;
 
-  // No open row yet. Never mutate locked/skipped; create the next Sunday instead.
+  // Pause-before-charge skips this Sunday unpaid. Resume/review should reopen it
+  // while that week's lock is still open — not jump to the following Sunday.
+  if (
+    existing
+    && existing.status === 'skipped'
+    && Number(existing.plan_paid_cents || 0) <= 0
+    && !lockPassedForSunday(existing.delivery_date, now, settings || {})
+  ) {
+    existing = await reopenSkippedCycle(existing);
+  }
+
+  // No open row yet. Never mutate locked/paid-skipped; create the next Sunday instead.
   for (let i = 0; i < 4 && existing && existing.status !== 'open'; i += 1) {
     const nextSunday = nextOpenSunday(existing.delivery_date);
     week = {
