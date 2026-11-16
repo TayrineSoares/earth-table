@@ -88,6 +88,12 @@
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 
 .my-sub-section-head-actions {

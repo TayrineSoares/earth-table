@@ -16,6 +16,7 @@ import {
   addonCategories,
   addonSubtotalCents,
   bumpAddon,
+  clearEditCart,
   emptyEditCart,
   lineQty,
   mealsExact,
@@ -136,6 +137,10 @@ const SubscribeEditAddons = ({ user }) => {
   const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`, {
     state: shouldResume ? { resumeAfter: true } : undefined,
   })
+  const goBack = () => {
+    clearEditCart(userId, subscriptionId)
+    navigate('/my-subscriptions')
+  }
   const addonCents = addonSubtotalCents(editCart)
   const extraCount = totalQty(editCart.addons)
   const extraLine = addonCents > 0
@@ -190,6 +195,13 @@ const SubscribeEditAddons = ({ user }) => {
               {extraLine}
             </p>
             <div className="subscribe-flow-bar-actions">
+              <button
+                type="button"
+                className="subscribe-text-button"
+                onClick={goBack}
+              >
+                Cancel
+              </button>
               <button type="button" className="subscribe-select-button" onClick={goToCart}>
                 Continue
               </button>

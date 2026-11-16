@@ -153,12 +153,23 @@ function seedPlanMeals(sub, cycle) {
 
 /** Start an edit draft from the cycle they can still change. */
 function seedEditCart(sub, cycle) {
-  const plan = sub?.subscription_plans || {};
+  const currentPlan = sub?.subscription_plans || {};
+  const pending = sub?.pending_plan;
+  // Deferred plan change: the following-week cycle is already stamped with the new plan.
+  const usePending = Boolean(
+    pending?.id
+    && cycle?.plan_id
+    && String(cycle.plan_id) === String(pending.id)
+  );
+  const plan = usePending ? pending : currentPlan;
+  const mealCount = usePending
+    ? (Number(pending.meal_count) || Number(sub.edit_meal_count) || 0)
+    : (Number(sub.edit_meal_count) || Number(plan.meal_count) || 0);
   return {
     subscriptionId: sub.id,
-    planId: sub.plan_id,
+    planId: usePending ? pending.id : sub.plan_id,
     planName: plan.name || '',
-    mealCount: Number(plan.meal_count) || 0,
+    mealCount,
     priceCents: Number(plan.price_cents) || 0,
     // Keep last plan meals when the open week is empty (resume review).
     meals: seedPlanMeals(sub, cycle),

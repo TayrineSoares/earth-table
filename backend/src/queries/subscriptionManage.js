@@ -72,6 +72,27 @@ async function currentCycleFor(sub) {
 }
 
 /**
+ * Pause abandons a deferred plan change: clear pending_plan_id and skip any
+ * unpaid open weeks that were pre-seeded for the new size (not the kept Sunday).
+ */
+async function abandonDeferredPlanChange(sub, { keepCycleId } = {}) {
+  if (!sub?.pending_plan_id) return;
+  const pendingId = sub.pending_plan_id;
+  const { data: rows, error } = await supabase
+    .from('subscription_cycles')
+    .select('*')
+    .eq('subscription_id', sub.id)
+    .eq('status', 'open');
+  if (error) throw error;
+  for (const row of rows || []) {
+    if (keepCycleId && String(row.id) === String(keepCycleId)) continue;
+    if (Number(row.plan_paid_cents) > 0) continue;
+    if (String(row.plan_id) !== String(pendingId)) continue;
+    await skipOpenCycle(row);
+  }
+}
+
+/**
  * Skip only if still open and unpaid. Returns the fresh cycle.
  * If Tuesday charge already won the race, skipped=false and plan_paid_cents > 0.
  */
@@ -106,7 +127,8 @@ function pendingNotice(pending) {
 }
 
 /** Pause now when this Sunday is already paid/locked — box still ships; later weeks stop. */
-async function applyPauseKeepingThisSunday(userId, sub, week, charge) {
+async function applyPauseKeepingThisSunday(userId, sub, week, charge, { keepCycleId } = {}) {
+  await abandonDeferredPlanChange(sub, { keepCycleId });
   const { error } = await supabase
     .from('subscriptions')
     .update({
@@ -114,6 +136,7 @@ async function applyPauseKeepingThisSunday(userId, sub, week, charge) {
       pause_reason: 'manual',
       paused_at: new Date().toISOString(),
       pending_status: null,
+      pending_plan_id: null,
     })
     .eq('id', sub.id);
   if (error) throw error;
@@ -144,7 +167,9 @@ async function applyPendingStatus(userId, sub, pending, week, charge, { cycle } 
   );
   // Cancel from the customer button is pause. True pending cancel is plan-discontinue only.
   if (pending === 'paused' && paidOrLocked) {
-    return applyPauseKeepingThisSunday(userId, sub, week, charge);
+    return applyPauseKeepingThisSunday(userId, sub, week, charge, {
+      keepCycleId: cycle?.id,
+    });
   }
 
   const { error } = await supabase
@@ -249,6 +274,13 @@ async function resumeNotifyPayload(sub, week, charge) {
   };
 }
 
+/** Welcome-back mail after payment_failed recovery (resume or card-update retry). */
+async function notifyResumeAfterPaymentRecovery(userId, sub) {
+  if (!userId || !sub?.id) return false;
+  const { week, charge } = await currentCycleFor(sub);
+  return notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+}
+
 async function pauseSubscription(userId, subscriptionId) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
   if (sub.status === 'cancelled') {
@@ -281,6 +313,10 @@ async function pauseSubscription(userId, subscriptionId) {
     };
     const nextCharge = getChargeDeadline(now, settings || {}, nextSunday);
 
+    const firstCycle = (cycles || []).find((row) => (
+      row && String(row.delivery_date) === String(firstYmd)
+    )) || null;
+    await abandonDeferredPlanChange(sub, { keepCycleId: firstCycle?.id });
     const { error } = await supabase
       .from('subscriptions')
       .update({
@@ -288,6 +324,7 @@ async function pauseSubscription(userId, subscriptionId) {
         pause_reason: 'manual',
         paused_at: new Date().toISOString(),
         pending_status: null,
+        pending_plan_id: null,
       })
       .eq('id', sub.id);
     if (error) throw error;
@@ -353,6 +390,7 @@ async function pauseSubscription(userId, subscriptionId) {
     return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: keptAfterRace });
   }
 
+  await abandonDeferredPlanChange(sub);
   const { error } = await supabase
     .from('subscriptions')
     .update({
@@ -360,6 +398,7 @@ async function pauseSubscription(userId, subscriptionId) {
       pause_reason: 'manual',
       paused_at: new Date().toISOString(),
       pending_status: null,
+      pending_plan_id: null,
     })
     .eq('id', sub.id);
   if (error) throw error;
@@ -414,6 +453,11 @@ async function resumeSubscription(userId, subscriptionId) {
       const retried = await retryFailedCharge(sub);
       if (!retried?.ok) {
         throw new SubscriptionError(402, `We still could not charge this week. Update your card before ${week.cutoff_label || 'the meal lock'} or email hello@earthtableco.ca.`);
+      }
+      try {
+        await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+      } catch (err) {
+        console.warn('[subscriptions] payment-failed resume email failed:', err.message);
       }
       return {
         ok: true,
@@ -1067,4 +1111,5 @@ module.exports = {
   changeSubscriptionPlan,
   sendPauseReminders,
   sendDeadlineNotice,
+  notifyResumeAfterPaymentRecovery,
 };

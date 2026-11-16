@@ -1077,6 +1077,20 @@ async function completeCardSetup(session) {
         stripe_payment_method_id: pmId,
         stripe_customer_id: customerId || sub.stripe_customer_id,
       });
+      if (retry?.ok) {
+        try {
+          const { notifyResumeAfterPaymentRecovery } = require('./subscriptionManage');
+          await notifyResumeAfterPaymentRecovery(userId, {
+            ...sub,
+            stripe_payment_method_id: pmId,
+            stripe_customer_id: customerId || sub.stripe_customer_id,
+            status: 'active',
+            pause_reason: null,
+          });
+        } catch (mailErr) {
+          console.warn('[subscriptions] payment-failed resume email failed:', mailErr.message);
+        }
+      }
       return { ok: true, retry };
     }
   } catch (err) {

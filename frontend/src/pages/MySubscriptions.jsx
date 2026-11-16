@@ -115,6 +115,19 @@ function shortWeekdayDate(ymd) {
   })
 }
 
+/** "November 23" for the Sunday meal/fulfillment edits currently target. */
+function editTargetSundayDate(row) {
+  const ymd = row?.edit_cycle?.delivery_date || row?.week?.delivery_date
+  const [y, m, d] = String(ymd || '').split('-').map(Number)
+  if (y && m && d) {
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+  return sundayDatePart(row?.week?.delivery_label)
+}
+
 function statusBusyLabel(action) {
   if (action === 'cancel') return 'Cancelling…'
   if (action === 'pause') return 'Pausing…'
@@ -206,10 +219,38 @@ function CycleItems({
   showEditLinks,
   showMealCount,
   showLockedBadge,
+  onEditMeals,
+  onEditAddons,
 }) {
   const extrasOffCents = Math.max(0, (Number(extrasCents) || 0) - (Number(extrasDueCents) || 0))
   const extrasChargedCents = Math.round((Number(extrasDueCents) || 0) * (1 + HST_RATE))
   const extrasHstCents = Math.max(0, extrasChargedCents - (Number(extrasDueCents) || 0))
+  const mealsEdit = typeof onEditMeals === 'function' ? (
+    <button type="button" className="my-sub-section-link" onClick={onEditMeals}>
+      Edit meals
+    </button>
+  ) : (
+    <Link
+      className="my-sub-section-link"
+      to={`/my-subscriptions/${subscriptionId}/meals`}
+      state={{ fresh: true }}
+    >
+      Edit meals
+    </Link>
+  )
+  const addonsEdit = typeof onEditAddons === 'function' ? (
+    <button type="button" className="my-sub-section-link" onClick={onEditAddons}>
+      Edit add-ons
+    </button>
+  ) : (
+    <Link
+      className="my-sub-section-link"
+      to={`/my-subscriptions/${subscriptionId}/addons`}
+      state={{ fresh: true }}
+    >
+      Edit add-ons
+    </Link>
+  )
   return (
     <>
       <div className="my-sub-section-head">
@@ -221,15 +262,7 @@ function CycleItems({
             ) : null}
             {showLockedBadge ? (
               <LockedBadge />
-            ) : canEdit && showEditLinks ? (
-              <Link
-                className="my-sub-section-link"
-                to={`/my-subscriptions/${subscriptionId}/meals`}
-                state={{ fresh: true }}
-              >
-                Edit meals
-              </Link>
-            ) : null}
+            ) : canEdit && showEditLinks ? mealsEdit : null}
           </div>
         ) : null}
       </div>
@@ -247,11 +280,7 @@ function CycleItems({
         <p className="my-sub-section-label">{extrasLabel}</p>
         {showLockedBadge ? (
           <LockedBadge />
-        ) : canEdit && showEditLinks ? (
-          <Link className="my-sub-section-link" to={`/my-subscriptions/${subscriptionId}/addons`} state={{ fresh: true }}>
-            Edit add-ons
-          </Link>
-        ) : null}
+        ) : canEdit && showEditLinks ? addonsEdit : null}
       </div>
       {addons.length ? (
         <>
@@ -662,12 +691,12 @@ const MySubscriptions = ({ user }) => {
         const following = Boolean(
           editCycle?.id && nextBox?.id && String(editCycle.id) !== String(nextBox.id)
         )
-        const nextLabel = sundayDatePart(row.week?.delivery_label || editCycle.delivery_date)
+        const nextLabel = editTargetSundayDate(row)
         setDialog(following
           ? {
             icon: 'mail',
             title: 'Notes saved for next Sunday',
-            body: `This Sunday's locked box keeps its notes. Your update applies to next Sunday${nextLabel ? `, ${nextLabel}` : ''}. Questions? Email hello@earthtableco.ca.`,
+            body: `This Sunday's locked box keeps its notes. Your update applies to next Sunday, ${nextLabel}. Questions? Email hello@earthtableco.ca.`,
             primaryLabel: 'Got it',
           }
           : SAVED_DIALOG)
@@ -884,6 +913,32 @@ const MySubscriptions = ({ user }) => {
     return !beforeCharge || paid
   }
 
+  const editsApplyNextWeek = (row) => Boolean(
+    row?.week?.cutoff_passed
+    || row?.week?.applies_to === 'next_week'
+  )
+
+  /** After Wednesday lock, warn once before meal/add-on edit so next-week targeting is clear. */
+  const goEditBox = (row, kind = 'meals') => {
+    const path = kind === 'addons'
+      ? `/my-subscriptions/${row.id}/addons`
+      : `/my-subscriptions/${row.id}/meals`
+    const go = () => navigate(path, { state: { fresh: true } })
+    if (!editsApplyNextWeek(row)) {
+      go()
+      return
+    }
+    const sunday = editTargetSundayDate(row)
+    setDialog({
+      icon: 'mail',
+      title: 'These changes are for next week',
+      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sunday} only. This Sunday's box is already locked.`,
+      primaryLabel: 'Continue',
+      secondaryLabel: 'Never mind',
+      onPrimary: go,
+    })
+  }
+
   const startPlanChange = (row, plan) => {
     if (!user?.id) return
     const pending = planChangePendingFor(row)
@@ -1050,7 +1105,7 @@ const MySubscriptions = ({ user }) => {
             const mealQty = editLines.mealQty
             const extrasCents = editLines.extrasCents
             const extrasDueCents = editLines.extrasDueCents
-            const mealCount = Number(plan.meal_count) || 0
+            const mealCount = Number(row.edit_meal_count) || Number(plan.meal_count) || 0
             const isDelivery = !!(nextBoxCycle || cycle).delivery
             const lockedCycle = row.this_week_cycle
             const statusLocked = Boolean(
@@ -1079,8 +1134,8 @@ const MySubscriptions = ({ user }) => {
             const lockCadence = row.week?.cadence_label || MEAL_LOCK_BY
             const chargeCadence = row.charge?.cadence_label || CHARGE_DAY_TIME
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
-            const followingWeekLabel = row.week?.delivery_label
-              ? `Following week, ${sundayDatePart(row.week.delivery_label)}`
+            const followingWeekLabel = (row.edit_cycle?.delivery_date || row.week?.delivery_date || row.week?.delivery_label)
+              ? `Following week, ${editTargetSundayDate(row)}`
               : 'Following week'
             const nextBoxShort = row.next_box_date
               ? shortWeekdayDate(row.next_box_date)
@@ -1097,7 +1152,7 @@ const MySubscriptions = ({ user }) => {
                 : pending === 'cancelled'
                   ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
                   : statusLocked
-                    ? `This week's cutoff has passed. Edits now apply to next Sunday, ${sundayDatePart(row.week.delivery_label)}.`
+                    ? `This week's cutoff has passed. Edits now apply to next Sunday, ${editTargetSundayDate(row)}.`
                     : row.meals_need_update
                       ? (
                         mealQty < mealCount
@@ -1140,11 +1195,15 @@ const MySubscriptions = ({ user }) => {
               && boxForDetails?.id
               && String(editCycle.id) !== String(boxForDetails.id)
             )
-            const notesEditSunday = sundayDatePart(
-              notesEditFollowing
-                ? (row.week?.delivery_label || editCycle.delivery_date)
-                : (row.week?.delivery_label || boxForDetails.delivery_date || ymd)
-            )
+            const notesEditSunday = notesEditFollowing
+              ? editTargetSundayDate(row)
+              : editTargetSundayDate({
+                edit_cycle: null,
+                week: {
+                  delivery_date: boxForDetails.delivery_date || ymd,
+                  delivery_label: row.week?.delivery_label,
+                },
+              })
             const location = isDelivery
               ? (boxForDetails.delivery_postal_code || '—')
               : PICKUP_ADDRESS
@@ -1182,6 +1241,8 @@ const MySubscriptions = ({ user }) => {
                 showEditLinks={!nextBoxIsLocked && canEdit}
                 showMealCount
                 showLockedBadge={nextBoxIsLocked}
+                onEditMeals={() => goEditBox(row, 'meals')}
+                onEditAddons={() => goEditBox(row, 'addons')}
               />
             ) : (
               <div>
@@ -1218,6 +1279,8 @@ const MySubscriptions = ({ user }) => {
                 lockCadence={lockCadence}
                 showEditLinks={canEdit}
                 showMealCount
+                onEditMeals={() => goEditBox(row, 'meals')}
+                onEditAddons={() => goEditBox(row, 'addons')}
               />
             )
 
@@ -1250,20 +1313,20 @@ const MySubscriptions = ({ user }) => {
                           <p className="my-sub-section-count">{followingMealQty} of {mealCount}</p>
                           {canEdit ? (
                             <>
-                              <Link
+                              <button
+                                type="button"
                                 className="my-sub-section-link"
-                                to={`/my-subscriptions/${row.id}/meals`}
-                                state={{ fresh: true }}
+                                onClick={() => goEditBox(row, 'meals')}
                               >
                                 Edit meals
-                              </Link>
-                              <Link
+                              </button>
+                              <button
+                                type="button"
                                 className="my-sub-section-link"
-                                to={`/my-subscriptions/${row.id}/addons`}
-                                state={{ fresh: true }}
+                                onClick={() => goEditBox(row, 'addons')}
                               >
                                 Edit add-ons
-                              </Link>
+                              </button>
                             </>
                           ) : null}
                         </div>
@@ -1324,13 +1387,34 @@ const MySubscriptions = ({ user }) => {
                         <div className="my-sub-status-note my-sub-status-note--alert" role="status">
                           <p>{statusNote}</p>
                           {canEdit ? (
-                            <Link
+                            <button
+                              type="button"
                               className="my-sub-edit-link"
-                              to={`/my-subscriptions/${row.id}/meals`}
-                              state={{ fresh: true }}
+                              onClick={() => goEditBox(row, 'meals')}
                             >
                               Fix meals
-                            </Link>
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : pendingPlan && statusNote ? (
+                        <div className="my-sub-status-note" role="status">
+                          <p>{statusNote}</p>
+                          {canEdit && !row.week?.cutoff_passed ? (
+                            <button
+                              type="button"
+                              className="my-sub-edit-link"
+                              onClick={() => setDialog({
+                                icon: 'mail',
+                                title: 'Edit next week after cutoff',
+                                body: [
+                                  `Your ${mealsAWeek(pendingPlan.meal_count)} meals for next week are already confirmed.`,
+                                  `You can edit that box after this week's cutoff (${lockBy}). Until then, Edit meals only changes this Sunday.`,
+                                ],
+                                primaryLabel: 'OK',
+                              })}
+                            >
+                              Edit next week&apos;s meals
+                            </button>
                           ) : null}
                         </div>
                       ) : statusNote ? (

@@ -253,13 +253,25 @@ const sundayDatePart = (label) => {
   return stripped || raw || 'this week';
 };
 
+/** Prefer YMD so "next Sunday, November 30" cannot drift from a stale label. */
+const sundayDateFromWeek = (week) => {
+  const ymd = week?.delivery_date;
+  const [y, m, d] = String(ymd || '').split('-').map(Number);
+  if (y && m && d) {
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+  return sundayDatePart(week?.delivery_label || 'Sunday');
+};
+
 const weekSaveCopy = (week, {
   deliveryFeeCents = 0,
   switchingToDelivery = false,
   lockedPriorCycle = false,
 } = {}) => {
-  const sunday = week?.delivery_label || 'Sunday';
-  const sundayDate = sundayDatePart(sunday);
+  const sundayDate = sundayDateFromWeek(week);
   const cutoff = week?.cutoff_label || MEAL_LOCK_BY;
   const nextWeek = Boolean(lockedPriorCycle);
   const fee = Number(deliveryFeeCents) || 0;

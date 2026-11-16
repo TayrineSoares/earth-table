@@ -145,16 +145,10 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     setDialog((prev) => prev || {
       icon: 'alert',
       title: 'You already have a weekly plan',
-      body: [
-        'Continuing creates a second subscription — you\'ll be billed for both.',
-        <>
-          Want to change your current plan instead?{' '}
-          <Link className="feedback-dialog-secondary" to="/my-subscriptions">
-            Manage subscriptions
-          </Link>
-        </>,
-      ],
-      primaryLabel: 'Got it',
+      body: 'Continuing creates a second subscription — you\'ll be billed for both every week. To change size, pause, or edit meals, use My Subscriptions instead.',
+      primaryLabel: 'Manage subscriptions',
+      primaryTo: '/my-subscriptions',
+      secondaryLabel: 'Continue anyway',
     })
   }, [hasExistingSub])
 

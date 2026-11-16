@@ -757,8 +757,15 @@ async function listMine(userId) {
     const firstDue = firstBoxStillDue(sub, settings || {}, now, list);
     const editable = canEditOpenBox(sub, settings || {}, now, list);
     const open = earliestOpenCycle(list);
-    const hint = open || hintCycleForEdit(list, now, settings || {});
-    const week = getEditWeek(now, settings || {}, hint);
+    // Match getOrCreateEditableCycle: after this Sunday's lock, edits target the
+    // following open week — don't keep week/edit_cycle stuck on the locked Sunday.
+    const clockOpen = open && !lockPassedForSunday(open.delivery_date, now, settings || {})
+      ? open
+      : null;
+    const weekHint = clockOpen
+      || (open ? { ...open, status: 'locked' } : null)
+      || hintCycleForEdit(list, now, settings || {});
+    const week = getEditWeek(now, settings || {}, weekHint);
     const thisSunday = getSignupDates(now, settings || {}).job_sunday;
     let receivingWeeks = upcomingReceivingCycles(list, now, sub.created_at, settings || {}, firstYmd);
     // Manual pause: only committed boxes still go out. Unpaid open weeks are not a next box.
@@ -790,7 +797,13 @@ async function listMine(userId) {
       )) || null;
     // Meals/extras follow the editable week. After cutoff, this_week_date is the
     // locked Sunday still in motion (Next box), when that cycle exists.
-    let current = open || currentCycleForWeek(list, week, null);
+    let current = clockOpen
+      || (list || []).find((row) => (
+        row
+        && row.status === 'open'
+        && String(row.delivery_date) === String(week.delivery_date)
+      ))
+      || null;
     // Paused with no first-box / committed week: don't surface an unpaid open edit week as "next".
     if (manualPause && !firstDue && current && Number(current.plan_paid_cents) <= 0) {
       current = null;
@@ -819,10 +832,18 @@ async function listMine(userId) {
       ? nextOpenSunday(firstYmd)
       : (receiving?.delivery_date || week.delivery_date);
     const charge = getChargeDeadline(now, settings || {}, chargeSunday);
-    const planMeals = (shown.subscription_cycle_items || [])
+    const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
+    const editPlanCount = (
+      current
+      && sub.pending_plan_id
+      && String(current.plan_id) === String(sub.pending_plan_id)
+    )
+      ? (Number(sub.pending_plan?.meal_count) || mealCount)
+      : mealCount;
+    const editItems = (current || shown)?.subscription_cycle_items || [];
+    const planMeals = editItems
       .filter((item) => item.kind === 'plan')
       .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-    const mealCount = Number(sub.subscription_plans?.meal_count) || 0;
     const today = torontoYmd(now);
     const showFirstDelivery = Boolean(firstDue && firstYmd && String(firstYmd) >= today);
     const storedPct = Number(shown?.promo_percent) || 0;
@@ -859,7 +880,8 @@ async function listMine(userId) {
       week,
       charge,
       can_edit: editable,
-      meals_need_update: editable && mealCount > 0 && planMeals !== mealCount,
+      edit_meal_count: editPlanCount,
+      meals_need_update: editable && editPlanCount > 0 && planMeals !== editPlanCount,
       addon_promo_percent: addonPromoPercent,
       first_promo_kind: sub.first_promo_code
         ? (referralCodes.has(String(sub.first_promo_code).toUpperCase()) ? 'referral' : 'promo')
@@ -1054,6 +1076,20 @@ async function getOwnedSubscription(userId, subscriptionId) {
   return data;
 }
 
+/** Plan size for an editable cycle — pending deferred plan when that cycle is already stamped. */
+async function effectivePlanForEditableCycle(sub, cycle) {
+  const current = sub.subscription_plans || await getPlanById(sub.plan_id);
+  if (
+    sub.pending_plan_id
+    && cycle?.plan_id
+    && String(cycle.plan_id) === String(sub.pending_plan_id)
+  ) {
+    const pending = await getPlanById(sub.pending_plan_id);
+    if (pending) return pending;
+  }
+  return current;
+}
+
 async function getOrCreateEditableCycle(sub) {
   const settings = await getSettings();
   const now = new Date();
@@ -1070,7 +1106,9 @@ async function getOrCreateEditableCycle(sub) {
   const clockOpen = open && !lockPassedForSunday(open.delivery_date, now, settings || {})
     ? open
     : null;
-  const hintForWeek = clockOpen || (hint && hint.status !== 'open' ? hint : null);
+  const hintForWeek = clockOpen
+    || (open ? { ...open, status: 'locked' } : null)
+    || (hint && hint.status !== 'open' ? hint : null);
   let week = getEditWeek(now, settings || {}, hintForWeek);
   if (clockOpen) {
     const src = previousCycleFromList(list, open) || pickDisplayCycle(list, now);
@@ -1110,14 +1148,16 @@ async function getOrCreateEditableCycle(sub) {
     return { cycle: await copyPlanMealsIfEmpty(openExisting, src), week };
   }
 
-  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const plan = sub.pending_plan_id
+    ? ((await getPlanById(sub.pending_plan_id)) || sub.subscription_plans || await getPlanById(sub.plan_id))
+    : (sub.subscription_plans || await getPlanById(sub.plan_id));
   const src = pickDisplayCycle(list, now);
   const need = Number(plan?.meal_count) || 0;
   const { data: cycle, error } = await supabase
     .from('subscription_cycles')
     .insert({
       subscription_id: sub.id,
-      plan_id: sub.plan_id,
+      plan_id: plan?.id || sub.plan_id,
       plan_price_cents: Number(plan?.price_cents) || 0,
       meal_count: need || null,
       cutoff_at: week.cutoff_at,
@@ -1331,7 +1371,7 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
   }
   const { cycle, week } = await getOrCreateEditableCycle(sub);
   requireOpenCycle(cycle);
-  const plan = sub.subscription_plans || await getPlanById(sub.plan_id);
+  const plan = await effectivePlanForEditableCycle(sub, cycle);
 
   await writeCyclePlanAndAddons(cycle.id, meals, addons, {
     mealCount: Number(plan.meal_count) || 0,
@@ -1417,6 +1457,24 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
       .eq('id', cycle.id);
     if (cycleErr) throw cycleErr;
     const updated = { ...cycle, special_note: specialNote };
+    try {
+      const { getUserByAuthId } = require('./user');
+      const { renderSubscriptionManageEmail } = require('../utils/emailTemplates');
+      const { sendCustomerEmail } = require('../emails/sendSubscriptionMail');
+      const user = await getUserByAuthId(userId);
+      if (user?.email) {
+        const msg = renderSubscriptionManageEmail({
+          kind: 'notes_updated',
+          firstName: user.first_name,
+          mealCount: (sub.subscription_plans || {}).meal_count,
+          deliveryLabel: week.delivery_label,
+          notes: specialNote || '',
+        });
+        await sendCustomerEmail({ to: user.email, msg });
+      }
+    } catch (err) {
+      console.warn('[subscriptions] notes-updated email failed:', err.message);
+    }
     return {
       ok: true,
       cycle: updated,

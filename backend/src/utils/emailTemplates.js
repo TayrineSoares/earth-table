@@ -1482,6 +1482,13 @@ My Subscriptions: ${manageHref}`;
       heading: `Add-ons were left off this box, ${name}`,
       intro: `We could not charge add-ons for ${thisSundayPhrase(sunday)}, so they were removed from this week's box. Your plan meals still go out. Update your card in My Subscriptions before the next week if you want extras again. Questions? Email hello@earthtableco.ca.`,
     },
+    notes_updated: {
+      subject: `Notes saved for ${sunday}`,
+      heading: `Notes updated, ${name}`,
+      intro: String(payload.notes || '').trim()
+        ? `We saved your notes for ${thisSundayPhrase(sunday)}: ${String(payload.notes).trim()}. Change them again anytime before ${cutoff} in My Subscriptions. Questions? Email hello@earthtableco.ca.`
+        : `We cleared notes for ${thisSundayPhrase(sunday)}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email hello@earthtableco.ca.`,
+    },
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,
