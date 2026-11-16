@@ -14,6 +14,7 @@ import {
 import { MEAL_LOCK_BY } from '../helpers/subscriptionCadence'
 import {
   bumpMeal,
+  clearEditCart,
   emptyEditCart,
   lineQty,
   mealsExact,
@@ -187,6 +188,11 @@ const SubscribeEditMeals = ({ user }) => {
     })
   }
 
+  const goBack = () => {
+    clearEditCart(userId, subscriptionId)
+    navigate('/my-subscriptions')
+  }
+
   if (isLoading) {
     return (
       <div className="subscribe-page">
@@ -274,14 +280,23 @@ const SubscribeEditMeals = ({ user }) => {
                       ? `Add ${need - picked} more meal${need - picked === 1 ? '' : 's'} to continue`
                       : `${picked} of ${need} meals selected`}
                 </p>
-                <button
-                  type="button"
-                  className="subscribe-select-button"
-                  disabled={!exact}
-                  onClick={onContinue}
-                >
-                  Continue
-                </button>
+                <div className="subscribe-flow-bar-actions">
+                  <button
+                    type="button"
+                    className="subscribe-text-button"
+                    onClick={goBack}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="subscribe-select-button"
+                    disabled={!exact}
+                    onClick={onContinue}
+                  >
+                    Continue
+                  </button>
+                </div>
               </div>
             </>
           ) : null}

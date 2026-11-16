@@ -31,27 +31,38 @@ const SubscribeCatalog = ({
   hidePrice = false,
   compactAdd = false,
 }) => {
+  // null = All (default)
   const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
+    if (selectedId == null) return
     if (!categories.length) {
       setSelectedId(null)
       return
     }
     const stillThere = categories.some((cat) => cat.id === selectedId)
-    if (!stillThere) setSelectedId(categories[0].id)
+    if (!stillThere) setSelectedId(null)
   }, [categories, selectedId])
 
   const selected = categories.find((cat) => cat.id === selectedId) || null
+  const categoryIds = new Set((categories || []).map((cat) => cat.id))
   const visible = products.filter((product) => {
     if (!product.is_active) return false
-    if (selectedId == null) return true
+    // All = every product in the catalog's categories only (plan meals or add-ons).
+    if (selectedId == null) return categoryIds.has(product.category_id)
     return product.category_id === selectedId
   })
 
   return (
     <>
       <div className="categories-container">
+        <button
+          type="button"
+          className={`categories${selectedId == null ? ' is-selected' : ''}`}
+          onClick={() => setSelectedId(null)}
+        >
+          All
+        </button>
         {categories.map((category) => (
           <button
             key={category.id}
@@ -65,7 +76,7 @@ const SubscribeCatalog = ({
       </div>
 
       <div className="category-title-container-2">
-        <p className="category-title-2">{selected ? selected.name : 'Menu'}</p>
+        <p className="category-title-2">{selected ? selected.name : 'All'}</p>
       </div>
 
       <div className="products-container subscribe-catalog-grid">
