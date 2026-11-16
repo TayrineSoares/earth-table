@@ -621,6 +621,12 @@ async function cancelForPlanDiscontinued(sub) {
  */
 async function discontinuePlan(planId) {
   if (!planId) throw new SubscriptionError(400, 'Plan id is required.');
+  if (process.env.ALLOW_PLAN_DISCONTINUE !== 'true') {
+    throw new SubscriptionError(
+      403,
+      'Plan discontinuations are handled by Tayrine so every subscriber can be notified. Email hello@earthtableco.ca.'
+    );
+  }
 
   const plan = await getPlanById(planId);
   if (!plan) throw new SubscriptionError(404, 'Plan not found.');

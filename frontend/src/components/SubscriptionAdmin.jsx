@@ -9,17 +9,14 @@ import FormField from './admin/FormField';
 import FeedbackDialog from './FeedbackDialog';
 import {
   fetchSubscriptionPlans,
-  fetchSubscriptionPlan,
   createSubscriptionPlan,
   updateSubscriptionPlan,
-  discontinueSubscriptionPlan,
   fetchSubscriptionSettings,
   updateSubscriptionSettings,
   runSubscriptionCharge,
   runSubscriptionLock,
   formatPlanPrice,
   dollarsToCents,
-  centsToDollarInput,
   toDatetimeLocalValue,
 } from '../helpers/subscriptionHelpers';
 import { adminSuccessDialog } from '../helpers/adminFeedback';
@@ -33,6 +30,21 @@ const DEFAULT_DESCRIPTION = 'Choose any combination of bowls, salads, mains, and
 // Flip to true (or set VITE_SHOW_SUB_TEST_TIMES=true) before more pre-launch testing.
 const SHOW_TEST_WEEK_TIMES = import.meta.env.VITE_SHOW_SUB_TEST_TIMES === 'true';
 
+const planChangeContactDialog = (kind) => {
+  const isPrice = kind === 'price';
+  return {
+    icon: 'mail',
+    title: isPrice ? 'Price changes need approval' : 'Plan discontinuation needs approval',
+    body: [
+      isPrice
+        ? 'Weekly plan prices cannot be changed from Admin.'
+        : 'Weekly plans cannot be discontinued from Admin.',
+      'Please contact Tayrine so every subscriber can be notified before the change goes live.',
+    ],
+    primaryLabel: 'Close',
+  };
+};
+
 const SubscriptionAdmin = () => {
   const [plans, setPlans] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -45,9 +57,7 @@ const SubscriptionAdmin = () => {
   const [priceDollars, setPriceDollars] = useState('');
   const [description, setDescription] = useState('');
 
-  const [priceDrafts, setPriceDrafts] = useState({});
   const [descDrafts, setDescDrafts] = useState({});
-  const [editingPriceId, setEditingPriceId] = useState(null);
   const [editingDescId, setEditingDescId] = useState(null);
   const [savingId, setSavingId] = useState(null);
 
@@ -68,13 +78,10 @@ const SubscriptionAdmin = () => {
     setTestCharge(toDatetimeLocalValue(settingsRow?.test_charge_at));
     setTestLock(toDatetimeLocalValue(settingsRow?.test_lock_at));
 
-    const prices = {};
     const descs = {};
     for (const plan of planRows) {
-      prices[plan.id] = centsToDollarInput(plan.price_cents);
       descs[plan.id] = plan.description || '';
     }
-    setPriceDrafts(prices);
     setDescDrafts(descs);
   };
 
@@ -115,7 +122,6 @@ const SubscriptionAdmin = () => {
         is_active: true,
       });
       setPlans((prev) => [...prev, created].sort((a, b) => a.meal_count - b.meal_count));
-      setPriceDrafts((prev) => ({ ...prev, [created.id]: centsToDollarInput(created.price_cents) }));
       setDescDrafts((prev) => ({ ...prev, [created.id]: created.description || '' }));
       setName('');
       setMealCount('');
@@ -128,63 +134,14 @@ const SubscriptionAdmin = () => {
     }
   };
 
-  const startEditPrice = (plan) => {
-    setEditingPriceId(plan.id);
-    setEditingDescId(null);
-    setPriceDrafts((prev) => ({ ...prev, [plan.id]: centsToDollarInput(plan.price_cents) }));
-  };
-
-  const cancelEditPrice = (plan) => {
-    setPriceDrafts((prev) => ({ ...prev, [plan.id]: centsToDollarInput(plan.price_cents) }));
-    setEditingPriceId(null);
-  };
-
   const startEditDescription = (plan) => {
     setEditingDescId(plan.id);
-    setEditingPriceId(null);
     setDescDrafts((prev) => ({ ...prev, [plan.id]: plan.description || '' }));
   };
 
   const cancelEditDescription = (plan) => {
     setDescDrafts((prev) => ({ ...prev, [plan.id]: plan.description || '' }));
     setEditingDescId(null);
-  };
-
-  const handleSavePrice = async (plan) => {
-    const cents = dollarsToCents(priceDrafts[plan.id]);
-    if (!Number.isFinite(cents)) {
-      setError('Price must be a number in dollars.');
-      setPriceDrafts((prev) => ({ ...prev, [plan.id]: centsToDollarInput(plan.price_cents) }));
-      return;
-    }
-    if (cents === plan.price_cents) {
-      setEditingPriceId(null);
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Change "${plan.name}" from ${formatPlanPrice(plan.price_cents)} to ${formatPlanPrice(cents)} per week?\n\n` +
-      'Customers already on this plan will be emailed. The new price applies at their next uncharged Tuesday (not this week if they already paid).'
-    );
-    if (!confirmed) {
-      cancelEditPrice(plan);
-      return;
-    }
-
-    setSavingId(plan.id);
-    setError('');
-    try {
-      const { plan: updated } = await updateSubscriptionPlan(plan.id, { price_cents: cents });
-      setPlans((prev) => prev.map((p) => (p.id === plan.id ? updated : p)));
-      setPriceDrafts((prev) => ({ ...prev, [plan.id]: centsToDollarInput(updated.price_cents) }));
-      setEditingPriceId(null);
-      setDialog(adminSuccessDialog(updated.name || plan.name, 'updated'));
-    } catch (err) {
-      setError(err.message || 'Failed to update price.');
-      cancelEditPrice(plan);
-    } finally {
-      setSavingId(null);
-    }
   };
 
   const handleSaveDescription = async (plan) => {
@@ -211,58 +168,8 @@ const SubscriptionAdmin = () => {
     }
   };
 
-  const handleDiscontinuePlan = async (plan) => {
-    if (plan.discontinued_at) return;
-
-    setSavingId(plan.id);
-    setError('');
-    try {
-      const live = await fetchSubscriptionPlan(plan.id);
-      const count = Number(live.subscriber_count) || 0;
-      const body = count > 0
-        ? [
-            `This will cancel all ${count} active subscription${count === 1 ? '' : 's'} on "${live.name}" and cannot be undone.`,
-            'Affected customers will be notified by email. Any applicable plan and delivery refund for the current cycle will be processed (add-ons are never refunded).',
-          ]
-        : [
-            `Discontinue "${live.name}"? This cannot be undone.`,
-            'There are no active or paused subscribers on this plan. It will be marked discontinued and hidden from new signups.',
-          ];
-
-      setDialog({
-        icon: 'alert',
-        title: 'Discontinue this plan?',
-        body,
-        primaryLabel: 'Discontinue plan',
-        secondaryLabel: 'Cancel',
-        destructive: true,
-        onPrimary: () => persistDiscontinue(live),
-      });
-    } catch (err) {
-      setError(err.message || 'Failed to load plan subscribers.');
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  const persistDiscontinue = async (plan) => {
-    setDialog((prev) => (prev ? {
-      ...prev,
-      busy: true,
-      primaryLabel: 'Discontinuing…',
-    } : prev));
-    setSavingId(plan.id);
-    setError('');
-    try {
-      const result = await discontinueSubscriptionPlan(plan.id);
-      setPlans((prev) => prev.map((p) => (p.id === plan.id ? result.plan : p)));
-      setDialog(null);
-    } catch (err) {
-      setError(err.message || 'Failed to discontinue plan.');
-      setDialog(null);
-    } finally {
-      setSavingId(null);
-    }
+  const requestPlanChangeApproval = (kind) => {
+    setDialog(planChangeContactDialog(kind));
   };
 
   const handleSaveSettings = async (e) => {
@@ -352,7 +259,8 @@ const SubscriptionAdmin = () => {
       <h1 className="promo-admin-title">Weekly Plans</h1>
       <p className="admin-tab-lead">
         These are the weekly meal plans customers choose on Subscribe &amp; Save.
-        You can change the price and description anytime; the plan name and meal count stay fixed once created.
+        You can edit the description anytime. Price changes and discontinuations are handled by Tayrine so every subscriber can be notified.
+        Plan name and meal count stay fixed once created.
       </p>
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
@@ -543,59 +451,20 @@ const SubscriptionAdmin = () => {
                   </td>
                   <td>{plan.meal_count}</td>
                   <td>
-                    {editingPriceId === plan.id ? (
-                      <div className="sub-admin-inline">
-                        <span>$</span>
-                        <input
-                          type="number"
-                          className="promo-input sub-admin-price-input"
-                          min="0"
-                          step="0.01"
-                          value={priceDrafts[plan.id] ?? ''}
-                          onChange={(e) =>
-                            setPriceDrafts((prev) => ({ ...prev, [plan.id]: e.target.value }))
-                          }
-                          autoFocus
-                          disabled={savingId === plan.id}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleSavePrice(plan);
-                            }
-                            if (e.key === 'Escape') cancelEditPrice(plan);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="sub-admin-text-btn"
-                          disabled={savingId === plan.id}
-                          onClick={() => handleSavePrice(plan)}
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          className="sub-admin-text-btn sub-admin-text-btn-cancel"
-                          disabled={savingId === plan.id}
-                          onClick={() => cancelEditPrice(plan)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="sub-admin-inline">
-                        <span>{formatPlanPrice(plan.price_cents)}</span>
+                    <div className="sub-admin-inline">
+                      <span>{formatPlanPrice(plan.price_cents)}</span>
+                      {!discontinued ? (
                         <button
                           type="button"
                           className="sub-admin-pencil"
-                          aria-label={`Edit price for ${plan.name}`}
-                          title="Edit price"
-                          onClick={() => startEditPrice(plan)}
+                          aria-label={`Request price change for ${plan.name}`}
+                          title="Request price change"
+                          onClick={() => requestPlanChangeApproval('price')}
                         >
                           <Pencil size={14} />
                         </button>
-                      </div>
-                    )}
+                      ) : null}
+                    </div>
                   </td>
                   <td>
                     {editingDescId === plan.id ? (
@@ -663,8 +532,7 @@ const SubscriptionAdmin = () => {
                         type="button"
                         variant="danger"
                         size="sm"
-                        disabled={savingId === plan.id}
-                        onClick={() => handleDiscontinuePlan(plan)}
+                        onClick={() => requestPlanChangeApproval('discontinue')}
                       >
                         Discontinue
                       </AdminButton>

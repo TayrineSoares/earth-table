@@ -117,6 +117,12 @@ async function updatePlan(id, body) {
   const patch = {};
 
   if (Object.prototype.hasOwnProperty.call(body, 'price_cents')) {
+    if (process.env.ALLOW_PLAN_PRICE_CHANGE !== 'true') {
+      throw new SubscriptionError(
+        403,
+        'Plan price changes are handled by Tayrine so every subscriber can be notified. Email hello@earthtableco.ca.'
+      );
+    }
     const priceCents = parseInt(String(body.price_cents), 10);
     if (!Number.isFinite(priceCents) || priceCents < 0) {
       throw new SubscriptionError(400, 'Price must be 0 or more (cents).');
