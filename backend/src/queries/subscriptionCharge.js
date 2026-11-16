@@ -56,7 +56,7 @@ const {
   sumPlanMealQty,
   resolvePlanMealNeed,
   mealCountMismatch: mealCountMismatchOf,
-  canCopyOrSeedPlanMeals,
+  shouldSeedPlanMealsFromSource,
 } = require('../utils/mealCountMatch');
 
 const HST = 1.13;
@@ -354,8 +354,14 @@ async function ensureCycle(sub, sunday, settings) {
     }
     throw error;
   }
-  const meals = (src?.subscription_cycle_items || []).filter((item) => item.kind === 'plan');
-  if (meals.length) {
+  // Same guard as openNextWeek / copyPlanMealsIfEmpty — never seed a short/over box
+  // onto a different plan size when Tuesday charge creates the week.
+  const need = Number(plan?.meal_count) || Number(cycle.meal_count) || 0;
+  const { seed, mealQty, meals } = shouldSeedPlanMealsFromSource(
+    src?.subscription_cycle_items,
+    need
+  );
+  if (seed && meals.length) {
     await supabase.from('subscription_cycle_items').insert(
       meals.map((item) => ({
         cycle_id: cycle.id,
@@ -366,6 +372,18 @@ async function ensureCycle(sub, sunday, settings) {
       }))
     );
     return cycleForSunday(sub.id, sunday);
+  }
+  if (meals.length && need > 0) {
+    await recordOpsEvent({
+      kind: 'copy_forward_skipped',
+      subscriptionId: sub.id,
+      cycleId: cycle.id,
+      sourceCycleId: src?.id || null,
+      deliveryDate: sunday,
+      need,
+      got: mealQty,
+      note: 'ensureCycle: source qty ≠ plan meal_count',
+    });
   }
   return withCycleItems(cycle);
 }
@@ -980,11 +998,11 @@ async function openNextWeek(sub, lockedCycle, nextSunday, settings) {
     }
     throw error;
   }
-  const meals = (await cycleItemsByCycleId(lockedCycle.id)).filter((item) => item.kind === 'plan');
-  const mealQty = sumPlanMealQty(meals);
   const need = Number(plan?.meal_count) || 0;
+  const lockedItems = await cycleItemsByCycleId(lockedCycle.id);
+  const { seed, mealQty, meals } = shouldSeedPlanMealsFromSource(lockedItems, need);
   // Do not seed next week with a short/over box after a plan size change.
-  if (meals.length && canCopyOrSeedPlanMeals(mealQty, need)) {
+  if (seed && meals.length) {
     await supabase.from('subscription_cycle_items').insert(
       meals.map((item) => ({
         cycle_id: next.id,

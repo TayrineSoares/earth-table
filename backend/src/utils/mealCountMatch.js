@@ -38,6 +38,23 @@ function canCopyOrSeedPlanMeals(srcQty, need) {
   return (Number(srcQty) || 0) === n;
 }
 
+/**
+ * Shared by ensureCycle / openNextWeek / copy-forward:
+ * only seed plan lines when source qty matches destination meal_count.
+ */
+function shouldSeedPlanMealsFromSource(sourceItems, need) {
+  const meals = (sourceItems || []).filter((item) => !item.kind || item.kind === 'plan');
+  const mealQty = sumPlanMealQty(meals);
+  if (!meals.length) {
+    return { seed: false, mealQty: 0, meals: [] };
+  }
+  return {
+    seed: canCopyOrSeedPlanMeals(mealQty, need),
+    mealQty,
+    meals,
+  };
+}
+
 /** Plan change confirm: selected lines must equal the new plan size. */
 function planChangeMealsOk(mealQty, nextCount) {
   return (Number(mealQty) || 0) === (Number(nextCount) || 0);
@@ -68,6 +85,7 @@ module.exports = {
   resolvePlanMealNeed,
   mealCountMismatch,
   canCopyOrSeedPlanMeals,
+  shouldSeedPlanMealsFromSource,
   planChangeMealsOk,
   planChangeDefersToNextWeek,
   mealMismatchAdminNote,

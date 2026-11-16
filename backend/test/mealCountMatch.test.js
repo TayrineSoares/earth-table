@@ -5,6 +5,7 @@ const {
   resolvePlanMealNeed,
   mealCountMismatch,
   canCopyOrSeedPlanMeals,
+  shouldSeedPlanMealsFromSource,
   planChangeMealsOk,
   planChangeDefersToNextWeek,
   mealMismatchAdminNote,
@@ -81,6 +82,48 @@ describe('canCopyOrSeedPlanMeals', () => {
   it('allows copy when destination size unknown', () => {
     assert.equal(canCopyOrSeedPlanMeals(10, 0), true);
     assert.equal(canCopyOrSeedPlanMeals(10, null), true);
+  });
+});
+
+describe('shouldSeedPlanMealsFromSource (ensureCycle / openNextWeek)', () => {
+  const shortBox = [
+    { kind: 'plan', product_id: 1, quantity: 4, unit_price_cents: 100 },
+    { kind: 'plan', product_id: 2, quantity: 6, unit_price_cents: 100 },
+    { kind: 'addon', product_id: 9, quantity: 2, unit_price_cents: 500 },
+  ];
+  const exactBox = [
+    { kind: 'plan', product_id: 1, quantity: 8, unit_price_cents: 100 },
+    { kind: 'plan', product_id: 2, quantity: 7, unit_price_cents: 100 },
+  ];
+
+  it('seeds when source qty matches plan size and ignores add-ons', () => {
+    const result = shouldSeedPlanMealsFromSource(exactBox, 15);
+    assert.equal(result.seed, true);
+    assert.equal(result.mealQty, 15);
+    assert.equal(result.meals.length, 2);
+  });
+
+  it('does not seed a short box onto a larger plan (ensureCycle hole)', () => {
+    const result = shouldSeedPlanMealsFromSource(shortBox, 15);
+    assert.equal(result.seed, false);
+    assert.equal(result.mealQty, 10);
+    assert.equal(result.meals.length, 2);
+  });
+
+  it('does not seed an over box onto a smaller plan', () => {
+    const result = shouldSeedPlanMealsFromSource(exactBox, 10);
+    assert.equal(result.seed, false);
+    assert.equal(result.mealQty, 15);
+  });
+
+  it('does not seed when source has no plan meals', () => {
+    const result = shouldSeedPlanMealsFromSource(
+      [{ kind: 'addon', product_id: 9, quantity: 1 }],
+      15
+    );
+    assert.equal(result.seed, false);
+    assert.equal(result.mealQty, 0);
+    assert.deepEqual(result.meals, []);
   });
 });
 
