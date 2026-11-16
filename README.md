@@ -31,6 +31,10 @@ In a **separate terminal**, navigate to the `frontend` directory, install depend
 
 The frontend will run on `http://localhost:5173`
 
+## Docs
+
+- [Weekly subscriptions (internal wiki)](docs/subscriptions.md) — end-to-end feature map, cadence, money rules, emails, and where to look in the code
+
 ## Notes
 
 - Keep both servers running while developing

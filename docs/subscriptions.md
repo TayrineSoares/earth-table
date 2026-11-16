@@ -1,0 +1,309 @@
+# Weekly subscriptions — internal wiki
+
+Internal map of Earth Table’s Subscribe & Save feature: how it works, where the code lives, and what to change when something breaks.
+
+Customer-facing terms: [Privacy / Terms weekly section](../frontend/src/components/PrivacyPolicy.jsx).  
+Support email in all copy: **hello@earthtableco.ca**.
+
+---
+
+## Quick orientation
+
+| Layer | Start here |
+|---|---|
+| Schema | `backend/sql/subscriptions.sql` (+ `alter_subscription_notes_history.sql`, `alter_subscription_ops_events.sql`) |
+| Clock / holidays / week math | `backend/src/queries/subscriptionWeek.js` |
+| HTTP API | `backend/src/routes/subscriptionRoutes.js` |
+| Cron | `backend/src/routes/cronRoutes.js` + `backend/vercel.json` + `backend/vercel.crons.md` |
+| Customer copy anchors | `frontend/src/helpers/subscriptionCadence.js` ↔ `backend/src/emails/subscriptionEmailSpec.js` |
+| Manage UI | `frontend/src/pages/MySubscriptions.jsx` |
+| Signup UI | `frontend/src/pages/SubscribeAndSave.jsx` → `SubscribeMeals` / `SubscribeAddons` / `SubscribeCart` / `SubscribeConfirmation` |
+| API client | `frontend/src/helpers/subscriptionHelpers.js` |
+| Email HTML | `backend/src/utils/emailTemplates.js` |
+| Preview samples | `backend/scripts/preview-emails.js` |
+
+### Backend module map
+
+| File | Owns |
+|---|---|
+| `subscriptionWeek.js` | America/Toronto clock, holidays, signup first Sunday, charge/lock deadlines, human labels |
+| `subscription.js` | Plans list/CRUD helpers, `listMine` / `listAll`, open-cycle edit, meal/addon save, fulfillment + mid-week delivery fee, settings, card-expiry cron helpers, ownership |
+| `subscriptionCheckout.js` | First Stripe Checkout, signup webhook fulfill, welcome mail, card setup/complete |
+| `subscriptionManage.js` | Pause / resume / cancel(=pause), plan change, discontinue, pause nudges, deadline notice, manage + owner event emails |
+| `subscriptionCharge.js` | Tuesday plan+delivery charge, Wednesday add-ons + lock + kitchen order, holiday skip, `payment_failed`, `retryFailedCharge` |
+| `requireAdminOrCron.js` | Admin JWT **or** cron secret for force charge/lock |
+| `sendSubscriptionMail.js` | Pref check, customer/owner send helpers |
+| `mealCountMatch.js` | Exact meal-count gates for plan change / resume review |
+
+---
+
+## Product model (one sentence)
+
+Customers pick a weekly meal plan, meals, optional add-ons, and pickup or delivery. **Plan + delivery** bill every **Tuesday 9:00 AM ET**; **add-ons** bill and the box **locks** every **Wednesday 5:00 PM ET**. The kitchen order is created at lock, not at signup.
+
+---
+
+## Weekly cadence (America/Toronto)
+
+| Event | When | What runs |
+|---|---|---|
+| Plan + delivery charge | **Tuesday 9:00 AM ET** | `runPlanCharge` |
+| Add-ons + meal lock | **Wednesday 5:00 PM ET** | `runMealLock` (charge extras, create order, open next week, apply pending plan/status) |
+| Pause nudges | **Monday 9:00 AM ET**, weeks **1** and **4** after pause | Pref-gated |
+| Card expiry notices | Monday with pause cron | Within 30 days of expiry; once per card |
+
+**Vercel UTC schedules** live in `backend/vercel.json` (why the UTC hours look odd: `backend/vercel.crons.md`). Charge has two Tuesday slots so DST never charges *before* 9am Toronto; lock is a single Wednesday slot that is never *before* 5pm.
+
+**Test overrides:** Admin → Weekly plans → `test_charge_at` / `test_lock_at` on `subscription_settings` (`id = 1`).
+
+**Holidays** (no charge, no box that Sunday): **Dec 25, 26, 31, Jan 1** — `subscriptionWeek.js` and `frontend/src/helpers/blockedDates.js`.
+
+### Historical job names (do not rename)
+
+`cutoff_runs` job ids stay `wednesday_charge` / `thursday_lock` even though live days are Tue/Wed. Renaming would re-run finished weeks. Pref key `wednesday_reminder` still gates the **Tuesday** meal reminder (not receipts).
+
+---
+
+## Data model (working knowledge)
+
+### `subscription_plans`
+Catalog: `name`, `meal_count` (frozen after create), `price_cents` (pre-tax), `is_active`, `discontinued_at`.
+
+### `subscriptions`
+One row per customer plan instance.
+
+| Field | Meaning |
+|---|---|
+| `status` | `active` \| `paused` \| `cancelled` |
+| `pause_reason` | `manual` \| `payment_failed` |
+| `pending_plan_id` | Deferred size change (applies after this paid/locked Sunday) |
+| `pending_status` | `paused` / `cancelled` when this Sunday still ships |
+| Card | `stripe_customer_id`, `stripe_payment_method_id`, `card_updated_at` |
+| Defaults | `delivery`, `delivery_postal_code`, `pickup_time_slot`, `special_note` |
+| First-week promo | `first_promo_*` |
+
+Customer **Cancel** in the UI calls the same path as **Pause** (keeps meals + card). True `cancelled` is mostly plan discontinue.
+
+### `subscription_cycles`
+One row per Sunday box (`unique (subscription_id, delivery_date)`).
+
+| Field | Meaning |
+|---|---|
+| `status` | `open` → editable; `locked` → kitchen order exists; `skipped` → no box |
+| Money | `plan_price_cents`, `delivery_fee_cents`, `plan_paid_cents`, `addon_paid_cents`, `promo_percent` |
+| Snapshot | delivery/pickup fields, notes, `cutoff_at`, `order_id`, Stripe PI ids |
+
+### Related
+- `subscription_cycle_items` — `kind` `plan` \| `addon`
+- `users.email_prefs` — default `{ wednesday_reminder, pause_reminder }` both true
+- `checkout_drafts` — signup payload until Stripe webhook
+- `subscription_notes_history`, `subscription_ops_events`, `subscription_card_expiry_notices`, `cutoff_runs`
+- `orders.subscription_cycle_id` — kitchen link created at Wednesday lock
+
+---
+
+## Money rules
+
+- Amounts are **integer cents pre-tax**; Stripe charges **`× 1.13` HST**.
+- **Tuesday:** unpaid plan balance + delivery fee (if delivery). Idempotency: `sub-plan-{cycleId}-{sunday}-{pmId}`.
+- **Wednesday:** unpaid add-ons (promo-aware). Idempotency: `sub-addon-{cycleId}-{sunday}`. Fail → strip unpaid add-ons + `addons_dropped` email; plan meals still go.
+- **Signup (first box):** plan + delivery charged in Stripe Checkout; add-ons wait for Wednesday. First box **cannot** be paused/cancelled. Resume later is **not** a new first box.
+- **Delivery fee**
+  - Unpaid week: fee stored on cycle → billed with Tuesday plan charge. Customer can switch back to pickup before Tuesday.
+  - Paid week, pickup → delivery: charge delivery **now** (`idempotencyKey: sub-delivery-{cycleId}`).
+  - Delivery → pickup: always clear `delivery_fee_cents`. If the fee was already charged, **no auto-refund** — copy tells them to email hello@ about a **delivery-fee refund only**.
+- **Plan size change:** unpaid → apply this Sunday; paid/first box → defer to next Sunday. No mid-week upgrade charge or downgrade refund.
+- **Discontinue:** no refunds (`refunded_cents: 0`); paid/locked Sunday still ships.
+- **Charge/pause race:** PI succeeds but cycle already skipped → Stripe refund (`subscription_charge_race_refund`).
+
+---
+
+## Customer flows → code
+
+### 1. Signup
+1. Marketing: `SubscribeAndSave.jsx`
+2. Meals / add-ons / cart: `SubscribeMeals.jsx`, `SubscribeAddons.jsx`, `SubscribeCart.jsx` (+ `subscriptionCart.js`)
+3. `POST /api/subscriptions/checkout` → `createSubscriptionCheckout`
+4. Stripe Checkout (`mode: payment`, save card for later)
+5. Webhook `checkout.session.completed` `kind: subscription` in `backend/server.js` → `completeSubscriptionSignup` (no kitchen order yet)
+6. Confirm: `SubscribeConfirmation.jsx` polls `GET /subscriptions/signup/:sessionId`
+
+Second active/paused plan: UI **warns** (does not hard-block).
+
+### 2. My Subscriptions
+- Page: `MySubscriptions.jsx`
+- Load: `GET /subscriptions/mine/:userId` → `listMine`
+- Nested edit routes: `…/:id/meals|addons|cart` → `SubscribeEditMeals` / `SubscribeEditAddons` / `SubscribeEditCart`
+
+### 3. Edit meals / add-ons
+- Save: `PATCH /subscriptions/:id/items` → `replaceOpenCyclePlanAndAddons`
+- After Wednesday cutoff, edits target **next** Sunday (popup + dates in UI)
+- Active save → box-updated email; paused resume-review path skips that mail (resume mail covers it)
+- Deferred plan: editable next week uses **pending** plan meal count; pause clears deferred prep via `abandonDeferredPlanChange`
+
+### 4. Pause / cancel / resume
+- `PATCH /subscriptions/:id/status` `{ action: pause|resume|cancel }` → `subscriptionManage.js`
+- **Unpaid** open week: skip this Sunday (no charge)
+- **Paid / locked**: this Sunday still ships; pause starts following week
+- **`payment_failed`:** declined Tuesday charge pauses; update card before Wed lock to keep the box; else week skipped at lock
+- Resume may require meal review (`meals_need_update`); auto-resume after save when flagged
+- `payment_failed` recovery: `retryFailedCharge` and/or card-setup webhook → welcome-back + owner notify (transactional)
+
+### 5. Plan change
+- `PATCH /subscriptions/:id/plan` → `changeSubscriptionPlan`
+- Exact meal count required (`mealCountMatch.js`)
+- Emails: `plan_now` vs `plan_next`
+
+### 6. Pickup / delivery / notes
+- `PATCH /subscriptions/:id/fulfillment` → `updateOpenCycleFulfillment`
+- Method switch → customer + owner fulfillment emails
+- Notes-only → `notes_updated` email + `subscription_notes_history`
+
+### 7. Card update
+- `POST /subscriptions/:id/card-setup` → Stripe Setup Checkout
+- Webhook `kind: subscription_card` → `completeCardSetup`
+- Confirm poll: `GET /card-setup/:sessionId`
+
+### 8. Email unsubscribe
+- Page: `Unsubscribe.jsx`
+- `POST /api/email/unsubscribe` + `emails/unsubscribeToken.js`
+- Turns off `wednesday_reminder` + `pause_reminder` only — **charge receipts and other transactional mail still send**
+
+---
+
+## API surface
+
+Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/plans`, `/plans?active=1`, `/plans/:id` | Public catalog |
+| GET | `/dates`, `/settings` | Public / shared |
+| PATCH | `/settings` | Test clocks (Admin UI) |
+| GET | `/mine/:userId` | Manage payload |
+| GET | `/admin` | Kitchen/subscriber board data |
+| POST | `/admin/run-charge`, `/admin/run-lock` | **`requireAdminOrCron`** |
+| POST | `/checkout` | Signup |
+| GET | `/signup/:sessionId` | Confirm poll |
+| POST | `/:id/card-setup` | Body `userId` + ownership |
+| GET | `/card-setup/:sessionId` | |
+| PATCH | `/:id/items`, `/:id/fulfillment`, `/:id/status`, `/:id/plan` | Body `userId` + `getOwnedSubscription` |
+| POST | `/plans` | Create |
+| PATCH | `/plans/:id` | Price gated by `ALLOW_PLAN_PRICE_CHANGE` |
+| POST | `/plans/:id/discontinue` | Gated by `ALLOW_PLAN_DISCONTINUE` |
+
+### Cron (`/api/cron`, `CRON_SECRET`)
+- `/subscription-charge` → `runPlanCharge`
+- `/subscription-lock` → `runMealLock`
+- `/pause-reminder` → `sendPauseReminders`
+- `/subscription-card-expiry` → `runCardExpiryNotices`
+- `/subscription-deadline-notice` → `sendDeadlineNotice` (one-shot)
+
+### Auth note (known gap)
+Manage routes trust client-supplied `userId` plus row ownership. Session binding is deferred to a broader auth PR — not subscription-only.
+
+---
+
+## Emails
+
+Templates: `backend/src/utils/emailTemplates.js`.  
+Send helpers: `sendSubscriptionMail.js`, `notifyManage` in manage/charge paths.
+
+### Customer (high-signal kinds)
+
+| Kind / render | When |
+|---|---|
+| Welcome | Signup complete |
+| Box updated | Active meal/addon save |
+| `notes_updated` | Notes-only save |
+| `pause_*` / `resume` / `plan_now` / `plan_next` | Manage actions |
+| `fulfillment_delivery` / `fulfillment_pickup` | Method switch (paid pickup copy mentions delivery-fee refund via hello@) |
+| `payment_failed` | Tuesday decline |
+| `addons_dropped` | Wed add-on charge failed |
+| Charge / meal reminder | Tuesday (`wednesday_reminder` gates reminder only; receipts always) |
+| Lock | Wednesday after lock |
+| Holiday skip | Holiday charge path (active subs) |
+| Meal mismatch | Locked qty ≠ plan size |
+| Card expiry / price / discontinue / deadline | Matching jobs/admin |
+
+### Owner
+New sub; pause/resume/plan; fulfillment switch; payment_failed; lock box list; meal mismatch; holiday; discontinue.
+
+**Not** emailed to owner on every meal edit (intentional — customer box-updated only).
+
+---
+
+## Admin
+
+| UI | File | Role |
+|---|---|---|
+| Weekly plans tab | `SubscriptionAdmin.jsx` | Create plans, active flag, test charge/lock times, force Run charge/lock |
+| Subscriptions tab | `SubscriberAdmin.jsx` | This/next Sunday boxes, paused, search, print |
+| Host | `Admin.jsx` tabs `weekly-plans` / `subscriptions` |
+
+Price change and discontinue are **env-gated** and UI-routed through Tayrine approval messaging. Do not treat live price rewrite as a normal ops path.
+
+---
+
+## Intentional / deferred behavior
+
+| Item | Status |
+|---|---|
+| Customer Cancel ≡ Pause | Intentional |
+| Owner not on every meal edit | Intentional |
+| Admin plan price rewrite | Gated off; N/A while env false |
+| API `userId` session binding | Deferred (separate auth PR) |
+| Holiday email for `payment_failed` paused | Optional polish — they can still be skipped without holiday mail |
+| Job names `wednesday_charge` / `thursday_lock` | Keep forever for idempotency |
+
+---
+
+## Cheat sheet — “I need to change X”
+
+| Change | Open |
+|---|---|
+| Tue/Wed times, holidays, first Sunday | `backend/src/queries/subscriptionWeek.js` |
+| Customer how-it-works / banners | `frontend/src/helpers/subscriptionCadence.js` + `subscriptionEmailSpec.js` |
+| Cron UTC | `backend/vercel.json` + `vercel.crons.md` |
+| Tuesday charge / Wed lock / holiday / payment_failed | `subscriptionCharge.js` |
+| Pause / resume / plan / discontinue / nudges | `subscriptionManage.js` |
+| Signup + card setup | `subscriptionCheckout.js` + `server.js` webhook |
+| Meal save / fulfillment / listMine | `subscription.js` |
+| Routes | `subscriptionRoutes.js` |
+| Schema | `backend/sql/subscriptions.sql` |
+| Manage UI | `MySubscriptions.jsx` |
+| Signup UI | `Subscribe*.jsx` under `frontend/src/pages/` |
+| Fetch wrappers / save dialogs | `subscriptionHelpers.js` |
+| Email copy/HTML | `emailTemplates.js` |
+| Pref samples | `backend/scripts/preview-emails.js` |
+| Kitchen board | `SubscriberAdmin.jsx` |
+| Plan catalog / test clocks | `SubscriptionAdmin.jsx` |
+| Unsubscribe | `emailRoutes.js` + `Unsubscribe.jsx` |
+| Privacy / legal cadence | `PrivacyPolicy.jsx` |
+| Meal-count gates | `mealCountMatch.js` |
+
+---
+
+## Sandbox / regression checklist
+
+1. Signup → confirm first Sunday, card on file, welcome mail; first box not pausable.
+2. Unpaid week: pause → skip; resume → meal review if needed.
+3. After Tuesday charge: pause → this Sunday still ships; following week paused.
+4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
+5. Payment-failed → update card with `wednesday_reminder` off → still get charge/resume confirmation.
+6. Pickup → delivery unpaid → fee waits for Tuesday; switch back clears fee.
+7. Paid week pickup → delivery → immediate delivery charge; delivery → pickup → hello@ refund-of-fee-only copy.
+8. Add-on charge fail at lock → extras stripped, plan meals lock, customer emailed.
+9. Force charge/lock from Admin requires admin session (or cron secret).
+10. Unsubscribe → no Tue meal reminder / pause nudges; receipts still arrive.
+
+---
+
+## Keeping this doc honest
+
+When you change money, cadence, or status rules:
+
+1. Update the code path.
+2. Update **both** cadence files + Privacy weekly bullets if customer-visible.
+3. Update this wiki in the same PR.
+4. Regenerate email previews if copy changed (`backend/scripts/preview-emails.js`).
