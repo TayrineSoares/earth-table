@@ -518,9 +518,10 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
 async function sendChargeNotice(sub, cycle, sunday, dates, chargeResult) {
   const user = await getUserByAuthId(sub.user_id);
   if (!user?.email) return;
-  if (!emailPrefOn(user, 'wednesday_reminder')) return;
-  const labeled = await labeledItemsForCycle(cycle.id);
   const charged = !!chargeResult?.charged;
+  // Receipts always send. Already-paid Tuesday mail is a meal reminder — honor unsubscribe.
+  if (!charged && !emailPrefOn(user, 'wednesday_reminder')) return;
+  const labeled = await labeledItemsForCycle(cycle.id);
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const msg = renderSubscriptionChargeEmail({
     firstName: user.first_name,
@@ -538,7 +539,7 @@ async function sendChargeNotice(sub, cycle, sunday, dates, chargeResult) {
     subscriptionId: sub.id,
     cardBrand: card?.brand,
     last4: card?.last4,
-    unsubscribeHref: unsubscribeUrl(sub.user_id),
+    unsubscribeHref: charged ? undefined : unsubscribeUrl(sub.user_id),
   });
   await sendCustomerEmail({ to: user.email, msg });
 }

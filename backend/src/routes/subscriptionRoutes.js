@@ -29,6 +29,7 @@ const {
   discontinuePlan,
 } = require('../queries/subscriptionManage');
 const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
+const { requireAdminOrCron } = require('../middleware/requireAdminOrCron');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -81,7 +82,7 @@ router.get('/admin', async (req, res) => {
   }
 });
 
-router.post('/admin/run-charge', async (req, res) => {
+router.post('/admin/run-charge', requireAdminOrCron, async (req, res) => {
   try {
     const result = await runPlanCharge({ force: true });
     res.json(result);
@@ -90,7 +91,7 @@ router.post('/admin/run-charge', async (req, res) => {
   }
 });
 
-router.post('/admin/run-lock', async (req, res) => {
+router.post('/admin/run-lock', requireAdminOrCron, async (req, res) => {
   try {
     const result = await runMealLock({ force: true });
     res.json(result);

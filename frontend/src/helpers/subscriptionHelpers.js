@@ -1,3 +1,4 @@
+import { supabase } from '../supabaseClient'
 import { MEAL_LOCK_BY } from './subscriptionCadence'
 
 async function parseJson(res) {
@@ -6,6 +7,15 @@ async function parseJson(res) {
     throw new Error(data.error || data.message || 'Subscription request failed');
   }
   return data;
+}
+
+async function adminAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) {
+    throw new Error('Sign in as an admin to run this job.');
+  }
+  return { Authorization: `Bearer ${token}` };
 }
 
 /** "cilantro lime chicken bowl" -> "Cilantro Lime Chicken Bowl" */
@@ -74,12 +84,14 @@ const updateSubscriptionSettings = async (body) => {
 };
 
 const runSubscriptionCharge = async () => {
-  const res = await fetch('/api/subscriptions/admin/run-charge', { method: 'POST' });
+  const headers = await adminAuthHeaders();
+  const res = await fetch('/api/subscriptions/admin/run-charge', { method: 'POST', headers });
   return parseJson(res);
 };
 
 const runSubscriptionLock = async () => {
-  const res = await fetch('/api/subscriptions/admin/run-lock', { method: 'POST' });
+  const headers = await adminAuthHeaders();
+  const res = await fetch('/api/subscriptions/admin/run-lock', { method: 'POST', headers });
   return parseJson(res);
 };
 
