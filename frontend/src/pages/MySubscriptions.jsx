@@ -999,14 +999,17 @@ const MySubscriptions = ({ user }) => {
 
   const saveFulfillment = (row) => {
     if (!fulfillmentReady || savingId) return
-    const wasDelivery = !!(row.edit_cycle || row.cycle || {}).delivery
+    const editBox = row.edit_cycle || row.cycle || {}
+    const wasDelivery = !!editBox.delivery
     const copy = weekSaveCopy(row.week, {
       deliveryFeeCents,
       switchingToDelivery: fulfillment === 'delivery' && !wasDelivery,
+      switchingToPickup: fulfillment === 'pickup' && wasDelivery,
       lockedPriorCycle: Boolean(
         row.week?.cutoff_passed
         || row.week?.applies_to === 'next_week'
       ),
+      planAlreadyPaid: Number(editBox.plan_paid_cents) > 0 || Boolean(row.first_box_protected),
     })
     setDialog({
       icon: 'mail',

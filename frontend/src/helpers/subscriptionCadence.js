@@ -3,12 +3,14 @@
  * Keep in sync with backend/src/emails/subscriptionEmailSpec.js
  *
  * Live fallbacks (when dates have not loaded yet):
- * Charge: Tuesday 9:00 AM ET (plan + delivery).
+ * Charge: Tuesday 9:00 AM ET (plan + delivery together).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel: skip this Sunday while unpaid; once charged/locked it still
  * goes out (typically after Tuesday 9:00 AM ET). Plan size change: applies this
  * Sunday only while that week is still unpaid; once paid (including the first
  * box), the new size starts the following week — no mid-week upgrade/refund.
+ * Fulfillment: unpaid — delivery fee waits for Tuesday; paid week pickup→delivery
+ * charges delivery now; paid delivery→pickup — email hello@ about a delivery-fee refund only.
  *
  * Customer copy uses these standing weekday times. Calendar dates stay on
  * the box itself (confirmation, meal picker) via cutoff_label / charge_label.
@@ -22,7 +24,7 @@ export const LOCK_DAY_TIME = 'Wednesday at 5:00 PM ET'
 export const SUPPORT_EMAIL = 'hello@earthtableco.ca'
 
 export function howItWorksCharge() {
-  return 'Plan and delivery are charged every Tuesday at 9:00 AM ET. Add-ons are charged Wednesday at 5:00 PM ET.'
+  return 'Plan and delivery are charged together every Tuesday at 9:00 AM ET. While that Sunday is still unpaid, you can switch pickup or delivery and the delivery fee (if any) is billed with that Tuesday charge. Add-ons are charged Wednesday at 5:00 PM ET. Questions? Email hello@earthtableco.ca.'
 }
 
 export function howItWorksPause() {

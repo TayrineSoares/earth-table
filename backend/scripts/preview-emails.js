@@ -242,6 +242,11 @@ write('12k-subscription-pickup.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'fulfillment_pickup',
 }).html);
+write('12k2-subscription-pickup-paid.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'fulfillment_pickup',
+  planAlreadyPaid: true,
+}).html);
 write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'card_expiry',

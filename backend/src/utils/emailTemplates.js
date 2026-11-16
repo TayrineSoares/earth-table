@@ -1366,6 +1366,7 @@ function renderSubscriptionManageEmail(payload = {}) {
     expYear,
     address,
     pickupSlot,
+    planAlreadyPaid = false,
   } = payload;
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
@@ -1393,7 +1394,11 @@ function renderSubscriptionManageEmail(payload = {}) {
     const introText = toDelivery
       ? `Starting with ${sunday}, your box comes to you:`
       : `Starting with ${sunday}, your box will be labeled and waiting at:`;
-    const after = `Switch back to ${toDelivery ? 'pickup' : 'delivery'} any time before ${cutoff}.`;
+    const after = toDelivery
+      ? `If this Sunday is still unpaid, delivery is charged with your plan on Tuesday at 9:00 AM ET — switch back to pickup before then if you change your mind. You can still update meals until ${cutoff}. Questions? Email hello@earthtableco.ca.`
+      : planAlreadyPaid
+        ? `You can switch back to delivery any time before ${cutoff}. If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.`
+        : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email hello@earthtableco.ca.`;
     const detail = toDelivery
       ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
       : `${kvRow('Next box', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: true })}`;

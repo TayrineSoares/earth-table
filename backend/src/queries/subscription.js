@@ -1399,6 +1399,10 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
   return { ok: true, week };
 }
 
+/**
+ * Mid-week pickup→delivery after the plan is already paid for this Sunday.
+ * Unpaid weeks do not use this — delivery rides with Tuesday's plan charge.
+ */
 async function chargeDeliveryFee(sub, cycle, feeCents) {
   const amount = Math.round(Number(feeCents) * 1.13);
   if (amount < 50) {
@@ -1422,6 +1426,8 @@ async function chargeDeliveryFee(sub, cycle, feeCents) {
         subscription_id: sub.id,
         cycle_id: cycle.id,
       },
+    }, {
+      idempotencyKey: `sub-delivery-${cycle.id}`,
     });
   } catch (err) {
     console.error('[subscriptions] delivery fee charge failed', err.message);
@@ -1520,6 +1526,8 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     patch.pickup_time_slot = null;
     patch.delivery_fee_cents = quote.fee_cents;
 
+    // Unpaid weeks: fee stays on the cycle and is billed with Tuesday's plan charge.
+    // Already-paid this Sunday: charge delivery now (idempotent) so the kitchen is covered.
     const chargeNow = week.applies_to === 'this_sunday' && wasPickup && Number(cycle.plan_paid_cents) > 0;
     if (chargeNow) {
       await chargeDeliveryFee(sub, cycle, quote.fee_cents);
@@ -1530,7 +1538,8 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     }
     patch.delivery_postal_code = null;
     patch.pickup_time_slot = pickupSlot;
-    if (wasPickup) patch.delivery_fee_cents = 0;
+    // Always clear — otherwise a prior delivery quote stays and Tuesday can still bill it.
+    patch.delivery_fee_cents = 0;
   }
 
   // Delivery prefs stay on the subscription as defaults for new weeks.
@@ -1586,6 +1595,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
           cutoffLabel: week.cutoff_label,
           address: delivery ? specialNote : PICKUP_ADDRESS,
           pickupSlot,
+          planAlreadyPaid: Number(cycle.plan_paid_cents) > 0,
         });
         await sendCustomerEmail({ to: user.email, msg });
       }

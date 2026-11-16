@@ -269,7 +269,9 @@ const sundayDateFromWeek = (week) => {
 const weekSaveCopy = (week, {
   deliveryFeeCents = 0,
   switchingToDelivery = false,
+  switchingToPickup = false,
   lockedPriorCycle = false,
+  planAlreadyPaid = false,
 } = {}) => {
   const sundayDate = sundayDateFromWeek(week);
   const cutoff = week?.cutoff_label || MEAL_LOCK_BY;
@@ -277,13 +279,17 @@ const weekSaveCopy = (week, {
   const fee = Number(deliveryFeeCents) || 0;
   const feeLine = switchingToDelivery && fee > 0
     ? nextWeek
-      ? ` Delivery (${formatPlanPrice(fee)} plus 13% HST) will be added to next week's total.`
-      : ` Delivery for this Sunday is ${formatPlanPrice(fee)} plus 13% HST and will be charged to your card on file.`
-    : '';
+      ? ` Delivery (${formatPlanPrice(fee)} plus 13% HST) will be charged with that week's Tuesday plan charge. Questions? Email hello@earthtableco.ca.`
+      : planAlreadyPaid
+        ? ` This Sunday's plan is already charged, so delivery (${formatPlanPrice(fee)} plus 13% HST) will be charged to your card now. Questions? Email hello@earthtableco.ca.`
+        : ` Delivery (${formatPlanPrice(fee)} plus 13% HST) will be charged with your plan on Tuesday at 9:00 AM ET. Switch back to pickup before then if you change your mind. Questions? Email hello@earthtableco.ca.`
+    : switchingToPickup && planAlreadyPaid && !nextWeek
+      ? ' If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.'
+      : '';
   if (nextWeek) {
     return {
       title: 'These changes are for next week',
-      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sundayDate} only. This Sunday's box is already locked.${feeLine} If you need a delivery change for this Sunday, email hello@earthtableco.ca.`,
+      body: `This week's cutoff has passed, so these changes apply to next Sunday, ${sundayDate} only. This Sunday's box is already locked.${feeLine}`,
     };
   }
   return {
