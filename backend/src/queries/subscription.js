@@ -1263,6 +1263,59 @@ async function writeCyclePlanAndAddons(cycleId, meals, addons, { mealCount } = {
   return { mealQty };
 }
 
+/** Load meal/addon lines for emails — by cycle id only (no nested embeds). */
+async function labeledBoxItemsForCycle(cycleId) {
+  const id = String(cycleId || '');
+  if (!id) return { meals: [], addons: [] };
+  const { data, error } = await supabase
+    .from('subscription_cycle_items')
+    .select('cycle_id, product_id, quantity, kind')
+    .eq('cycle_id', id);
+  if (error) throw error;
+  const rows = (data || []).filter((item) => String(item.cycle_id) === id);
+  const productIds = [...new Set(rows.map((item) => Number(item.product_id)).filter((n) => n > 0))];
+  let names = new Map();
+  if (productIds.length) {
+    const { data: products, error: productErr } = await supabase
+      .from('products')
+      .select('id, slug')
+      .in('id', productIds);
+    if (productErr) throw productErr;
+    names = new Map((products || []).map((row) => [Number(row.id), row.slug]));
+  }
+  const mapped = rows.map((item) => ({
+    slug: names.get(Number(item.product_id)) || 'Item',
+    quantity: item.quantity,
+    kind: item.kind,
+  }));
+  return {
+    meals: mapped.filter((item) => item.kind === 'plan'),
+    addons: mapped.filter((item) => item.kind === 'addon'),
+  };
+}
+
+async function sendBoxUpdatedEmail(userId, sub, cycle, week, plan) {
+  const { getUserByAuthId } = require('./user');
+  const { renderSubscriptionUpdatedEmail } = require('../utils/emailTemplates');
+  const { sendCustomerEmail } = require('../emails/sendSubscriptionMail');
+  const user = await getUserByAuthId(userId);
+  if (!user?.email) return false;
+  const box = await labeledBoxItemsForCycle(cycle?.id);
+  const msg = renderSubscriptionUpdatedEmail({
+    firstName: user.first_name,
+    mealCount: plan?.meal_count ?? sub.subscription_plans?.meal_count,
+    delivery: !!cycle?.delivery,
+    deliveryLabel: week?.delivery_label,
+    pickupSlot: cycle?.pickup_time_slot,
+    appliesTo: week?.applies_to,
+    meals: box.meals,
+    addons: box.addons,
+    notes: cycle?.special_note,
+  });
+  await sendCustomerEmail({ to: user.email, msg });
+  return true;
+}
+
 /** Save meals and add-ons together so the customer gets one update email. */
 async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addons) {
   const sub = await getOwnedSubscription(userId, subscriptionId);
@@ -1277,6 +1330,16 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
   await writeCyclePlanAndAddons(cycle.id, meals, addons, {
     mealCount: Number(plan.meal_count) || 0,
   });
+
+  // Paused saves are almost always the resume meal-review step — resume email
+  // already lists the box, so skip a second "box updated" mail.
+  if (sub.status !== 'paused') {
+    try {
+      await sendBoxUpdatedEmail(userId, sub, cycle, week, plan);
+    } catch (err) {
+      console.warn('[subscriptions] box-updated email failed:', err.message);
+    }
+  }
 
   return { ok: true, week };
 }
@@ -1614,5 +1677,6 @@ module.exports = {
   ensureFirstBoxCycle,
   getOrCreateEditableCycle,
   planMealItems,
+  labeledBoxItemsForCycle,
   reopenSkippedCycle,
 };

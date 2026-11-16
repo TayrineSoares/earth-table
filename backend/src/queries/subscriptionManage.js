@@ -24,6 +24,7 @@ const {
   ensureFirstBoxCycle,
   getOrCreateEditableCycle,
   planMealItems,
+  labeledBoxItemsForCycle,
   writeCyclePlanAndAddons,
   recordPlanChange,
 } = require('./subscription');
@@ -249,37 +250,6 @@ async function notifyManage(userId, payload) {
     }
   }
   return Boolean(email);
-}
-
-/** Load meal/addon lines for resume email — by cycle id only (no nested embeds). */
-async function labeledBoxItemsForCycle(cycleId) {
-  const id = String(cycleId || '');
-  if (!id) return { meals: [], addons: [] };
-  const { data, error } = await supabase
-    .from('subscription_cycle_items')
-    .select('cycle_id, product_id, quantity, kind')
-    .eq('cycle_id', id);
-  if (error) throw error;
-  const rows = (data || []).filter((item) => String(item.cycle_id) === id);
-  const productIds = [...new Set(rows.map((item) => Number(item.product_id)).filter((n) => n > 0))];
-  let names = new Map();
-  if (productIds.length) {
-    const { data: products, error: productErr } = await supabase
-      .from('products')
-      .select('id, slug')
-      .in('id', productIds);
-    if (productErr) throw productErr;
-    names = new Map((products || []).map((row) => [Number(row.id), row.slug]));
-  }
-  const mapped = rows.map((item) => ({
-    slug: names.get(Number(item.product_id)) || 'Item',
-    quantity: item.quantity,
-    kind: item.kind,
-  }));
-  return {
-    meals: mapped.filter((item) => item.kind === 'plan'),
-    addons: mapped.filter((item) => item.kind === 'addon'),
-  };
 }
 
 async function resumeNotifyPayload(sub, week, charge) {
