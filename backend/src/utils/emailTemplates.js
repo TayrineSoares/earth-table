@@ -1310,7 +1310,7 @@ function renderSubscriptionUpdatedEmail({
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
-      ${h1(`You've updated your plan, ${name}`)}
+      ${h1(`You've updated your box, ${name}`)}
       ${intro(timing)}
       ${card(kvTable(`
         ${kvRow("Plan", planWeek)}
@@ -1331,7 +1331,7 @@ function renderSubscriptionUpdatedEmail({
     replyOk: true,
   });
 
-  const text = `You've updated your plan, ${name}
+  const text = `You've updated your box, ${name}
 
 ${timing}
 
@@ -1489,8 +1489,8 @@ My Subscriptions: ${manageHref}`;
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
-      heading: `This Sunday stays as-is, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} stays on your ${previousPlan || planWeek}. You're moving to a ${nextPlan} starting the following week with these meals. Need help? Email hello@earthtableco.ca.`,
+      heading: `Your plan changes starting next week, ${name}`,
+      intro: `You're moving from a ${previousPlan || planWeek} to a ${nextPlan}. ${ThisSundayPhrase(sunday)} stays as-is; the new plan starts the following week with these meals. Need help? Email hello@earthtableco.ca.`,
     },
   }[kind] || {
     subject: 'Your weekly plan',
@@ -1504,15 +1504,11 @@ My Subscriptions: ${manageHref}`;
   const meals = payload.meals || [];
   const addons = payload.addons || [];
   const planChangeHtml = showPlanChange
-    ? card(kvTable(`
-        ${kvRow('Previous plan', previousPlan || '—')}
-        ${kvRow('New plan', nextPlan || '—', { last: true })}
-      `))
+    ? card(kvTable(`${kvRow('New plan', nextPlan || '—', { last: true })}`))
     : '';
   const planChangeText = showPlanChange
     ? `
 
-Previous plan: ${previousPlan || '—'}
 New plan: ${nextPlan || '—'}`
     : '';
   const boxHtml = showBox

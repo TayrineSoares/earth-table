@@ -21,8 +21,6 @@ const {
   renderSubscriptionLockEmail,
   renderSubscriptionHolidaySkipEmail,
   renderOwnerLockEmail,
-  renderOwnerStatusEmail,
-  renderOwnerPlanChangedEmail,
   renderOwnerFulfillmentEmail,
   renderOwnerPaymentFailedEmail,
 } = require('../src/utils/emailTemplates');
@@ -216,23 +214,23 @@ write('12g-subscription-payment-failed.html', renderSubscriptionManageEmail({
 write('12h-subscription-plan-up.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'plan_now',
+  mealCount: 15,
   oldMealCount: 10,
   nextMealCount: 15,
-  oldPrice: '$180.00',
-  newPrice: '$270.00',
-  effectiveDate: 'Sunday, September 20',
-  nextChargeDate: 'Tuesday, September 22 at 9:00 AM ET',
-  difference: 5,
 }).html);
 write('12i-subscription-plan-down.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'plan_now',
+  mealCount: 10,
   oldMealCount: 15,
   nextMealCount: 10,
-  oldPrice: '$270.00',
-  newPrice: '$180.00',
-  effectiveDate: 'Sunday, September 27',
-  nextChargeDate: 'Tuesday, September 22 at 9:00 AM ET',
+}).html);
+write('12m-subscription-plan-next.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'plan_next',
+  mealCount: 10,
+  oldMealCount: 10,
+  nextMealCount: 15,
 }).html);
 write('12j-subscription-delivery.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -327,44 +325,6 @@ write('16-owner-lock.html', renderOwnerLockEmail({
     },
   ],
 }).html);
-write('17-owner-paused.html', renderOwnerStatusEmail({
-  kind: 'paused',
-  customerName: 'Tayrine Soares',
-  mealCount: 10,
-  price: '$180.00',
-  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
-  weeks: 6,
-  lifetimeValue: '$1,080.00',
-}).html);
-write('17c-owner-resumed.html', renderOwnerStatusEmail({
-  kind: 'resumed',
-  customerName: 'Tayrine Soares',
-  mealCount: 10,
-  price: '$180.00',
-  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
-  weeks: 6,
-  lifetimeValue: '$1,080.00',
-}).html);
-write('17b-owner-cancelled.html', renderOwnerStatusEmail({
-  kind: 'cancelled',
-  customerName: 'Tayrine Soares',
-  mealCount: 10,
-  price: '$180.00',
-  dateTime: 'Friday, September 18, 2026 at 3:02 PM',
-  lastBoxDate: 'Sunday, September 20',
-  lastBoxPaid: true,
-  weeks: 6,
-  lifetimeValue: '$1,080.00',
-}).html);
-write('18-owner-plan.html', renderOwnerPlanChangedEmail({
-  customerName: 'Tayrine Soares',
-  oldMealCount: 10,
-  newMealCount: 15,
-  oldPriceCents: 18000,
-  newPriceCents: 27000,
-  effectiveDate: 'Sunday, September 20',
-  selectedCount: 10,
-}).html);
 write('19-owner-fulfillment.html', renderOwnerFulfillmentEmail({
   customerName: 'Tayrine Soares',
   oldMethod: 'pickup',
@@ -396,16 +356,17 @@ const labels = {
   '08-confirm-signup.html': 'Confirm signup (Supabase Auth)',
   '09-subscription-welcome.html': '1. Welcome',
   '10-subscription-owner.html': '13. Owner: new subscription',
-  '11-subscription-updated.html': '4. Box updated',
+  '11-subscription-updated.html': '4. Box updated (meals/add-ons)',
   '12-subscription-paused.html': '5. Paused',
   '12b-subscription-paused-next.html': '5. Paused after charge',
   '12c-subscription-pause-nudge.html': '6. Pause reminder',
-  '12d-subscription-resume.html': '7. Resumed',
+  '12d-subscription-resume.html': '7. Resumed (welcome back)',
   '12e-subscription-cancel.html': '8. Cancelled',
   '12f-subscription-cancel-last-box.html': '8. Cancelled, last box remains',
   '12g-subscription-payment-failed.html': '9. Payment failed',
-  '12h-subscription-plan-up.html': '10. Plan upgrade',
-  '12i-subscription-plan-down.html': '10. Plan downgrade',
+  '12h-subscription-plan-up.html': '10. Plan upgrade (now)',
+  '12i-subscription-plan-down.html': '10. Plan downgrade (now)',
+  '12m-subscription-plan-next.html': '10. Plan change (next week)',
   '12j-subscription-delivery.html': '11. Switched to delivery',
   '12k-subscription-pickup.html': '11. Switched to pickup',
   '12l-subscription-card-expiry.html': '12. Card expiring',
@@ -416,10 +377,6 @@ const labels = {
   '15-holiday-user.html': 'Holiday skip (customer)',
   '15b-holiday-owner.html': 'Holiday skip (owner)',
   '16-owner-lock.html': '14. Owner Wednesday prep',
-  '17-owner-paused.html': '15. Owner paused',
-  '17c-owner-resumed.html': '15. Owner resumed',
-  '17b-owner-cancelled.html': '15. Owner cancelled',
-  '18-owner-plan.html': '16. Owner plan changed',
   '19-owner-fulfillment.html': '17. Owner fulfillment',
   '20-owner-payment-failed.html': '18. Owner payment failed',
 };
