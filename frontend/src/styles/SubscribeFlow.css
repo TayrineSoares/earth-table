@@ -570,6 +570,14 @@
 
 .subscribe-cart-page .checkout-order-summary > .checkout-button {
   margin-bottom: 4px;
+  background-color: #EDA413;
+  border-color: #EDA413;
+  border-style: solid;
+}
+
+.subscribe-cart-page .checkout-order-summary > .checkout-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .subscribe-cart-page .subscribe-cart-cancel {
