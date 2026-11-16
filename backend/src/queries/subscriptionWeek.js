@@ -512,6 +512,19 @@ function getEditWeek(now = new Date(), settings = {}, currentCycle = null) {
 
   if (cycleIsClosed(currentCycle) && currentCycle.delivery_date) {
     const nextSunday = nextOpenSunday(currentCycle.delivery_date);
+    // Long-paused plans: the "Sunday after last locked/skipped" can be weeks
+    // in the past. Use the live calendar week instead of Oct-stale labels.
+    if (String(nextSunday) < String(signup.first_delivery_date)) {
+      return {
+        applies_to: signup.cutoff_passed ? 'next_week' : 'this_sunday',
+        cutoff_passed: signup.cutoff_passed,
+        cutoff_at: signup.cutoff_at,
+        cutoff_label: signup.cutoff_label,
+        cadence_label: signup.cadence_label,
+        delivery_date: signup.first_delivery_date,
+        delivery_label: signup.first_delivery_label,
+      };
+    }
     const nextLock = lockAtForSunday(nextSunday, settings);
     return {
       applies_to: 'next_week',

@@ -784,7 +784,9 @@ const MySubscriptions = ({ user }) => {
             ? 'This Sunday still goes out, and the pending pause will be cleared.'
             : row.first_box_protected
               ? 'Your first box still goes out. Weekly charges resume for Sundays after that.'
-              : 'Your weekly plan will be active again and weekly charges resume.',
+              : row.week?.cutoff_passed
+                ? `Your weekly plan will be active again. Because this week's cutoff has passed, that only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+                : `Your weekly plan will be active again. That applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}, and weekly charges resume.`,
       },
     }[action]
     setDialog({
