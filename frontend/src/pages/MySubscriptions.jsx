@@ -934,8 +934,8 @@ const MySubscriptions = ({ user }) => {
       deliveryFeeCents,
       switchingToDelivery: fulfillment === 'delivery' && !wasDelivery,
       lockedPriorCycle: Boolean(
-        row.this_week_cycle
-        && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
+        row.week?.cutoff_passed
+        || row.week?.applies_to === 'next_week'
       ),
     })
     setDialog({

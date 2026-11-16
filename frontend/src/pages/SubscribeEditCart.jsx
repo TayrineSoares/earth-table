@@ -101,11 +101,20 @@ const SubscribeEditCart = ({ user }) => {
         : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below. Need help? Email hello@earthtableco.ca.`,
     }
     : weekSaveCopy(row?.week, {
+      // Trust the API week object — unpaid pause-skips are still "this Sunday".
       lockedPriorCycle: Boolean(
-        row?.this_week_cycle
-        && (row.this_week_cycle.status === 'locked' || row.this_week_cycle.status === 'skipped')
+        row?.week?.cutoff_passed
+        || row?.week?.applies_to === 'next_week'
       ),
     })
+
+  const flowState = resumeAfter ? { resumeAfter: true } : undefined
+
+  const goBack = () => {
+    if (saving) return
+    clearEditCart(user.id, subscriptionId)
+    navigate('/my-subscriptions')
+  }
 
   const persist = async () => {
     setSaving(true)
@@ -215,14 +224,26 @@ const SubscribeEditCart = ({ user }) => {
               disabled={saving}
               onClick={onConfirm}
             >
-              {saving ? 'Saving…' : 'Confirm changes'}
+              {saving ? 'Saving…' : (resumeAfter ? 'Save and resume' : changingPlan ? 'Confirm plan change' : 'Confirm changes')}
+            </button>
+            <button
+              type="button"
+              className="subscribe-text-button subscribe-cart-cancel"
+              disabled={saving}
+              onClick={goBack}
+            >
+              Cancel
             </button>
           </div>
 
           <div className="checkout-items subscribe-cart-items">
             <div className="subscribe-cart-heading-row">
               <p className="subscribe-list-heading">Your Weekly Plan</p>
-              <Link className="subscribe-inline-link" to={`/my-subscriptions/${subscriptionId}/meals`}>
+              <Link
+                className="subscribe-inline-link"
+                to={`/my-subscriptions/${subscriptionId}/meals`}
+                state={flowState}
+              >
                 Edit meals
               </Link>
             </div>
@@ -244,7 +265,11 @@ const SubscribeEditCart = ({ user }) => {
 
             <div className="subscribe-cart-heading-row">
               <p className="subscribe-list-heading">This Week Add-ons</p>
-              <Link className="subscribe-inline-link" to={`/my-subscriptions/${subscriptionId}/addons`}>
+              <Link
+                className="subscribe-inline-link"
+                to={`/my-subscriptions/${subscriptionId}/addons`}
+                state={flowState}
+              >
                 Edit add-ons
               </Link>
             </div>

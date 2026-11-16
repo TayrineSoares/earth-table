@@ -59,10 +59,16 @@ async function currentCycleFor(sub) {
   const settings = await getSettings();
   const now = new Date();
   const rows = data || [];
+  const open = [...rows]
+    .filter((row) => row && row.status === 'open' && row.delivery_date)
+    .sort((a, b) => String(a.delivery_date).localeCompare(String(b.delivery_date)))[0] || null;
   const display = pickUpcoming(rows, now);
-  const week = getEditWeek(now, settings || {}, display);
+  // Prefer an open week so pause/resume dates match My Subscriptions after meal review.
+  const week = getEditWeek(now, settings || {}, open || display);
   const charge = getChargeDeadline(now, settings || {}, week.delivery_date);
-  const cycle = rows.find((row) => row.delivery_date === week.delivery_date) || display;
+  const cycle = rows.find((row) => String(row.delivery_date) === String(week.delivery_date))
+    || open
+    || display;
   return { week, charge, cycle };
 }
 
