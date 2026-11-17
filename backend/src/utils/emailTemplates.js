@@ -1455,7 +1455,7 @@ My Subscriptions: ${manageHref}`;
     pause_first: {
       subject: `Your weekly plan is paused — first box still runs`,
       heading: `First box still goes out, ${name}`,
-      intro: `Your first box on ${sunday} cannot be paused or cancelled, so it still goes out. Later weeks are paused until you resume. You can still change add-ons on that first box until ${MEAL_LOCK_BY}.`,
+      intro: `Your first box on ${sunday} can't be cancelled — it still goes out. Later weeks are paused until you resume. You can still change add-ons on that first box until ${MEAL_LOCK_BY}.`,
     },
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
@@ -1474,9 +1474,9 @@ My Subscriptions: ${manageHref}`;
       intro: `This Sunday is already charged (or locked), so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     pause_nudge: {
-      subject: `Your weekly plan is still paused — resume for this Sunday?`,
+      subject: `Your weekly plan is still paused — ready when you are`,
       heading: `We saved your plan, ${name}`,
-      intro: `Your ${planWeek} is still paused. Resume in My Subscriptions by ${resumeBy} if you want a box this Sunday.`,
+      intro: `Your ${planWeek} is still paused. When you want another box, resume in My Subscriptions by ${resumeBy} for that Sunday.`,
     },
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,

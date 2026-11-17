@@ -349,6 +349,7 @@ async function pauseSubscription(userId, subscriptionId) {
       first_box_kept: true,
       week: firstWeek,
       charge: nextCharge,
+      message: `Your first box on ${firstWeek.delivery_label || firstYmd} can't be cancelled — it still goes out. Later weeks are paused until you resume.`,
     };
   }
 
@@ -416,7 +417,14 @@ async function pauseSubscription(userId, subscriptionId) {
     console.warn('[subscriptions] pause email failed:', err.message);
   }
 
-  return { ok: true, status: 'paused', pending: false, week, charge };
+  return {
+    ok: true,
+    status: 'paused',
+    pending: false,
+    week,
+    charge,
+    message: `${week.delivery_label || 'This Sunday'} will be skipped. Your meals and card stay ready so you can resume anytime.`,
+  };
 }
 
 async function assertResumeMealsReady(sub) {
@@ -819,14 +827,15 @@ async function sendPauseReminders(now = new Date()) {
   const { data: paused, error } = await supabase
     .from('subscriptions')
     .select(`
-      id, user_id, paused_at, created_at,
+      id, user_id, paused_at, created_at, pause_reason,
       subscription_plans!subscriptions_plan_id_fkey ( meal_count )
     `)
     .eq('status', 'paused');
   if (error) throw error;
 
   const nudgeWeeks = CADENCE.PAUSE_NUDGE_WEEKS || [1, 4];
-  const rows = paused || [];
+  // payment_failed uses its own recovery emails — don't nudge as a voluntary pause.
+  const rows = (paused || []).filter((row) => row.pause_reason !== 'payment_failed');
   let emailed = 0;
   let skipped = 0;
   const failures = [];
@@ -1143,4 +1152,5 @@ module.exports = {
   sendPauseReminders,
   sendDeadlineNotice,
   notifyResumeAfterPaymentRecovery,
+  assertResumeMealsReady,
 };

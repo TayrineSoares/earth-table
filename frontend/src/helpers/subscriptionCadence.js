@@ -31,7 +31,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} for that Sunday's box — a normal resume bills on the next Tuesday charge (you can pause again before then). After a declined payment, update your card or resume before meal lock and we charge then — we do not keep retrying on later Tuesdays on our own. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be cancelled — if you pause that week it still goes out. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} for that Sunday's box — a normal resume bills on the next Tuesday charge (you can pause again before then). After a declined payment, update your card or resume before meal lock and we charge then — we do not keep retrying on later Tuesdays on our own. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksPlanChange() {
@@ -108,11 +108,12 @@ export function everyWeekBy(cadenceLabel, fallback) {
 export function pausedBanner(lockLabel, { firstBoxLabel, nextBoxLabel } = {}) {
   const by = lockLabel || RESUME_BY
   if (firstBoxLabel) {
-    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Resume by ${by} to also get the following Sunday.`
+    return `This plan is paused. Your first box on ${firstBoxLabel} can't be cancelled — it still goes out. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Resume by ${MEAL_LOCK_BY} for any later Sunday you want.`
   }
   // nextBoxLabel only when that Sunday is already paid/locked — unpaid weeks are skipped.
+  // Standing weekly lock (not this shipping week's cutoff) is the deadline for a later Sunday.
   if (nextBoxLabel) {
-    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${by} for a later Sunday.`
+    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${MEAL_LOCK_BY} for the Sunday you want.`
   }
   return `This plan is paused. Resume by ${by} to get that Sunday's box.`
 }

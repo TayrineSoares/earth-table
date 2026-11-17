@@ -1071,19 +1071,32 @@ async function completeCardSetup(session) {
   try {
     const sub = await getOwnedSubscription(userId, subId);
     if (sub.pause_reason === 'payment_failed') {
-      const { retryFailedCharge } = require('./subscriptionCharge');
-      const retry = await retryFailedCharge({
+      const patched = {
         ...sub,
         stripe_payment_method_id: pmId,
         stripe_customer_id: customerId || sub.stripe_customer_id,
-      });
+      };
+      try {
+        const { assertResumeMealsReady } = require('./subscriptionManage');
+        await assertResumeMealsReady(patched);
+      } catch (mealErr) {
+        // Card is saved; leave paused so they fix meals then Resume.
+        return {
+          ok: true,
+          retry: {
+            ok: false,
+            reason: 'meals_need_update',
+            message: mealErr.message || 'Choose the right number of meals, then tap Resume.',
+          },
+        };
+      }
+      const { retryFailedCharge } = require('./subscriptionCharge');
+      const retry = await retryFailedCharge(patched);
       if (retry?.ok) {
         try {
           const { notifyResumeAfterPaymentRecovery } = require('./subscriptionManage');
           await notifyResumeAfterPaymentRecovery(userId, {
-            ...sub,
-            stripe_payment_method_id: pmId,
-            stripe_customer_id: customerId || sub.stripe_customer_id,
+            ...patched,
             status: 'active',
             pause_reason: null,
           });

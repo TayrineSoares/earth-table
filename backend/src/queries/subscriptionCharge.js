@@ -388,7 +388,12 @@ async function ensureCycle(sub, sunday, settings) {
   return withCycleItems(cycle);
 }
 
-async function chargePlanDelivery(sub, cycle, sunday) {
+/**
+ * @param {{ idempotencySuffix?: string }} [opts]
+ *   Tuesday job omits suffix (stable key). Resume / card-retry pass a suffix so a
+ *   prior declined PI is not replayed from Stripe's ~24h idempotency cache.
+ */
+async function chargePlanDelivery(sub, cycle, sunday, opts = {}) {
   // Re-read so a pause-skip that landed mid-job is not charged.
   const { data: live, error: liveErr } = await supabase
     .from('subscription_cycles')
@@ -424,6 +429,7 @@ async function chargePlanDelivery(sub, cycle, sunday) {
     throw new Error('no_card');
   }
   const stripe = getStripe();
+  const suffix = opts.idempotencySuffix ? `-${opts.idempotencySuffix}` : '';
   const pi = await stripe.paymentIntents.create({
     amount,
     currency: 'cad',
@@ -438,7 +444,7 @@ async function chargePlanDelivery(sub, cycle, sunday) {
       cycle_id: row.id,
     },
   }, {
-    idempotencyKey: `sub-plan-${row.id}-${sunday}-${sub.stripe_payment_method_id}`,
+    idempotencyKey: `sub-plan-${row.id}-${sunday}-${sub.stripe_payment_method_id}${suffix}`,
   });
   const patch = {
     plan_paid_cents: planCents,
@@ -456,6 +462,21 @@ async function chargePlanDelivery(sub, cycle, sunday) {
     .maybeSingle();
   if (error) throw error;
   if (!paidRow) {
+    // Sibling writer may have already attached this PI — do not refund a good charge.
+    const { data: current, error: reErr } = await supabase
+      .from('subscription_cycles')
+      .select('id, status, plan_paid_cents, stripe_payment_intent_id')
+      .eq('id', row.id)
+      .maybeSingle();
+    if (reErr) throw reErr;
+    if (
+      current
+      && Number(current.plan_paid_cents) > 0
+      && pi?.id
+      && String(current.stripe_payment_intent_id || '') === String(pi.id)
+    ) {
+      return { charged: true, skipped: false, amount, planCents: due, deliveryCents: fee };
+    }
     // Paused/skipped after Stripe charged — refund so skip wins the race.
     try {
       await stripe.refunds.create({
@@ -1295,12 +1316,29 @@ async function retryFailedCharge(sub) {
     onlySunday: dates.job_sunday,
   });
   if (!found) {
-    await unpauseAfterPayment(sub.id);
+    try {
+      await unpauseAfterPayment(sub.id);
+    } catch (err) {
+      console.warn('[subscriptions] unpause after no-charge resume failed:', sub.id, err.message);
+      return { ok: false, charged: false, reason: err.message || 'unpause_failed' };
+    }
     return { ok: true, charged: false, reason: 'no_open_unpaid' };
   }
   try {
-    const chargeResult = await chargePlanDelivery(sub, found.cycle, found.sunday);
-    await unpauseAfterPayment(sub.id);
+    // Suffix keyed off last decline/pause so a cached Tuesday decline is not
+    // replayed, while double-click resume still shares one Stripe attempt.
+    const attemptStamp = String(sub.last_decline_at || sub.paused_at || sub.card_updated_at || 'retry')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 24) || 'retry';
+    const chargeResult = await chargePlanDelivery(sub, found.cycle, found.sunday, {
+      idempotencySuffix: `r-${attemptStamp}`,
+    });
+    try {
+      await unpauseAfterPayment(sub.id);
+    } catch (err) {
+      // Charge already succeeded — do not surface as a failed charge to the customer.
+      console.warn('[subscriptions] unpause after successful charge failed:', sub.id, err.message);
+    }
     try {
       await sendChargeNotice(sub, found.cycle, found.sunday, dates, chargeResult);
     } catch (err) {

@@ -35,7 +35,7 @@ import {
   pausedBanner,
   pausingAfterCutoffBanner,
   paymentFailedBanner,
-  resumeByCharge,
+  resumeByLock,
 } from '../helpers/subscriptionCadence'
 import { clearEditCart, seedEditCartForPlanChange, writeEditCart } from '../helpers/subscriptionCart'
 import '../styles/Cart.css'
@@ -524,6 +524,10 @@ const MySubscriptions = ({ user }) => {
           if (retry?.charged) {
             title = 'You\'re back on'
             body = 'We charged this box to your new card. The plan is active again.'
+          } else if (retry && retry.ok === false && retry.reason === 'meals_need_update') {
+            title = 'Card saved — finish your meals'
+            body = retry.message
+              || 'Your new card is on file. Choose the right number of meals for this box, then tap Resume to charge and reactivate.'
           } else if (retry && retry.ok === false) {
             title = 'Card saved, payment still failed'
             body = retry.reason
@@ -759,20 +763,23 @@ const MySubscriptions = ({ user }) => {
       const result = await updateSubscriptionStatus(row.id, apiAction)
       await load()
       setChangingId(null)
-      if (result?.pending && result?.message) {
-        setDialog({
-          icon: 'mail',
-          title: action === 'cancel' ? 'Cancel starts next week' : 'Pause starts next week',
-          body: result.message,
-          primaryLabel: 'OK',
-        })
-      } else if (action === 'resume') {
+      if (action === 'resume') {
         setDialog({
           icon: 'mail',
           title: 'You\'re back on',
           body: result?.charged
             ? 'We charged this box to the card on file. The plan is active again.'
             : `The plan is active again. Next charge is ${CHARGE_DAY_TIME}.`,
+          primaryLabel: 'OK',
+        })
+      } else if (result?.message) {
+        const kept = Boolean(result.pending || result.first_box_kept)
+        setDialog({
+          icon: 'mail',
+          title: action === 'cancel'
+            ? (kept ? 'Cancel starts next week' : 'Plan cancelled')
+            : (kept ? 'Pause starts next week' : 'Plan paused'),
+          body: result.message,
           primaryLabel: 'OK',
         })
       } else {
@@ -848,9 +855,18 @@ const MySubscriptions = ({ user }) => {
     const firstSunday = row.first_delivery_label
       || sundayDatePart(row.week?.delivery_label)
       || 'this Sunday'
-    const sunday = sundayDatePart(row.week?.delivery_label)
+    // After lock, row.week is the following Sunday — name the committed shipping box instead.
+    const committedSunday = thisSundayCommitted
+      ? (
+        (boxCycle.delivery_date ? shortWeekdayDate(boxCycle.delivery_date) : '')
+        || (row.this_week_date ? shortWeekdayDate(row.this_week_date) : '')
+        || 'this Sunday'
+      )
+      : null
+    const sunday = committedSunday
+      || sundayDatePart(row.week?.delivery_label)
       || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
-    const resumeBy = resumeByCharge(row.week?.cutoff_label)
+    const resumeBy = resumeByLock(row.week?.cutoff_label)
     const keepSundayBody = `This Sunday, ${sunday}, is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
     const skipSundayBody = [
       `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime.`,
@@ -861,7 +877,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Pause after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay paused until you resume.`,
+            `Your first box on ${firstSunday} can't be cancelled — it still goes out. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks stay paused until you resume.`,
             resumeBy,
           ],
         }
@@ -878,7 +894,7 @@ const MySubscriptions = ({ user }) => {
         ? {
           title: 'Cancel after your first box?',
           body: [
-            `Your first box on ${firstSunday} still goes out — it cannot be paused or cancelled. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Cancel works like pause: later weeks stop, and your meals and card stay ready to resume.`,
+            `Your first box on ${firstSunday} can't be cancelled — it still goes out. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Cancel works like pause: later weeks stop, and your meals and card stay ready to resume.`,
             resumeBy,
           ],
         }
@@ -1567,16 +1583,19 @@ const MySubscriptions = ({ user }) => {
                             : 'Pause plan'}
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        className="my-sub-danger-link my-sub-danger-link--cancel"
-                        disabled={savingId === row.id}
-                        onClick={() => confirmStatus(row, 'cancel')}
-                      >
-                        {statusBusy?.id === row.id && statusBusy.action === 'cancel'
-                          ? 'Cancelling…'
-                          : 'Cancel plan'}
-                      </button>
+                      {/* Already paused (manual or payment_failed): Cancel/Pause are no-ops. */}
+                      {!isPaused ? (
+                        <button
+                          type="button"
+                          className="my-sub-danger-link my-sub-danger-link--cancel"
+                          disabled={savingId === row.id}
+                          onClick={() => confirmStatus(row, 'cancel')}
+                        >
+                          {statusBusy?.id === row.id && statusBusy.action === 'cancel'
+                            ? 'Cancelling…'
+                            : 'Cancel plan'}
+                        </button>
+                      ) : null}
                     </div>
 
                     <div className="my-sub-card-terms">

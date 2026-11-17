@@ -108,14 +108,15 @@ One row per Sunday box (`unique (subscription_id, delivery_date)`).
 - Amounts are **integer cents pre-tax**; Stripe charges **`× 1.13` HST**.
 - **Tuesday:** unpaid plan balance + delivery fee (if delivery). Idempotency: `sub-plan-{cycleId}-{sunday}-{pmId}`.
 - **Wednesday:** unpaid add-ons (promo-aware). Idempotency: `sub-addon-{cycleId}-{sunday}`. Fail → strip unpaid add-ons + `addons_dropped` email; plan meals still go.
-- **Signup (first box):** plan + delivery charged in Stripe Checkout; add-ons wait for Wednesday. First box **cannot** be paused/cancelled. Resume later is **not** a new first box.
+- **Signup (first box):** plan + delivery charged in Stripe Checkout; add-ons wait for Wednesday. First box **can't be cancelled** — pausing that week still keeps it shipping; later weeks stop. Resume later is **not** a new first box.
+- **Resume / card-retry charge:** idempotency key adds a decline/pause suffix so a cached Tuesday decline is not replayed. If two writers race after Stripe succeeds, a sibling that already stored the same PaymentIntent is **not** refunded.
 - **Delivery fee**
   - Unpaid week: fee stored on cycle → billed with Tuesday plan charge. Customer can switch back to pickup before Tuesday.
   - Paid week, pickup → delivery: charge delivery **now** (`idempotencyKey: sub-delivery-{cycleId}`).
   - Delivery → pickup: always clear `delivery_fee_cents`. If the fee was already charged, **no auto-refund** — copy tells them to email hello@ about a **delivery-fee refund only**.
 - **Plan size change:** unpaid → apply this Sunday; paid/first box → defer to next Sunday. No mid-week upgrade charge or downgrade refund.
 - **Discontinue:** no refunds (`refunded_cents: 0`); paid/locked Sunday still ships.
-- **Charge/pause race:** PI succeeds but cycle already skipped → Stripe refund (`subscription_charge_race_refund`).
+- **Charge/pause race:** PI succeeds but cycle already skipped → Stripe refund (`subscription_charge_race_refund`). If another writer already marked the cycle paid with the same PI, do **not** refund.
 
 ---
 
@@ -292,7 +293,7 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 
 ## Sandbox / regression checklist
 
-1. Signup → confirm first Sunday, card on file, welcome mail; first box not pausable.
+1. Signup → confirm first Sunday, card on file, welcome mail; first box can't be cancelled (still ships if you pause that week).
 2. Unpaid week: pause → skip; manual resume before Tue charge → activate only (Tue job bills); payment_failed resume/card-update before Wed lock → charge now.
 3. After Tuesday charge: pause → this Sunday still ships; following week paused.
 4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
