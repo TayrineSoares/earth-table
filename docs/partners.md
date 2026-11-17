@@ -128,7 +128,7 @@ Same validate on `SubscribeCart.jsx`. Signup stores first-week promo fields; ear
 | PATCH | `/api/partners/by-user/:auth_user_id/payout-preference` | Bearer; self or admin; `{ payout_type }` |
 | GET | `/api/partners/invoices/:invoiceId/pdf` | Bearer; invoice owner or admin; blob download from UI |
 | PATCH | `/api/partners/invoices/:invoiceId` | Admin Bearer; `{ paid: boolean }` |
-| POST | `/api/promo/validate` | Shared; referral branch first (identity bind still open) |
+| POST | `/api/promo/validate` | Shared; referral branch first; optional Bearer binds user (rejects forged body `userId`) |
 
 Cron: `GET|POST /api/cron/partner-monthly` (`CRON_SECRET`; optional `period=YYYY-MM`). Schedule: `0 8 1 * *` UTC in `vercel.json`.
 

@@ -231,9 +231,9 @@ const fetchOrderBySessionId = async (sessionId) => {
   }
 };
 
-const fetchOrdersByAuthId = async (authUserId) => {
+const fetchMyOrders = async () => {
   try {
-    const res = await authFetch(`/api/orders/user/${authUserId}`);
+    const res = await authFetch('/api/orders/mine');
 
     if (!res.ok) {
       throw new Error(`Failed to fetch orders: ${res.status}`);
@@ -242,10 +242,13 @@ const fetchOrdersByAuthId = async (authUserId) => {
     const data = await res.json();
     return Array.isArray(data) ? data.map(titleCaseOrder) : [];
   } catch (err) {
-    console.error('Error in fetchOrdersByAuthId:', err);
+    console.error('Error in fetchMyOrders:', err);
     return [];
   }
 };
+
+/** @deprecated Prefer fetchMyOrders — identity comes from Bearer. */
+const fetchOrdersByAuthId = async (_authUserId) => fetchMyOrders();
 
 const fetchAllOrders = async () => {
   try {
@@ -293,6 +296,7 @@ const setOrderPickedUp = async (orderId, picked) => {
 
 export { 
   fetchOrderBySessionId,
+  fetchMyOrders,
   fetchOrdersByAuthId, 
   fetchAllOrders, 
   fetchOrderById,

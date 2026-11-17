@@ -79,7 +79,7 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 
 - Promote/demote via **Users** tab only (`UserAdmin.jsx`); API requires admin Bearer and strips `is_admin` for non-admins.
 - Catalog writes, partner admin, orders list/picked-up, and subscription admin/settings use `requireAdmin` (Bearer + `users.is_admin`). Customer subscription manage/checkout use Bearer → `req.user.id` (see [subscriptions.md](./subscriptions.md)).
-- Client helpers: `frontend/src/helpers/authFetch.js` (Bearer + 401 refresh-once).
+- Client helpers: `frontend/src/helpers/authFetch.js` (`authFetch` Bearer + 401 refresh-once; `optionalAuthFetch` for guest-capable checkout/promo).
 
 ---
 
@@ -104,7 +104,9 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 2. Duplicate email often detected via empty `identities`.
 3. `email_prefs` editable via API/unsubscribe; Profile form does not expose reminder toggles.
 4. Users GET/PATCH require Bearer; self-or-admin on `:auth_user_id`. Prefer `/users/me` for profile.
-5. Cart keys merge guest → user on login (`cart_guest` → `cart_{id}`).
+5. Cart keys merge guest → user on login (`cart_guest` → `cart_{id}`). Guest à la carte cart is **localStorage only**; `/cart` API requires Bearer.
+6. Orders: default-deny; `GET /orders/session/:id` public; prefer `GET /orders/mine` over `/orders/user/:id`.
+7. Promo validate + create-checkout: `optionalAuth` — guests OK without `userId`; signed-in identity from Bearer; body `userId` mismatch or guest+`userId` → **400**.
 
 ---
 

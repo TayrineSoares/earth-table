@@ -75,8 +75,8 @@ Same validate on `SubscribeCart.jsx`. Signup: plan discounted in Checkout; `firs
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/promo/validate` | Body `{ code, subtotalCents, userId? }` |
-| POST | `/api/create-checkout-session` | Enforces same rules; sets `promo_id` |
+| POST | `/api/promo/validate` | Body `{ code, subtotalCents }`; optional Bearer binds identity (do not send forged `userId`) |
+| POST | `/api/create-checkout-session` | Same identity bind; enforces promo rules; sets `promo_id` |
 | — | Supabase from Admin | CRUD on `promo_codes` (no dedicated promo admin REST) |
 | POST | `/api/subscriptions/checkout` | `promoCode` via `subscriptionCheckout.js` |
 

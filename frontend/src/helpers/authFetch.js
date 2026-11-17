@@ -57,4 +57,15 @@ async function authFetch(url, options = {}, { retried = false } = {}) {
   return authFetch(url, options, { retried: true });
 }
 
-export { authFetch, authHeaders, sessionAccessToken };
+/**
+ * Like fetch, but attaches Bearer when a session exists.
+ * Guests stay unauthenticated (no redirect). Used for checkout/promo.
+ */
+async function optionalAuthFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = await sessionAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(url, { ...options, headers });
+}
+
+export { authFetch, optionalAuthFetch, authHeaders, sessionAccessToken };

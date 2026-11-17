@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   DELIVERY_WINDOW,
-  fetchOrdersByAuthId,
+  fetchMyOrders,
   formatMoney,
   formatOrderPlacedDate,
   formatTimeWindow,
@@ -300,7 +300,8 @@ const OrderHistory = ({ user, addToCart }) => {
       }
 
       try {
-        const data = await fetchOrdersByAuthId(sessionUserId);
+        // Identity from Bearer via /orders/mine (sessionUserId only gates signed-in UI).
+        const data = await fetchMyOrders();
         if (!cancelled) {
           setSignedIn(true);
           setOrders(Array.isArray(data) ? data : []);

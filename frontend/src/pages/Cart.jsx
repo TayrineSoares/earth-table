@@ -11,6 +11,7 @@ import "../styles/Cart.css"
 import "../styles/SubscribeFlow.css"
 import { Link } from "react-router-dom";
 import { fetchPartnerWalletByUser } from '../helpers/partnerHelpers';
+import { optionalAuthFetch } from '../helpers/authFetch';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -252,12 +253,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     }
     setPromoLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
-      const res = await fetch(`${API_BASE}/promo/validate`, {
+      const res = await optionalAuthFetch(`${API_BASE}/promo/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotalCents, userId }),
+        body: JSON.stringify({ code, subtotalCents }),
       });
       const data = await res.json();
       setPromoResult(data);
@@ -287,7 +286,6 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) console.error("Supabase session error:", error.message);
 
-    const userId = session?.user?.id || null;
     const email = session?.user?.email || null;
 
     const code = (promoInput || '').trim();
@@ -295,10 +293,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
 
     if (code) {
       try {
-        const res = await fetch(`${API_BASE}/promo/validate`, {
+        const res = await optionalAuthFetch(`${API_BASE}/promo/validate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, subtotalCents, userId }),
+          body: JSON.stringify({ code, subtotalCents }),
         });
         const data = await res.json();
         setPromoResult(data);
@@ -325,11 +323,10 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       }
     }
 
-    // Send nulls for inactive fields
+    // Identity comes from Bearer when signed in — do not send body userId.
     const payload = {
       cartItems: cart,
       email,
-      userId,
       pickup_date: fulfillment === "pickup" ? pickupDate : null,
       pickup_time_slot: fulfillment === "pickup" ? pickupTime : null,
       delivery: fulfillment === "delivery",
@@ -342,7 +339,7 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     };
 
 
-    const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
+    const response = await optionalAuthFetch(`${API_BASE}/api/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

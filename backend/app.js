@@ -42,6 +42,7 @@ const {
 } = require('./src/queries/partner');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
 const { ensureStripePromotionCode } = require('./src/stripePromo');
+const { optionalAuth, bindRequestUserId } = require('./src/middleware/requireAuth');
 
 require('dotenv').config();
 
@@ -412,13 +413,6 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-app.get('/cart', (req, res) => {
-  res.json({
-    message: 'Cart route works!',
-    items: []
-  });
-});
-
 const STRIPE_MIN_CENTS = 50;
 
 function lineItemsTotalCents(items) {
@@ -451,10 +445,10 @@ function applyStoreCreditToItems(items, creditCents) {
   return Math.max(0, Math.floor(Number(creditCents) || 0) - left);
 }
 
-// Create Checkout Session
+// Create Checkout Session — guests OK; signed-in identity from Bearer (not body userId).
 const createCheckoutSession = async (req, res) => {
   const {
-    cartItems, email, userId, pickup_date, pickup_time_slot, special_note,
+    cartItems, email, pickup_date, pickup_time_slot, special_note,
     delivery, delivery_postal_code, delivery_date, promoCode,
   } = req.body;
 
@@ -464,6 +458,12 @@ const createCheckoutSession = async (req, res) => {
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
   try {
+    const bound = bindRequestUserId(req);
+    if (bound.error) {
+      return res.status(bound.status).json({ error: bound.error });
+    }
+    const userId = bound.userId;
+
     // --- Promo validation FIRST → compute discountFactor ---
     const normalize = s => (s || '').trim();
     let discountFactor = 1; // default: no discount
@@ -669,8 +669,8 @@ const createCheckoutSession = async (req, res) => {
 };
 
 // register BOTH paths for session creation
-app.post('/create-checkout-session', createCheckoutSession);
-app.post('/api/create-checkout-session', createCheckoutSession);
+app.post('/create-checkout-session', optionalAuth, createCheckoutSession);
+app.post('/api/create-checkout-session', optionalAuth, createCheckoutSession);
 
 // ROUTES
 app.use('/categories', categoriesRouter);

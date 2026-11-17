@@ -22,6 +22,7 @@ import {
   addonsBilledAt,
   subscriptionDetailsItems,
 } from '../helpers/subscriptionCadence'
+import { optionalAuthFetch } from '../helpers/authFetch'
 
 const HST_RATE = 0.13
 
@@ -261,13 +262,12 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     }
     setPromoLoading(true)
     try {
-      const res = await fetch('/api/promo/validate', {
+      const res = await optionalAuthFetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
           subtotalCents: planCents,
-          userId: user?.id || null,
         }),
       })
       const data = await res.json()
