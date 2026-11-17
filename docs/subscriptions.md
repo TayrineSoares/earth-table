@@ -124,16 +124,16 @@ One row per Sunday box (`unique (subscription_id, delivery_date)`).
 ### 1. Signup
 1. Marketing: `SubscribeAndSave.jsx`
 2. Meals / add-ons / cart: `SubscribeMeals.jsx`, `SubscribeAddons.jsx`, `SubscribeCart.jsx` (+ `subscriptionCart.js`)
-3. `POST /api/subscriptions/checkout` → `createSubscriptionCheckout`
+3. `POST /api/subscriptions/checkout` (Bearer) → `createSubscriptionCheckout` (user from token)
 4. Stripe Checkout (`mode: payment`, save card for later)
-5. Webhook `checkout.session.completed` `kind: subscription` in `backend/server.js` → `completeSubscriptionSignup` (no kitchen order yet)
+5. Webhook `checkout.session.completed` `kind: subscription` in `backend/app.js` → `completeSubscriptionSignup` (no kitchen order yet)
 6. Confirm: `SubscribeConfirmation.jsx` polls `GET /subscriptions/signup/:sessionId`
 
 Second active/paused plan: UI **warns** (does not hard-block).
 
 ### 2. My Subscriptions
 - Page: `MySubscriptions.jsx`
-- Load: `GET /subscriptions/mine/:userId` → `listMine`
+- Load: `GET /subscriptions/mine` (Bearer) → `listMine(req.user.id)`
 - Nested edit routes: `…/:id/meals|addons|cart` → `SubscribeEditMeals` / `SubscribeEditAddons` / `SubscribeEditCart`
 
 ### 3. Edit meals / add-ons
@@ -186,14 +186,14 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 | GET | `/dates` | Public signup cadence |
 | GET | `/settings` | Admin Bearer; includes `test_charge_at` / `test_lock_at` |
 | PATCH | `/settings` | Admin Bearer; test clocks |
-| GET | `/mine/:userId` | Manage payload |
+| GET | `/mine` | Bearer; manage payload for signed-in user |
 | GET | `/admin` | Admin Bearer; kitchen/subscriber board data |
 | POST | `/admin/run-charge`, `/admin/run-lock` | **`requireAdminOrCron`** |
-| POST | `/checkout` | Signup |
-| GET | `/signup/:sessionId` | Confirm poll |
-| POST | `/:id/card-setup` | Body `userId` + ownership |
-| GET | `/card-setup/:sessionId` | |
-| PATCH | `/:id/items`, `/:id/fulfillment`, `/:id/status`, `/:id/plan` | Body `userId` + `getOwnedSubscription` |
+| POST | `/checkout` | Bearer; signup (`userId` from token; body mismatch → 400) |
+| GET | `/signup/:sessionId` | Public confirm poll |
+| POST | `/:id/card-setup` | Bearer + ownership |
+| GET | `/card-setup/:sessionId` | Public confirm poll |
+| PATCH | `/:id/items`, `/:id/fulfillment`, `/:id/status`, `/:id/plan` | Bearer + `getOwnedSubscription`; body `userId` mismatch → 400 |
 | POST | `/plans` | Admin Bearer; create |
 | PATCH | `/plans/:id` | Admin Bearer; price gated by `ALLOW_PLAN_PRICE_CHANGE` |
 | POST | `/plans/:id/discontinue` | Admin Bearer; gated by `ALLOW_PLAN_DISCONTINUE` |
@@ -206,7 +206,7 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 - `/subscription-deadline-notice` → `sendDeadlineNotice` (one-shot)
 
 ### Auth note
-Admin list/settings/plan mutations require admin Bearer (PR1). Customer manage/checkout still trust client-supplied `userId` plus row ownership — session bind is the next auth PR.
+Subscription router is default-deny with a public allowlist (plans, dates, signup/card-setup session GETs). Customer manage/checkout use Bearer → `req.user.id`; optional body `userId` must match or returns **400**. Admin list/settings/plan mutations require admin Bearer.
 
 ---
 

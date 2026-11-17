@@ -29,8 +29,8 @@ const {
   discontinuePlan,
 } = require('../queries/subscriptionManage');
 const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
-const { requireAdminOrCron } = require('../middleware/requireAdminOrCron');
-const { requireAdmin } = require('../middleware/requireAuth');
+const { requireAdminOrCron, cronAuthorized } = require('../middleware/requireAdminOrCron');
+const { requireAdmin, requireAuth, unlessPublic } = require('../middleware/requireAuth');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -39,6 +39,40 @@ function handleError(res, err, label) {
   console.error(label, err);
   return res.status(500).json({ error: err.message || 'Server error' });
 }
+
+/** Body userId if present must match the Bearer user; always return req.user.id. */
+function resolveCallerUserId(req) {
+  const fromBody = req.body?.userId;
+  if (
+    fromBody != null
+    && String(fromBody).trim() !== ''
+    && String(fromBody) !== String(req.user.id)
+  ) {
+    throw new SubscriptionError(400, 'userId does not match the signed-in user.');
+  }
+  return req.user.id;
+}
+
+const PUBLIC = [
+  { method: 'GET', pattern: /^\/plans(\/|$)/ },
+  { method: 'GET', path: '/dates' },
+  { method: 'GET', pattern: /^\/signup\// },
+  { method: 'GET', pattern: /^\/card-setup\// },
+];
+
+function requireAuthUnlessCronJob(req, res, next) {
+  if (
+    (req.path === '/admin/run-charge' || req.path === '/admin/run-lock')
+    && cronAuthorized(req)
+  ) {
+    next();
+    return;
+  }
+  return requireAuth(req, res, next);
+}
+
+// Default-deny: auth required except public catalog/capability URLs (and cron charge/lock).
+router.use(unlessPublic(PUBLIC, requireAuthUnlessCronJob));
 
 // GET /subscriptions/plans  (all, for admin)
 // GET /subscriptions/plans?active=1  (marketing / signup)
@@ -64,13 +98,14 @@ router.get('/plans/:id', async (req, res) => {
   }
 });
 
-router.get('/mine/:userId', async (req, res) => {
+// Register /mine before any /:id routes.
+router.get('/mine', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const rows = await listMine(req.params.userId);
+    const rows = await listMine(req.user.id);
     res.json(rows);
   } catch (err) {
-    handleError(res, err, '[GET /subscriptions/mine/:userId]');
+    handleError(res, err, '[GET /subscriptions/mine]');
   }
 });
 
@@ -112,7 +147,8 @@ router.get('/signup/:sessionId', async (req, res) => {
 
 router.post('/checkout', async (req, res) => {
   try {
-    const result = await createSubscriptionCheckout(req.body || {});
+    const userId = resolveCallerUserId(req);
+    const result = await createSubscriptionCheckout({ ...(req.body || {}), userId });
     res.json(result);
   } catch (err) {
     handleError(res, err, '[POST /subscriptions/checkout]');
@@ -121,7 +157,8 @@ router.post('/checkout', async (req, res) => {
 
 router.post('/:id/card-setup', async (req, res) => {
   try {
-    const result = await createCardSetupCheckout(req.body?.userId, req.params.id);
+    const userId = resolveCallerUserId(req);
+    const result = await createCardSetupCheckout(userId, req.params.id);
     res.json(result);
   } catch (err) {
     handleError(res, err, '[POST /subscriptions/:id/card-setup]');
@@ -139,8 +176,9 @@ router.get('/card-setup/:sessionId', async (req, res) => {
 
 router.patch('/:id/items', async (req, res) => {
   try {
+    const userId = resolveCallerUserId(req);
     const result = await replaceOpenCyclePlanAndAddons(
-      req.body?.userId,
+      userId,
       req.params.id,
       req.body?.meals,
       req.body?.addons
@@ -153,8 +191,9 @@ router.patch('/:id/items', async (req, res) => {
 
 router.patch('/:id/fulfillment', async (req, res) => {
   try {
+    const userId = resolveCallerUserId(req);
     const result = await updateOpenCycleFulfillment(
-      req.body?.userId,
+      userId,
       req.params.id,
       req.body || {}
     );
@@ -167,7 +206,7 @@ router.patch('/:id/fulfillment', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   try {
     const action = String(req.body?.action || '').trim();
-    const userId = req.body?.userId;
+    const userId = resolveCallerUserId(req);
     const id = req.params.id;
     let result;
     if (action === 'pause') result = await pauseSubscription(userId, id);
@@ -184,8 +223,9 @@ router.patch('/:id/status', async (req, res) => {
 
 router.patch('/:id/plan', async (req, res) => {
   try {
+    const userId = resolveCallerUserId(req);
     const result = await changeSubscriptionPlan(
-      req.body?.userId,
+      userId,
       req.params.id,
       req.body?.planId,
       { meals: req.body?.meals, addons: req.body?.addons }

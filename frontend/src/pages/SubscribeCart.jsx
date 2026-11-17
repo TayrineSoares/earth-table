@@ -127,7 +127,7 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
       return
     }
     let cancelled = false
-    fetchMySubscriptions(user.id)
+    fetchMySubscriptions()
       .then((rows) => {
         if (!cancelled) setHasExistingSub((rows || []).length > 0)
       })
@@ -330,7 +330,6 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
     setIsPaying(true)
     try {
       const data = await startSubscriptionCheckout({
-        userId: user.id,
         email: user.email,
         planId: subCart.planId,
         meals: subCart.meals.map((item) => ({ id: item.id, quantity: item.quantity })),

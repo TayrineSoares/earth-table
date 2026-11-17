@@ -369,7 +369,7 @@ const MySubscriptions = ({ user }) => {
 
   const load = async () => {
     if (!userId) return
-    const data = await fetchMySubscriptions(userId)
+    const data = await fetchMySubscriptions()
     applyMine(data)
   }
 
@@ -383,7 +383,7 @@ const MySubscriptions = ({ user }) => {
     const hasRows = cacheFor(userId).rows.length > 0
     if (!hasRows) setIsLoading(true)
     Promise.all([
-      fetchMySubscriptions(userId),
+      fetchMySubscriptions(),
       fetchSubscriptionPlans({ activeOnly: true }).catch(() => mineCache.plans || []),
     ])
       .then(([data, nextPlans]) => {
@@ -452,7 +452,7 @@ const MySubscriptions = ({ user }) => {
             primaryLabel: 'Resuming…',
             busy: true,
           })
-          const result = await updateSubscriptionStatus(userId, resumeId, 'resume')
+          const result = await updateSubscriptionStatus(resumeId, 'resume')
           await load()
           setDialog({
             icon: 'mail',
@@ -681,7 +681,7 @@ const MySubscriptions = ({ user }) => {
     }
     setSavingId(row.id)
     try {
-      await updateSubscriptionFulfillment(user.id, row.id, {
+      await updateSubscriptionFulfillment(row.id, {
         notes_only: true,
         special_note: specialNote,
       })
@@ -720,7 +720,7 @@ const MySubscriptions = ({ user }) => {
     setSavingId(row.id)
     setDialog(null)
     try {
-      await updateSubscriptionFulfillment(user.id, row.id, {
+      await updateSubscriptionFulfillment(row.id, {
         delivery: fulfillment === 'delivery',
         delivery_postal_code: postalCode,
         pickup_time_slot: pickupTime,
@@ -756,7 +756,7 @@ const MySubscriptions = ({ user }) => {
       primaryLabel: busyLabel,
     }))
     try {
-      const result = await updateSubscriptionStatus(user.id, row.id, apiAction)
+      const result = await updateSubscriptionStatus(row.id, apiAction)
       await load()
       setChangingId(null)
       if (result?.pending && result?.message) {
@@ -983,7 +983,7 @@ const MySubscriptions = ({ user }) => {
     if (savingId) return
     setSavingId(row.id)
     try {
-      const result = await startCardSetup(user.id, row.id)
+      const result = await startCardSetup(row.id)
       if (result?.url) {
         window.location.assign(result.url)
         return

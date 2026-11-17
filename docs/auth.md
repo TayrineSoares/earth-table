@@ -78,7 +78,7 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 ## Admin
 
 - Promote/demote via **Users** tab only (`UserAdmin.jsx`); API requires admin Bearer and strips `is_admin` for non-admins.
-- Catalog writes, partner admin, orders list/picked-up, and subscription admin/settings use `requireAdmin` (Bearer + `users.is_admin`). Customer subscription manage still trusts client `userId` until the next auth PR.
+- Catalog writes, partner admin, orders list/picked-up, and subscription admin/settings use `requireAdmin` (Bearer + `users.is_admin`). Customer subscription manage/checkout use Bearer → `req.user.id` (see [subscriptions.md](./subscriptions.md)).
 - Client helpers: `frontend/src/helpers/authFetch.js` (Bearer + 401 refresh-once).
 
 ---

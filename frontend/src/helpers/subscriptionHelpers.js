@@ -91,8 +91,8 @@ const fetchSubscriptionPlan = async (planId) => {
   return parseJson(res);
 };
 
-const fetchMySubscriptions = async (userId) => {
-  const res = await fetch(`/api/subscriptions/mine/${userId}`, {
+const fetchMySubscriptions = async () => {
+  const res = await authFetch('/api/subscriptions/mine', {
     cache: 'no-store',
     headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
   });
@@ -135,10 +135,11 @@ const fetchSubscriptionDates = async () => {
 };
 
 const startSubscriptionCheckout = async (body) => {
-  const res = await fetch('/api/subscriptions/checkout', {
+  const { userId: _ignored, ...rest } = body || {};
+  const res = await authFetch('/api/subscriptions/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(rest),
   });
   return parseJson(res);
 };
@@ -148,47 +149,47 @@ const fetchSubscriptionSignup = async (sessionId) => {
   return parseJson(res);
 };
 
-const updateSubscriptionFulfillment = async (userId, subscriptionId, body) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/fulfillment`, {
+const updateSubscriptionFulfillment = async (subscriptionId, body) => {
+  const res = await authFetch(`/api/subscriptions/${subscriptionId}/fulfillment`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, ...body }),
+    body: JSON.stringify(body || {}),
   });
   return parseJson(res);
 };
 
-const updateSubscriptionItems = async (userId, subscriptionId, meals, addons) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/items`, {
+const updateSubscriptionItems = async (subscriptionId, meals, addons) => {
+  const res = await authFetch(`/api/subscriptions/${subscriptionId}/items`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, meals, addons }),
+    body: JSON.stringify({ meals, addons }),
   });
   return parseJson(res);
 };
 
-const updateSubscriptionStatus = async (userId, subscriptionId, action) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/status`, {
+const updateSubscriptionStatus = async (subscriptionId, action) => {
+  const res = await authFetch(`/api/subscriptions/${subscriptionId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, action }),
+    body: JSON.stringify({ action }),
   });
   return parseJson(res);
 };
 
-const changeSubscriptionPlan = async (userId, subscriptionId, planId, { meals, addons } = {}) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/plan`, {
+const changeSubscriptionPlan = async (subscriptionId, planId, { meals, addons } = {}) => {
+  const res = await authFetch(`/api/subscriptions/${subscriptionId}/plan`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, planId, meals, addons }),
+    body: JSON.stringify({ planId, meals, addons }),
   });
   return parseJson(res);
 };
 
-const startCardSetup = async (userId, subscriptionId) => {
-  const res = await fetch(`/api/subscriptions/${subscriptionId}/card-setup`, {
+const startCardSetup = async (subscriptionId) => {
+  const res = await authFetch(`/api/subscriptions/${subscriptionId}/card-setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({}),
   });
   return parseJson(res);
 };

@@ -51,7 +51,7 @@ const SubscribeEditAddons = ({ user }) => {
     let cancelled = false
 
     Promise.all([
-      fetchMySubscriptions(userId),
+      fetchMySubscriptions(),
       fetch('/api/products').then((res) => {
         if (!res.ok) throw new Error('Could not load products')
         return res.json()

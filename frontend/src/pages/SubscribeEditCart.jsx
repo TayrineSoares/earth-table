@@ -55,7 +55,7 @@ const SubscribeEditCart = ({ user }) => {
     setEditCart({ ...stored, resumeAfter: resumeFlow })
 
     let cancelled = false
-    fetchMySubscriptions(user.id)
+    fetchMySubscriptions()
       .then((subs) => {
         if (cancelled) return
         const found = (subs || []).find((item) => item.id === subscriptionId)
@@ -129,9 +129,9 @@ const SubscribeEditCart = ({ user }) => {
     const resumeFlow = Boolean(shouldResume || editCart.resumeAfter || location.state?.resumeAfter)
     try {
       if (changingPlan) {
-        await changeSubscriptionPlan(user.id, subscriptionId, editCart.planChangeId, { meals, addons })
+        await changeSubscriptionPlan(subscriptionId, editCart.planChangeId, { meals, addons })
       } else {
-        await updateSubscriptionItems(user.id, subscriptionId, meals, addons)
+        await updateSubscriptionItems(subscriptionId, meals, addons)
       }
       clearEditCart(user.id, subscriptionId)
       navigate('/my-subscriptions', {
