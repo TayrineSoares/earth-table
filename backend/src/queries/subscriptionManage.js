@@ -465,7 +465,7 @@ async function resumeSubscription(userId, subscriptionId) {
     );
   }
 
-  const { week, charge } = await currentCycleFor(sub);
+  const { week, charge, cycle } = await currentCycleFor(sub);
 
   if (sub.status === 'active' && sub.pending_status) {
     // Plan-discontinue sets pending cancel — do not let "Keep this Sunday" undo it.
@@ -501,8 +501,15 @@ async function resumeSubscription(userId, subscriptionId) {
   // payment_failed: charge this cook week now (before Wed lock), same as card update.
   // Manual pause before Tuesday: activate only — Tuesday job charges (so they can
   // pause again). After Tuesday charge time, charge now if that Sunday is still unpaid.
+  // If this cook week is already paid/locked (pause-after-charge), never charge again.
   const beforeTuesdayCharge = charge?.before_wednesday !== false;
-  const shouldChargeNow = sub.pause_reason === 'payment_failed' || !beforeTuesdayCharge;
+  const cookWeekCommitted = Boolean(
+    cycle
+    && (cycle.status === 'locked' || Number(cycle.plan_paid_cents) > 0)
+  );
+  const shouldChargeNow = !cookWeekCommitted && (
+    sub.pause_reason === 'payment_failed' || !beforeTuesdayCharge
+  );
 
   if (shouldChargeNow) {
     try {

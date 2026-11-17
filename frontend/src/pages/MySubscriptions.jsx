@@ -817,24 +817,49 @@ const MySubscriptions = ({ user }) => {
     if (action === 'resume' && !row.pending_status) {
       const mealCount = Number(row.subscription_plans?.meal_count) || 0
       const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
+      const keptCycle = row.next_box_cycle || row.this_week_cycle || null
+      // Pause-after-charge/lock: this Sunday already ships — don't say we'll charge it again.
+      const keptCommitted = Boolean(
+        keptCycle
+        && (keptCycle.status === 'locked' || Number(keptCycle.plan_paid_cents) > 0)
+      )
+      const keptLabel = keptCommitted
+        ? (
+          (keptCycle.delivery_date ? shortWeekdayDate(keptCycle.delivery_date) : '')
+          || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : '')
+          || 'this Sunday'
+        )
+        : null
       const sunday = sundayDatePart(row.week?.delivery_label)
         || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
-      const when = row.week?.cutoff_passed
-        ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
-        : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+      const when = keptCommitted
+        ? `This Sunday, ${keptLabel}, is already charged (or locked), so that box still goes out. Resume turns the plan back on for later weeks.`
+        : row.week?.cutoff_passed
+          ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+          : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
       const beforeTuesdayCharge = row.charge?.before_wednesday !== false
-      const chargeNow = row.pause_reason === 'payment_failed' || !beforeTuesdayCharge
+      const chargeNow = !keptCommitted && (
+        row.pause_reason === 'payment_failed' || !beforeTuesdayCharge
+      )
       setDialog({
         icon: 'mail',
         title: 'Review your meals first',
         body: [
           when,
-          mealCount
-            ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
-            : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`,
+          keptCommitted
+            ? (
+              mealCount
+                ? `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
+                : `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
+            )
+            : (
+              mealCount
+                ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
+                : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`
+            ),
           chargeNow
             ? 'After meals are saved we charge the unpaid box to the card on file.'
-            : `After meals are saved the plan turns back on. Next charge is ${CHARGE_DAY_TIME} — you can pause again before then if you change your mind.`,
+            : `After meals are saved the plan turns back on. Next charge is ${CHARGE_DAY_TIME} for a following Sunday — you can pause again before then if you change your mind.`,
         ].filter(Boolean),
         primaryLabel: 'Review meals',
         secondaryLabel: 'Not now',
