@@ -446,33 +446,6 @@ async function resumeSubscription(userId, subscriptionId) {
 
   const { week, charge } = await currentCycleFor(sub);
 
-  if (sub.status === 'paused' && sub.pause_reason === 'payment_failed') {
-    await assertResumeMealsReady(sub);
-    try {
-      const { retryFailedCharge } = require('./subscriptionCharge');
-      const retried = await retryFailedCharge(sub);
-      if (!retried?.ok) {
-        throw new SubscriptionError(402, `We still could not charge this week. Update your card before ${week.cutoff_label || 'the meal lock'} or email hello@earthtableco.ca.`);
-      }
-      try {
-        await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
-      } catch (err) {
-        console.warn('[subscriptions] payment-failed resume email failed:', err.message);
-      }
-      return {
-        ok: true,
-        status: 'active',
-        pending: false,
-        week,
-        charge,
-        charged: !!retried.charged,
-      };
-    } catch (err) {
-      if (err instanceof SubscriptionError) throw err;
-      throw new SubscriptionError(402, 'We still could not charge this week. Try another card or email hello@earthtableco.ca.');
-    }
-  }
-
   if (sub.status === 'active' && sub.pending_status) {
     const { error } = await supabase
       .from('subscriptions')
@@ -491,26 +464,38 @@ async function resumeSubscription(userId, subscriptionId) {
     return { ok: true, status: sub.status, pending: false };
   }
 
+  // Manual pause + payment_failed: reopen meals if needed, then charge this
+  // cook week's unpaid open box before Wednesday lock (same as card-update retry).
   await assertResumeMealsReady(sub);
-
-  const { error } = await supabase
-    .from('subscriptions')
-    .update({
-      status: 'active',
-      pause_reason: null,
-      resumed_at: new Date().toISOString(),
-      pending_status: null,
-    })
-    .eq('id', sub.id);
-  if (error) throw error;
-
   try {
-    await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+    const { retryFailedCharge } = require('./subscriptionCharge');
+    const retried = await retryFailedCharge(sub);
+    if (!retried?.ok) {
+      throw new SubscriptionError(
+        402,
+        `We still could not charge this week. Update your card before ${week.cutoff_label || 'the meal lock'} or email hello@earthtableco.ca.`
+      );
+    }
+    try {
+      await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+    } catch (err) {
+      console.warn('[subscriptions] resume email failed:', err.message);
+    }
+    return {
+      ok: true,
+      status: 'active',
+      pending: false,
+      week,
+      charge,
+      charged: !!retried.charged,
+    };
   } catch (err) {
-    console.warn('[subscriptions] resume email failed:', err.message);
+    if (err instanceof SubscriptionError) throw err;
+    throw new SubscriptionError(
+      402,
+      'We still could not charge this week. Try another card or email hello@earthtableco.ca.'
+    );
   }
-
-  return { ok: true, status: 'active', pending: false, week, charge };
 }
 
 async function cancelSubscription(userId, subscriptionId) {

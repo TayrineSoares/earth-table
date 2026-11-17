@@ -1263,8 +1263,11 @@ async function unpauseAfterPayment(subId) {
   if (error) throw error;
 }
 
-/** Soonest open unpaid cycle whose kitchen lock has not passed. */
-async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Date()) {
+/**
+ * Open unpaid cycle whose kitchen lock has not passed.
+ * When onlySunday is set (cook week), never pull next Tuesday's week forward.
+ */
+async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Date(), { onlySunday } = {}) {
   const { data, error } = await supabase
     .from('subscription_cycles')
     .select('*')
@@ -1273,6 +1276,7 @@ async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Dat
     .order('delivery_date', { ascending: true });
   if (error) throw error;
   for (const row of data || []) {
+    if (onlySunday != null && String(row.delivery_date) !== String(onlySunday)) continue;
     if (Number(row.plan_paid_cents) > 0) continue;
     if (lockPassedForSunday(row.delivery_date, now, settings)) continue;
     return { cycle: await withCycleItems(row), sunday: row.delivery_date };
@@ -1280,15 +1284,19 @@ async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Dat
   return null;
 }
 
+/**
+ * Resume / card-update recovery: bill this cook week's unpaid open cycle now
+ * (manual pause reopen or payment_failed), then unpause. Does not charge a
+ * future week after Wednesday lock.
+ */
 async function retryFailedCharge(sub) {
   if (!sub) return { ok: false, reason: 'missing' };
-  if (sub.pause_reason !== 'payment_failed') {
-    return { ok: true, skipped: true, charged: false, reason: 'not_failed' };
-  }
   const settings = await getSettings();
   const now = new Date();
   const dates = getSignupDates(now, settings || {});
-  const found = await findChargeableUnpaidCycle(sub.id, settings || {}, now);
+  const found = await findChargeableUnpaidCycle(sub.id, settings || {}, now, {
+    onlySunday: dates.job_sunday,
+  });
   if (!found) {
     await unpauseAfterPayment(sub.id);
     return { ok: true, charged: false, reason: 'no_open_unpaid' };
@@ -1308,7 +1316,7 @@ async function retryFailedCharge(sub) {
       amount: chargeResult.amount || 0,
     };
   } catch (err) {
-    console.warn('[subscriptions] retry after card update failed:', sub.id, err.message);
+    console.warn('[subscriptions] resume/card charge failed:', sub.id, err.message);
     return { ok: false, charged: false, reason: err.message || 'card_declined', sunday: found.sunday };
   }
 }

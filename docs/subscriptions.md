@@ -143,11 +143,12 @@ Second active/paused plan: UI **warns** (does not hard-block).
 
 ### 4. Pause / cancel / resume
 - `PATCH /subscriptions/:id/status` `{ action: pause|resume|cancel }` → `subscriptionManage.js`
-- **Unpaid** open week: skip this Sunday (no charge)
+- **Unpaid** open week: pause **skips** this Sunday (no charge)
 - **Paid / locked**: this Sunday still ships; pause starts following week
-- **`payment_failed`:** declined Tuesday charge pauses; update card before Wed lock to keep the box; else week skipped at lock
+- **Resume before Wed lock** (manual **or** `payment_failed`): reopen meals if needed, then **`retryFailedCharge`** bills this cook week’s unpaid open cycle **immediately** (plan + delivery + HST). Decline → stay paused (**402**). After lock, that week is not reopened for charge; next bill is next Tuesday.
+- **`payment_failed`:** declined Tuesday charge pauses; update card before Wed lock also runs `retryFailedCharge` (same immediate charge)
 - Resume may require meal review (`meals_need_update`); auto-resume after save when flagged
-- `payment_failed` recovery: `retryFailedCharge` and/or card-setup webhook → welcome-back + owner notify (transactional)
+- Recovery mail: resume / card-update success → welcome-back + owner notify (transactional)
 
 ### 5. Plan change
 - `PATCH /subscriptions/:id/plan` → `changeSubscriptionPlan`
@@ -287,7 +288,7 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 ## Sandbox / regression checklist
 
 1. Signup → confirm first Sunday, card on file, welcome mail; first box not pausable.
-2. Unpaid week: pause → skip; resume → meal review if needed.
+2. Unpaid week: pause → skip; resume before Wed lock → meal review if needed, then charge this week right away (same as payment_failed).
 3. After Tuesday charge: pause → this Sunday still ships; following week paused.
 4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
 5. Payment-failed → update card with `wednesday_reminder` off → still get charge/resume confirmation.
