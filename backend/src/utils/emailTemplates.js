@@ -14,7 +14,7 @@ function formatMoneyHst(cents) {
 }
 
 const { mealsAWeek, mealPlanPhrase, formatFulfillmentLine } = require('../queries/subscriptionWeek');
-const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, PICKUP_ADDRESS, UNCHANGED_MEALS } = require('../emails/subscriptionEmailSpec');
+const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, RESUME_BY, PICKUP_ADDRESS, UNCHANGED_MEALS } = require('../emails/subscriptionEmailSpec');
 
 function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -1373,6 +1373,7 @@ function renderSubscriptionManageEmail(payload = {}) {
   const sunday = fulfillmentDate || deliveryLabel || 'Sunday';
   const charge = PAUSE_CANCEL_BY;
   const cutoff = MEAL_LOCK_BY;
+  const resumeBy = RESUME_BY;
   const manageHref = appUrl('/my-subscriptions');
   const nextPlan = mealsAWeek(nextMealCount);
   const previousPlan = mealsAWeek(
@@ -1475,7 +1476,7 @@ My Subscriptions: ${manageHref}`;
     pause_nudge: {
       subject: `Your weekly plan is still paused — resume for this Sunday?`,
       heading: `We saved your plan, ${name}`,
-      intro: `Your ${planWeek} is still paused. Resume in My Subscriptions by ${charge} if you want a box this Sunday.`,
+      intro: `Your ${planWeek} is still paused. Resume in My Subscriptions by ${resumeBy} if you want a box this Sunday.`,
     },
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,

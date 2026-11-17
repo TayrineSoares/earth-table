@@ -845,7 +845,7 @@ const MySubscriptions = ({ user }) => {
       || 'this Sunday'
     const sunday = sundayDatePart(row.week?.delivery_label)
       || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
-    const resumeBy = resumeByCharge(row.charge?.charge_label)
+    const resumeBy = resumeByCharge(row.week?.cutoff_label)
     const keepSundayBody = `This Sunday, ${sunday}, is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
     const skipSundayBody = [
       `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime.`,
@@ -1159,7 +1159,7 @@ const MySubscriptions = ({ user }) => {
               : pending === 'paused'
                 ? pausingAfterCutoffBanner(nextBoxShort || sundayDatePart(row.week?.delivery_label))
                 : isPaused
-                  ? pausedBanner(row.charge?.charge_label, {
+                  ? pausedBanner(row.week?.cutoff_label, {
                     firstBoxLabel: row.first_box_protected ? row.first_delivery_label : '',
                     nextBoxLabel: row.next_box_date ? nextBoxShort : '',
                   })

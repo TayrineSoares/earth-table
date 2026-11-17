@@ -5,10 +5,11 @@
  * Live fallbacks (when dates have not loaded yet):
  * Charge: Tuesday 9:00 AM ET (plan + delivery together).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel: skip this Sunday while unpaid; once charged/locked it still
- * goes out (typically after Tuesday 9:00 AM ET). Plan size change: applies this
- * Sunday only while that week is still unpaid; once paid (including the first
- * box), the new size starts the following week — no mid-week upgrade/refund.
+ * Pause / cancel to skip: before Tuesday 9:00 AM ET while that Sunday is unpaid.
+ * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock); unpaid weeks
+ * charge when you resume. Once charged/locked, that Sunday still goes out.
+ * Plan size change: applies this Sunday only while unpaid; once paid (including
+ * the first box), the new size starts the following week — no mid-week upgrade/refund.
  * Fulfillment: unpaid — delivery fee waits for Tuesday; paid week pickup→delivery
  * charges delivery now; paid delivery→pickup — email hello@ about a delivery-fee refund only.
  *
@@ -18,6 +19,8 @@
 
 export const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET'
 export const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET'
+/** Resume deadline for a paused Sunday's box (same standing time as meal lock). */
+export const RESUME_BY = MEAL_LOCK_BY
 export const UNCHANGED_MEALS = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again."
 export const CHARGE_DAY_TIME = 'Tuesday at 9:00 AM ET'
 export const LOCK_DAY_TIME = 'Wednesday at 5:00 PM ET'
@@ -28,7 +31,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that — including after you resume — pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume is not a new first box. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} to get that Sunday's box — if the week is still unpaid, we charge when you resume. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksPlanChange() {
@@ -85,8 +88,13 @@ export function addonsBilledAt(cutoffLabel, { firstWeekRate = false } = {}) {
     : `Add-ons billed ${when}`
 }
 
-export function resumeByCharge(chargeLabel) {
-  return `Resume by ${chargeLabel || PAUSE_CANCEL_BY} for that week's box.`
+export function resumeByLock(lockLabel) {
+  return `Resume by ${lockLabel || RESUME_BY} for that week's box.`
+}
+
+/** @deprecated Use resumeByLock — resume deadline is Wednesday meal lock, not Tuesday charge. */
+export function resumeByCharge(lockLabel) {
+  return resumeByLock(lockLabel)
 }
 
 /** Standing weekly deadline: "every week by Wednesday at 5:00 PM ET". */
@@ -97,15 +105,16 @@ export function everyWeekBy(cadenceLabel, fallback) {
   return `every week by ${label}`
 }
 
-export function pausedBanner(chargeLabel, { firstBoxLabel, nextBoxLabel } = {}) {
+export function pausedBanner(lockLabel, { firstBoxLabel, nextBoxLabel } = {}) {
+  const by = lockLabel || RESUME_BY
   if (firstBoxLabel) {
-    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until Wednesday at 5:00 PM ET. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to also get the following Sunday.`
+    return `This plan is paused. Your first box still goes out on ${firstBoxLabel}. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Resume by ${by} to also get the following Sunday.`
   }
   // nextBoxLabel only when that Sunday is already paid/locked — unpaid weeks are skipped.
   if (nextBoxLabel) {
-    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${chargeLabel || PAUSE_CANCEL_BY} for a later Sunday.`
+    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${by} for a later Sunday.`
   }
-  return `This plan is paused. Resume by ${chargeLabel || PAUSE_CANCEL_BY} to get that Sunday's box. You can pause again anytime before that charge — resume is not a new first box.`
+  return `This plan is paused. Resume by ${by} to get that Sunday's box. You can pause again anytime before the next Tuesday charge.`
 }
 
 /** Pause after this Sunday was already charged/locked — box still runs. */

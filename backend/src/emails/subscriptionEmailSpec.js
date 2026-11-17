@@ -4,8 +4,9 @@
  *
  * Charge: Tuesday 9:00 AM ET (plan + delivery together).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel for this Sunday: skip if that week is still unpaid; once
- * charged or locked the box still goes out (usually after Tuesday 9:00 AM ET).
+ * Pause / cancel to skip this Sunday: before Tuesday 9:00 AM ET while unpaid.
+ * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock); unpaid
+ * weeks charge on resume. Once charged or locked the box still goes out.
  * Plan size for this Sunday: only while that week is still unpaid; once paid
  * (including first box), the new size starts the following week (no mid-week
  * upgrade charge / downgrade refund).
@@ -33,6 +34,8 @@ const CADENCE = {
 
 const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET';
 const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET';
+/** Resume deadline for a paused Sunday's box (same standing time as meal lock). */
+const RESUME_BY = MEAL_LOCK_BY;
 const UNCHANGED_MEALS = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again.";
 const PICKUP_ADDRESS = '77 Woodstream Blvd, Vaughan, ON L4L 7Y7';
 const DELIVERY_WINDOW = '11:00 AM – 6:00 PM';
@@ -41,6 +44,7 @@ module.exports = {
   CADENCE,
   PAUSE_CANCEL_BY,
   MEAL_LOCK_BY,
+  RESUME_BY,
   UNCHANGED_MEALS,
   PICKUP_ADDRESS,
   DELIVERY_WINDOW,

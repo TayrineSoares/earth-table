@@ -145,7 +145,7 @@ Second active/paused plan: UI **warns** (does not hard-block).
 - `PATCH /subscriptions/:id/status` `{ action: pause|resume|cancel }` → `subscriptionManage.js`
 - **Unpaid** open week: pause **skips** this Sunday (no charge)
 - **Paid / locked**: this Sunday still ships; pause starts following week
-- **Resume before Wed lock** (manual **or** `payment_failed`): reopen meals if needed, then **`retryFailedCharge`** bills this cook week’s unpaid open cycle **immediately** (plan + delivery + HST). Decline → stay paused (**402**). After lock, that week is not reopened for charge; next bill is next Tuesday.
+- **Resume before Wed lock** (manual **or** `payment_failed`): reopen meals if needed, then **`retryFailedCharge`** bills this cook week’s unpaid open cycle **immediately** (plan + delivery + HST). Decline → stay paused (**402**). After lock, that week is not reopened for charge; next bill is next Tuesday. Customer copy: resume by **Wednesday 5:00 PM ET** (not Tuesday charge).
 - **`payment_failed`:** declined Tuesday charge pauses; update card before Wed lock also runs `retryFailedCharge` (same immediate charge)
 - Resume may require meal review (`meals_need_update`); auto-resume after save when flagged
 - Recovery mail: resume / card-update success → welcome-back + owner notify (transactional)
