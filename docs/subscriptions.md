@@ -182,7 +182,8 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/plans`, `/plans?active=1`, `/plans/:id` | Public catalog |
+| GET | `/plans?active=1`, `/plans/:id` (active) | Public catalog (no subscriber counts) |
+| GET | `/plans` (no `active=1`) | Admin Bearer; inactive + counts |
 | GET | `/dates` | Public signup cadence |
 | GET | `/settings` | Admin Bearer; includes `test_charge_at` / `test_lock_at` |
 | PATCH | `/settings` | Admin Bearer; test clocks |
@@ -206,7 +207,7 @@ Mounted under `/api/subscriptions` (see `subscriptionRoutes.js`).
 - `/subscription-deadline-notice` → `sendDeadlineNotice` (one-shot)
 
 ### Auth note
-Subscription router is default-deny with a public allowlist (plans, dates, signup/card-setup session GETs). Customer manage/checkout use Bearer → `req.user.id`; optional body `userId` must match or returns **400**. Admin list/settings/plan mutations require admin Bearer.
+Subscription router is default-deny with a public allowlist (active plans, dates, signup/card-setup session GETs). Full plan list (inactive + subscriber counts) is admin-only. Customer manage/checkout use Bearer → `req.user.id`; optional body `userId` must match or returns **400**. Admin list/settings/plan mutations require admin Bearer. See [api-allowlist.md](./api-allowlist.md).
 
 ---
 
@@ -258,7 +259,6 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 | Customer Cancel ≡ Pause | Intentional |
 | Owner not on every meal edit | Intentional |
 | Admin plan price rewrite | Gated off; N/A while env false |
-| API `userId` session binding | Deferred (separate auth PR) |
 | Holiday email for `payment_failed` paused | Optional polish — they can still be skipped without holiday mail |
 | Job names `wednesday_charge` / `thursday_lock` | Keep forever for idempotency |
 

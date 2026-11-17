@@ -107,6 +107,7 @@ Decorated on read: `is_partner`, `referral_code` from `partners`.
 5. Cart keys merge guest → user on login (`cart_guest` → `cart_{id}`). Guest à la carte cart is **localStorage only**; `/cart` API requires Bearer.
 6. Orders: default-deny; `GET /orders/session/:id` public; prefer `GET /orders/mine` over `/orders/user/:id`.
 7. Promo validate + create-checkout: `optionalAuth` — guests OK without `userId`; signed-in identity from Bearer; body `userId` mismatch or guest+`userId` → **400**.
+8. Public vs gated routes: [api-allowlist.md](./api-allowlist.md).
 
 ---
 

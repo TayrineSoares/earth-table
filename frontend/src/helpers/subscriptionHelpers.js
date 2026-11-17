@@ -31,7 +31,9 @@ const titleCaseCycle = (cycle) => {
 
 const fetchSubscriptionPlans = async ({ activeOnly = false } = {}) => {
   const q = activeOnly ? '?active=1' : '';
-  const res = await fetch(`/api/subscriptions/plans${q}`);
+  const res = activeOnly
+    ? await fetch(`/api/subscriptions/plans${q}`)
+    : await authFetch(`/api/subscriptions/plans${q}`);
   return parseJson(res);
 };
 

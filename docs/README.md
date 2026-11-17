@@ -15,6 +15,7 @@ Support email in customer copy: **hello@earthtableco.ca**.
 | [catalog.md](./catalog.md) | Products, categories, tags, storefront + admin |
 | [fulfillment.md](./fulfillment.md) | Pickup/delivery UI + Geoapify fee quotes |
 | [auth.md](./auth.md) | Supabase auth, profile, `is_admin` |
+| [api-allowlist.md](./api-allowlist.md) | Public API allowlist (no Bearer) + secrets / default-deny map |
 | [site-and-admin.md](./site-and-admin.md) | Marketing pages, contact, unsubscribe, Admin shell |
 
 ## How features connect

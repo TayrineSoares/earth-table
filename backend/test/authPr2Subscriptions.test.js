@@ -79,10 +79,37 @@ describe('PR2 subscription self-service auth', () => {
     assert.equal(res.status, 401);
   });
 
-  it('public GET /subscriptions/plans stays open', async () => {
+  it('public GET /subscriptions/plans?active=1 stays open', async () => {
     const res = await request(app).get('/subscriptions/plans?active=1');
     assert.notEqual(res.status, 401);
     assert.notEqual(res.status, 403);
+  });
+
+  it('GET /subscriptions/plans without active=1 requires admin', async () => {
+    const anon = await request(app).get('/subscriptions/plans');
+    assert.equal(anon.status, 401);
+
+    const user = await request(app)
+      .get('/subscriptions/plans')
+      .set('Authorization', 'Bearer user-token');
+    assert.equal(user.status, 403);
+
+    __setAuthDepsForTests({
+      verifyBearerUser: async (token) => {
+        if (token === 'admin-token') return { id: 'admin-1', email: 'admin@example.com' };
+        return null;
+      },
+      loadUserRow: async (id) => ({
+        auth_user_id: id,
+        is_admin: id === 'admin-1',
+        email: `${id}@example.com`,
+      }),
+    });
+    const admin = await request(app)
+      .get('/subscriptions/plans')
+      .set('Authorization', 'Bearer admin-token');
+    assert.notEqual(admin.status, 401);
+    assert.notEqual(admin.status, 403);
   });
 
   it('public GET /subscriptions/dates stays open', async () => {

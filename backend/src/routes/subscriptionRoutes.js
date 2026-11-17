@@ -30,7 +30,7 @@ const {
 } = require('../queries/subscriptionManage');
 const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
 const { requireAdminOrCron, cronAuthorized } = require('../middleware/requireAdminOrCron');
-const { requireAdmin, requireAuth, unlessPublic } = require('../middleware/requireAuth');
+const { requireAdmin, requireAuth, unlessPublic, optionalAuth } = require('../middleware/requireAuth');
 
 function handleError(res, err, label) {
   if (err instanceof SubscriptionError) {
@@ -74,29 +74,56 @@ function requireAuthUnlessCronJob(req, res, next) {
 // Default-deny: auth required except public catalog/capability URLs (and cron charge/lock).
 router.use(unlessPublic(PUBLIC, requireAuthUnlessCronJob));
 
-// GET /subscriptions/plans  (all, for admin)
-// GET /subscriptions/plans?active=1  (marketing / signup)
-router.get('/plans', async (req, res) => {
-  try {
+// GET /subscriptions/plans?active=1 — public marketing catalog
+// GET /subscriptions/plans — admin Bearer; includes inactive + subscriber_count
+router.get(
+  '/plans',
+  optionalAuth,
+  (req, res, next) => {
     const activeOnly = req.query.active === '1' || req.query.active === 'true';
-    const plans = await listPlans({ activeOnly });
-    res.json(plans);
-  } catch (err) {
-    handleError(res, err, '[GET /subscriptions/plans]');
+    req.plansActiveOnly = activeOnly;
+    if (activeOnly) return next();
+    return requireAdmin(req, res, next);
+  },
+  async (req, res) => {
+    try {
+      const activeOnly = !!req.plansActiveOnly;
+      const plans = await listPlans({ activeOnly });
+      if (activeOnly) {
+        return res.json(plans.map(({ subscriber_count, ...plan }) => plan));
+      }
+      res.json(plans);
+    } catch (err) {
+      handleError(res, err, '[GET /subscriptions/plans]');
+    }
   }
-});
+);
 
-router.get('/plans/:id', async (req, res) => {
-  try {
-    const plan = await getPlanById(req.params.id);
-    if (!plan) {
-      return res.status(404).json({ error: 'Plan not found.' });
+router.get(
+  '/plans/:id',
+  optionalAuth,
+  async (req, res, next) => {
+    try {
+      const plan = await getPlanById(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ error: 'Plan not found.' });
+      }
+      req.planRow = plan;
+      if (plan.is_active) return next();
+      return requireAdmin(req, res, next);
+    } catch (err) {
+      handleError(res, err, '[GET /subscriptions/plans/:id]');
+    }
+  },
+  async (req, res) => {
+    const plan = req.planRow;
+    if (plan.is_active) {
+      const { subscriber_count, ...publicPlan } = plan;
+      return res.json(publicPlan);
     }
     res.json(plan);
-  } catch (err) {
-    handleError(res, err, '[GET /subscriptions/plans/:id]');
   }
-});
+);
 
 // Register /mine before any /:id routes.
 router.get('/mine', async (req, res) => {
