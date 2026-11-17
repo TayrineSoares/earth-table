@@ -1498,7 +1498,9 @@ My Subscriptions: ${manageHref}`;
     resume: {
       subject: `Your weekly plan is active again`,
       heading: `Welcome back, ${name}`,
-      intro: `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}.`,
+      intro: payload.charged
+        ? `Your ${planWeek} is active again. We charged this box for ${thisSundayPhrase(sunday)}. Here's what's set.`
+        : `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`,
     },
     plan_now: {
       subject: `You're on a ${nextPlan}`,

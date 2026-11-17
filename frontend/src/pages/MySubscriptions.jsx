@@ -115,6 +115,26 @@ function shortWeekdayDate(ymd) {
   })
 }
 
+/** "Nov 22" — for "This Sunday, …" copy (never "Sun, Nov 22"). */
+function shortMonthDay(ymd) {
+  const [y, m, d] = String(ymd || '').split('-').map(Number)
+  if (!y || !m || !d) return ''
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+/** "This Sunday" or "This Sunday, Nov 22" — strips leftover weekday prefixes. */
+function thisSundayCopy(dateLabel) {
+  const raw = String(dateLabel || '').trim()
+  const part = raw
+    .replace(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat|Sunday)\.?,?\s+/i, '')
+    .trim()
+  if (!part || /^sunday$/i.test(part) || part === 'this Sunday') return 'This Sunday'
+  return `This Sunday, ${part}`
+}
+
 /** "November 23" for the Sunday meal/fulfillment edits currently target. */
 function editTargetSundayDate(row) {
   const ymd = row?.edit_cycle?.delivery_date || row?.week?.delivery_date
@@ -825,15 +845,18 @@ const MySubscriptions = ({ user }) => {
       )
       const keptLabel = keptCommitted
         ? (
-          (keptCycle.delivery_date ? shortWeekdayDate(keptCycle.delivery_date) : '')
-          || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : '')
-          || 'this Sunday'
+          shortMonthDay(keptCycle.delivery_date)
+          || shortMonthDay(row.next_box_date)
+          || sundayDatePart(row.week?.delivery_label)
+          || ''
         )
         : null
-      const sunday = sundayDatePart(row.week?.delivery_label)
-        || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
+      const sunday = shortMonthDay(row.week?.delivery_date)
+        || sundayDatePart(row.week?.delivery_label)
+        || shortMonthDay(row.next_box_date)
+        || 'this Sunday'
       const when = keptCommitted
-        ? `This Sunday, ${keptLabel}, is already charged (or locked), so that box still goes out. Resume turns the plan back on for later weeks.`
+        ? `${thisSundayCopy(keptLabel)} is already charged (or locked), so that box still goes out. Resume turns the plan back on for later weeks.`
         : row.week?.cutoff_passed
           ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
           : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
@@ -883,18 +906,20 @@ const MySubscriptions = ({ user }) => {
     // After lock, row.week is the following Sunday — name the committed shipping box instead.
     const committedSunday = thisSundayCommitted
       ? (
-        (boxCycle.delivery_date ? shortWeekdayDate(boxCycle.delivery_date) : '')
-        || (row.this_week_date ? shortWeekdayDate(row.this_week_date) : '')
-        || 'this Sunday'
+        shortMonthDay(boxCycle.delivery_date)
+        || shortMonthDay(row.this_week_date)
+        || ''
       )
       : null
     const sunday = committedSunday
+      || shortMonthDay(row.week?.delivery_date)
       || sundayDatePart(row.week?.delivery_label)
-      || (row.next_box_date ? shortWeekdayDate(row.next_box_date) : 'this Sunday')
+      || shortMonthDay(row.next_box_date)
+      || 'this Sunday'
     const resumeBy = resumeByLock(row.week?.cutoff_label)
-    const keepSundayBody = `This Sunday, ${sunday}, is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
+    const keepSundayBody = `${thisSundayCopy(sunday)} is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
     const skipSundayBody = [
-      `This Sunday, ${sunday}, will be skipped. Your meals and card stay ready so you can resume anytime.`,
+      `${thisSundayCopy(sunday)} will be skipped. Your meals and card stay ready so you can resume anytime.`,
       resumeBy,
     ]
     const copy = {
@@ -931,7 +956,7 @@ const MySubscriptions = ({ user }) => {
         : {
           title: 'Cancel this plan?',
           body: [
-            `This Sunday, ${sunday}, will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+            `${thisSundayCopy(sunday)} will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
             resumeBy,
           ],
         },
@@ -1007,8 +1032,8 @@ const MySubscriptions = ({ user }) => {
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: [
         pending
-          ? `This Sunday, ${sunday}, stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week.`
-          : `This Sunday, ${sunday}, will use the new plan.`,
+          ? `${thisSundayCopy(sunday)} stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week.`
+          : `${thisSundayCopy(sunday)} will use the new plan.`,
         downgrade
           ? `Next you'll review meals and remove extras until exactly ${nextCount} remain — you can't continue until the count matches.`
           : `Next you'll review meals and leave exactly ${nextCount} for that box — the change only finishes when you confirm.`,

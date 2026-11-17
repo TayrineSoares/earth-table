@@ -31,6 +31,20 @@ describe('owner manage event emails', () => {
     assert.match(msg.text, /Green Smoothie x 1/);
   });
 
+  it('resume notes when the box was charged', () => {
+    const msg = renderOwnerSubscriptionEventEmail({
+      kind: 'resume',
+      customerName: 'Tayrine Soares',
+      email: 'tayrine@email.com',
+      mealCount: 15,
+      deliveryLabel: 'Sunday, November 22',
+      charged: true,
+      meals: [],
+      addons: [],
+    });
+    assert.match(msg.text, /Charged for Sunday, November 22/);
+  });
+
   it('plan_now shows the move and new plan', () => {
     const msg = renderOwnerSubscriptionEventEmail({
       kind: 'plan_now',

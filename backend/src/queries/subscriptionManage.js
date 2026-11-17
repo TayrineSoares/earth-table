@@ -372,13 +372,12 @@ async function pauseSubscription(userId, subscriptionId) {
     && row.status === 'open'
   )) || null;
   const target = openForWeek || cycle;
-  const alreadyPaid = Boolean(target && Number(target.plan_paid_cents) > 0);
-  const alreadyLocked = target?.status === 'locked';
+  const { pauseKeepsThisSunday } = require('./subscriptionPauseResumeRules');
 
   // Keep vs skip is decided by money/lock, not the clock — avoids the Tue 9:00 AM
   // race with the charge job. Clock copy still says "before Tuesday 9am"; after
   // that the charge usually lands first so pause keeps the box.
-  if (alreadyPaid || alreadyLocked) {
+  if (pauseKeepsThisSunday(target)) {
     return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: target });
   }
 
@@ -502,14 +501,12 @@ async function resumeSubscription(userId, subscriptionId) {
   // Manual pause before Tuesday: activate only — Tuesday job charges (so they can
   // pause again). After Tuesday charge time, charge now if that Sunday is still unpaid.
   // If this cook week is already paid/locked (pause-after-charge), never charge again.
-  const beforeTuesdayCharge = charge?.before_wednesday !== false;
-  const cookWeekCommitted = Boolean(
-    cycle
-    && (cycle.status === 'locked' || Number(cycle.plan_paid_cents) > 0)
-  );
-  const shouldChargeNow = !cookWeekCommitted && (
-    sub.pause_reason === 'payment_failed' || !beforeTuesdayCharge
-  );
+  const { resumeShouldChargeNow, cycleIsCommitted } = require('./subscriptionPauseResumeRules');
+  const shouldChargeNow = resumeShouldChargeNow({
+    pauseReason: sub.pause_reason,
+    beforeTuesdayCharge: charge?.before_wednesday !== false,
+    cookWeekCommitted: cycleIsCommitted(cycle),
+  });
 
   if (shouldChargeNow) {
     try {

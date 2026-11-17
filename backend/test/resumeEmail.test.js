@@ -38,4 +38,32 @@ describe('resume welcome-back email', () => {
     assert.match(msg.text, /Herb Chicken Plate x 6/);
     assert.match(msg.text, /None this week\./);
   });
+
+  it('says we charged when charged=true', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'resume',
+      firstName: 'Tayrine',
+      mealCount: 15,
+      deliveryLabel: 'Sunday, November 22',
+      charged: true,
+      meals: [{ slug: 'Sweet Potato Bowl', quantity: 15 }],
+      addons: [],
+    });
+    assert.match(msg.text, /We charged this box for this Sunday, November 22/);
+    assert.doesNotMatch(msg.text, /Next charge is/);
+  });
+
+  it('names next Tuesday charge when charged=false', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'resume',
+      firstName: 'Tayrine',
+      mealCount: 15,
+      deliveryLabel: 'Sunday, November 22',
+      charged: false,
+      meals: [{ slug: 'Sweet Potato Bowl', quantity: 15 }],
+      addons: [],
+    });
+    assert.match(msg.text, /Next charge is Tuesday at 9:00 AM ET/);
+    assert.doesNotMatch(msg.text, /We charged this box/);
+  });
 });
