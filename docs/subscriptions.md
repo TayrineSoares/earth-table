@@ -78,7 +78,7 @@ One row per customer plan instance.
 | `pause_reason` | `manual` \| `payment_failed` |
 | `last_decline_code` / `last_decline_at` | Stripe decline on plan charge (owner/admin). Cleared on successful resume/card recovery. |
 | `pending_plan_id` | Deferred size change (applies after this paid/locked Sunday) |
-| `pending_status` | `paused` / `cancelled` when this Sunday still ships |
+| `pending_status` | Rare. Customer pause after paid/locked → immediate `status=paused` with null pending (Sunday still ships). Legacy `paused` rows are cleared by the charge/lock job. `cancelled` = plan discontinue deferred until lock (this Sunday still ships). |
 | Card | `stripe_customer_id`, `stripe_payment_method_id`, `card_updated_at` |
 | Defaults | `delivery`, `delivery_postal_code`, `pickup_time_slot`, `special_note` |
 | First-week promo | `first_promo_*` |
@@ -114,7 +114,7 @@ One row per Sunday box (`unique (subscription_id, delivery_date)`).
   - Unpaid week: fee stored on cycle → billed with Tuesday plan charge. Customer can switch back to pickup before Tuesday.
   - Paid week, pickup → delivery: charge delivery **now** (`idempotencyKey: sub-delivery-{cycleId}`).
   - Delivery → pickup: always clear `delivery_fee_cents`. If the fee was already charged, **no auto-refund** — copy tells them to email hello@ about a **delivery-fee refund only**.
-- **Plan size change:** unpaid → apply this Sunday; paid/first box → defer to next Sunday. No mid-week upgrade charge or downgrade refund.
+- **Plan size change:** unpaid and before that week’s Tuesday charge → apply this Sunday; paid/first box **or after Tuesday charge** (even if unpaid) → defer to next Sunday. No mid-week upgrade charge or downgrade refund.
 - **Discontinue:** no refunds (`refunded_cents: 0`); paid/locked Sunday still ships.
 - **Charge/pause race:** PI succeeds but cycle already skipped → Stripe refund (`subscription_charge_race_refund`). If another writer already marked the cycle paid with the same PI, do **not** refund.
 
@@ -274,7 +274,7 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 | Cron UTC | `backend/vercel.json` + `vercel.crons.md` |
 | Tuesday charge / Wed lock / holiday / payment_failed | `subscriptionCharge.js` |
 | Pause / resume / plan / discontinue / nudges | `subscriptionManage.js` |
-| Signup + card setup | `subscriptionCheckout.js` + `server.js` webhook |
+| Signup + card setup | `subscriptionCheckout.js` + `app.js` webhook |
 | Meal save / fulfillment / listMine | `subscription.js` |
 | Routes | `subscriptionRoutes.js` |
 | Schema | `backend/sql/subscriptions.sql` |
@@ -294,7 +294,7 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 ## Sandbox / regression checklist
 
 1. Signup → confirm first Sunday, card on file, welcome mail; first box can't be cancelled (still ships if you pause that week).
-2. Unpaid week: pause → skip; manual resume before Tue charge → activate only (Tue job bills); payment_failed resume/card-update before Wed lock → charge now.
+2. Unpaid week: pause → skip; manual resume before Tue charge → activate only (Tue job bills); manual resume after Tue / before Wed lock → charge now; payment_failed resume/card-update before Wed lock → charge now.
 3. After Tuesday charge: pause → this Sunday still ships; following week paused.
 4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
 5. Payment-failed → update card with `wednesday_reminder` off → still get charge/resume confirmation.

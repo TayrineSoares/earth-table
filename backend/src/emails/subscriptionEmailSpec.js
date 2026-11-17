@@ -5,11 +5,13 @@
  * Charge: Tuesday 9:00 AM ET (plan + delivery together).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel to skip this Sunday: before Tuesday 9:00 AM ET while unpaid.
- * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock); unpaid
- * weeks charge on resume. Once charged or locked the box still goes out.
- * Plan size for this Sunday: only while that week is still unpaid; once paid
- * (including first box), the new size starts the following week (no mid-week
- * upgrade charge / downgrade refund).
+ * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock). Manual
+ * resume before Tuesday while unpaid → activate only (Tue job bills). After
+ * Tuesday while unpaid (or payment_failed) → charge now. Once charged or locked
+ * the box still goes out.
+ * Plan size for this Sunday: while unpaid and before that week's Tuesday charge;
+ * once paid (including first box) or after Tuesday charge → following week
+ * (no mid-week upgrade charge / downgrade refund).
  * Fulfillment: unpaid week — delivery fee sits on the cycle until Tuesday
  * charge; paid week — pickup→delivery charges delivery now (idempotent).
  * Delivery→pickup always clears delivery_fee_cents; if already charged,

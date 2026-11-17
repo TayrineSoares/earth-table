@@ -6,10 +6,12 @@
  * Charge: Tuesday 9:00 AM ET (plan + delivery together).
  * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
  * Pause / cancel to skip: before Tuesday 9:00 AM ET while that Sunday is unpaid.
- * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock); unpaid weeks
- * charge when you resume. Once charged/locked, that Sunday still goes out.
- * Plan size change: applies this Sunday only while unpaid; once paid (including
- * the first box), the new size starts the following week — no mid-week upgrade/refund.
+ * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock). Manual resume
+ * before Tuesday while unpaid → activate only (Tue job bills). After Tuesday while
+ * unpaid (or payment_failed) → charge now. Once charged/locked, that Sunday still goes out.
+ * Plan size change: this Sunday while unpaid and before that week's Tuesday charge;
+ * once paid (including the first box) or after Tuesday charge → following week —
+ * no mid-week upgrade/refund.
  * Fulfillment: unpaid — delivery fee waits for Tuesday; paid week pickup→delivery
  * charges delivery now; paid delivery→pickup — email hello@ about a delivery-fee refund only.
  *
@@ -31,11 +33,11 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be cancelled — if you pause that week it still goes out. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} for that Sunday's box — a normal resume bills on the next Tuesday charge (you can pause again before then). After a declined payment, update your card or resume before meal lock and we charge then — we do not keep retrying on later Tuesdays on our own. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be cancelled — if you pause that week it still goes out. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} for that Sunday's box. If you resume before Tuesday's charge while that Sunday is still unpaid, we turn the plan back on and bill on the next Tuesday charge (you can pause again before then). If you resume after Tuesday while that Sunday is still unpaid, we charge then so you can still get that box. After a declined payment, update your card or resume before meal lock and we charge then — we do not keep retrying on later Tuesdays on our own. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksPlanChange() {
-  return `Change plan size in My Subscriptions. If this Sunday is still unpaid, the new size applies to that box. Once a week is paid (including your first box), that Sunday stays as-is and the new size starts the following week — we don't charge or refund a mid-week plan difference.`
+  return `Change plan size in My Subscriptions. If this Sunday is still unpaid, the new size applies to that box. Once a week is paid (including your first box) or after that week's Tuesday charge, that Sunday stays as-is and the new size starts the following week — we don't charge or refund a mid-week plan difference.`
 }
 
 export function howItWorksMeals() {
