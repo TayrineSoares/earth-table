@@ -76,6 +76,7 @@ One row per customer plan instance.
 |---|---|
 | `status` | `active` \| `paused` \| `cancelled` |
 | `pause_reason` | `manual` \| `payment_failed` |
+| `last_decline_code` / `last_decline_at` | Stripe decline on plan charge (owner/admin). Cleared on successful resume/card recovery. |
 | `pending_plan_id` | Deferred size change (applies after this paid/locked Sunday) |
 | `pending_status` | `paused` / `cancelled` when this Sunday still ships |
 | Card | `stripe_customer_id`, `stripe_payment_method_id`, `card_updated_at` |
@@ -145,8 +146,11 @@ Second active/paused plan: UI **warns** (does not hard-block).
 - `PATCH /subscriptions/:id/status` `{ action: pause|resume|cancel }` → `subscriptionManage.js`
 - **Unpaid** open week: pause **skips** this Sunday (no charge)
 - **Paid / locked**: this Sunday still ships; pause starts following week
-- **Resume before Wed lock** (manual **or** `payment_failed`): reopen meals if needed, then **`retryFailedCharge`** bills this cook week’s unpaid open cycle **immediately** (plan + delivery + HST). Decline → stay paused (**402**). After lock, that week is not reopened for charge; next bill is next Tuesday. Customer copy: resume by **Wednesday 5:00 PM ET** (not Tuesday charge).
-- **`payment_failed`:** declined Tuesday charge pauses; update card before Wed lock also runs `retryFailedCharge` (same immediate charge)
+- **Resume before Tue charge (manual):** reopen meals if needed, set `active` — **do not** charge now (customer may pause again). Tuesday job bills the open week.
+- **Resume after Tue charge / before Wed lock (manual unpaid):** **`retryFailedCharge`** bills this cook week now so “resume by Wed” still gets the box.
+- **`payment_failed` resume / card-update before Wed lock:** always **`retryFailedCharge`** now. Decline → stay paused (**402**).
+- **`payment_failed` + Tuesday job:** paused plans are **not** auto-charged. No weekly retry — customer must update card or resume (for this Sunday before Wed lock, or later when ready).
+- Customer copy: resume by **Wednesday 5:00 PM ET** for that Sunday’s box.
 - Resume may require meal review (`meals_need_update`); auto-resume after save when flagged
 - Recovery mail: resume / card-update success → welcome-back + owner notify (transactional)
 
@@ -288,7 +292,7 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 ## Sandbox / regression checklist
 
 1. Signup → confirm first Sunday, card on file, welcome mail; first box not pausable.
-2. Unpaid week: pause → skip; resume before Wed lock → meal review if needed, then charge this week right away (same as payment_failed).
+2. Unpaid week: pause → skip; manual resume before Tue charge → activate only (Tue job bills); payment_failed resume/card-update before Wed lock → charge now.
 3. After Tuesday charge: pause → this Sunday still ships; following week paused.
 4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
 5. Payment-failed → update card with `wednesday_reminder` off → still get charge/resume confirmation.

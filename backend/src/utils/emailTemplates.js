@@ -1481,7 +1481,7 @@ My Subscriptions: ${manageHref}`;
     payment_failed: {
       subject: `Update your card to keep this Sunday's box`,
       heading: `We could not charge this week, ${name}`,
-      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update it in My Subscriptions before ${cutoff} (meal lock) to keep the box. If it is still unpaid by then, this Sunday is skipped and the plan stays paused.`,
+      intro: `Your card was declined for ${thisSundayPhrase(sunday)}. Update your card or tap Resume in My Subscriptions before ${cutoff} (meal lock) to keep this Sunday's box — we charge then. If it is still unpaid by then, this Sunday is skipped. We will not charge again on our own; for later weeks, update your card or resume when you are ready.`,
     },
     addons_dropped: {
       subject: `This Sunday's add-ons were not charged`,
@@ -2087,15 +2087,15 @@ function renderOwnerPaymentFailedEmail({
         ${kvRow('Card', `${brandLabel(cardBrand)} •••• ${last4 || '••••'}`)}
         ${kvRow('Declined', `${declineReason || 'card_declined'} · ${dateTime || ''}`, { last: true })}
       `))}
-      ${intro("The plan is paused until they add a new card. This Sunday's box will not go out.")}
-      ${cutoffDateTime ? intro(`Meal lock / last retry: ${cutoffDateTime}`) : ''}
+      ${intro("The plan is paused until they update their card or resume. This Sunday's box will not go out unless they recover before meal lock.")}
+      ${cutoffDateTime ? intro(`Meal lock (last chance for this Sunday): ${cutoffDateTime}`) : ''}
       ${ctaLink(appUrl('/admin'), 'View subscription →')}
   `, {
     preheader: subject,
     replyOk: true,
     title: subject,
   });
-  const text = `${subject}\n\n${name} — ${paid} for ${when}\n${brandLabel(cardBrand)} •••• ${last4 || '••••'} · declined (${declineReason || 'card_declined'}) · ${dateTime || ''}\nThe plan is paused until they add a new card. This Sunday's box will not go out.\n`;
+  const text = `${subject}\n\n${name} — ${paid} for ${when}\n${brandLabel(cardBrand)} •••• ${last4 || '••••'} · declined (${declineReason || 'card_declined'}) · ${dateTime || ''}\nThe plan is paused until they update their card or resume. This Sunday's box will not go out unless they recover before meal lock.\n`;
   return { subject, html, text };
 }
 

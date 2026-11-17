@@ -472,12 +472,15 @@ async function chargePlanDelivery(sub, cycle, sunday) {
 }
 
 async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
+  const declineReason = declineReasonFrom(stripeErr);
   await supabase
     .from('subscriptions')
     .update({
       status: 'paused',
       pause_reason: 'payment_failed',
       paused_at: new Date().toISOString(),
+      last_decline_code: declineReason,
+      last_decline_at: new Date().toISOString(),
     })
     .eq('id', sub.id);
   const card = await cardForPaymentMethod(sub.stripe_payment_method_id);
@@ -505,7 +508,7 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
       fulfillmentDate,
       cardBrand: card?.brand,
       last4: card?.last4,
-      declineReason: declineReasonFrom(stripeErr),
+      declineReason,
       dateTime: formatTorontoStamp(new Date()),
       cutoffDateTime: cutoffLabel,
     });
@@ -679,8 +682,9 @@ async function runPlanCharge({ force = false, now = new Date() } = {}) {
   const failures = [];
 
   for (const sub of subs) {
-    const manualPause = sub.status === 'paused' && sub.pause_reason !== 'payment_failed';
-    if (manualPause) {
+    // Paused plans never auto-charge — including payment_failed. Recovery is
+    // resume or update-card (retryFailedCharge), not the Tuesday job.
+    if (sub.status === 'paused') {
       skipped += 1;
       continue;
     }
@@ -710,16 +714,6 @@ async function runPlanCharge({ force = false, now = new Date() } = {}) {
         chargeResult = await chargePlanDelivery(sub, cycle, weekSunday);
         if (chargeResult.charged) charged += 1;
         else already += 1;
-        if (sub.pause_reason === 'payment_failed') {
-          await supabase
-            .from('subscriptions')
-            .update({
-              status: 'active',
-              pause_reason: null,
-              resumed_at: new Date().toISOString(),
-            })
-            .eq('id', sub.id);
-        }
       } catch (err) {
         failures.push({ subscription_id: sub.id, error: err.message || String(err) });
         console.warn('[subscriptions] Plan charge failed:', sub.id, err.message);
@@ -1257,6 +1251,8 @@ async function unpauseAfterPayment(subId) {
     .update({
       status: 'active',
       pause_reason: null,
+      last_decline_code: null,
+      last_decline_at: null,
       resumed_at: new Date().toISOString(),
     })
     .eq('id', subId);
@@ -1285,9 +1281,10 @@ async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Dat
 }
 
 /**
- * Resume / card-update recovery: bill this cook week's unpaid open cycle now
- * (manual pause reopen or payment_failed), then unpause. Does not charge a
- * future week after Wednesday lock.
+ * Bill this cook week's unpaid open cycle now, then unpause.
+ * Used for payment_failed recovery (resume / card-update) and for manual
+ * resume after the Tuesday charge window when that Sunday is still unpaid.
+ * Does not charge a future week after Wednesday lock.
  */
 async function retryFailedCharge(sub) {
   if (!sub) return { ok: false, reason: 'missing' };

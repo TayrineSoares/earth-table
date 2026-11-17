@@ -53,7 +53,18 @@ async function cardForPaymentMethod(paymentMethodId) {
 }
 
 function declineReasonFrom(err) {
-  return err?.decline_code || err?.code || err?.raw?.decline_code || err?.raw?.code || 'card_declined';
+  // Prefer Stripe's specific decline_code (lost_card, insufficient_funds, …)
+  // over the generic card_declined error code.
+  return (
+    err?.decline_code
+    || err?.raw?.decline_code
+    || err?.payment_intent?.last_payment_error?.decline_code
+    || err?.raw?.payment_intent?.last_payment_error?.decline_code
+    || err?.code
+    || err?.raw?.code
+    || err?.payment_intent?.last_payment_error?.code
+    || 'card_declined'
+  );
 }
 
 module.exports = {

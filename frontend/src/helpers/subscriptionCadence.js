@@ -31,7 +31,7 @@ export function howItWorksCharge() {
 }
 
 export function howItWorksPause() {
-  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} to get that Sunday's box — if the week is still unpaid, we charge when you resume. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
+  return `Your first box can't be paused or cancelled. After that, pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (no charge until then). Resume by ${RESUME_BY} for that Sunday's box — a normal resume bills on the next Tuesday charge (you can pause again before then). After a declined payment, update your card or resume before meal lock and we charge then — we do not keep retrying on later Tuesdays on our own. Once that week's charge has run, the box still goes out and pause starts the following week. No fees. Pause and cancel both keep your meals and card so you can resume anytime.`
 }
 
 export function howItWorksPlanChange() {
@@ -114,7 +114,7 @@ export function pausedBanner(lockLabel, { firstBoxLabel, nextBoxLabel } = {}) {
   if (nextBoxLabel) {
     return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${by} for a later Sunday.`
   }
-  return `This plan is paused. Resume by ${by} to get that Sunday's box. You can pause again anytime before the next Tuesday charge.`
+  return `This plan is paused. Resume by ${by} to get that Sunday's box.`
 }
 
 /** Pause after this Sunday was already charged/locked — box still runs. */
@@ -125,9 +125,9 @@ export function pausingAfterCutoffBanner(sundayLabel) {
   return `This Sunday is already charged, so that box still goes out. The plan is paused starting the following week.`
 }
 
-/** Auto-pause after a declined Tuesday charge. Retry window ends at Wednesday meal lock. */
+/** Auto-pause after a declined Tuesday charge. No automatic Tuesday retries. */
 export function paymentFailedBanner() {
-  return `Your subscription is paused because Tuesday's charge didn't go through. Update your card below before ${MEAL_LOCK_BY} to keep this Sunday's box. If it's still unpaid by then, this Sunday is skipped.`
+  return `Your subscription is paused because Tuesday's charge didn't go through. Update your card or tap Resume before ${MEAL_LOCK_BY} to keep this Sunday's box — we charge then. If it's still unpaid by then, this Sunday is skipped. Later weeks only run after you update your card or resume.`
 }
 
 /** Shown only after a promo/referral code validates. Delivery sentence is pickup-safe. */

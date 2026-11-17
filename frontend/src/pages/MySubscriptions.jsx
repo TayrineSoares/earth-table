@@ -452,12 +452,14 @@ const MySubscriptions = ({ user }) => {
             primaryLabel: 'Resuming…',
             busy: true,
           })
-          await updateSubscriptionStatus(userId, resumeId, 'resume')
+          const result = await updateSubscriptionStatus(userId, resumeId, 'resume')
           await load()
           setDialog({
             icon: 'mail',
             title: 'Plan resumed',
-            body: 'Your meals are saved and the plan is active again.',
+            body: result?.charged
+              ? 'Your meals are saved. We charged this box to the card on file — the plan is active again.'
+              : `Your meals are saved and the plan is active again. Next charge is ${CHARGE_DAY_TIME}.`,
             primaryLabel: 'OK',
           })
         } catch (err) {
@@ -764,13 +766,13 @@ const MySubscriptions = ({ user }) => {
           body: result.message,
           primaryLabel: 'OK',
         })
-      } else if (action === 'resume' && row.pause_reason === 'payment_failed') {
+      } else if (action === 'resume') {
         setDialog({
           icon: 'mail',
           title: 'You\'re back on',
           body: result?.charged
             ? 'We charged this box to the card on file. The plan is active again.'
-            : 'The plan is active again.',
+            : `The plan is active again. Next charge is ${CHARGE_DAY_TIME}.`,
           primaryLabel: 'OK',
         })
       } else {
@@ -813,6 +815,8 @@ const MySubscriptions = ({ user }) => {
       const when = row.week?.cutoff_passed
         ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
         : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
+      const beforeTuesdayCharge = row.charge?.before_wednesday !== false
+      const chargeNow = row.pause_reason === 'payment_failed' || !beforeTuesdayCharge
       setDialog({
         icon: 'mail',
         title: 'Review your meals first',
@@ -821,9 +825,9 @@ const MySubscriptions = ({ user }) => {
           mealCount
             ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
             : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`,
-          row.pause_reason === 'payment_failed'
-            ? `After meals are saved we charge the unpaid box to the card on file.`
-            : null,
+          chargeNow
+            ? 'After meals are saved we charge the unpaid box to the card on file.'
+            : `After meals are saved the plan turns back on. Next charge is ${CHARGE_DAY_TIME} — you can pause again before then if you change your mind.`,
         ].filter(Boolean),
         primaryLabel: 'Review meals',
         secondaryLabel: 'Not now',
@@ -833,6 +837,7 @@ const MySubscriptions = ({ user }) => {
       })
       return
     }
+
     const boxCycle = row.next_box_cycle || row.this_week_cycle || null
     // Same rule as the API: keep this Sunday only if already charged or locked.
     const thisSundayCommitted = Boolean(
@@ -1539,7 +1544,7 @@ const MySubscriptions = ({ user }) => {
                     </div>
 
                     <div className="my-sub-card-danger">
-                      {canEdit && pending ? (
+                      {canEdit && pending && row.cancelled_reason !== 'plan_discontinued' ? (
                         <button
                           type="button"
                           className="my-sub-danger-link"

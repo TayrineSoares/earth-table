@@ -62,7 +62,10 @@ create table if not exists public.subscriptions (
   cancelled_reason text
     check (cancelled_reason is null or cancelled_reason in ('plan_discontinued')),
   paused_at timestamptz,
-  resumed_at timestamptz
+  resumed_at timestamptz,
+  -- Last Stripe decline on plan charge (owner/admin). Cleared on successful recovery.
+  last_decline_code text,
+  last_decline_at timestamptz
 );
 
 create index if not exists subscriptions_user_id_idx

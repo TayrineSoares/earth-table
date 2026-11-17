@@ -51,6 +51,30 @@ const formatAdminStamp = (iso) => {
   return `${datePart} · ${timePart} ET`;
 };
 
+/** Owner/admin-only Stripe decline labels (never show these strings to customers). */
+const declineAdminLabel = (code) => {
+  const key = String(code || '').trim().toLowerCase();
+  if (!key) return '';
+  const map = {
+    card_declined: 'Card declined',
+    lost_card: 'Card reported lost or stolen — retries will fail; needs a new card',
+    stolen_card: 'Card reported lost or stolen — retries will fail; needs a new card',
+    expired_card: 'Card expired',
+    incorrect_cvc: 'Incorrect CVC',
+    incorrect_number: 'Incorrect card number',
+    insufficient_funds: 'Insufficient funds',
+    processing_error: 'Processing error',
+    reauthentication_required: 'Bank requires reauthentication',
+    authentication_required: 'Authentication required',
+    do_not_honor: 'Do not honor (issuer)',
+    generic_decline: 'Generic decline',
+    call_issuer: 'Call issuer',
+    pickup_card: 'Pick up card (issuer)',
+    restricted_card: 'Restricted card',
+  };
+  return map[key] || key.replace(/_/g, ' ');
+};
+
 /** Status-change lines for View Details (only stamps that exist). */
 const planStatusLines = (row) => {
   const lines = [];
@@ -58,7 +82,16 @@ const planStatusLines = (row) => {
   const cancelled = formatAdminStamp(row?.cancelled_at);
   const resumed = formatAdminStamp(row?.resumed_at);
   const cardUpdated = formatAdminStamp(row?.card_updated_at);
+  const declinedAt = formatAdminStamp(row?.last_decline_at);
   if (paused) lines.push(`Paused ${paused}`);
+  if (row?.pause_reason === 'payment_failed' && row?.last_decline_code) {
+    const why = declineAdminLabel(row.last_decline_code);
+    lines.push(
+      declinedAt
+        ? `Stripe: ${why} (${row.last_decline_code}) · ${declinedAt}`
+        : `Stripe: ${why} (${row.last_decline_code})`
+    );
+  }
   if (cancelled) lines.push(`Cancelled ${cancelled}`);
   if (resumed) lines.push(`Reactivated ${resumed}`);
   if (cardUpdated) lines.push(`Card updated ${cardUpdated}`);
@@ -584,6 +617,15 @@ const SubscriberAdmin = () => {
                               <div key={`${row.id}-pending`} className="sub-admin-muted">
                                 pending {row.pending_status}
                                 {row.pending_plan ? ` · next: ${mealLabel(row.pending_plan.meal_count)}` : ''}
+                              </div>
+                            ) : null
+                          ))}
+                          {plans.map((row) => (
+                            row.pause_reason === 'payment_failed' && row.last_decline_code ? (
+                              <div key={`${row.id}-decline`} className="sub-admin-muted">
+                                {declineAdminLabel(row.last_decline_code)}
+                                {' '}
+                                ({row.last_decline_code})
                               </div>
                             ) : null
                           ))}
