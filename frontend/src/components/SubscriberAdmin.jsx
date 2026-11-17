@@ -75,8 +75,23 @@ const declineAdminLabel = (code) => {
   return map[key] || key.replace(/_/g, ' ');
 };
 
+// A pause after the box is committed does not pull it off this Sunday.
+const receivesSundayBox = (row, cycle) => {
+  if (!cycle || cycle.status === 'skipped') return false;
+  if (row?.status === 'active') return true;
+  if (cycle.status === 'locked') return true;
+  return Number(cycle.plan_paid_cents) > 0;
+};
+
+/** Paused after Tuesday charge / Wednesday lock — kitchen still packs this Sunday. */
+const keepsCommittedSundayNote = (row, cycle) => {
+  if (row?.status !== 'paused') return '';
+  if (!receivesSundayBox(row, cycle)) return '';
+  return 'Still delivering this Sunday — paused after charge/lock';
+};
+
 /** Status-change lines for View Details (only stamps that exist). */
-const planStatusLines = (row) => {
+const planStatusLines = (row, cycle) => {
   const lines = [];
   const paused = formatAdminStamp(row?.paused_at);
   const cancelled = formatAdminStamp(row?.cancelled_at);
@@ -84,6 +99,8 @@ const planStatusLines = (row) => {
   const cardUpdated = formatAdminStamp(row?.card_updated_at);
   const declinedAt = formatAdminStamp(row?.last_decline_at);
   if (paused) lines.push(`Paused ${paused}`);
+  const keepSunday = keepsCommittedSundayNote(row, cycle);
+  if (keepSunday) lines.push(keepSunday);
   if (row?.pause_reason === 'payment_failed' && row?.last_decline_code) {
     const why = declineAdminLabel(row.last_decline_code);
     lines.push(
@@ -214,14 +231,7 @@ const cycleIsClosed = (cycle) => {
   return status === 'locked' || status === 'skipped';
 };
 
-// A pause or cancel after the box is committed does not pull it off this Sunday.
 // Skipped weeks stay off the kitchen list. Later unpaid weeks on a paused plan stay off too.
-const receivesSundayBox = (row, cycle) => {
-  if (!cycle || cycle.status === 'skipped') return false;
-  if (row?.status === 'active') return true;
-  if (cycle.status === 'locked') return true;
-  return Number(cycle.plan_paid_cents) > 0;
-};
 
 const cycleForRow = (row, view) => {
   if (view === 'paused') {
@@ -276,6 +286,7 @@ const toPrintBoxes = (weekRows, cycleKey) => {
       phone: formatPhone(customer.phone_number),
       email: customer.email || '—',
       notes: cycleNote(row, cycle),
+      keepSundayNote: keepsCommittedSundayNote(row, cycle),
       orderId: cycle.order_id || null,
       meals: items.filter((item) => item.kind === 'plan'),
       extras: items.filter((item) => item.kind === 'addon'),
@@ -612,6 +623,14 @@ const SubscriberAdmin = () => {
                               <Badge key={label} tone={statusBadgeTone(label)}>{label}</Badge>
                             ))}
                           </div>
+                          {plans.map((row) => {
+                            const note = keepsCommittedSundayNote(row, cycleForRow(row, view));
+                            return note ? (
+                              <div key={`${row.id}-keep-sunday`} className="sub-admin-keep-sunday" role="status">
+                                {note}
+                              </div>
+                            ) : null;
+                          })}
                           {plans.map((row) => (
                             row.pending_status ? (
                               <div key={`${row.id}-pending`} className="sub-admin-muted">
@@ -677,7 +696,7 @@ const SubscriberAdmin = () => {
                                   {plans.map((row) => {
                                     const planCycle = cycleForRow(row, view);
                                     const signedUp = formatAdminStamp(row.created_at);
-                                    const statusLines = planStatusLines(row);
+                                    const statusLines = planStatusLines(row, planCycle);
                                     const postal = quotePostal(row, planCycle);
                                     return (
                                       <div key={`${row.id}-signup`} className="sub-admin-signup">
@@ -717,6 +736,7 @@ const SubscriberAdmin = () => {
                                       ? mealMismatchNote(selected, mealCount)
                                       : '';
                                     const planFulfill = fulfillmentParts(planCycle);
+                                    const keepSundayNote = keepsCommittedSundayNote(row, planCycle);
                                     return (
                                       <div key={row.id} className="sub-admin-plan-block">
                                         {plans.length > 1 ? (
@@ -732,6 +752,11 @@ const SubscriberAdmin = () => {
                                                 </Badge>
                                               </>
                                             ) : null}
+                                          </p>
+                                        ) : null}
+                                        {keepSundayNote ? (
+                                          <p className="sub-admin-keep-sunday" role="status">
+                                            {keepSundayNote}
                                           </p>
                                         ) : null}
                                         {noteText ? (
@@ -819,6 +844,9 @@ const SubscriberAdmin = () => {
             <p className="sub-admin-print-name">
               {index + 1}. {row.name} — {row.mealCount} meals
             </p>
+            {row.keepSundayNote ? (
+              <p className="sub-admin-print-keep-sunday">{row.keepSundayNote}</p>
+            ) : null}
             {mismatch ? (
               <p className="sub-admin-print-meal-warn">{mismatch}</p>
             ) : null}

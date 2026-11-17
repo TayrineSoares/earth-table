@@ -1095,11 +1095,15 @@ async function completeCardSetup(session) {
       if (retry?.ok) {
         try {
           const { notifyResumeAfterPaymentRecovery } = require('./subscriptionManage');
-          await notifyResumeAfterPaymentRecovery(userId, {
-            ...patched,
-            status: 'active',
-            pause_reason: null,
-          });
+          await notifyResumeAfterPaymentRecovery(
+            userId,
+            {
+              ...patched,
+              status: 'active',
+              pause_reason: null,
+            },
+            { charged: !!retry.charged }
+          );
         } catch (mailErr) {
           console.warn('[subscriptions] payment-failed resume email failed:', mailErr.message);
         }

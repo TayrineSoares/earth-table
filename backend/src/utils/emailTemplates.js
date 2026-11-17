@@ -152,10 +152,11 @@ function spacer(px = 24) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td style="height:${px}px; line-height:${px}px; font-size:1px;">&nbsp;</td></tr></table>`;
 }
 
-function wrapEmail(inner, { preheader, replyOk, title, unsubscribeHref } = {}) {
-  const footerCopy = replyOk
-    ? `Questions? Reply to this email or write to <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>.`
-    : `Questions? Email <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>. Please do not reply to this email.`;
+const QUESTIONS_FOOTER_HTML = `Questions? Email us at <a href="mailto:hello@earthtableco.ca" style="color:${C_AMBER}; text-decoration:underline;">hello@earthtableco.ca</a>.`;
+
+function wrapEmail(inner, { preheader, replyOk: _replyOk, title, unsubscribeHref } = {}) {
+  // Always point people to hello@ — do not ask them to reply to the message.
+  const footerCopy = QUESTIONS_FOOTER_HTML;
   const unsub = String(unsubscribeHref || '').trim();
   const unsubLine = unsub
     ? `<p style="margin:12px 0 0; font-size:12px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};"><a href="${unsub.replace(/"/g, '&quot;')}" style="color:${C_AMBER}; text-decoration:underline;">Unsubscribe from reminder emails</a></p>`
@@ -548,8 +549,7 @@ ${hasBreakdown
 ${fulfillmentText(detailedOrder)}
 
 Earth Table Team
-Questions? hello@earthtableco.ca
-Please do not reply to this email.`;
+Questions? Email us at hello@earthtableco.ca.`;
 
   return { subject, html, text };
 }
@@ -772,7 +772,7 @@ Payout type: Cash (default). Switch to store credit anytime from your partner wa
 
 ${partnerProgramRulesText("partner", rates)}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.
+Questions? Email us at hello@earthtableco.ca.
 `;
 
   return { subject, html, text };
@@ -979,7 +979,7 @@ ${lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- None'}
 
 Store credit auto-applies on your next order. Cash is paid by Earth Table outside the site.
 
-Questions? Reply to this email or write to hello@earthtableco.ca.
+Questions? Email us at hello@earthtableco.ca.
 `;
 
   return { subject, html, text };
@@ -1149,7 +1149,7 @@ Manage my subscription: ${manageHref}
 
 Your plan renews every week. Plan and delivery are charged every ${PAUSE_CANCEL_BY}. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Email us at hello@earthtableco.ca.`;
 
   return { subject, html, text };
 }
@@ -1396,10 +1396,10 @@ function renderSubscriptionManageEmail(payload = {}) {
       ? `Starting with ${sunday}, your box comes to you:`
       : `Starting with ${sunday}, your box will be labeled and waiting at:`;
     const after = toDelivery
-      ? `If this Sunday is still unpaid, delivery is charged with your plan on Tuesday at 9:00 AM ET — switch back to pickup before then if you change your mind. You can still update meals until ${cutoff}. Questions? Email hello@earthtableco.ca.`
+      ? `If this Sunday is still unpaid, delivery is charged with your plan on Tuesday at 9:00 AM ET — switch back to pickup before then if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
       : planAlreadyPaid
         ? `You can switch back to delivery any time before ${cutoff}. If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.`
-        : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email hello@earthtableco.ca.`;
+        : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email us at hello@earthtableco.ca.`;
     const detail = toDelivery
       ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
       : `${kvRow('Next box', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: true })}`;
@@ -1486,14 +1486,14 @@ My Subscriptions: ${manageHref}`;
     addons_dropped: {
       subject: `This Sunday's add-ons were not charged`,
       heading: `Add-ons were left off this box, ${name}`,
-      intro: `We could not charge add-ons for ${thisSundayPhrase(sunday)}, so they were removed from this week's box. Your plan meals still go out. Update your card in My Subscriptions before the next week if you want extras again. Questions? Email hello@earthtableco.ca.`,
+      intro: `We could not charge add-ons for ${thisSundayPhrase(sunday)}, so they were removed from this week's box. Your plan meals still go out. Update your card in My Subscriptions before the next week if you want extras again. Questions? Email us at hello@earthtableco.ca.`,
     },
     notes_updated: {
       subject: `Notes saved for ${sunday}`,
       heading: `Notes updated, ${name}`,
       intro: String(payload.notes || '').trim()
-        ? `We saved your notes for ${thisSundayPhrase(sunday)}: ${String(payload.notes).trim()}. Change them again anytime before ${cutoff} in My Subscriptions. Questions? Email hello@earthtableco.ca.`
-        : `We cleared notes for ${thisSundayPhrase(sunday)}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email hello@earthtableco.ca.`,
+        ? `We saved your notes for ${thisSundayPhrase(sunday)}: ${String(payload.notes).trim()}. Change them again anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`
+        : `We cleared notes for ${thisSundayPhrase(sunday)}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`,
     },
     resume: {
       subject: `Your weekly plan is active again`,
@@ -1503,12 +1503,12 @@ My Subscriptions: ${manageHref}`;
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're moving from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Here's what's set for ${thisSundayPhrase(sunday)}. Need help? Email hello@earthtableco.ca.`,
+      intro: `You're moving from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Here's what's set for ${thisSundayPhrase(sunday)}. Questions? Email us at hello@earthtableco.ca.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
       heading: `Your plan changes starting next week, ${name}`,
-      intro: `You're moving from a ${previousPlan || planWeek} to a ${nextPlan}. ${ThisSundayPhrase(sunday)} stays as-is; the new plan starts the following week with these meals. Need help? Email hello@earthtableco.ca.`,
+      intro: `You're moving from a ${previousPlan || planWeek} to a ${nextPlan}. ${ThisSundayPhrase(sunday)} stays as-is; the new plan starts the following week with these meals. Questions? Email us at hello@earthtableco.ca.`,
     },
   }[kind] || {
     subject: 'Your weekly plan',
@@ -1562,7 +1562,7 @@ ${copy.intro}${planChangeText}${boxText}
 
 My Subscriptions: ${manageHref}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.${unsubscribeHref ? `
+Questions? Email us at hello@earthtableco.ca.${unsubscribeHref ? `
 
 Unsubscribe from reminder emails: ${unsubscribeHref}` : ''}`;
 
@@ -1633,6 +1633,7 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
     const name = String(row.name || '').trim() || 'Customer';
     const meals = boxMealCount(row);
     const mismatch = boxMealMismatchNote(row);
+    const keepSunday = String(row.keepSundayNote || '').trim();
     const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
     const start = row.windowStart || '—';
     const end = row.windowEnd || '—';
@@ -1649,9 +1650,13 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
     const warn = mismatch
       ? `<p style="margin:0 0 8px; font-size:14px; font-weight:700; color:#B42318; font-family:${FONT};">${mismatch}</p>`
       : '';
+    const keepNote = keepSunday
+      ? `<p style="margin:0 0 8px; font-size:14px; font-weight:700; color:#8A5A00; font-family:${FONT};">${keepSunday}</p>`
+      : '';
     return `
     <div style="margin:0 0 24px; padding:16px 0; border-top:1px solid ${C_LINE};">
       <p style="margin:0 0 8px; font-size:16px; font-weight:700; color:${C_INK}; font-family:${FONT};">${i}. ${name} — ${meals} meals</p>
+      ${keepNote}
       ${warn}
       <p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${boxLine}</p>
       <p style="margin:0 0 10px; font-size:14px; color:${C_MUTED}; font-family:${FONT};">${formatPhone(row.phone)} · ${row.email || '—'}${orderLine}</p>
@@ -1675,8 +1680,10 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
     const loc = row.address || (row.delivery ? '—' : PICKUP_ADDRESS);
     const method = row.method || (row.delivery ? 'Delivery' : 'Pickup');
     const mismatch = boxMealMismatchNote(row);
+    const keepSunday = String(row.keepSundayNote || '').trim();
     return [
       `${i + 1}. ${String(row.name || '').trim() || 'Customer'} — ${boxMealCount(row)} meals`,
+      keepSunday || '',
       mismatch || '',
       `${method} ${sunday || 'Sunday'}, ${row.windowStart || '—'} – ${row.windowEnd || '—'}`,
       `${formatPhone(row.phone)} · ${row.email || '—'}${row.orderId ? ` · order #${row.orderId}` : ''}`,
@@ -1822,7 +1829,7 @@ ${itemLinesText(addons) || 'None yet.'}
 
 My Subscriptions: ${manageHref}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.${unsubscribeHref ? `
+Questions? Email us at hello@earthtableco.ca.${unsubscribeHref ? `
 
 Unsubscribe from reminder emails: ${unsubscribeHref}` : ''}`;
 
@@ -1902,7 +1909,7 @@ ${itemLinesText(addonItems) || 'None this week.'}
 
 My Subscriptions: ${appUrl('/my-subscriptions')}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Email us at hello@earthtableco.ca.`;
 
   return { subject, html, text };
 }
@@ -1924,6 +1931,7 @@ function renderOwnerSubscriptionEventEmail({
   oldMealCount,
   nextMealCount,
   deliveryLabel,
+  charged,
   meals,
   addons,
 } = {}) {
@@ -1939,6 +1947,9 @@ function renderOwnerSubscriptionEventEmail({
   const nextPlan = mealsAWeek(nextMealCount);
   const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
   const showPlan = kind === 'plan_now' || kind === 'plan_next';
+  const chargedNote = charged
+    ? ` Charged for ${sunday}.`
+    : '';
 
   const copy = {
     pause_now: {
@@ -1969,7 +1980,7 @@ function renderOwnerSubscriptionEventEmail({
     resume: {
       subject: `Resumed — ${name}`,
       heading: 'Subscription resumed',
-      intro: `<strong>${name}</strong> resumed their ${planWeek}. Box: ${sunday}.`,
+      intro: `<strong>${name}</strong> resumed their ${planWeek}. Box: ${sunday}.${chargedNote}`,
     },
     plan_now: {
       subject: `Plan changed — ${name}`,
@@ -2122,7 +2133,7 @@ function renderPlanDiscontinuedEmail({
   } else {
     introText = `We're discontinuing the ${planLabel} weekly plan. Your subscription has been cancelled and ${thisSundayPhrase(sunday)} will not go out.${refundLine}`;
   }
-  const after = 'Questions? Reply to this email or write to hello@earthtableco.ca. You are welcome to start a different plan any time from Subscribe & Save.';
+  const after = 'Questions? Email us at hello@earthtableco.ca. You are welcome to start a different plan any time from Subscribe & Save.';
   const html = wrapEmail(`
       ${eyebrow('Weekly subscription')}
       ${h1(`Plan discontinued, ${name}`)}
@@ -2212,7 +2223,7 @@ Manage my subscription: ${manageHref}
 
 ${signoff}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Email us at hello@earthtableco.ca.`;
 
   return { subject, html, text };
 }
@@ -2269,11 +2280,11 @@ function renderSubscriptionMealMismatchEmail({
     : `Too many meals on this box, ${name}`;
   const introText = short
     ? (billed
-      ? `Your ${planWeek} is already charged, but ${sunday}'s box locked with only ${got} meal${got === 1 ? '' : 's'}. Reply to this email (or write hello@earthtableco.ca) with the ${diff} extra meal${diff === 1 ? '' : 's'} you want and we'll add them.`
-      : `You're on ${planWeek}, but ${sunday}'s box locked with only ${got} meal${got === 1 ? '' : 's'}. Reply to this email (or write hello@earthtableco.ca) with the ${diff} extra meal${diff === 1 ? '' : 's'} you want and we'll add them.`)
+      ? `Your ${planWeek} is already charged, but ${sunday}'s box locked with only ${got} meal${got === 1 ? '' : 's'}. Email hello@earthtableco.ca with the ${diff} extra meal${diff === 1 ? '' : 's'} you want and we'll add them.`
+      : `You're on ${planWeek}, but ${sunday}'s box locked with only ${got} meal${got === 1 ? '' : 's'}. Email hello@earthtableco.ca with the ${diff} extra meal${diff === 1 ? '' : 's'} you want and we'll add them.`)
     : (billed
-      ? `Your ${planWeek} is already charged, but ${sunday}'s box locked with ${got} meals (${diff} over). Reply to this email (or write hello@earthtableco.ca) to confirm which ${need} meal${need === 1 ? '' : 's'} to keep and we'll fix the box.`
-      : `You're on ${planWeek}, but ${sunday}'s box locked with ${got} meals (${diff} over). Reply to this email (or write hello@earthtableco.ca) to confirm which ${need} meal${need === 1 ? '' : 's'} to keep and we'll fix the box.`);
+      ? `Your ${planWeek} is already charged, but ${sunday}'s box locked with ${got} meals (${diff} over). Email hello@earthtableco.ca to confirm which ${need} meal${need === 1 ? '' : 's'} to keep and we'll fix the box.`
+      : `You're on ${planWeek}, but ${sunday}'s box locked with ${got} meals (${diff} over). Email hello@earthtableco.ca to confirm which ${need} meal${need === 1 ? '' : 's'} to keep and we'll fix the box.`);
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
@@ -2301,7 +2312,7 @@ ${itemLinesText(meals) || '—'}
 
 My Subscriptions: ${appUrl('/my-subscriptions')}
 
-Questions? Reply to this email or write to hello@earthtableco.ca.`;
+Questions? Email us at hello@earthtableco.ca.`;
 
   return { subject, html, text };
 }

@@ -11,7 +11,7 @@ const meals = [
 ];
 
 describe('renderSubscriptionMealMismatchEmail', () => {
-  it('short + billed asks customer to reply with extra meals', () => {
+  it('short + billed asks customer to email hello@ with extra meals', () => {
     const msg = renderSubscriptionMealMismatchEmail({
       firstName: 'Justina',
       mealCount: 15,
@@ -23,7 +23,7 @@ describe('renderSubscriptionMealMismatchEmail', () => {
     assert.match(msg.subject, /only 10 of 15/);
     assert.match(msg.text, /already charged/);
     assert.match(msg.text, /5 extra meals/);
-    assert.match(msg.text, /Reply to this email/);
+    assert.match(msg.text, /Email hello@earthtableco\.ca/);
     assert.match(msg.html, /My Subscriptions/);
     assert.ok(msg.html.length > 500);
   });

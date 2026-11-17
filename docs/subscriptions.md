@@ -235,7 +235,7 @@ Send helpers: `sendSubscriptionMail.js`, `notifyManage` in manage/charge paths.
 | Card expiry / price / discontinue / deadline | Matching jobs/admin |
 
 ### Owner
-New sub; pause/resume/plan; fulfillment switch; payment_failed; lock box list; meal mismatch; holiday; discontinue.
+New sub; pause/resume/plan (resume subject `Resumed — {name}`; notes if charged); fulfillment switch; payment_failed; lock box list; meal mismatch; holiday; discontinue. Goes to `OWNER_NOTIFICATIONS_TO`.
 
 **Not** emailed to owner on every meal edit (intentional — customer box-updated only).
 

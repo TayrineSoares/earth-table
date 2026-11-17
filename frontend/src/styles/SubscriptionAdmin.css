@@ -300,6 +300,20 @@
   color: #B42318;
 }
 
+.sub-admin-keep-sunday {
+  margin: 4px 0 0;
+  font-family: var(--body-font);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #8A5A00;
+}
+
+.sub-admin-details .sub-admin-keep-sunday {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
 .sub-admin-panel .promo-delete-button {
   padding: 6px 10px;
   font-size: 13px;
@@ -475,6 +489,13 @@
     font-size: 14px;
     font-weight: 700;
     color: #B42318;
+  }
+
+  .sub-admin-print-keep-sunday {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #8A5A00;
   }
 
   .sub-admin-print-box p {

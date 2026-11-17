@@ -214,19 +214,26 @@ async function notifyManage(userId, payload) {
   if (payload.kind === 'pause_nudge' && !emailPrefOn(user, 'pause_reminder')) {
     return false;
   }
+  let customerSent = false;
   if (email) {
-    const msg = renderSubscriptionManageEmail({
-      ...payload,
-      firstName: user.first_name,
-      unsubscribeHref: payload.kind === 'pause_nudge' ? unsubscribeUrl(userId) : undefined,
-    });
-    await sendEmail({
-      to: email,
-      subject: msg.subject,
-      html: msg.html,
-      text: msg.text,
-      replyTo: 'hello@earthtableco.ca',
-    });
+    try {
+      const msg = renderSubscriptionManageEmail({
+        ...payload,
+        firstName: user.first_name,
+        unsubscribeHref: payload.kind === 'pause_nudge' ? unsubscribeUrl(userId) : undefined,
+      });
+      await sendEmail({
+        to: email,
+        subject: msg.subject,
+        html: msg.html,
+        text: msg.text,
+        replyTo: 'hello@earthtableco.ca',
+      });
+      customerSent = true;
+    } catch (err) {
+      // Still try owner mail below — customer failure must not hide kitchen alerts.
+      console.warn('[subscriptions] customer manage email failed:', err.message);
+    }
   } else if (!OWNER_MANAGE_KINDS.has(payload.kind)) {
     return false;
   }
@@ -246,10 +253,10 @@ async function notifyManage(userId, payload) {
       console.warn('[subscriptions] owner manage email failed:', err.message);
     }
   }
-  return Boolean(email);
+  return customerSent;
 }
 
-async function resumeNotifyPayload(sub, week, charge) {
+async function resumeNotifyPayload(sub, week, charge, { charged = false } = {}) {
   let meals = [];
   let addons = [];
   let deliveryLabel = week?.delivery_label;
@@ -269,16 +276,20 @@ async function resumeNotifyPayload(sub, week, charge) {
     mealCount: sub.subscription_plans?.meal_count,
     deliveryLabel,
     chargeLabel: charge?.charge_label,
+    charged: !!charged,
     meals,
     addons,
   };
 }
 
 /** Welcome-back mail after payment_failed recovery (resume or card-update retry). */
-async function notifyResumeAfterPaymentRecovery(userId, sub) {
+async function notifyResumeAfterPaymentRecovery(userId, sub, { charged = false } = {}) {
   if (!userId || !sub?.id) return false;
   const { week, charge } = await currentCycleFor(sub);
-  return notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+  return notifyManage(
+    userId,
+    await resumeNotifyPayload(sub, week, charge, { charged: !!charged })
+  );
 }
 
 async function pauseSubscription(userId, subscriptionId) {
@@ -504,7 +515,10 @@ async function resumeSubscription(userId, subscriptionId) {
         );
       }
       try {
-        await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+        await notifyManage(
+          userId,
+          await resumeNotifyPayload(sub, week, charge, { charged: !!retried.charged })
+        );
       } catch (err) {
         console.warn('[subscriptions] resume email failed:', err.message);
       }
@@ -538,7 +552,10 @@ async function resumeSubscription(userId, subscriptionId) {
   if (error) throw error;
 
   try {
-    await notifyManage(userId, await resumeNotifyPayload(sub, week, charge));
+    await notifyManage(
+      userId,
+      await resumeNotifyPayload(sub, week, charge, { charged: false })
+    );
   } catch (err) {
     console.warn('[subscriptions] resume email failed:', err.message);
   }
