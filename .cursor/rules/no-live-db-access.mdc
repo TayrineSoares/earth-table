@@ -1,0 +1,32 @@
+---
+description: Live DB reads OK; never write/delete — give user SELECT then destructive SQL
+alwaysApply: true
+---
+
+# Live database access
+
+## Allowed
+
+- **Read-only** queries against live Supabase/Postgres (`SELECT` / `.select()` / inspect rows) when needed to debug or answer questions
+
+## Never do yourself
+
+- `INSERT` / `UPDATE` / `DELETE` / upserts / backfills / running destructive migration SQL against live data
+- Any service-role script that mutates rows
+
+## When the user asks to change or delete data
+
+Give them SQL to run — **SELECT first**, then the destructive statement:
+
+```sql
+-- 1) Inspect
+select id, buyer_email, status
+from public.orders
+where id = 400;
+
+-- 2) Destructive (user runs only if select looks right)
+delete from public.order_products where order_id = 400;
+delete from public.orders where id = 400;
+```
+
+Do not execute step 2 yourself, even if they say "delete it" — hand them the queries unless they explicitly say you may run the write (default: **never write**).
