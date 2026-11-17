@@ -1,10 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../../supabase/db');
+const { requireAuth } = require('../middleware/requireAuth');
 
-// GET /cart/:userId → Get all cart items for user
+function resolveCartUserId(req, res) {
+  const fromBody = req.body?.userId;
+  const fromParams = req.params?.userId;
+  const claimed = fromBody != null && String(fromBody).trim() !== ''
+    ? fromBody
+    : (fromParams != null && String(fromParams).trim() !== '' ? fromParams : null);
+  if (claimed != null && String(claimed) !== String(req.user.id)) {
+    res.status(400).json({ error: 'userId does not match the signed-in user.' });
+    return null;
+  }
+  return req.user.id;
+}
+
+// Default-deny: all cart API ops require auth (guest cart is localStorage only).
+router.use(requireAuth);
+
+// GET /cart → signed-in user's cart
+router.get('/', async (req, res) => {
+  const userId = req.user.id;
+  const { data, error } = await supabase
+    .from('carts')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Legacy path: GET /cart/:userId (must match caller)
 router.get('/:userId', async (req, res) => {
-  const { userId } = req.params;
+  const userId = resolveCartUserId(req, res);
+  if (!userId) return;
 
   const { data, error } = await supabase
     .from('carts')
@@ -15,9 +45,10 @@ router.get('/:userId', async (req, res) => {
   res.json(data);
 });
 
-// POST /cart/add → Add item (or increment if it exists)
 router.post('/add', async (req, res) => {
-  const { userId, productId, quantity } = req.body;
+  const userId = resolveCartUserId(req, res);
+  if (!userId) return;
+  const { productId, quantity } = req.body;
 
   const { data: existingItem, error: findErr } = await supabase
     .from('carts')
@@ -46,9 +77,10 @@ router.post('/add', async (req, res) => {
   res.json({ message: 'Item added' });
 });
 
-// POST /cart/remove → Remove a specific item
 router.post('/remove', async (req, res) => {
-  const { userId, productId } = req.body;
+  const userId = resolveCartUserId(req, res);
+  if (!userId) return;
+  const { productId } = req.body;
 
   const { error } = await supabase
     .from('carts')
@@ -60,9 +92,10 @@ router.post('/remove', async (req, res) => {
   res.json({ message: 'Item removed' });
 });
 
-// POST /cart/update → Set quantity manually
 router.post('/update', async (req, res) => {
-  const { userId, productId, quantity } = req.body;
+  const userId = resolveCartUserId(req, res);
+  if (!userId) return;
+  const { productId, quantity } = req.body;
 
   const { error } = await supabase
     .from('carts')
@@ -74,9 +107,9 @@ router.post('/update', async (req, res) => {
   res.json({ message: 'Quantity set' });
 });
 
-// POST /cart/clear → Delete all cart items for a user
 router.post('/clear', async (req, res) => {
-  const { userId } = req.body;
+  const userId = resolveCartUserId(req, res);
+  if (!userId) return;
 
   const { error } = await supabase
     .from('carts')

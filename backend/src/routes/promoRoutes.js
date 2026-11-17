@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { getActivePromoByCode, normalize } = require('../queries/promo_code');
 const { getActiveReferralByCode } = require('../queries/partner');
+const { optionalAuth, bindRequestUserId } = require('../middleware/requireAuth');
 
-// Cart calls this to preview the discount. Pass userId when logged in so first-time / capped rules work.
-// Referral codes are checked first; if the string is a partner code, do not fall through to promo_codes.
-router.post('/validate', async (req, res) => {
+// Cart calls this to preview the discount. Guests OK; logged-in identity from Bearer.
+router.post('/validate', optionalAuth, async (req, res) => {
   try {
-    const { code, subtotalCents, userId } = req.body || {};
+    const { code, subtotalCents } = req.body || {};
+    const bound = bindRequestUserId(req);
+    if (bound.error) {
+      return res.status(bound.status).json({ valid: false, message: bound.error });
+    }
+    const userId = bound.userId;
     const cleaned = normalize(code);
 
     if (!cleaned) {

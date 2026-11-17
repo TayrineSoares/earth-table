@@ -14,6 +14,7 @@ const {
   requireAuth,
   requireAdmin,
   requireSelfOrAdmin,
+  unlessPublic,
   loadCallerUserRow,
   isAdminUser,
 } = require('../middleware/requireAuth');
@@ -24,6 +25,13 @@ async function assertOrderReadable(req, order) {
   if (order?.user_id && order.user_id === req.user.id) return true;
   return false;
 }
+
+const PUBLIC = [
+  { method: 'GET', pattern: /^\/session\// },
+];
+
+// Default-deny: only post-checkout session URLs stay public.
+router.use(unlessPublic(PUBLIC, requireAuth));
 
 // GET ALL ORDERS — admin
 router.get('/', requireAdmin, async (req, res) => {
@@ -50,8 +58,19 @@ router.get('/session/:sessionId', async (req, res) => {
   }
 });
 
-// GET ORDERS BY USER ID — self or admin
-router.get('/user/:id', requireAuth, requireSelfOrAdmin('id'), async (req, res) => {
+// Register /mine before /:id
+router.get('/mine', async (req, res) => {
+  try {
+    const userOrders = await getOrderByUserId(req.user.id);
+    res.json(userOrders);
+  } catch (error) {
+    console.error('Failed to fetch orders for signed-in user:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Legacy: GET ORDERS BY USER ID — self or admin
+router.get('/user/:id', requireSelfOrAdmin('id'), async (req, res) => {
   const authUserId = req.params.id;
 
   try {
@@ -64,7 +83,7 @@ router.get('/user/:id', requireAuth, requireSelfOrAdmin('id'), async (req, res) 
 });
 
 // GET PRODUCTS FOR AN ORDER — owner or admin
-router.get('/:id/products', requireAuth, async (req, res) => {
+router.get('/:id/products', async (req, res) => {
   try {
     const orderId = req.params.id;
     const order = await getOrderById(orderId);
@@ -81,7 +100,7 @@ router.get('/:id/products', requireAuth, async (req, res) => {
 });
 
 // GET ORDER BY ID — owner or admin
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const orderId = req.params.id;
     const order = await getOrderById(orderId);

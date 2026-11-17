@@ -53,6 +53,35 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/** Attach req.user when Bearer is present; allow guests through otherwise. */
+async function optionalAuth(req, res, next) {
+  if (!bearerToken(req)) {
+    next();
+    return;
+  }
+  return requireAuth(req, res, next);
+}
+
+/**
+ * Bind identity for routes that allow guests.
+ * Logged in → req.user.id (body userId mismatch → 400).
+ * Guest with body userId → 400 (no forged attribution).
+ */
+function bindRequestUserId(req, { bodyKey = 'userId' } = {}) {
+  const claimed = req.body?.[bodyKey];
+  const hasClaim = claimed != null && String(claimed).trim() !== '';
+  if (req.user?.id) {
+    if (hasClaim && String(claimed) !== String(req.user.id)) {
+      return { status: 400, error: 'userId does not match the signed-in user.' };
+    }
+    return { userId: req.user.id };
+  }
+  if (hasClaim) {
+    return { status: 400, error: 'Sign in to use this userId.' };
+  }
+  return { userId: null };
+}
+
 async function requireAdmin(req, res, next) {
   try {
     const user = req.user || await authUserFromBearer(req);
@@ -145,9 +174,11 @@ module.exports = {
   bearerToken,
   authUserFromBearer,
   requireAuth,
+  optionalAuth,
   requireAdmin,
   requireSelfOrAdmin,
   unlessPublic,
+  bindRequestUserId,
   loadCallerUserRow,
   isAdminUser,
   __setAuthDepsForTests,
