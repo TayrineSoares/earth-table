@@ -6,7 +6,7 @@
 -- the API stores them uppercase (e.g. JOSH15).
 --
 -- Collision trigger lives in schema `private` as SECURITY DEFINER so Promo Admin
--- (anon client inserts into promo_codes) can still see partner codes under RLS.
+-- (admin promo CRUD goes through Express requireAdmin; partner codes stay under RLS).
 
 create schema if not exists private;
 

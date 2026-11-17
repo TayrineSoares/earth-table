@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
+import { authFetch } from '../helpers/authFetch';
 import { formatPlacedShort } from '../helpers/orderAdminHelpers';
 import AdminTabLoading from './AdminTabLoading';
 import AdminToolbar from './admin/AdminToolbar';
@@ -39,16 +39,13 @@ const PromoAdmin = () => {
   const [dialog, setDialog] = useState(null);
 
   const loadPromos = async () => {
-    const { data, error } = await supabase
-      .from('promo_codes')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching promo codes:', error);
+    const res = await authFetch('/api/promo');
+    const data = await res.json().catch(() => ([]));
+    if (!res.ok) {
+      console.error('Error fetching promo codes:', data);
       return [];
     }
-    return data || [];
+    return Array.isArray(data) ? data : [];
   };
 
   useEffect(() => {
@@ -113,15 +110,16 @@ const PromoAdmin = () => {
       max_uses: maxUsesVal,
     };
 
-    const { data, error } = await supabase
-      .from('promo_codes')
-      .insert(payload)
-      .select()
-      .single();
+    const res = await authFetch('/api/promo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
 
-    if (error) {
-      console.error('Error creating promo code:', error);
-      alert(error.message || 'Failed to create promo code.');
+    if (!res.ok) {
+      console.error('Error creating promo code:', data);
+      alert(data.error || 'Failed to create promo code.');
       return;
     }
 
@@ -142,14 +140,16 @@ const PromoAdmin = () => {
 
     setSavingActiveId(row.id);
     try {
-      const { error } = await supabase
-        .from('promo_codes')
-        .update({ active: next })
-        .eq('id', row.id);
+      const res = await authFetch(`/api/promo/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: next }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-      if (error) {
-        console.error('Error updating promo code:', error);
-        alert(error.message || 'Failed to update promo code.');
+      if (!res.ok) {
+        console.error('Error updating promo code:', data);
+        alert(data.error || 'Failed to update promo code.');
         return;
       }
 
@@ -164,10 +164,12 @@ const PromoAdmin = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this promo code?')) return;
 
-    const { error } = await supabase.from('promo_codes').delete().eq('id', id);
+    const res = await authFetch(`/api/promo/${id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
 
-    if (error) {
-      console.error('Error deleting promo code:', error);
+    if (!res.ok) {
+      console.error('Error deleting promo code:', data);
+      alert(data.error || 'Failed to delete promo code.');
       return;
     }
 

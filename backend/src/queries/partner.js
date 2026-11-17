@@ -85,25 +85,21 @@ function displayPartner(row, extras = {}) {
 }
 
 async function getPromoByCode(code) {
-  const { data, error } = await supabase
-    .from('promo_codes')
-    .select('id, code')
-    .ilike('code', code)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data || null;
+  const { findPromoByCodeExact } = require('./promo_code');
+  const promo = await findPromoByCodeExact(code);
+  if (!promo) return null;
+  return { id: promo.id, code: promo.code };
 }
 
 async function getPartnerByCode(rawCode) {
   const code = normalizeReferralCode(rawCode);
   if (!code) return null;
 
+  // Referral codes are stored uppercase — exact eq, no ilike wildcards.
   const { data, error } = await supabase
     .from('partners')
     .select('*')
-    .ilike('referral_code', code)
+    .eq('referral_code', code)
     .limit(1)
     .maybeSingle();
 
@@ -910,6 +906,18 @@ async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
   const requested = Math.floor(Number(requestedCents) || 0);
   if (!partnerId || !orderId || requested <= 0) return null;
 
+  // Prefer atomic RPC (see backend/sql/promo_credit_atomicity.sql).
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('redeem_partner_credit', {
+    p_partner_id: partnerId,
+    p_order_id: orderId,
+    p_requested_cents: requested,
+  });
+  if (!rpcErr) return rpcData || null;
+  if (rpcErr.code !== 'PGRST202' && !/redeem_partner_credit/i.test(rpcErr.message || '')) {
+    if (rpcErr.code === '23505') return null;
+    throw rpcErr;
+  }
+
   const wallets = await getWalletTotalsByPartnerIds([partnerId]);
   const available = Math.max(0, wallets[partnerId]?.available_credit_cents || 0);
   const amountCents = Math.min(requested, available);
@@ -943,6 +951,16 @@ async function recordCreditRedeem({ partnerId, orderId, requestedCents }) {
     if (error.code === '23505') return null;
     throw error;
   }
+
+  // Best-effort overdraft undo if a concurrent redeem won the race.
+  const after = await getWalletTotalsByPartnerIds([partnerId]);
+  const remaining = after[partnerId]?.available_credit_cents;
+  if (Number.isFinite(Number(remaining)) && Number(remaining) < 0 && data?.id) {
+    console.warn('[recordCreditRedeem] overdraft after race — rolling back', orderId);
+    await supabase.from('partner_ledger').delete().eq('id', data.id);
+    return null;
+  }
+
   return data;
 }
 

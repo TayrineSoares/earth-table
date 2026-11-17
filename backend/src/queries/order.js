@@ -95,13 +95,16 @@ async function findBuyerUser(order) {
   const email = String(order?.buyer_email || '').trim();
   if (!email) return null;
 
+  // Exact case-insensitive match (escape ilike wildcards).
+  const { escapeIlikeExact } = require('./promo_code');
   const { data, error } = await supabase
     .from('users')
     .select(USER_FIELDS)
-    .ilike('email', email)
-    .limit(1);
+    .ilike('email', escapeIlikeExact(email))
+    .limit(5);
   if (error) return null;
-  return (data && data[0]) || null;
+  const needle = email.toLowerCase();
+  return (data || []).find((row) => String(row.email || '').toLowerCase() === needle) || null;
 }
 
 async function resolveOrderItems(order, embeddedProducts) {

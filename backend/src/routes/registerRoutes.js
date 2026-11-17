@@ -1,9 +1,5 @@
 const express = require('express');
 const router = express.Router();
-router.use((req, res, next) => {
-  console.log('[register router]', req.method, req.originalUrl, 'body=', req.body);
-  next();
-});
 
 const supabase = require('../../supabase/db');
 const { createClient } = require('@supabase/supabase-js');

@@ -13,6 +13,29 @@ const supabase = require('../../supabase/db');
 /** Trim user input so " SUMMER " matches the same code as "summer". */
 const normalize = (code) => (code || '').trim();
 
+/** Escape `%` / `_` so ilike is case-insensitive exact match, not a wildcard search. */
+function escapeIlikeExact(value) {
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}
+
+async function findPromoByCodeExact(rawCode) {
+  const code = normalize(rawCode);
+  if (!code) return null;
+
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .ilike('code', escapeIlikeExact(code))
+    .limit(10);
+
+  if (error) throw error;
+  const needle = code.toLowerCase();
+  return (data || []).find((row) => String(row.code || '').toLowerCase() === needle) || null;
+}
+
 /**
  * Look up a promo by code and run all business rules.
  *
@@ -26,14 +49,7 @@ async function getActivePromoByCode(rawCode, userId = null) {
     return { ok: false, message: 'Promo code is required.' };
   }
 
-  const { data: promo, error } = await supabase
-    .from('promo_codes')
-    .select('*')
-    .ilike('code', code)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
+  const promo = await findPromoByCodeExact(code);
   if (!promo) {
     return { ok: false, message: 'Invalid promo code.' };
   }
@@ -90,25 +106,102 @@ async function userHasNonCancelledOrder(userId) {
 /**
  * Run after Stripe confirms payment (webhook). Do not call from /promo/validate.
  *
- * Uses read-then-update because the JS client cannot send SQL like `used_count = used_count + 1`
- * in a single patch without a database RPC.
+ * Prefer RPC `increment_promo_used_count` (atomic). Falls back to optimistic
+ * used_count compare so concurrent webhooks cannot both bump past max_uses.
  */
 async function incrementPromoUsedCount(id) {
+  if (!id) return;
+
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_promo_used_count', {
+    p_id: id,
+  });
+  if (!rpcErr) return rpcData;
+
+  // Undefined function / not migrated yet — fall back.
+  if (rpcErr.code !== 'PGRST202' && !/increment_promo_used_count/i.test(rpcErr.message || '')) {
+    throw rpcErr;
+  }
+
   const { data, error: selErr } = await supabase
     .from('promo_codes')
-    .select('used_count')
+    .select('used_count, max_uses')
     .eq('id', id)
     .maybeSingle();
 
   if (selErr) throw selErr;
   if (!data) return;
 
-  const { error } = await supabase
-    .from('promo_codes')
-    .update({ used_count: Number(data.used_count || 0) + 1 })
-    .eq('id', id);
+  const current = Number(data.used_count || 0);
+  const maxUses = data.max_uses == null ? null : Number(data.max_uses);
+  if (maxUses != null && current >= maxUses) return;
 
+  let q = supabase
+    .from('promo_codes')
+    .update({ used_count: current + 1 })
+    .eq('id', id)
+    .eq('used_count', current);
+  if (maxUses != null) q = q.lt('used_count', maxUses);
+
+  const { error } = await q;
   if (error) throw error;
 }
 
-module.exports = { getActivePromoByCode, normalize, incrementPromoUsedCount };
+async function listPromoCodes() {
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function createPromoCode(payload) {
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .insert([payload])
+    .select()
+    .single();
+  if (error) {
+    const err = new Error(error.message || 'Failed to create promo code.');
+    err.status = 400;
+    throw err;
+  }
+  return data;
+}
+
+async function updatePromoCode(id, patch) {
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    const err = new Error('Promo code not found.');
+    err.status = 404;
+    throw err;
+  }
+  return data;
+}
+
+async function deletePromoCode(id) {
+  const { error } = await supabase
+    .from('promo_codes')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return { ok: true };
+}
+
+module.exports = {
+  getActivePromoByCode,
+  normalize,
+  escapeIlikeExact,
+  findPromoByCodeExact,
+  incrementPromoUsedCount,
+  listPromoCodes,
+  createPromoCode,
+  updatePromoCode,
+  deletePromoCode,
+};

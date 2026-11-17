@@ -172,6 +172,77 @@ async function setProductActive(id, isActive) {
   
 
 
+/**
+ * Resolve à la carte cart lines from the DB. Client may send id + quantity only;
+ * price / slug / image come from products (never trust client price_cents).
+ */
+async function resolveCartItemsForCheckout(cartItems) {
+  if (!Array.isArray(cartItems) || cartItems.length === 0) {
+    const err = new Error('Cart is empty.');
+    err.status = 400;
+    throw err;
+  }
+
+  const qtyById = new Map();
+  for (const raw of cartItems) {
+    const id = raw?.id ?? raw?.product_id;
+    if (id == null || String(id).trim() === '') {
+      const err = new Error('Each cart item needs a product id.');
+      err.status = 400;
+      throw err;
+    }
+    const qty = Math.floor(Number(raw.quantity));
+    if (!Number.isFinite(qty) || qty < 1) {
+      const err = new Error('Each cart item needs a quantity of at least 1.');
+      err.status = 400;
+      throw err;
+    }
+    const key = String(id);
+    qtyById.set(key, (qtyById.get(key) || 0) + qty);
+  }
+
+  const ids = [...qtyById.keys()];
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, slug, price_cents, image_url, is_available')
+    .in('id', ids);
+
+  if (error) throw new Error(`Error loading products for checkout: ${error.message}`);
+
+  const byId = new Map((products || []).map((p) => [String(p.id), p]));
+  const resolved = [];
+
+  for (const id of ids) {
+    const product = byId.get(id);
+    if (!product) {
+      const err = new Error(`Product ${id} was not found.`);
+      err.status = 400;
+      throw err;
+    }
+    if (!product.is_available) {
+      const err = new Error(`${product.slug || 'Item'} is no longer available.`);
+      err.status = 400;
+      throw err;
+    }
+    const price = Math.round(Number(product.price_cents) || 0);
+    if (!Number.isFinite(price) || price <= 0) {
+      const err = new Error(`${product.slug || 'Item'} has an invalid price.`);
+      err.status = 400;
+      throw err;
+    }
+    resolved.push({
+      id: product.id,
+      product_id: product.id,
+      slug: product.slug,
+      image_url: product.image_url || null,
+      price_cents: price,
+      quantity: qtyById.get(id),
+    });
+  }
+
+  return resolved;
+}
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -183,4 +254,5 @@ module.exports = {
   updateProductTags,
   getProductTags,
   setProductActive,
+  resolveCartItemsForCheckout,
 };

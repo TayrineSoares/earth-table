@@ -19,7 +19,7 @@ describe('plan change manage emails', () => {
     });
     assert.match(msg.text, /hello@earthtableco\.ca/);
     assert.match(msg.html, /hello@earthtableco\.ca/);
-    assert.match(msg.text, /Need help\?/);
+    assert.match(msg.text, /Questions\? Email us at hello@earthtableco\.ca/);
     assert.match(msg.text, /moving from a 10 meals a week to a 15 meals a week/);
     assert.match(msg.text, /New plan: .*15/);
     assert.doesNotMatch(msg.text, /Previous plan:/);
@@ -44,7 +44,7 @@ describe('plan change manage emails', () => {
     assert.match(msg.text, /hello@earthtableco\.ca/);
     assert.match(msg.text, /Your plan changes starting next week, Alex/);
     assert.match(msg.text, /following week/);
-    assert.match(msg.text, /Need help\?/);
+    assert.match(msg.text, /Questions\? Email us at hello@earthtableco\.ca/);
     assert.match(msg.text, /moving from a 10 meals a week to a 15 meals a week/);
     assert.match(msg.text, /New plan: .*15/);
     assert.doesNotMatch(msg.text, /Previous plan:/);

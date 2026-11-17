@@ -41,6 +41,7 @@ const {
   recordCreditRedeem,
 } = require('./src/queries/partner');
 const { getActivePromoByCode, incrementPromoUsedCount } = require('./src/queries/promo_code');
+const { resolveCartItemsForCheckout } = require('./src/queries/product');
 const { ensureStripePromotionCode } = require('./src/stripePromo');
 const { optionalAuth, bindRequestUserId } = require('./src/middleware/requireAuth');
 
@@ -145,13 +146,41 @@ const stripeWebhookHandler = async (request, response) => {
     const specialNote = (draft?.special_note ?? md.special_note ?? null) || null;
 
     // --- Holiday blocking (safety net) ---
+    // Checkout already blocks these; if we still get here the customer paid.
+    // Return 200 so Stripe stops retrying, and alert the owner.
     if (pickupDate && isBlockedHoliday(pickupDate)) {
-      console.warn("[webhook] blocked holiday pickup date:", pickupDate);
+      console.error("[webhook] paid session blocked for holiday pickup:", session.id, pickupDate);
+      try {
+        const ownerTo = ownerNotificationEmails();
+        if (ownerTo.length) {
+          await sendEmail({
+            to: ownerTo,
+            subject: `Paid order blocked (holiday pickup) — ${session.id}`,
+            text: `Stripe session ${session.id} paid but pickup ${pickupDate} is a blocked holiday. Manual review needed.`,
+            html: `<p>Stripe session <code>${session.id}</code> paid but pickup <strong>${pickupDate}</strong> is a blocked holiday. Manual review needed.</p>`,
+          });
+        }
+      } catch (e) {
+        console.warn('[webhook] holiday owner alert failed:', e.message);
+      }
       return response.status(200).send("ok");
     }
 
     if (delivery && deliveryDate && isBlockedHoliday(deliveryDate)) {
-      console.warn("[webhook] blocked holiday delivery date:", deliveryDate);
+      console.error("[webhook] paid session blocked for holiday delivery:", session.id, deliveryDate);
+      try {
+        const ownerTo = ownerNotificationEmails();
+        if (ownerTo.length) {
+          await sendEmail({
+            to: ownerTo,
+            subject: `Paid order blocked (holiday delivery) — ${session.id}`,
+            text: `Stripe session ${session.id} paid but delivery ${deliveryDate} is a blocked holiday. Manual review needed.`,
+            html: `<p>Stripe session <code>${session.id}</code> paid but delivery <strong>${deliveryDate}</strong> is a blocked holiday. Manual review needed.</p>`,
+          });
+        }
+      } catch (e) {
+        console.warn('[webhook] holiday owner alert failed:', e.message);
+      }
       return response.status(200).send("ok");
     }
 
@@ -325,27 +354,34 @@ const stripeWebhookHandler = async (request, response) => {
           }
         : null;
 
-      // Customer email
-      const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
-      await sendEmail({
-        to: email,
-        subject,
-        html,
-        text,
-        replyTo: 'hello@earthtableco.ca',
-      });
-
-      // Owner email(s)
-      const ownerTo = ownerNotificationEmails();
-
-      const ownerMsg = renderOwnerOrderEmail(detailedOrder, { partnerEarn });
-      if (ownerTo.length) {
+      // Emails are best-effort: order already saved — don't 500 (and don't skip owner mail
+      // if only the customer send fails).
+      try {
+        const { subject, html, text } = renderCustomerOrderEmail(detailedOrder);
         await sendEmail({
-          to: ownerTo,
-          subject: ownerMsg.subject,
-          html: ownerMsg.html,
-          text: ownerMsg.text,
+          to: email,
+          subject,
+          html,
+          text,
+          replyTo: 'hello@earthtableco.ca',
         });
+      } catch (e) {
+        console.error('[webhook] customer email failed (order saved):', e.message);
+      }
+
+      try {
+        const ownerTo = ownerNotificationEmails();
+        const ownerMsg = renderOwnerOrderEmail(detailedOrder, { partnerEarn });
+        if (ownerTo.length) {
+          await sendEmail({
+            to: ownerTo,
+            subject: ownerMsg.subject,
+            html: ownerMsg.html,
+            text: ownerMsg.text,
+          });
+        }
+      } catch (e) {
+        console.error('[webhook] owner email failed (order saved):', e.message);
       }
 
       if (earnRow && referralPartner) {
@@ -377,9 +413,9 @@ const stripeWebhookHandler = async (request, response) => {
         await supabase.from('checkout_drafts').delete().eq('id', draftId);
       }
     } catch (err) {
-      console.error('[webhook] Failed to save order or send emails:', err.message);
-      // Still 200 so Stripe won't retry forever if it's a non-retriable error.
-      
+      // Order insert failed — 500 so Stripe retries. Do not 200 or the charge is silent.
+      console.error('[webhook] Failed to save order:', err.message);
+      return response.status(500).send('Order create failed');
     }
 
     return response.status(200).send('ok');
@@ -478,8 +514,17 @@ const createCheckoutSession = async (req, res) => {
     }
 
     
+    // Prices / slug / image from DB — never trust client price_cents.
+    let resolvedCart;
+    try {
+      resolvedCart = await resolveCartItemsForCheckout(cartItems);
+    } catch (e) {
+      const status = e.status || 500;
+      return res.status(status).json({ error: e.message || 'Could not resolve cart.' });
+    }
+
     // Same rules as POST /promo/validate — never trust the client to have validated alone.
-    const itemSubtotalCents = (cartItems || []).reduce((sum, item) => {
+    const itemSubtotalCents = resolvedCart.reduce((sum, item) => {
       return sum + (Number(item.price_cents) || 0) * (Number(item.quantity) || 0);
     }, 0);
 
@@ -513,22 +558,26 @@ const createCheckoutSession = async (req, res) => {
     }
 
     // --- Build line items (DISCOUNT BEFORE TAX) ---
-    // price_cents = pre-tax price
+    // price_cents = pre-tax price from DB
     // Apply discount to pre-tax, THEN apply 13% tax
     let discountOffCents = 0;
-    const items = cartItems.map(item => {
+    const items = resolvedCart.map(item => {
       const base = Number(item.price_cents) || 0;                     // pre-tax
       const discountedPreTax = Math.floor(base * discountFactor);     // apply promo BEFORE tax
       const qty = Number(item.quantity) || 0;
       discountOffCents += Math.max(0, base - discountedPreTax) * qty;
       const unitWithTax = Math.round(discountedPreTax * 1.13);        // 13% tax after discount
+      const images = item.image_url ? [item.image_url] : undefined;
       return {
         price_data: {
           currency: 'cad',
-          product_data: { name: `${item.slug} (includes tax)`, images: [item.image_url] },
+          product_data: {
+            name: `${item.slug} (includes tax)`,
+            ...(images ? { images } : {}),
+          },
           unit_amount: Math.max(0, unitWithTax),
         },
-        quantity: item.quantity,
+        quantity: qty,
       };
     });
 
@@ -599,7 +648,7 @@ const createCheckoutSession = async (req, res) => {
       .insert([{
         user_id: userId || null,
         email: email || null,
-        cart: cartItems,          // full cart (no metadata limit here)
+        cart: resolvedCart,       // DB-priced cart (no metadata limit here)
         special_note,             // long text ok
         delivery: !!delivery,
         delivery_date: delivery ? delivery_date : null,

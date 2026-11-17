@@ -49,6 +49,7 @@ Dual mounts (`/path` and `/api/path`) share the same handler unless noted.
 | `usersRoutes` | `requireAuth`; list/admin fields → `requireAdmin`; `:id` → self-or-admin |
 | `partnerRoutes` | `requireAuth`; money/admin → `requireAdmin`; by-user / invoice PDF → owner-or-admin |
 | `productsRoutes` / `categoriesRoutes` | GETs public; mutations → `requireAdmin` |
+| `promoRoutes` | `POST /validate` public; `GET/POST/PATCH/DELETE /promo` → `requireAdmin` |
 
 ## Secrets / capability (not JWT)
 
