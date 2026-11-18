@@ -63,7 +63,24 @@ describe('resume welcome-back email', () => {
       meals: [{ slug: 'Sweet Potato Bowl', quantity: 15 }],
       addons: [],
     });
+    assert.match(msg.text, /Here's what's set for this Sunday, November 22/);
     assert.match(msg.text, /Next charge is Tuesday at 9:00 AM ET/);
     assert.doesNotMatch(msg.text, /We charged this box/);
+  });
+
+  it('calls the editable box next Sunday after lock when followingWeek', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'resume',
+      firstName: 'Tayrine',
+      mealCount: 15,
+      deliveryLabel: 'Sunday, November 29',
+      charged: false,
+      followingWeek: true,
+      meals: [{ slug: 'Sweet Potato Bowl', quantity: 15 }],
+      addons: [],
+    });
+    assert.match(msg.text, /Here's what's set for next Sunday, November 29/);
+    assert.doesNotMatch(msg.text, /this Sunday, November 29/);
+    assert.match(msg.text, /Next charge is Tuesday at 9:00 AM ET/);
   });
 });

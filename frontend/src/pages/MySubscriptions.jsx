@@ -34,6 +34,7 @@ import {
   everyWeekBy,
   pausedBanner,
   pausingAfterCutoffBanner,
+  pendingCancelBanner,
   paymentFailedBanner,
   resumeByLock,
 } from '../helpers/subscriptionCadence'
@@ -133,6 +134,29 @@ function thisSundayCopy(dateLabel) {
     .trim()
   if (!part || /^sunday$/i.test(part) || part === 'this Sunday') return 'This Sunday'
   return `This Sunday, ${part}`
+}
+
+/**
+ * Unpaid open cycle for the cook week that resume/card-update can still charge.
+ * After Wednesday skip/lock, this is usually empty even if next week is already open.
+ */
+function unpaidOpenCookCycle(row) {
+  const cookYmd = row?.week?.cutoff_passed
+    ? (row.this_week_date || null)
+    : (row.week?.delivery_date || null)
+  if (!cookYmd) return null
+  const candidates = [
+    row.next_box_cycle,
+    row.this_week_cycle,
+    row.edit_cycle,
+    row.cycle,
+  ]
+  return candidates.find((cycle) => (
+    cycle
+    && cycle.status === 'open'
+    && Number(cycle.plan_paid_cents) <= 0
+    && String(cycle.delivery_date) === String(cookYmd)
+  )) || null
 }
 
 /** "November 23" for the Sunday meal/fulfillment edits currently target. */
@@ -555,7 +579,11 @@ const MySubscriptions = ({ user }) => {
               : 'Your card is on file, but we still could not charge this week. Try another card or email hello@earthtableco.ca.'
           } else if (retry?.ok) {
             title = 'You\'re back on'
-            body = `Your card is saved and the plan is active again. If this Sunday is still unpaid and ${MEAL_LOCK_BY} has not passed, we try the charge now. Otherwise the next charge is ${CHARGE_DAY_TIME}.`
+            // Only promise a same-week charge when Stripe actually took one.
+            // After a skipped cook week, resume just reactivates (next charge is Tuesday).
+            body = retry.charged
+              ? 'We charged this box to your new card. The plan is active again.'
+              : `Your card is saved and the plan is active again. Next charge is ${CHARGE_DAY_TIME}.`
           }
           // Show success before clearing ?card_session — clearing that param
           // remounts this effect and would cancel before setDialog runs.
@@ -843,6 +871,7 @@ const MySubscriptions = ({ user }) => {
         keptCycle
         && (keptCycle.status === 'locked' || Number(keptCycle.plan_paid_cents) > 0)
       )
+      const keptLocked = keptCommitted && keptCycle.status === 'locked'
       const keptLabel = keptCommitted
         ? (
           shortMonthDay(keptCycle.delivery_date)
@@ -851,6 +880,10 @@ const MySubscriptions = ({ user }) => {
           || ''
         )
         : null
+      const followingLabel = shortMonthDay(row.edit_cycle?.delivery_date)
+        || shortMonthDay(row.week?.delivery_date)
+        || sundayDatePart(row.week?.delivery_label)
+        || 'the following week'
       const sunday = shortMonthDay(row.week?.delivery_date)
         || sundayDatePart(row.week?.delivery_label)
         || shortMonthDay(row.next_box_date)
@@ -861,25 +894,29 @@ const MySubscriptions = ({ user }) => {
           ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
           : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
       const beforeTuesdayCharge = row.charge?.before_wednesday !== false
-      const chargeNow = !keptCommitted && (
-        row.pause_reason === 'payment_failed' || !beforeTuesdayCharge
-      )
+      // Match retryFailedCharge: only promise a charge when an unpaid open cook week remains.
+      const chargeNow = !keptCommitted
+        && Boolean(unpaidOpenCookCycle(row))
+        && (row.pause_reason === 'payment_failed' || !beforeTuesdayCharge)
+      const mealsLine = keptLocked
+        ? (
+          mealCount
+            ? `That Sunday's meals are locked. Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for ${followingLabel} before ${lockBy}. The plan resumes after you save.`
+            : `That Sunday's meals are locked. Confirm meals for ${followingLabel} before ${lockBy}. The plan resumes after you save.`
+        )
+        : keptCommitted
+          ? `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
+          : (
+            mealCount
+              ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
+              : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`
+          )
       setDialog({
         icon: 'mail',
         title: 'Review your meals first',
         body: [
           when,
-          keptCommitted
-            ? (
-              mealCount
-                ? `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
-                : `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
-            )
-            : (
-              mealCount
-                ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
-                : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`
-            ),
+          mealsLine,
           chargeNow
             ? 'After meals are saved we charge the unpaid box to the card on file.'
             : `After meals are saved the plan turns back on. Next charge is ${CHARGE_DAY_TIME} for a following Sunday — you can pause again before then if you change your mind.`,
@@ -961,9 +998,11 @@ const MySubscriptions = ({ user }) => {
           ],
         },
       resume: {
-        // Only pending-pause clear reaches here (meal review is handled above).
+        // Only pending-pause / pending-cancel clear reaches here (meal review is above).
         title: 'Resume this plan?',
-        body: 'This Sunday still goes out, and the pending pause will be cleared.',
+        body: committedSunday
+          ? `${thisSundayCopy(committedSunday)} still goes out, and the pending change will be cleared.`
+          : 'This Sunday still goes out, and the pending change will be cleared.',
       },
     }[action]
     setDialog({
@@ -1225,6 +1264,7 @@ const MySubscriptions = ({ user }) => {
             const nextBoxShort = row.next_box_date
               ? shortWeekdayDate(row.next_box_date)
               : (row.first_box_protected ? row.first_delivery_label : '')
+            // pending paused is rare now (keep-Sunday pause sets status=paused immediately).
             const statusNote = paymentFailedPause || needsCardUpdate
               ? ''
               : pending === 'paused'
@@ -1235,7 +1275,7 @@ const MySubscriptions = ({ user }) => {
                     nextBoxLabel: row.next_box_date ? nextBoxShort : '',
                   })
                 : pending === 'cancelled'
-                  ? 'You\'re still receiving this Sunday\'s box. The plan will be cancelled starting the following week.'
+                  ? pendingCancelBanner(nextBoxShort || sundayDatePart(row.week?.delivery_label))
                   : statusLocked
                     ? `This week's cutoff has passed. Edits now apply to next Sunday, ${editTargetSundayDate(row)}.`
                     : row.meals_need_update

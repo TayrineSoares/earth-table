@@ -260,9 +260,12 @@ async function resumeNotifyPayload(sub, week, charge, { charged = false } = {}) 
   let meals = [];
   let addons = [];
   let deliveryLabel = week?.delivery_label;
+  let boxYmd = week?.delivery_date || null;
   try {
     const editable = await getOrCreateEditableCycle(sub);
     if (editable?.week?.delivery_label) deliveryLabel = editable.week.delivery_label;
+    if (editable?.week?.delivery_date) boxYmd = editable.week.delivery_date;
+    else if (editable?.cycle?.delivery_date) boxYmd = editable.cycle.delivery_date;
     if (editable?.cycle?.id) {
       const box = await labeledBoxItemsForCycle(editable.cycle.id);
       meals = box.meals;
@@ -271,12 +274,25 @@ async function resumeNotifyPayload(sub, week, charge, { charged = false } = {}) 
   } catch (err) {
     console.warn('[subscriptions] resume box items failed:', err.message);
   }
+  // After Wednesday lock, the editable box is often next Sunday — don't call it "this Sunday".
+  let followingWeek = false;
+  if (!charged && boxYmd) {
+    try {
+      const settings = await getSettings();
+      const dates = getSignupDates(new Date(), settings || {});
+      const cookSunday = dates.locked_delivery_date || dates.job_sunday;
+      followingWeek = Boolean(cookSunday && String(boxYmd) > String(cookSunday));
+    } catch (err) {
+      console.warn('[subscriptions] resume week timing failed:', err.message);
+    }
+  }
   return {
     kind: 'resume',
     mealCount: sub.subscription_plans?.meal_count,
     deliveryLabel,
     chargeLabel: charge?.charge_label,
     charged: !!charged,
+    followingWeek,
     meals,
     addons,
   };

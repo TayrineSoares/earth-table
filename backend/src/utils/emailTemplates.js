@@ -1500,7 +1500,9 @@ My Subscriptions: ${manageHref}`;
       heading: `Welcome back, ${name}`,
       intro: payload.charged
         ? `Your ${planWeek} is active again. We charged this box for ${thisSundayPhrase(sunday)}. Here's what's set.`
-        : `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`,
+        : payload.followingWeek
+          ? `Your ${planWeek} is active again. Here's what's set for ${nextSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`
+          : `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`,
     },
     plan_now: {
       subject: `You're on a ${nextPlan}`,

@@ -114,8 +114,9 @@ export function pausedBanner(lockLabel, { firstBoxLabel, nextBoxLabel } = {}) {
   }
   // nextBoxLabel only when that Sunday is already paid/locked — unpaid weeks are skipped.
   // Standing weekly lock (not this shipping week's cutoff) is the deadline for a later Sunday.
+  // Say "your box on {date}" — not "this Sunday" — so a later cook date still reads cleanly.
   if (nextBoxLabel) {
-    return `This plan is paused. You're still receiving this Sunday's box on ${nextBoxLabel}. After that, resume by ${MEAL_LOCK_BY} for the Sunday you want.`
+    return `This plan is paused. You're still receiving your box on ${nextBoxLabel}. After that, resume by ${MEAL_LOCK_BY} for the Sunday you want.`
   }
   return `This plan is paused. Resume by ${by} to get that Sunday's box.`
 }
@@ -126,6 +127,14 @@ export function pausingAfterCutoffBanner(sundayLabel) {
     return `This Sunday is already charged, so you're still receiving the box on ${sundayLabel}. The plan is paused starting the following week.`
   }
   return `This Sunday is already charged, so that box still goes out. The plan is paused starting the following week.`
+}
+
+/** Plan-discontinue pending cancel while this Sunday's paid/locked box still ships. */
+export function pendingCancelBanner(sundayLabel) {
+  if (sundayLabel) {
+    return `You're still receiving your box on ${sundayLabel}. The plan will be cancelled starting the following week.`
+  }
+  return `You're still receiving this Sunday's box. The plan will be cancelled starting the following week.`
 }
 
 /** Auto-pause after a declined Tuesday charge. No automatic Tuesday retries. */
