@@ -15,6 +15,7 @@ import {
   updateSubscriptionSettings,
   runSubscriptionCharge,
   runSubscriptionLock,
+  resendOwnerLockEmail,
   formatPlanPrice,
   dollarsToCents,
   toDatetimeLocalValue,
@@ -264,6 +265,46 @@ const SubscriptionAdmin = () => {
       </p>
 
       {error ? <p className="sub-admin-error">{error}</p> : null}
+
+      {/* TEMP one-off — remove after corrected kitchen email is sent in production */}
+      <div className="sub-admin-inline" style={{ marginBottom: '1rem' }}>
+        <AdminButton
+          type="button"
+          variant="primary"
+          size="md"
+          disabled={!!jobBusy}
+          onClick={async () => {
+            const confirmed = window.confirm(
+              'Send a CORRECTED kitchen list to owners only? This does not re-lock or email customers. Tell them to disregard the earlier lock email.'
+            );
+            if (!confirmed) return;
+            setJobBusy('owner-lock');
+            setJobNote('');
+            setError('');
+            try {
+              const result = await resendOwnerLockEmail();
+              if (!result?.ok) {
+                setError(result?.reason || 'Corrected owner email failed.');
+                return;
+              }
+              setJobNote(
+                [
+                  result.sunday ? `Sunday ${result.sunday}` : null,
+                  result.boxes != null ? `${result.boxes} boxes` : null,
+                  'corrected owner email sent',
+                ].filter(Boolean).join(' · ')
+              );
+            } catch (err) {
+              setError(err.message || 'Corrected owner email failed.');
+            } finally {
+              setJobBusy('');
+            }
+          }}
+        >
+          {jobBusy === 'owner-lock' ? 'Sending…' : 'Send corrected kitchen email'}
+        </AdminButton>
+      </div>
+      {jobNote && !SHOW_TEST_WEEK_TIMES ? <p className="sub-admin-hint">{jobNote}</p> : null}
 
       {SHOW_TEST_WEEK_TIMES ? (
         <>
