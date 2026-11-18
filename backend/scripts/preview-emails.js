@@ -238,6 +238,12 @@ write('12j-subscription-delivery.html', renderSubscriptionManageEmail({
   kind: 'fulfillment_delivery',
   address: subMail.address,
 }).html);
+write('12j2-subscription-delivery-paid.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'fulfillment_delivery',
+  address: subMail.address,
+  planAlreadyPaid: true,
+}).html);
 write('12k-subscription-pickup.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'fulfillment_pickup',
@@ -410,7 +416,9 @@ const labels = {
   '12i-subscription-plan-down.html': '10. Plan downgrade (now)',
   '12m-subscription-plan-next.html': '10. Plan change (next week)',
   '12j-subscription-delivery.html': '11. Switched to delivery',
+  '12j2-subscription-delivery-paid.html': '11. Switched to delivery (already paid)',
   '12k-subscription-pickup.html': '11. Switched to pickup',
+  '12k2-subscription-pickup-paid.html': '11. Switched to pickup (already paid)',
   '12l-subscription-card-expiry.html': '12. Card expiring',
   '13-subscription-charge.html': '2. Tuesday charge + reminder',
   '13b-subscription-charge-paid.html': '2. Tuesday reminder (already paid)',

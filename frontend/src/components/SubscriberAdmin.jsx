@@ -83,14 +83,19 @@ const receivesSundayBox = (row, cycle) => {
   return Number(cycle.plan_paid_cents) > 0;
 };
 
-/** Paused after Tuesday charge / Wednesday lock — kitchen still packs this Sunday. */
+/**
+ * Paused or cancelled after Tuesday charge / Wednesday lock — kitchen still packs
+ * this Sunday. Never flag past weeks (same date guard as the earlier stale-note bug).
+ */
 const keepsCommittedSundayNote = (row, cycle) => {
-  if (row?.status !== 'paused') return '';
+  if (row?.status !== 'paused' && row?.status !== 'cancelled') return '';
   if (!receivesSundayBox(row, cycle)) return '';
   const ymd = String(cycle?.delivery_date || '');
-  // Past locked/paid weeks stay on the paused tab for history — don't flag those.
+  // Past locked/paid weeks stay on the paused/cancelled tab for history — don't flag those.
   if (!ymd || ymd < todayYmdToronto()) return '';
-  return 'Still delivering this Sunday — paused after charge/lock';
+  return row.status === 'cancelled'
+    ? 'Still delivering this Sunday — cancelled after charge/lock'
+    : 'Still delivering this Sunday — paused after charge/lock';
 };
 
 /** Status-change lines for View Details (only stamps that exist). */

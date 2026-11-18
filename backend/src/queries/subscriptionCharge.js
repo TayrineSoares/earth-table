@@ -243,10 +243,12 @@ async function ownerBoxFrom(sub, cycle) {
   // embed, never another request's items, never a leftover kitchen order.
   const labeled = await labeledItemsForCycle(cycle.id);
   const win = splitWin(!!cycle.delivery, cycle.pickup_time_slot);
-  // Paused after charge/lock still ships — flag it on the kitchen summary.
-  const keepSundayNote = sub.status === 'paused'
-    ? 'Still delivering this Sunday — paused after charge/lock'
-    : '';
+  // Paused/cancelled after charge/lock still ships — flag it on the kitchen summary.
+  const keepSundayNote = sub.status === 'cancelled'
+    ? 'Still delivering this Sunday — cancelled after charge/lock'
+    : sub.status === 'paused'
+      ? 'Still delivering this Sunday — paused after charge/lock'
+      : '';
   return {
     name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
     mealCount: Number(cycle.meal_count) || sub.subscription_plans?.meal_count,
@@ -1240,8 +1242,12 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
     }
 
     try {
-      // pending pause at lock still ships this Sunday — surface the same kitchen note.
-      const ownerSub = pending.paused ? { ...sub, status: 'paused' } : sub;
+      // pending pause/cancel at lock still ships this Sunday — surface the kitchen note.
+      const ownerSub = pending.paused
+        ? { ...sub, status: 'paused' }
+        : pending.cancelled
+          ? { ...sub, status: 'cancelled' }
+          : sub;
       boxLines.push(await ownerBoxFrom(ownerSub, cycle));
     } catch (err) {
       console.warn('[subscriptions] Lock owner row failed:', err.message);
