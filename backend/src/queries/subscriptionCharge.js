@@ -1363,87 +1363,9 @@ async function retryFailedCharge(sub) {
   }
 }
 
-/**
- * TEMP one-off: owner kitchen list only (no Stripe, no customer mail, no lock).
- * Rebuilds from currently locked cycles for this cook Sunday.
- */
-async function sendCorrectedOwnerLockEmail({ now = new Date() } = {}) {
-  const settings = await getSettings();
-  const dates = getSignupDates(now, settings || {});
-  const sunday = dates.locked_delivery_date || dates.job_sunday;
-  if (!sunday) {
-    return { ok: false, reason: 'no_sunday' };
-  }
-
-  const { data: cycles, error } = await supabase
-    .from('subscription_cycles')
-    .select('id, subscription_id, status, order_id, delivery, delivery_postal_code, pickup_time_slot, special_note, meal_count, delivery_date')
-    .eq('delivery_date', sunday)
-    .eq('status', 'locked');
-  if (error) throw error;
-
-  const boxLines = [];
-  const failures = [];
-  for (const row of cycles || []) {
-    try {
-      const { data: sub, error: subErr } = await supabase
-        .from('subscriptions')
-        .select(`
-          id, user_id, status, plan_id,
-          subscription_plans!subscriptions_plan_id_fkey ( id, name, meal_count, price_cents )
-        `)
-        .eq('id', row.subscription_id)
-        .maybeSingle();
-      if (subErr) throw subErr;
-      if (!sub) {
-        failures.push({ cycle_id: row.id, error: 'missing_subscription' });
-        continue;
-      }
-      const cycle = await withCycleItems(row);
-      if (cycle.order_id) {
-        /* keep */
-      } else {
-        const linked = await orderIdForThisCycle(cycle);
-        if (linked) cycle.order_id = linked;
-      }
-      boxLines.push(await ownerBoxFrom(sub, cycle));
-    } catch (err) {
-      failures.push({
-        cycle_id: row.id,
-        subscription_id: row.subscription_id,
-        error: err.message || String(err),
-      });
-      console.warn('[subscriptions] Corrected owner row failed:', row.id, err.message);
-    }
-  }
-
-  if (!boxLines.length) {
-    return { ok: false, reason: 'no_locked_boxes', sunday, failures };
-  }
-
-  const correctionNote = [
-    'CORRECTED kitchen list — disregard the earlier Wednesday lock email for this Sunday.',
-    'A test subscription under Tayrine was removed. Trust only this email.',
-  ].join(' ');
-
-  const msg = renderOwnerLockEmail({
-    sunday: sundayLabelFromYmd(sunday),
-    boxes: boxLines,
-    correctionNote,
-  });
-  await sendOwnerEmail(msg);
-  return {
-    ok: true,
-    sunday,
-    boxes: boxLines.length,
-    failures,
-  };
-}
-
 module.exports = {
   runPlanCharge,
   runMealLock,
-  sendCorrectedOwnerLockEmail,
   retryFailedCharge,
   addonDueCents,
   applyPromoPercent,

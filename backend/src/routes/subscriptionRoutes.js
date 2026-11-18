@@ -28,11 +28,7 @@ const {
   changeSubscriptionPlan,
   discontinuePlan,
 } = require('../queries/subscriptionManage');
-const {
-  runPlanCharge,
-  runMealLock,
-  sendCorrectedOwnerLockEmail,
-} = require('../queries/subscriptionCharge');
+const { runPlanCharge, runMealLock } = require('../queries/subscriptionCharge');
 const { requireAdminOrCron, cronAuthorized } = require('../middleware/requireAdminOrCron');
 const { requireAdmin, requireAuth, unlessPublic, optionalAuth } = require('../middleware/requireAuth');
 
@@ -164,16 +160,6 @@ router.post('/admin/run-lock', requireAdminOrCron, async (req, res) => {
     res.json(result);
   } catch (err) {
     handleError(res, err, '[POST /subscriptions/admin/run-lock]');
-  }
-});
-
-// TEMP one-off: corrected owner kitchen email only (remove after use).
-router.post('/admin/resend-owner-lock', requireAdmin, async (req, res) => {
-  try {
-    const result = await sendCorrectedOwnerLockEmail();
-    res.json(result);
-  } catch (err) {
-    handleError(res, err, '[POST /subscriptions/admin/resend-owner-lock]');
   }
 });
 

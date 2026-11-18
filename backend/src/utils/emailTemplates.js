@@ -1623,20 +1623,14 @@ function boxMealMismatchNote(row) {
   return `${got} meals selected (plan is ${need}) — please contact customer`;
 }
 
-function renderOwnerLockEmail({ sunday, boxes = [], correctionNote = '' } = {}) {
+function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
   const pickup = boxes.filter((row) => !row.delivery);
   const delivery = boxes.filter((row) => row.delivery);
   const ordered = [...pickup, ...delivery];
   const count = ordered.length;
   const orderIds = ordered.map((row) => row.orderId).filter(Boolean);
   const orderTag = orderIds.length ? ` · #${orderIds.join(', #')}` : '';
-  const corrected = Boolean(String(correctionNote || '').trim());
-  const subject = corrected
-    ? `CORRECTED — Weekly boxes locked — ${sunday || 'Sunday'} (${count})${orderTag}`
-    : `Weekly boxes locked — ${sunday || 'Sunday'} (${count})${orderTag}`;
-  const correctionBanner = corrected
-    ? `<p style="margin:0 0 16px; padding:12px 14px; background-color:#FFF4E5; border:1px solid #F5D0A9; font-size:15px; line-height:1.5; font-weight:700; color:#8A5A00; font-family:${FONT};">${String(correctionNote).trim()}</p>`
-    : '';
+  const subject = `Weekly boxes locked — ${sunday || 'Sunday'} (${count})${orderTag}`;
   const block = (row, i) => {
     const name = String(row.name || '').trim() || 'Customer';
     const meals = boxMealCount(row);
@@ -1676,7 +1670,6 @@ function renderOwnerLockEmail({ sunday, boxes = [], correctionNote = '' } = {}) 
   const html = wrapEmail(`
       ${eyebrow("Kitchen")}
       ${h1(`${count} weekly box${count === 1 ? '' : 'es'} for ${sunday || 'Sunday'}`)}
-      ${correctionBanner}
       ${intro(`Meals are locked. These rows are on the Subscriptions tab, not Orders. <strong>${count} plan${count === 1 ? '' : 's'}</strong> · ${pickup.length} pickup, ${delivery.length} delivery.`)}
       ${ordered.map((row, i) => block(row, i + 1)).join('') || `<p style="margin:0; font-size:14px; color:${C_MUTED}; font-family:${FONT};">None.</p>`}
   `, {
@@ -1702,8 +1695,7 @@ function renderOwnerLockEmail({ sunday, boxes = [], correctionNote = '' } = {}) 
       row.extras?.length ? `Extras:\n${itemLinesText(row.extras, 'Add-on')}` : '',
     ].filter(Boolean).join('\n');
   });
-  const correctionText = corrected ? `${String(correctionNote).trim()}\n\n` : '';
-  const text = `${subject}\n\n${correctionText}${count} plan${count === 1 ? '' : 's'} · ${pickup.length} pickup, ${delivery.length} delivery\n\n${textLines.join('\n\n') || 'None.'}\n`;
+  const text = `${subject}\n\n${count} plan${count === 1 ? '' : 's'} · ${pickup.length} pickup, ${delivery.length} delivery\n\n${textLines.join('\n\n') || 'None.'}\n`;
   return { subject, html, text };
 }
 

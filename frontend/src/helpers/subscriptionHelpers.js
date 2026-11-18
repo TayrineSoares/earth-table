@@ -88,16 +88,6 @@ const runSubscriptionLock = async () => {
   return parseJson(res);
 };
 
-/** TEMP one-off: corrected owner kitchen list email (no lock / no customer mail). */
-const resendOwnerLockEmail = async () => {
-  const headers = await authHeaders();
-  const res = await fetch('/api/subscriptions/admin/resend-owner-lock', {
-    method: 'POST',
-    headers,
-  });
-  return parseJson(res);
-};
-
 const fetchSubscriptionPlan = async (planId) => {
   const res = await fetch(`/api/subscriptions/plans/${planId}`);
   return parseJson(res);
@@ -336,7 +326,6 @@ export {
   updateSubscriptionSettings,
   runSubscriptionCharge,
   runSubscriptionLock,
-  resendOwnerLockEmail,
   fetchSubscriptionPlan,
   fetchMySubscriptions,
   fetchAdminSubscriptions,
