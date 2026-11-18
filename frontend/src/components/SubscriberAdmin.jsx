@@ -10,7 +10,7 @@ import {
   sundayDatePart,
 } from '../helpers/subscriptionHelpers';
 import { DELIVERY_WINDOW, PICKUP_ADDRESS, setOrderPickedUp } from '../helpers/orderHelpers';
-import { formatDueShort } from '../helpers/orderAdminHelpers';
+import { formatDueShort, todayYmdToronto } from '../helpers/orderAdminHelpers';
 import '../styles/PromoAdmin.css';
 import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
@@ -87,6 +87,9 @@ const receivesSundayBox = (row, cycle) => {
 const keepsCommittedSundayNote = (row, cycle) => {
   if (row?.status !== 'paused') return '';
   if (!receivesSundayBox(row, cycle)) return '';
+  const ymd = String(cycle?.delivery_date || '');
+  // Past locked/paid weeks stay on the paused tab for history — don't flag those.
+  if (!ymd || ymd < todayYmdToronto()) return '';
   return 'Still delivering this Sunday — paused after charge/lock';
 };
 
