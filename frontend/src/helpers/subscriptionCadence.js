@@ -129,7 +129,10 @@ export function pausingAfterCutoffBanner(sundayLabel) {
 }
 
 /** Auto-pause after a declined Tuesday charge. No automatic Tuesday retries. */
-export function paymentFailedBanner() {
+export function paymentFailedBanner({ canKeepThisSunday = true } = {}) {
+  if (!canKeepThisSunday) {
+    return `Your subscription is paused because Tuesday's charge didn't go through. This Sunday was skipped. Update your card or tap Resume before ${MEAL_LOCK_BY} for a later Sunday — we charge then.`
+  }
   return `Your subscription is paused because Tuesday's charge didn't go through. Update your card or tap Resume before ${MEAL_LOCK_BY} to keep this Sunday's box — we charge then. If it's still unpaid by then, this Sunday is skipped. Later weeks only run after you update your card or resume.`
 }
 

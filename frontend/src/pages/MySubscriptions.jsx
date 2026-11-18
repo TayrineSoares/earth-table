@@ -1444,7 +1444,10 @@ const MySubscriptions = ({ user }) => {
                       ) : null}
                       {paymentFailedPause ? (
                         <div className="my-sub-status-note my-sub-status-note--alert" role="status">
-                          <p>{paymentFailedBanner()}</p>
+                          <p>{paymentFailedBanner({
+                            // After Wednesday skip, next_box_date is empty — don't still say "keep this Sunday".
+                            canKeepThisSunday: Boolean(row.next_box_date || row.first_box_protected),
+                          })}</p>
                           <button
                             type="button"
                             className="my-sub-edit-link"
