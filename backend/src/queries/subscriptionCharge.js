@@ -1423,7 +1423,7 @@ async function sendCorrectedOwnerLockEmail({ now = new Date() } = {}) {
 
   const correctionNote = [
     'CORRECTED kitchen list — disregard the earlier Wednesday lock email for this Sunday.',
-    'A test subscription was removed. Trust only this email.',
+    'A test subscription under Tayrine was removed. Trust only this email.',
   ].join(' ');
 
   const msg = renderOwnerLockEmail({
