@@ -297,6 +297,30 @@ const formatPlanPrice = (cents) => {
   return `$${(n / 100).toFixed(2)}`;
 };
 
+/** Match backend withHst / hstDelta (Math.round(preTax * 1.13)). */
+const withHstCents = (preTaxCents) => Math.round((Number(preTaxCents) || 0) * 1.13);
+
+/**
+ * Preview mid-week plan upgrade charge / downgrade refund for confirm dialogs.
+ * Uses plan_paid_cents (promo-aware) when paid; empty when unpaid or deferred.
+ */
+const planChangeMoneyPreview = ({
+  planPaidCents = 0,
+  nextPriceCents = 0,
+  pending = false,
+} = {}) => {
+  if (pending) return '';
+  const paid = Number(planPaidCents) || 0;
+  const next = Number(nextPriceCents) || 0;
+  if (paid <= 0 || next === paid) return '';
+  const taxedDelta = Math.abs(withHstCents(next) - withHstCents(paid));
+  if (taxedDelta < 50) return '';
+  if (next > paid) {
+    return ` An additional charge of ${formatPlanPrice(taxedDelta)} (including tax) will be made to your card when you confirm.`;
+  }
+  return ` A refund of ${formatPlanPrice(taxedDelta)} (including tax) will be issued to your card when you confirm.`;
+};
+
 const dollarsToCents = (value) => {
   const n = Number(String(value).trim());
   if (!Number.isFinite(n) || n < 0) return NaN;
@@ -346,6 +370,8 @@ export {
   weekSaveCopy,
   sundayDatePart,
   formatPlanPrice,
+  withHstCents,
+  planChangeMoneyPreview,
   dollarsToCents,
   centsToDollarInput,
   toDatetimeLocalValue,

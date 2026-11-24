@@ -11,6 +11,7 @@ import {
   fetchMySubscriptions,
   formatPlanPrice,
   mealsAWeek,
+  planChangeMoneyPreview,
   updateSubscriptionItems,
   weekSaveCopy,
 } from '../helpers/subscriptionHelpers'
@@ -96,6 +97,14 @@ const SubscribeEditCart = ({ user }) => {
 
   const addonCents = addonSubtotalCents(editCart)
   const changingPlan = Boolean(editCart.planChangeId)
+  const paidBox = row?.this_week_cycle || row?.cycle || row?.edit_cycle || {}
+  const planMoneyLine = changingPlan
+    ? planChangeMoneyPreview({
+      planPaidCents: paidBox.plan_paid_cents,
+      nextPriceCents: editCart.priceCents,
+      pending: editCart.planChangePending,
+    })
+    : ''
   const copy = changingPlan
     ? {
       title: editCart.planChangePending
@@ -103,7 +112,7 @@ const SubscribeEditCart = ({ user }) => {
         : `Switch to ${mealsAWeek(editCart.mealCount)}?`,
       body: editCart.planChangePending
         ? `This Sunday stays on your current plan. ${mealsAWeek(editCart.mealCount)} and these meals start the following week. Need help? Email hello@earthtableco.ca.`
-        : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below. Need help? Email hello@earthtableco.ca.`,
+        : `This Sunday will move to ${mealsAWeek(editCart.mealCount)} with the meals below.${planMoneyLine} Need help? Email hello@earthtableco.ca.`,
     }
     : weekSaveCopy(row?.week, {
       // Trust the API week object — unpaid pause-skips are still "this Sunday".

@@ -22,6 +22,7 @@ import {
   applyPromoPercent,
   firstWeekCodeLabel,
   mealsAWeek,
+  planChangeMoneyPreview,
   titleCaseName,
   updateSubscriptionFulfillment,
   updateSubscriptionStatus,
@@ -911,9 +912,8 @@ const MySubscriptions = ({ user }) => {
         const refunded = Boolean(result.refunded || Number(result.refunded_cents) > 0)
         setDialog({
           icon: 'mail',
-          title: action === 'cancel'
-            ? (kept ? 'Cancel starts next week' : 'Plan cancelled')
-            : (kept ? 'Pause starts next week' : 'Plan paused'),
+          // Cancel uses the same pause path — say paused so outcome matches Stripe/emails.
+          title: kept ? 'Pause starts next week' : 'Plan paused',
           body: refunded && !result.message.includes('refund')
             ? `${result.message} Your charge for that box was refunded.`
             : result.message,
@@ -1077,26 +1077,26 @@ const MySubscriptions = ({ user }) => {
         },
       cancel: firstProtected
         ? {
-          title: 'Cancel after your first box?',
+          title: 'Pause after your first box?',
           body: [
-            `Your first box on ${firstSunday} can't be cancelled — it still goes out. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Cancel works like pause: later weeks stop, and your meals and card stay ready to resume.`,
+            `Your first box on ${firstSunday} can't be skipped — it still goes out. You can still change add-ons on that box until ${MEAL_LOCK_BY}. Later weeks pause; your meals and card stay ready to resume.`,
             resumeBy,
           ],
         }
         : thisSundayLocked
         ? {
-          title: 'Cancel after this Sunday?',
+          title: 'Pause after this Sunday?',
           body: keepSundayBody,
         }
         : {
-          title: 'Cancel this plan?',
+          title: 'Pause this plan?',
           body: thisSundayPaidOpen
             ? [
-              `${thisSundayCopy(sunday)} will be skipped and your charge for that box will be refunded. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+              `${thisSundayCopy(sunday)} will be skipped and your charge for that box will be refunded. Your meals and card stay ready so you can resume anytime.`,
               resumeBy,
             ]
             : [
-              `${thisSundayCopy(sunday)} will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+              `${thisSundayCopy(sunday)} will be skipped. Your meals and card stay ready so you can resume anytime.`,
               resumeBy,
             ],
         },
@@ -1112,7 +1112,7 @@ const MySubscriptions = ({ user }) => {
       icon: 'mail',
       title: copy.title,
       body: copy.body,
-      primaryLabel: action === 'cancel' ? 'Cancel plan' : action === 'pause' ? 'Pause' : 'Resume',
+      primaryLabel: action === 'cancel' || action === 'pause' ? 'Pause plan' : 'Resume',
       secondaryLabel: 'Never mind',
       onPrimary: () => persistStatus(row, action),
     })
@@ -1167,14 +1167,20 @@ const MySubscriptions = ({ user }) => {
     const currentCount = Number(row.subscription_plans?.meal_count) || 0
     const nextCount = Number(plan.meal_count) || 0
     const downgrade = nextCount > 0 && currentCount > nextCount
+    const paidBox = row.this_week_cycle || row.cycle || {}
+    const moneyLine = planChangeMoneyPreview({
+      planPaidCents: paidBox.plan_paid_cents,
+      nextPriceCents: plan.price_cents,
+      pending,
+    })
     setDialog({
       icon: 'mail',
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: [
         pending
           ? `${thisSundayCopy(sunday)} stays on your current plan (already locked). ${mealsAWeek(plan.meal_count)} starts the following week.`
-          : Number((row.this_week_cycle || row.cycle || {}).plan_paid_cents) > 0
-            ? `${thisSundayCopy(sunday)} will use the new plan. If the price is lower we refund the difference; if higher we charge the difference (including tax).`
+          : Number(paidBox.plan_paid_cents) > 0
+            ? `${thisSundayCopy(sunday)} will use the new plan.${moneyLine || ' If the price is lower we refund the difference; if higher we charge the difference (including tax).'}`
             : `${thisSundayCopy(sunday)} will use the new plan.`,
         downgrade
           ? `Next you'll review meals and remove extras until exactly ${nextCount} remain — you can't continue until the count matches.`
@@ -1971,7 +1977,7 @@ const MySubscriptions = ({ user }) => {
                           onClick={() => confirmStatus(row, 'cancel')}
                         >
                           {statusBusy?.id === row.id && statusBusy.action === 'cancel'
-                            ? 'Cancelling…'
+                            ? 'Pausing…'
                             : 'Cancel plan'}
                         </button>
                       ) : null}
