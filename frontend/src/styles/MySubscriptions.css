@@ -633,6 +633,10 @@
 .my-sub-row-action .my-sub-edit-link {
   margin-left: 0;
   min-height: 44px;
+  font-size: 13px;
+  color: #757575;
+  -webkit-text-fill-color: #757575;
+  font-weight: 500;
 }
 
 .my-sub-row--next,
