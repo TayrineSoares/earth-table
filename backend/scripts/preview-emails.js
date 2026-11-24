@@ -261,6 +261,11 @@ write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   expMonth: '12',
   expYear: 2026,
 }).html);
+write('12n-subscription-notes-updated.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'notes_updated',
+  notes: 'Please use roasted vegetables with sweet potatoes instead of any rice',
+}).html);
 write('13-subscription-charge.html', renderSubscriptionChargeEmail({
   ...subMail,
   charged: true,

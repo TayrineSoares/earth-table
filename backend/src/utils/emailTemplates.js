@@ -1494,7 +1494,7 @@ My Subscriptions: ${manageHref}`;
       subject: `Notes saved for ${sunday}`,
       heading: `Notes updated, ${name}`,
       intro: String(payload.notes || '').trim()
-        ? `We saved your notes for ${thisSundayPhrase(sunday)}: ${String(payload.notes).trim()}. Change them again anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`
+        ? `We saved your notes for ${thisSundayPhrase(sunday)}. Here's a copy — change them again anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`
         : `We cleared notes for ${thisSundayPhrase(sunday)}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`,
     },
     resume: {
@@ -1525,6 +1525,8 @@ My Subscriptions: ${manageHref}`;
   const unsubscribeHref = kind === 'pause_nudge' ? payload.unsubscribeHref : '';
   const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
   const showPlanChange = kind === 'plan_now' || kind === 'plan_next';
+  const showNotesCopy = kind === 'notes_updated';
+  const notesCopy = String(payload.notes || '').trim();
   const meals = payload.meals || [];
   const addons = payload.addons || [];
   const planChangeHtml = showPlanChange
@@ -1547,6 +1549,17 @@ ${itemLinesText(meals) || '—'}
 Add-ons
 ${itemLinesText(addons) || 'None this week.'}`
     : '';
+  const notesHtml = showNotesCopy
+    ? `${h2('Notes')}${card(`<p style="margin:0; font-size:15px; line-height:1.55; color:${C_INK}; font-family:${FONT}; white-space:pre-wrap;">${
+      notesCopy ? nl2br(notesCopy) : 'None — notes cleared'
+    }</p>`)}`
+    : '';
+  const notesText = showNotesCopy
+    ? `
+
+Notes
+${notesCopy || 'None — notes cleared'}`
+    : '';
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
@@ -1554,6 +1567,7 @@ ${itemLinesText(addons) || 'None this week.'}`
       ${intro(copy.intro)}
       ${planChangeHtml}
       ${boxHtml}
+      ${notesHtml}
       ${ctaLink(manageHref, "My Subscriptions →")}
   `, {
     preheader: copy.subject,
@@ -1564,7 +1578,7 @@ ${itemLinesText(addons) || 'None this week.'}`
 
   const text = `${copy.heading}
 
-${copy.intro}${planChangeText}${boxText}
+${copy.intro}${planChangeText}${boxText}${notesText}
 
 My Subscriptions: ${manageHref}
 
