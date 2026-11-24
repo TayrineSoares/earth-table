@@ -1430,40 +1430,64 @@ async function chargeDeliveryFee(sub, cycle, feeCents) {
   if (!sub.stripe_customer_id || !sub.stripe_payment_method_id) {
     throw new SubscriptionError(400, 'No card on file for the delivery fee. Email hello@earthtableco.ca.');
   }
-  // Already charged this cycle — idempotent no-op for double-submit.
-  if (cycle?.stripe_delivery_payment_intent_id) {
-    return { id: cycle.stripe_delivery_payment_intent_id, already: true };
+  // Already charged this cycle — only reuse if that PI still holds the fee.
+  const { paymentIntentCaptureState } = require('./subscriptionRefunds');
+  const seedDeliveryPi = cycle?.stripe_delivery_payment_intent_id
+    ? String(cycle.stripe_delivery_payment_intent_id)
+    : '';
+  if (seedDeliveryPi) {
+    const state = await paymentIntentCaptureState(seedDeliveryPi);
+    if (state.ok && state.status === 'succeeded' && state.remaining >= amount) {
+      return { id: seedDeliveryPi, already: true };
+    }
+    // Fully refunded — fall through and walk after-{pi} keys.
   }
   const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
+  let attempt = seedDeliveryPi ? `after-${seedDeliveryPi.slice(-10)}` : '0';
+  const maxTries = 8;
   try {
-    const pi = await stripe.paymentIntents.create({
-      amount,
-      currency: 'cad',
-      customer: sub.stripe_customer_id,
-      payment_method: sub.stripe_payment_method_id,
-      off_session: true,
-      confirm: true,
-      description: 'Subscription delivery fee',
-      metadata: {
-        kind: 'subscription_delivery',
-        subscription_id: sub.id,
-        cycle_id: cycle.id,
-      },
-    }, {
-      idempotencyKey: `sub-delivery-${cycle.id}`,
-    });
-    if (pi?.id) {
-      const { error } = await supabase
-        .from('subscription_cycles')
-        .update({ stripe_delivery_payment_intent_id: pi.id })
-        .eq('id', cycle.id);
-      if (error) {
-        console.warn('[subscriptions] failed to store delivery PI:', cycle.id, error.message);
-      } else {
-        cycle.stripe_delivery_payment_intent_id = pi.id;
+    for (let i = 0; i < maxTries; i += 1) {
+      const pi = await stripe.paymentIntents.create({
+        amount,
+        currency: 'cad',
+        customer: sub.stripe_customer_id,
+        payment_method: sub.stripe_payment_method_id,
+        off_session: true,
+        confirm: true,
+        description: 'Subscription delivery fee',
+        metadata: {
+          kind: 'subscription_delivery',
+          subscription_id: sub.id,
+          cycle_id: cycle.id,
+        },
+      }, {
+        idempotencyKey: `sub-delivery-${cycle.id}-${attempt}`,
+      });
+      const createdId = pi?.id ? String(pi.id) : '';
+      if (!createdId) {
+        throw new Error('delivery_pi_missing');
       }
+      const state = await paymentIntentCaptureState(createdId);
+      if (state.ok && state.remaining >= amount) {
+        const { error } = await supabase
+          .from('subscription_cycles')
+          .update({ stripe_delivery_payment_intent_id: createdId })
+          .eq('id', cycle.id);
+        if (error) {
+          console.warn('[subscriptions] failed to store delivery PI:', cycle.id, error.message);
+        } else {
+          cycle.stripe_delivery_payment_intent_id = createdId;
+        }
+        return pi;
+      }
+      console.warn(
+        '[subscriptions] delivery PI has insufficient capture; chaining after',
+        createdId,
+        state
+      );
+      attempt = `after-${createdId.slice(-10)}`;
     }
-    return pi;
+    throw new Error('delivery_charge_not_captured');
   } catch (err) {
     console.error('[subscriptions] delivery fee charge failed', err.message);
     throw new SubscriptionError(
@@ -1578,6 +1602,8 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     patch.pickup_time_slot = pickupSlot;
     // Always clear — otherwise a prior delivery quote stays and Tuesday can still bill it.
     patch.delivery_fee_cents = 0;
+    // Keep stripe_delivery_payment_intent_id after refund — next pickup→delivery
+    // chains after-{id} so Stripe won't replay a refunded delivery PI.
 
     // Paid this Sunday delivery→pickup: auto-refund delivery fee (+ tax) before lock.
     const refundFeeNow = (
@@ -1631,16 +1657,20 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     .eq('id', sub.id);
   if (subErr) throw subErr;
 
+  const cycleUpdate = {
+    delivery: patch.delivery,
+    delivery_postal_code: patch.delivery_postal_code,
+    pickup_time_slot: patch.pickup_time_slot,
+    special_note: patch.special_note,
+    delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
+    pickup_date: delivery ? null : week.delivery_date,
+  };
+  if (Object.prototype.hasOwnProperty.call(patch, 'stripe_delivery_payment_intent_id')) {
+    cycleUpdate.stripe_delivery_payment_intent_id = patch.stripe_delivery_payment_intent_id;
+  }
   const { error: cycleErr } = await supabase
     .from('subscription_cycles')
-    .update({
-      delivery: patch.delivery,
-      delivery_postal_code: patch.delivery_postal_code,
-      pickup_time_slot: patch.pickup_time_slot,
-      special_note: patch.special_note,
-      delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
-      pickup_date: delivery ? null : week.delivery_date,
-    })
+    .update(cycleUpdate)
     .eq('id', cycle.id);
   if (cycleErr) throw cycleErr;
 

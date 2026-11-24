@@ -145,8 +145,69 @@ async function refundPlanDelta(cycle, { fromPreTax, toPreTax, metadata = {} } = 
 }
 
 /**
+ * How much of a PaymentIntent is still captured (amount − refunded).
+ * @returns {{ ok: true, amount: number, refunded: number, remaining: number, status: string }
+ *           | { ok: false, error: string }}
+ */
+async function paymentIntentCaptureState(paymentIntentId) {
+  if (!paymentIntentId) return { ok: false, error: 'missing_payment_intent' };
+  const stripe = getStripe();
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['latest_charge'],
+    });
+    const amount = Number(pi.amount) || 0;
+    const charge = pi.latest_charge && typeof pi.latest_charge === 'object'
+      ? pi.latest_charge
+      : null;
+    const refunded = Number(charge?.amount_refunded) || 0;
+    return {
+      ok: true,
+      amount,
+      refunded,
+      remaining: Math.max(0, amount - refunded),
+      status: String(pi.status || ''),
+    };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err || 'retrieve_failed') };
+  }
+}
+
+/**
+ * If the stored upgrade PI is fully refunded, peel its pre-tax amount off
+ * plan_paid_cents so a re-upgrade actually charges again.
+ * Keep the PI id on the cycle — clearing it made Stripe replay attempt `0`
+ * (the first refunded upgrade) on every later switch.
+ */
+async function reconcileRefundedPlanDelta(cycle) {
+  const deltaId = cycle?.stripe_plan_delta_payment_intent_id;
+  if (!deltaId) {
+    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
+  }
+  const state = await paymentIntentCaptureState(deltaId);
+  if (!state.ok) {
+    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
+  }
+  // Still holding money on the upgrade PI — keep stamp + pointer.
+  if (state.status === 'succeeded' && state.remaining > 0) {
+    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
+  }
+  // Fully refunded (or canceled) — peel pre-tax delta off plan_paid; keep PI for after- keys.
+  const preTaxDelta = Math.round(state.amount / HST);
+  const paid = Number(cycle?.plan_paid_cents) || 0;
+  const nextPaid = Math.max(0, paid - preTaxDelta);
+  const next = {
+    ...cycle,
+    plan_paid_cents: nextPaid,
+  };
+  return { cycle: next, peeledPlanPaid: true, clearedDeltaPi: false, planPaidCents: nextPaid };
+}
+
+/**
  * Charge plan-price upgrade delta (+ tax) as a new off-session PI.
  * Caller stamps plan_paid_cents after success.
+ * Walks an after-{pi} idempotency chain so refunded replays never fake a charge,
+ * no matter how many upgrade↔downgrade rounds ran this week.
  */
 async function chargePlanDelta(sub, cycle, { fromPreTax, toPreTax, metadata = {} } = {}) {
   const amount = hstDelta(toPreTax, fromPreTax);
@@ -158,25 +219,61 @@ async function chargePlanDelta(sub, cycle, { fromPreTax, toPreTax, metadata = {}
     return { ok: false, error: 'no_card' };
   }
   const stripe = getStripe();
+  const seedId = cycle?.stripe_plan_delta_payment_intent_id
+    ? String(cycle.stripe_plan_delta_payment_intent_id)
+    : '';
+
+  if (seedId) {
+    const state = await paymentIntentCaptureState(seedId);
+    if (state.ok && state.status === 'succeeded' && state.remaining >= amount) {
+      // Same upgrade already captured and not refunded — idempotent no-op.
+      return {
+        ok: true,
+        chargedCents: 0,
+        paymentIntentId: seedId,
+        already: true,
+      };
+    }
+  }
+
+  let attempt = seedId ? `after-${seedId.slice(-10)}` : '0';
+  const maxTries = 8;
   try {
-    const pi = await stripe.paymentIntents.create({
-      amount,
-      currency: 'cad',
-      customer: sub.stripe_customer_id,
-      payment_method: sub.stripe_payment_method_id,
-      off_session: true,
-      confirm: true,
-      description: 'Subscription plan upgrade',
-      metadata: {
-        kind: 'subscription_plan_upgrade',
-        subscription_id: sub.id,
-        cycle_id: cycle.id,
-        ...metadata,
-      },
-    }, {
-      idempotencyKey: `sub-plan-up-${cycle.id}-${fromPreTax}-${toPreTax}`,
-    });
-    return { ok: true, chargedCents: amount, paymentIntentId: pi?.id };
+    for (let i = 0; i < maxTries; i += 1) {
+      const pi = await stripe.paymentIntents.create({
+        amount,
+        currency: 'cad',
+        customer: sub.stripe_customer_id,
+        payment_method: sub.stripe_payment_method_id,
+        off_session: true,
+        confirm: true,
+        description: 'Subscription plan upgrade',
+        metadata: {
+          kind: 'subscription_plan_upgrade',
+          subscription_id: sub.id,
+          cycle_id: cycle.id,
+          ...metadata,
+        },
+      }, {
+        idempotencyKey: `sub-plan-up-${cycle.id}-${fromPreTax}-${toPreTax}-${attempt}`,
+      });
+      const createdId = pi?.id ? String(pi.id) : '';
+      if (!createdId) {
+        return { ok: false, error: 'charge_failed' };
+      }
+      const state = await paymentIntentCaptureState(createdId);
+      if (state.ok && state.remaining >= amount) {
+        return { ok: true, chargedCents: amount, paymentIntentId: createdId };
+      }
+      // Idempotency handed back a refunded (or short) PI — chain a new key off it.
+      console.warn(
+        '[subscriptions] plan upgrade PI has insufficient capture; chaining after',
+        createdId,
+        state
+      );
+      attempt = `after-${createdId.slice(-10)}`;
+    }
+    return { ok: false, error: 'charge_not_captured' };
   } catch (err) {
     console.warn('[subscriptions] plan upgrade charge failed:', cycle?.id, err.message);
     return { ok: false, error: err.message || 'charge_failed' };
@@ -208,6 +305,8 @@ module.exports = {
   createRefund,
   refundCyclePaymentIntents,
   refundPlanDelta,
+  reconcileRefundedPlanDelta,
+  paymentIntentCaptureState,
   chargePlanDelta,
   refundDeliveryFee,
 };

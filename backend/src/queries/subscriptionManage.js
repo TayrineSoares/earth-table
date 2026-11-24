@@ -1176,7 +1176,9 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
   }
 
   const settings = await getSettings();
-  const { week, charge, cycle } = await currentCycleFor(sub);
+  const current = await currentCycleFor(sub);
+  const { week, charge } = current;
+  let { cycle } = current;
   const currentCount = Number(sub.subscription_plans?.meal_count) || 0;
   const nextCount = Number(nextPlan.meal_count) || 0;
 
@@ -1254,8 +1256,19 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
   let refundedCents = 0;
   let chargedDeltaCents = 0;
   if (alreadyPaid > 0) {
-    const { refundPlanDelta, chargePlanDelta } = require('./subscriptionRefunds');
-    const fromPaid = alreadyPaid;
+    const {
+      refundPlanDelta,
+      chargePlanDelta,
+      reconcileRefundedPlanDelta,
+    } = require('./subscriptionRefunds');
+    // If a prior upgrade PI was fully refunded, peel it off plan_paid so re-upgrade charges.
+    // Keep the refunded PI id — chargePlanDelta chains after-{id} so switchbacks always bill.
+    const reconciled = await reconcileRefundedPlanDelta(cycle);
+    cycle = reconciled.cycle;
+    const fromPaid = Number(reconciled.planPaidCents) || alreadyPaid;
+    if (reconciled.peeledPlanPaid) {
+      cycle.plan_paid_cents = fromPaid;
+    }
     if (newPrice < fromPaid) {
       const refund = await refundPlanDelta(cycle, {
         fromPreTax: fromPaid,
@@ -1273,9 +1286,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
         );
       }
       refundedCents = Number(refund.refundedCents) || 0;
-      if (refund.clearedDeltaPi) {
-        cycle.stripe_plan_delta_payment_intent_id = null;
-      }
+      // Do not null stripe_plan_delta_payment_intent_id — next upgrade needs it for after- keys.
     } else if (newPrice > fromPaid) {
       const charged = await chargePlanDelta(sub, cycle, {
         fromPreTax: fromPaid,
