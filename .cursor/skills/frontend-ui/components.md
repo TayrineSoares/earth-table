@@ -40,8 +40,12 @@ setDialog({
   secondaryLabel: 'Forgot password?', // optional
   secondaryTo: '/reset-password',     // optional; renders Link
   asList: true,                       // optional; body is string[]
+  busy: true,                         // optional; locks overlay while a save/charge runs
+  onPrimary: () => { /* optional */ },
 });
 ```
+
+For mid-charge / mid-save confirms (plan change, fulfillment, pause): set `busy: true` and update `primaryLabel` to `Saving…` / `Updating plan…` instead of closing the dialog. Escape and overlay click stay blocked while `busy`.
 
 Incomplete checkout: keep Confirm enabled. On click, dialog title **One more step** (one gap) or **A few things are missing** (`asList` when several).
 

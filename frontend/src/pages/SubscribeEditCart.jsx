@@ -131,8 +131,20 @@ const SubscribeEditCart = ({ user }) => {
   }
 
   const persist = async () => {
+    if (saving) return
     setSaving(true)
-    setDialog(null)
+    // Keep the confirm modal open with a loading state so they don't navigate away mid-charge.
+    setDialog((prev) => ({
+      ...(prev || {
+        icon: 'mail',
+        title: copy.title,
+        body: `${copy.body} Add-ons are a one-time extra for that Sunday and will not repeat the following week.`,
+      }),
+      busy: true,
+      primaryLabel: changingPlan ? 'Updating plan…' : 'Saving…',
+      secondaryLabel: prev?.secondaryLabel || 'Cancel',
+      onPrimary: undefined,
+    }))
     const meals = editCart.meals.map((item) => ({ id: item.id, quantity: item.quantity }))
     const addons = editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
     const resumeFlow = Boolean(shouldResume || editCart.resumeAfter || location.state?.resumeAfter)
@@ -162,9 +174,12 @@ const SubscribeEditCart = ({ user }) => {
     } catch (err) {
       console.error(err)
       setSaving(false)
+      const refundFail = /couldn'?t refund|could not refund/i.test(String(err.message || ''))
       setDialog({
         icon: 'alert',
-        title: changingPlan ? 'Could not change plan' : 'Could not save your plan',
+        title: refundFail
+          ? 'Refund didn’t go through'
+          : (changingPlan ? 'Could not change plan' : 'Could not save your plan'),
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
@@ -313,7 +328,12 @@ const SubscribeEditCart = ({ user }) => {
           </div>
         </div>
       </div>
-      <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
+      <FeedbackDialog
+        dialog={dialog}
+        onClose={() => {
+          if (!dialog?.busy) setDialog(null)
+        }}
+      />
     </div>
   )
 }

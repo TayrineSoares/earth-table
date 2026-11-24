@@ -1639,9 +1639,16 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
         },
       });
       if (!refund.ok) {
+        const { notifyOwnerRefundFailed } = require('./subscriptionManage');
+        await notifyOwnerRefundFailed(userId, {
+          action: 'delivery_fee',
+          reason: refund.error || 'refund_failed',
+          deliveryLabel: week?.delivery_label,
+          subscriptionId: sub.id,
+        });
         throw new SubscriptionError(
           402,
-          'We could not refund the delivery fee, so pickup was not saved. Try again or email hello@earthtableco.ca.'
+          'We couldn\'t refund the delivery fee, so pickup was not saved and you\'re still on delivery. Try again, or email hello@earthtableco.ca and we\'ll help.'
         );
       }
       patch._deliveryFeeRefundedCents = Number(refund.refundedCents) || 0;

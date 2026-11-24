@@ -4,6 +4,7 @@ const {
   renderSubscriptionManageEmail,
   renderOwnerSubscriptionEventEmail,
   renderOwnerFulfillmentEmail,
+  renderOwnerRefundFailedEmail,
 } = require('../src/utils/emailTemplates');
 
 describe('pause / plan / fulfillment refund emails', () => {
@@ -107,5 +108,21 @@ describe('pause / plan / fulfillment refund emails', () => {
     assert.match(msg.text, /Address: testing address/);
     assert.match(msg.text, /Notes: testing notes/);
     assert.doesNotMatch(msg.text, /Delivery Address:/);
+  });
+
+  it('owner refund-failed email includes Stripe reason and aborted outcome', () => {
+    const msg = renderOwnerRefundFailedEmail({
+      customerName: 'Alex Kim',
+      email: 'alex@email.com',
+      action: 'pause',
+      reason: 'charge_already_refunded_partial',
+      deliveryLabel: 'Sunday, November 22',
+      subscriptionId: '42',
+    });
+    assert.match(msg.subject, /Refund failed — pause Alex Kim/);
+    assert.match(msg.text, /charge_already_refunded_partial/);
+    assert.match(msg.text, /box was not skipped/i);
+    assert.match(msg.text, /alex@email\.com/);
+    assert.match(msg.text, /Subscription: 42/);
   });
 });

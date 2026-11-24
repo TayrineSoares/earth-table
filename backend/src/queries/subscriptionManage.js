@@ -10,6 +10,7 @@ const {
   renderSubscriptionManageEmail,
   renderSubscriptionDeadlineEmail,
   renderOwnerSubscriptionEventEmail,
+  renderOwnerRefundFailedEmail,
 } = require('../utils/emailTemplates');
 const { getUserByAuthId, updateUserByAuthId } = require('./user');
 const { emailPrefOn, sendCustomerEmail, sendOwnerEmail } = require('../emails/sendSubscriptionMail');
@@ -270,10 +271,13 @@ async function applyPauseRefundAndSkip(userId, sub, week, charge, cycle) {
       })
       .eq('id', cycle.id)
       .eq('status', 'skipped');
-    throw new SubscriptionError(
-      402,
-      'We could not refund this week\'s charge, so the box was not skipped. Try again or email hello@earthtableco.ca.'
-    );
+    await notifyOwnerRefundFailed(userId, {
+      action: 'pause',
+      reason: refund.error || 'refund_failed',
+      deliveryLabel: week?.delivery_label,
+      subscriptionId: sub.id,
+    });
+    throw new SubscriptionError(402, PAUSE_REFUND_FAIL_MSG);
   }
 
   // Clear PI pointers after a successful refund so resume stores fresh ones.
@@ -369,6 +373,38 @@ const OWNER_MANAGE_KINDS = new Set([
   'plan_next',
 ]);
 
+const PAUSE_REFUND_FAIL_MSG =
+  'We couldn\'t refund this week\'s charge, so the box was not skipped and your plan is still active. Tap Pause again to retry, or email hello@earthtableco.ca and we\'ll help.';
+const PLAN_REFUND_FAIL_MSG =
+  'We couldn\'t refund the plan difference, so your plan size was not changed. Try again, or email hello@earthtableco.ca and we\'ll help.';
+
+/** Owner alert when Stripe refund fails and the customer change was aborted. */
+async function notifyOwnerRefundFailed(userId, {
+  action = 'pause',
+  reason,
+  deliveryLabel,
+  subscriptionId,
+} = {}) {
+  try {
+    const user = userId ? await getUserByAuthId(userId) : null;
+    const email = user?.email || '';
+    const customerName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+      || email
+      || 'Customer';
+    const msg = renderOwnerRefundFailedEmail({
+      customerName,
+      email,
+      action,
+      reason,
+      deliveryLabel,
+      subscriptionId,
+    });
+    await sendOwnerEmail(msg);
+  } catch (err) {
+    console.warn('[subscriptions] owner refund-failed email failed:', err.message);
+  }
+}
+
 async function notifyManage(userId, payload) {
   const user = await getUserByAuthId(userId);
   const email = user?.email;
@@ -417,18 +453,35 @@ async function notifyManage(userId, payload) {
   return customerSent;
 }
 
-async function resumeNotifyPayload(sub, week, charge, { charged = false } = {}) {
+function cycleFulfillmentFields(cycle) {
+  if (!cycle) {
+    return {
+      delivery: null,
+      pickupSlot: null,
+      specialNote: null,
+    };
+  }
+  return {
+    delivery: !!cycle.delivery,
+    pickupSlot: cycle.pickup_time_slot || null,
+    specialNote: cycle.special_note || null,
+  };
+}
+
+async function resumeNotifyPayload(sub, week, charge, { charged = false, chargedCents = 0 } = {}) {
   let meals = [];
   let addons = [];
   let deliveryLabel = week?.delivery_label;
   let boxYmd = week?.delivery_date || null;
+  let cycle = null;
   try {
     const editable = await getOrCreateEditableCycle(sub);
     if (editable?.week?.delivery_label) deliveryLabel = editable.week.delivery_label;
     if (editable?.week?.delivery_date) boxYmd = editable.week.delivery_date;
     else if (editable?.cycle?.delivery_date) boxYmd = editable.cycle.delivery_date;
-    if (editable?.cycle?.id) {
-      const box = await labeledBoxItemsForCycle(editable.cycle.id);
+    cycle = editable?.cycle || null;
+    if (cycle?.id) {
+      const box = await labeledBoxItemsForCycle(cycle.id);
       meals = box.meals;
       addons = box.addons;
     }
@@ -447,25 +500,39 @@ async function resumeNotifyPayload(sub, week, charge, { charged = false } = {}) 
       console.warn('[subscriptions] resume week timing failed:', err.message);
     }
   }
+  // Prefer the cycle's meal_count so the email matches the box that was charged.
+  const mealCount = Number(cycle?.meal_count) || Number(sub.subscription_plans?.meal_count) || 0;
+  let amount = Math.round(Number(chargedCents) || 0);
+  // Fallback from the paid cycle when the charge path didn't pass cents (owner has no receipt).
+  if (charged && amount <= 0 && cycle) {
+    const plan = Number(cycle.plan_paid_cents) || 0;
+    const fee = cycle.delivery ? (Number(cycle.delivery_fee_cents) || 0) : 0;
+    amount = Math.round(plan * 1.13) + Math.round(fee * 1.13);
+  }
   return {
     kind: 'resume',
-    mealCount: sub.subscription_plans?.meal_count,
+    mealCount,
     deliveryLabel,
     chargeLabel: charge?.charge_label,
     charged: !!charged,
+    chargedCents: charged ? amount : 0,
     followingWeek,
     meals,
     addons,
+    ...cycleFulfillmentFields(cycle),
   };
 }
 
 /** Welcome-back mail after payment_failed recovery (resume or card-update retry). */
-async function notifyResumeAfterPaymentRecovery(userId, sub, { charged = false } = {}) {
+async function notifyResumeAfterPaymentRecovery(userId, sub, { charged = false, chargedCents = 0 } = {}) {
   if (!userId || !sub?.id) return false;
   const { week, charge } = await currentCycleFor(sub);
   return notifyManage(
     userId,
-    await resumeNotifyPayload(sub, week, charge, { charged: !!charged })
+    await resumeNotifyPayload(sub, week, charge, {
+      charged: !!charged,
+      chargedCents: Number(chargedCents) || 0,
+    })
   );
 }
 
@@ -705,7 +772,10 @@ async function resumeSubscription(userId, subscriptionId) {
       try {
         await notifyManage(
           userId,
-          await resumeNotifyPayload(sub, week, charge, { charged: !!retried.charged })
+          await resumeNotifyPayload(sub, week, charge, {
+            charged: !!retried.charged,
+            chargedCents: Number(retried.amount) || 0,
+          })
         );
       } catch (err) {
         console.warn('[subscriptions] resume email failed:', err.message);
@@ -1268,6 +1338,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
         chargeLabel: charge.charge_label,
         meals: box.meals,
         addons: box.addons,
+        ...cycleFulfillmentFields(following),
       });
     } catch (err) {
       console.warn('[subscriptions] plan-change email failed:', err.message);
@@ -1313,10 +1384,13 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
         },
       });
       if (!refund.ok) {
-        throw new SubscriptionError(
-          402,
-          'We could not refund the plan difference. Your plan size was not changed. Try again or email hello@earthtableco.ca.'
-        );
+        await notifyOwnerRefundFailed(userId, {
+          action: 'plan_downgrade',
+          reason: refund.error || 'refund_failed',
+          deliveryLabel: week?.delivery_label,
+          subscriptionId: sub.id,
+        });
+        throw new SubscriptionError(402, PLAN_REFUND_FAIL_MSG);
       }
       refundedCents = Number(refund.refundedCents) || 0;
     } else if (newPrice > fromPaid) {
@@ -1388,6 +1462,12 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
 
   try {
     const box = await labeledBoxItemsForCycle(cycle.id);
+    // Re-read fulfillment so Next box / Address / Notes match the cycle (same as resume).
+    const { data: freshCycle } = await supabase
+      .from('subscription_cycles')
+      .select('*')
+      .eq('id', cycle.id)
+      .maybeSingle();
     await notifyManage(userId, {
       kind: 'plan_now',
       mealCount: nextCount,
@@ -1400,6 +1480,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       addons: box.addons,
       refundedCents,
       chargedDeltaCents,
+      ...cycleFulfillmentFields(freshCycle || cycle),
     });
   } catch (err) {
     console.warn('[subscriptions] plan-change email failed:', err.message);
@@ -1427,5 +1508,6 @@ module.exports = {
   sendPauseReminders,
   sendDeadlineNotice,
   notifyResumeAfterPaymentRecovery,
+  notifyOwnerRefundFailed,
   assertResumeMealsReady,
 };

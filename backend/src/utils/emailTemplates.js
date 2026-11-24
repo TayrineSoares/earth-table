@@ -62,6 +62,42 @@ function deliveryAddressNotesText(raw) {
   return `Address: ${street}`;
 }
 
+/** Pickup / delivery + address/notes block for resume & plan-change box emails. */
+function boxFulfillmentHtml({ delivery, deliveryLabel, pickupSlot, specialNote } = {}) {
+  const sunday = deliveryLabel || 'Sunday';
+  const line = formatFulfillmentLine({
+    delivery: !!delivery,
+    deliveryLabel: sunday,
+    pickupSlot,
+  });
+  const raw = String(specialNote || '').trim();
+  if (delivery) {
+    return card(kvTable(`
+      ${kvRow('Next box', line)}
+      ${deliveryAddressNotesRows(raw)}
+    `));
+  }
+  return card(kvTable(`
+    ${kvRow('Next box', line)}
+    ${kvRow('Address', PICKUP_ADDRESS, { last: !raw })}
+    ${raw ? kvRow('Notes', raw, { last: true }) : ''}
+  `));
+}
+
+function boxFulfillmentText({ delivery, deliveryLabel, pickupSlot, specialNote } = {}) {
+  const sunday = deliveryLabel || 'Sunday';
+  const line = formatFulfillmentLine({
+    delivery: !!delivery,
+    deliveryLabel: sunday,
+    pickupSlot,
+  });
+  const raw = String(specialNote || '').trim();
+  if (delivery) {
+    return `\n\nNext box: ${line}\n${deliveryAddressNotesText(raw)}`;
+  }
+  return `\n\nNext box: ${line}\nAddress: ${PICKUP_ADDRESS}${raw ? `\nNotes: ${raw}` : ''}`;
+}
+
 function appUrl(path) {
   const base = String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
@@ -1598,11 +1634,23 @@ My Subscriptions: ${manageHref}`;
 
   const unsubscribeHref = kind === 'pause_nudge' ? payload.unsubscribeHref : '';
   const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
-  const showPlanChange = kind === 'plan_now' || kind === 'plan_next';
+  // plan_now already names the new size in the intro + Plan row — only plan_next needs "New plan".
+  const showPlanChange = kind === 'plan_next';
   const showNotesCopy = kind === 'notes_updated';
   const notesCopy = String(payload.notes || '').trim();
   const meals = payload.meals || [];
   const addons = payload.addons || [];
+  const fulfillOpts = {
+    delivery: payload.delivery,
+    deliveryLabel: sunday,
+    pickupSlot: payload.pickupSlot || payload.pickup_time_slot,
+    specialNote: payload.specialNote != null ? payload.specialNote : payload.special_note,
+  };
+  const showFulfillment = showBox && (
+    payload.delivery != null
+    || fulfillOpts.pickupSlot
+    || String(fulfillOpts.specialNote || '').trim()
+  );
   const planChangeHtml = showPlanChange
     ? card(kvTable(`${kvRow('New plan', nextPlan || '—', { last: true })}`))
     : '';
@@ -1611,6 +1659,8 @@ My Subscriptions: ${manageHref}`;
 
 New plan: ${nextPlan || '—'}`
     : '';
+  const fulfillHtml = showFulfillment ? boxFulfillmentHtml(fulfillOpts) : '';
+  const fulfillText = showFulfillment ? boxFulfillmentText(fulfillOpts) : '';
   const boxHtml = showBox
     ? `${h2('Meals')}${itemListHtml(meals, '—')}${h2('Add-ons')}${itemListHtml(addons, 'None this week.')}`
     : '';
@@ -1640,6 +1690,7 @@ ${notesCopy || 'None — notes cleared'}`
       ${h1(copy.heading)}
       ${intro(copy.intro)}
       ${planChangeHtml}
+      ${fulfillHtml}
       ${boxHtml}
       ${notesHtml}
       ${ctaLink(manageHref, "My Subscriptions →")}
@@ -1652,7 +1703,7 @@ ${notesCopy || 'None — notes cleared'}`
 
   const text = `${copy.heading}
 
-${copy.intro}${planChangeText}${boxText}${notesText}
+${copy.intro}${planChangeText}${fulfillText}${boxText}${notesText}
 
 My Subscriptions: ${manageHref}
 
@@ -2031,7 +2082,13 @@ function renderOwnerSubscriptionEventEmail({
   meals,
   addons,
   refundedCents = 0,
+  chargedCents = 0,
   chargedDeltaCents = 0,
+  delivery,
+  pickupSlot,
+  pickup_time_slot,
+  specialNote,
+  special_note,
 } = {}) {
   const name = customerName || 'Customer';
   const contact = String(email || '').trim() || '—';
@@ -2044,9 +2101,14 @@ function renderOwnerSubscriptionEventEmail({
   );
   const nextPlan = mealsAWeek(nextMealCount);
   const showBox = kind === 'resume' || kind === 'plan_now' || kind === 'plan_next';
-  const showPlan = kind === 'plan_now' || kind === 'plan_next';
+  // plan_now already names the new size in the intro + Plan row — only plan_next needs "New plan".
+  const showPlan = kind === 'plan_next';
+  // Owners don't get the Stripe/customer receipt — put the dollar amount here.
+  const chargedAmount = Number(chargedCents) || 0;
   const chargedNote = charged
-    ? ` Charged for ${sunday}.`
+    ? (chargedAmount > 0
+      ? ` Charged ${formatDollars(chargedAmount)} (incl. tax) for ${sunday}.`
+      : ` Charged for ${sunday}.`)
     : '';
   const refunded = Number(refundedCents) || 0;
   const chargedDelta = Number(chargedDeltaCents) || 0;
@@ -2109,6 +2171,19 @@ function renderOwnerSubscriptionEventEmail({
   const planHtml = showPlan
     ? card(kvTable(`${kvRow('New plan', nextPlan || '—', { last: true })}`))
     : '';
+  const fulfillOpts = {
+    delivery,
+    deliveryLabel: sunday,
+    pickupSlot: pickupSlot || pickup_time_slot,
+    specialNote: specialNote != null ? specialNote : special_note,
+  };
+  const showFulfillment = showBox && (
+    delivery != null
+    || fulfillOpts.pickupSlot
+    || String(fulfillOpts.specialNote || '').trim()
+  );
+  const fulfillHtml = showFulfillment ? boxFulfillmentHtml(fulfillOpts) : '';
+  const fulfillText = showFulfillment ? boxFulfillmentText(fulfillOpts) : '';
   const boxHtml = showBox
     ? `${h2('Meals')}${itemListHtml(meals, '—')}${h2('Add-ons')}${itemListHtml(addons, 'None this week.')}`
     : '';
@@ -2127,6 +2202,7 @@ function renderOwnerSubscriptionEventEmail({
         ${kvRow('Plan', planWeek || '—', { last: true })}
       `))}
       ${planHtml}
+      ${fulfillHtml}
       ${boxHtml}
       ${ctaLink(appUrl('/admin'), 'View Admin →')}
   `, {
@@ -2141,7 +2217,7 @@ ${String(copy.intro).replace(/<\/?strong>/g, '')}
 
 Customer: ${name}
 Email: ${contact}
-Plan: ${planWeek || '—'}${planText}${boxText}
+Plan: ${planWeek || '—'}${planText}${fulfillText}${boxText}
 
 Admin: ${appUrl('/admin')}`;
 
@@ -2201,6 +2277,83 @@ function renderOwnerFulfillmentEmail({
   });
   const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}.${moneyNote}\n${method} ${when}, ${start} – ${end}\n${toDelivery ? deliveryAddressNotesText(address) : `Address: ${PICKUP_ADDRESS}`}\n`;
   return { subject, html, text };
+}
+
+/**
+ * Owner alert when a mid-week Stripe refund fails and the customer change was aborted.
+ * action: pause | plan_downgrade | delivery_fee
+ */
+function renderOwnerRefundFailedEmail({
+  customerName,
+  email,
+  action = 'pause',
+  reason,
+  deliveryLabel,
+  subscriptionId,
+} = {}) {
+  const name = customerName || 'Customer';
+  const contact = String(email || '').trim() || '—';
+  const sunday = deliveryLabel || 'this Sunday';
+  const failReason = String(reason || 'refund_failed').trim() || 'refund_failed';
+  const actionCopy = {
+    pause: {
+      subject: `Refund failed — pause ${name}`,
+      heading: 'Pause refund failed',
+      tried: `tried to pause and skip ${sunday}`,
+      outcome: 'The box was not skipped and the plan is still active. Customer saw a retry / contact message.',
+    },
+    plan_downgrade: {
+      subject: `Refund failed — plan change ${name}`,
+      heading: 'Plan refund failed',
+      tried: `tried to downgrade their plan for ${sunday}`,
+      outcome: 'Plan size was not changed. Customer saw a retry / contact message.',
+    },
+    delivery_fee: {
+      subject: `Refund failed — delivery fee ${name}`,
+      heading: 'Delivery fee refund failed',
+      tried: `tried to switch to pickup for ${sunday}`,
+      outcome: 'Pickup was not saved; they are still on delivery. Customer saw a retry / contact message.',
+    },
+  }[action] || {
+    subject: `Refund failed — ${name}`,
+    heading: 'Refund failed',
+    tried: `tried a change that needs a refund for ${sunday}`,
+    outcome: 'No change was saved. Customer saw a retry / contact message.',
+  };
+
+  const html = wrapEmail(`
+      ${eyebrow('Weekly subscription')}
+      ${h1(actionCopy.heading)}
+      ${intro(`<strong>${name}</strong> ${actionCopy.tried}. Stripe refund failed, so nothing was changed.`)}
+      ${card(kvTable(`
+        ${kvRow('Customer', name)}
+        ${kvRow('Email', contact)}
+        ${kvRow('Sunday', sunday)}
+        ${kvRow('Reason', failReason, { last: !subscriptionId })}
+        ${subscriptionId ? kvRow('Subscription', String(subscriptionId), { last: true }) : ''}
+      `))}
+      ${intro(actionCopy.outcome)}
+      ${ctaLink(appUrl('/admin'), 'View Admin →')}
+  `, {
+    preheader: actionCopy.subject,
+    replyOk: true,
+    title: actionCopy.subject,
+  });
+
+  const text = `${actionCopy.heading}
+
+${name} ${actionCopy.tried}. Stripe refund failed, so nothing was changed.
+
+Customer: ${name}
+Email: ${contact}
+Sunday: ${sunday}
+Reason: ${failReason}${subscriptionId ? `\nSubscription: ${subscriptionId}` : ''}
+
+${actionCopy.outcome}
+
+Admin: ${appUrl('/admin')}`;
+
+  return { subject: actionCopy.subject, html, text };
 }
 
 function renderOwnerPaymentFailedEmail({
@@ -2518,6 +2671,7 @@ module.exports = {
   renderSubscriptionHolidaySkipEmail,
   renderOwnerLockEmail,
   renderOwnerPaymentFailedEmail,
+  renderOwnerRefundFailedEmail,
   renderOwnerFulfillmentEmail,
   renderOwnerSubscriptionEventEmail,
   renderSubscriptionChargeEmail,

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { renderSubscriptionManageEmail } = require('../src/utils/emailTemplates');
 
 describe('plan change manage emails', () => {
-  it('plan_now mentions the move in copy and shows new plan plus meals', () => {
+  it('plan_now mentions the move in copy and shows fulfillment plus meals', () => {
     const msg = renderSubscriptionManageEmail({
       kind: 'plan_now',
       firstName: 'Alex',
@@ -11,6 +11,8 @@ describe('plan change manage emails', () => {
       oldMealCount: 10,
       nextMealCount: 15,
       deliveryLabel: 'Sunday, November 16',
+      delivery: true,
+      specialNote: 'Address:\n12 Main St\n\nNotes:\nleave at door',
       meals: [
         { slug: 'Harvest Bowl', quantity: 8 },
         { slug: 'Citrus Salad', quantity: 7 },
@@ -21,10 +23,13 @@ describe('plan change manage emails', () => {
     assert.match(msg.html, /hello@earthtableco\.ca/);
     assert.match(msg.text, /Questions\? Email us at hello@earthtableco\.ca/);
     assert.match(msg.text, /moving from a 10 meals a week to a 15 meals a week/);
-    assert.match(msg.text, /New plan: .*15/);
+    // Applied change: intro + meals only — no duplicate "New plan" row.
+    assert.doesNotMatch(msg.text, /New plan:/);
     assert.doesNotMatch(msg.text, /Previous plan:/);
     assert.doesNotMatch(msg.html, /Previous plan/);
-    assert.match(msg.html, /New plan/);
+    assert.match(msg.text, /Next box:/);
+    assert.match(msg.text, /Address: 12 Main St/);
+    assert.match(msg.text, /Notes: leave at door/);
     assert.match(msg.text, /Harvest Bowl x 8/);
     assert.match(msg.text, /Green Smoothie x 1/);
     assert.match(msg.html, />Meals</);

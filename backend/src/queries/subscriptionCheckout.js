@@ -1102,7 +1102,10 @@ async function completeCardSetup(session) {
               status: 'active',
               pause_reason: null,
             },
-            { charged: !!retry.charged }
+            {
+              charged: !!retry.charged,
+              chargedCents: Number(retry.amount) || 0,
+            }
           );
         } catch (mailErr) {
           console.warn('[subscriptions] payment-failed resume email failed:', mailErr.message);

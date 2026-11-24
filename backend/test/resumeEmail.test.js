@@ -53,6 +53,42 @@ describe('resume welcome-back email', () => {
     assert.doesNotMatch(msg.text, /Next charge is/);
   });
 
+  it('shows delivery address and notes on resume', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'resume',
+      firstName: 'Tayrine',
+      mealCount: 15,
+      deliveryLabel: 'Sunday, November 29',
+      charged: true,
+      delivery: true,
+      specialNote: 'Address:\n33 Rosehill Ave\n\nNotes:\ngate code 12',
+      meals: [{ slug: 'Taco Bowl', quantity: 15 }],
+      addons: [],
+    });
+    assert.match(msg.text, /Next box:/);
+    assert.match(msg.text, /Delivery/i);
+    assert.match(msg.text, /Address: 33 Rosehill Ave/);
+    assert.match(msg.text, /Notes: gate code 12/);
+  });
+
+  it('shows pickup address and notes on resume', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'resume',
+      firstName: 'Tayrine',
+      mealCount: 10,
+      deliveryLabel: 'Sunday, November 29',
+      charged: true,
+      delivery: false,
+      pickupSlot: '10:00 AM - 1:00 PM',
+      specialNote: 'leave by the door',
+      meals: [{ slug: 'Taco Bowl', quantity: 10 }],
+      addons: [],
+    });
+    assert.match(msg.text, /Pickup/i);
+    assert.match(msg.text, /Woodstream/);
+    assert.match(msg.text, /Notes: leave by the door/);
+  });
+
   it('names next Tuesday charge when charged=false', () => {
     const msg = renderSubscriptionManageEmail({
       kind: 'resume',

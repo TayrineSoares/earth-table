@@ -840,8 +840,18 @@ const MySubscriptions = ({ user }) => {
   }
 
   const persistFulfillment = async (row) => {
+    if (savingId) return
     setSavingId(row.id)
-    setDialog(null)
+    setDialog((prev) => ({
+      ...(prev || {
+        icon: 'mail',
+        title: fulfillment === 'delivery' ? 'Save delivery?' : 'Save pickup?',
+        body: 'Saving your box…',
+      }),
+      busy: true,
+      primaryLabel: 'Saving…',
+      onPrimary: undefined,
+    }))
     try {
       const result = await updateSubscriptionFulfillment(row.id, {
         delivery: fulfillment === 'delivery',
@@ -871,9 +881,10 @@ const MySubscriptions = ({ user }) => {
       })
     } catch (err) {
       console.error(err)
+      const refundFail = /couldn'?t refund|could not refund/i.test(String(err.message || ''))
       setDialog({
         icon: 'alert',
-        title: 'Could not save pickup / delivery',
+        title: refundFail ? 'Refund didn’t go through' : 'Could not save pickup / delivery',
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
@@ -924,9 +935,10 @@ const MySubscriptions = ({ user }) => {
       }
     } catch (err) {
       console.error(err)
+      const refundFail = /couldn'?t refund|could not refund/i.test(String(err.message || ''))
       setDialog({
         icon: 'alert',
-        title: 'Could not update this plan',
+        title: refundFail ? 'Refund didn’t go through' : 'Could not update this plan',
         body: err.message || 'Try again in a moment.',
         primaryLabel: 'OK',
       })
