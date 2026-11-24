@@ -743,8 +743,11 @@ const MySubscriptions = ({ user }) => {
     setDeliveryDate(locked)
     setPostalCode(cycle.delivery_postal_code || '')
     {
+      // Pickup stores plain notes; don't dump them into Address on switch.
+      const switchingFromPickup = nextMethod === 'delivery' && !isDelivery
       const parsed = parseSpecialNote(cycle.special_note, {
         delivery: nextMethod === 'delivery',
+        unlabeledAs: switchingFromPickup ? 'notes' : 'address',
       })
       setDeliveryAddress(parsed.address)
       setOrderNotes(parsed.notes)
@@ -1409,6 +1412,8 @@ const MySubscriptions = ({ user }) => {
                 ? 'my-sub-status my-sub-status--paused'
                 : 'my-sub-status my-sub-status--active'
             const boxForDetails = nextBoxCycle || cycle
+            const savedDeliveryFeeCents = Number(boxForDetails?.delivery_fee_cents) || 0
+            const savedDeliveryWithTax = Math.round(savedDeliveryFeeCents * (1 + HST_RATE))
             const notesEditCycle = editCycle || cycle
             // Notes are per cycle — never fall back to subscription.special_note.
             const note = formatSpecialNoteDisplay(boxForDetails.special_note, {
@@ -1588,6 +1593,11 @@ const MySubscriptions = ({ user }) => {
                         <p className="my-sub-price-badge" aria-label="Plan price and fulfillment">
                           {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
                         </p>
+                        {isDelivery && savedDeliveryFeeCents > 0 ? (
+                          <p className="my-sub-delivery-fee-line">
+                            Delivery {formatPlanPrice(savedDeliveryFeeCents)} + HST = {formatPlanPrice(savedDeliveryWithTax)}
+                          </p>
+                        ) : null}
                         {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
                           <div className="my-sub-plan-list">
                             {otherPlans.map((planRow) => (

@@ -8,7 +8,7 @@
  *   Notes:
  *   Gate code 12
  *
- * Legacy blobs (no labels) are treated as the address for delivery.
+ * Unlabeled blobs: legacy delivery → address; pickup→delivery switch → notes.
  */
 
 const ADDRESS_HEAD = /^Address:\s*/i;
@@ -23,7 +23,7 @@ export function joinDeliverySpecialNote(address, notes) {
   return `Notes:\n${n}`;
 }
 
-export function splitDeliverySpecialNote(raw) {
+export function splitDeliverySpecialNote(raw, { unlabeledAs = 'address' } = {}) {
   const text = String(raw || '').replace(/\r\n/g, '\n').trim();
   if (!text) return { address: '', notes: '' };
 
@@ -42,7 +42,10 @@ export function splitDeliverySpecialNote(raw) {
     };
   }
 
-  // Pre-split data lived in one box — treat as address for delivery.
+  // Unlabeled: pickup notes when switching to delivery, or legacy one-box delivery.
+  if (unlabeledAs === 'notes') {
+    return { address: '', notes: text };
+  }
   return { address: text, notes: '' };
 }
 
@@ -53,11 +56,17 @@ export function composeSpecialNote({ delivery, address, notes }) {
   return n;
 }
 
-export function parseSpecialNote(raw, { delivery = false } = {}) {
+/**
+ * @param {string} raw
+ * @param {{ delivery?: boolean, unlabeledAs?: 'address' | 'notes' }} [opts]
+ *   unlabeledAs: 'notes' when opening delivery editor from a pickup box so
+ *   plain pickup notes land in Notes, not Address.
+ */
+export function parseSpecialNote(raw, { delivery = false, unlabeledAs = 'address' } = {}) {
   const text = String(raw || '').trim();
   // Structured blobs always split, even when switching toward pickup.
   if (delivery || ADDRESS_HEAD.test(text) || /^Notes:\s*/i.test(text)) {
-    return splitDeliverySpecialNote(text);
+    return splitDeliverySpecialNote(text, { unlabeledAs: delivery ? unlabeledAs : 'address' });
   }
   return { address: '', notes: text };
 }
