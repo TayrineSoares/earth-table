@@ -12,6 +12,7 @@ import {
   shortOrderId,
   titleCaseName,
 } from '../helpers/orderHelpers'
+import { parseSpecialNote } from '../helpers/specialNote'
 import { fetchUserByAuthId } from '../helpers/userHelpers'
 import { supabase } from '../supabaseClient'
 import loadingAnimation from '../assets/loading.json'
@@ -148,7 +149,9 @@ export default function Confirmation({ user, clearCart }) {
     : (formatTimeWindow(order?.pickup_time_slot) || '—')
   const { start: windowStart, end: windowEnd } = splitWindow(windowLabel)
   const windowRange = windowEnd ? `${windowStart} – ${windowEnd}` : windowStart
-  const note = String(order?.special_note || '').trim()
+  const noteParts = parseSpecialNote(order?.special_note, { delivery: isDelivery })
+  const deliveryStreet = noteParts.address
+  const note = noteParts.notes
   const postal = getPostalFromBuyerInfo(order?.buyer_stripe_payment_info)
   const email = order?.buyer_email || ''
   const products = Array.isArray(order?.products) ? order.products : []
@@ -240,9 +243,17 @@ export default function Confirmation({ user, clearCart }) {
                     {postal ? (
                       <p className="subscribe-confirm-card-copy">{postal}</p>
                     ) : null}
+                    {deliveryStreet ? (
+                      <>
+                        <p className="subscribe-confirm-card-sublabel">Address</p>
+                        <p className="subscribe-confirm-card-copy subscribe-confirm-card-copy--block">
+                          {deliveryStreet}
+                        </p>
+                      </>
+                    ) : null}
                     {note ? (
                       <>
-                        <p className="subscribe-confirm-card-sublabel">Address &amp; notes</p>
+                        <p className="subscribe-confirm-card-sublabel">Notes</p>
                         <p className="subscribe-confirm-card-copy subscribe-confirm-card-copy--block">
                           {note}
                         </p>

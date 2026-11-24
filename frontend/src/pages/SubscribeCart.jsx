@@ -5,6 +5,7 @@ import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
 import PickupSelector from '../components/PickupSelector'
 import DeliverySelector from '../components/DeliverySelector'
+import SpecialNoteFields from '../components/SpecialNoteFields'
 import FeedbackDialog from '../components/FeedbackDialog'
 import '../styles/Cart.css'
 import '../styles/SubscribeFlow.css'
@@ -23,6 +24,10 @@ import {
   subscriptionDetailsItems,
 } from '../helpers/subscriptionCadence'
 import { optionalAuthFetch } from '../helpers/authFetch'
+import {
+  composeSpecialNote,
+  deliveryAddressReady,
+} from '../helpers/specialNote'
 
 const HST_RATE = 0.13
 
@@ -80,7 +85,8 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
   const [hasExistingSub, setHasExistingSub] = useState(false)
 
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)
-  const [specialNote, setSpecialNote] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [orderNotes, setOrderNotes] = useState('')
   const [fulfillment, setFulfillment] = useState('pickup')
   const [pickupDate, setPickupDate] = useState('')
   const [pickupTime, setPickupTime] = useState('')
@@ -300,8 +306,8 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
         missing.push('Calculate the delivery fee.')
       }
       if (!deliveryDate) missing.push('Delivery date is missing.')
-      if (specialNote.trim().length < 8) {
-        missing.push('Add your full delivery address in Special Instructions.')
+      if (!deliveryAddressReady(deliveryAddress)) {
+        missing.push('Add your full delivery address.')
       }
     }
     if (!agreedToPrivacy) {
@@ -337,7 +343,11 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
         delivery: fulfillment === 'delivery',
         delivery_postal_code: postalCode,
         pickup_time_slot: pickupTime,
-        special_note: specialNote,
+        special_note: composeSpecialNote({
+          delivery: fulfillment === 'delivery',
+          address: deliveryAddress,
+          notes: orderNotes,
+        }),
         promoCode: promoResult?.valid ? lastValidatedCode : '',
       })
       if (!data?.url) {
@@ -540,25 +550,14 @@ const SubscribeCart = ({ user, subCart, bumpSubMeal, bumpSubAddon }) => {
               )}
             </div>
 
-            <div className="special-note-container">
-              <label htmlFor="sub-special-note" className="general-text">
-                {fulfillment === 'delivery'
-                  ? 'Special Instructions + Delivery Address'
-                  : 'Special Instructions'}
-              </label>
-              <textarea
-                className="special-note-input"
-                id="sub-special-note"
-                value={specialNote}
-                onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder={
-                  fulfillment === 'delivery'
-                    ? 'Delivery address, allergies, special instructions...'
-                    : 'Allergies, special instructions...'
-                }
-                rows="3"
-              />
-            </div>
+            <SpecialNoteFields
+              fulfillment={fulfillment}
+              address={deliveryAddress}
+              notes={orderNotes}
+              onAddressChange={setDeliveryAddress}
+              onNotesChange={setOrderNotes}
+              idPrefix="sub"
+            />
             {fulfillment === 'delivery' && lockedDeliveryLabel ? (
               <p className="pickup-label subscribe-locked-date">
                 First Delivery

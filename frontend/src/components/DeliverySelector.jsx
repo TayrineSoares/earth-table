@@ -12,7 +12,7 @@ export default function DeliverySelector({
   onDeliveryDateChange, // (yyyy-mm-dd)
   postalCode,
   onPostalCodeChange,
-  feeCents,
+  feeLine = null,
   onValidate, // ({ valid, normalizedPostal })
   lockedDate,
   showReviewNotes = true,
@@ -142,7 +142,7 @@ export default function DeliverySelector({
         {/* Postal Code */}
         <div className="pickup-field">
           <label className="pickup-label" htmlFor="delivery-postal">
-            Postal Code (Delivery Quote)
+            Add your postal code for a delivery quote
           </label>
           {onCalculate ? (
             <div className="promo-row">
@@ -173,17 +173,12 @@ export default function DeliverySelector({
               onChange={(e) => onPostalCodeChange(e.target.value)}
             />
           )}
-          {feeCents > 0 && (
-            <p className="pickup-hint">
-              Delivery fee: ${(feeCents / 100).toFixed(2)}
-            </p>
-          )}
+          {feeLine || null}
         </div>
 
         <div className="general-text">
           <p>
-            Please include your full delivery address in the Special
-            Instructions box below.
+            Add your full delivery address in the Address box below.
           </p>
         </div>
 

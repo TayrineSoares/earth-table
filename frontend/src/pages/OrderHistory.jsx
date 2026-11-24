@@ -19,6 +19,7 @@ import {
   shortOrderId,
   toCartProduct,
 } from "../helpers/orderHelpers";
+import { parseSpecialNote } from "../helpers/specialNote";
 import { supabase } from "../supabaseClient";
 import FeedbackDialog from "../components/FeedbackDialog";
 import "../styles/Cart.css";
@@ -117,8 +118,11 @@ const ExpandedOrderCard = ({
   const postal = isDelivery ? getPostalFromBuyerInfo(order.buyer_stripe_payment_info) : "";
   const dateLabel = formatYmdLong(getFulfillmentYmd(order)) || "—";
   const windowLabel = fulfillmentWindow(order);
-  const address = isDelivery ? (postal || "") : PICKUP_ADDRESS;
-  const note = String(order.special_note || "").trim();
+  const noteParts = parseSpecialNote(order.special_note, { delivery: isDelivery });
+  const street = isDelivery ? noteParts.address : "";
+  const address = isDelivery ? (street || postal || "") : PICKUP_ADDRESS;
+  const note = noteParts.notes;
+  const showPostal = isDelivery && street && postal && street !== postal;
 
   return (
     <article
@@ -166,6 +170,9 @@ const ExpandedOrderCard = ({
               {dateLabel} · {windowLabel}
             </p>
             {!!address && <p className="order-fulfillment-address">{address}</p>}
+            {showPostal ? (
+              <p className="order-fulfillment-address">{postal}</p>
+            ) : null}
             {!!note && (
               <p className="order-fulfillment-note">{note}</p>
             )}

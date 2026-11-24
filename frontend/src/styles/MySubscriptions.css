@@ -8,7 +8,7 @@
 }
 
 .my-subscriptions-page.order-history-page .page-wrapper.my-sub-shell {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 48px 40px;
   width: 100%;
@@ -253,8 +253,8 @@
 }
 
 .my-sub-aside {
-  flex: 1 1 380px;
-  max-width: 440px;
+  flex: 1 1 460px;
+  max-width: 520px;
   position: sticky;
   top: 24px;
 }
@@ -344,6 +344,157 @@
   font-size: 14px;
   line-height: 1.3;
   letter-spacing: 0.02em;
+}
+
+.my-sub-plan-block {
+  width: 100%;
+}
+
+.my-sub-plan-block .my-sub-edit-link {
+  margin-left: 0;
+}
+
+.my-sub-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #D9C7B0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-plan-list .order-history-button {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-fulfillment-block {
+  border-bottom: 1px solid #D9C7B0;
+  padding-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.my-sub-fulfillment-block > .my-sub-row:last-of-type {
+  border-bottom: none;
+}
+
+.my-sub-fulfillment--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 12px 0 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-fulfill-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.my-sub-fulfill-heading {
+  margin: 0;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  color: #757575;
+}
+
+.my-sub-fulfill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin: 4px 0 0;
+}
+
+.my-sub-fulfill-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  min-height: 44px;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+  color: #000;
+  cursor: pointer;
+}
+
+.my-sub-fulfill-option input {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+  border: 1.5px solid #D8C7B0;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+.my-sub-fulfill-option input:checked {
+  border-color: #EDA413;
+  background: radial-gradient(circle, #EDA413 0 5px, #fff 6px);
+}
+
+.my-sub-fulfill-option input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
+}
+
+.my-sub-fulfillment--inline .pickup-grid {
+  margin-top: 0;
+  padding-top: 4px;
+}
+
+.my-sub-fulfillment--inline .pickup-input,
+.my-sub-fulfillment--inline .pickup-select {
+  font-size: 16px;
+  min-height: 44px;
+}
+
+.my-sub-fulfill-notes {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid #D9C7B0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-sub-special-note-stack {
+  max-width: 100%;
+  margin-bottom: 0;
+}
+
+.my-sub-notes-inline .my-sub-special-note-stack,
+.my-sub-fulfill-notes .my-sub-special-note-stack {
+  max-width: 100%;
+}
+
+.my-sub-fulfillment--inline .special-note-container,
+.my-sub-fulfillment--inline .special-note-input,
+.my-sub-fulfillment--inline .order-history-button {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-fulfillment--inline .order-history-button {
+  align-self: flex-start;
+  min-height: 44px;
 }
 
 .my-sub-notes-block {
@@ -459,9 +610,29 @@
   padding-bottom: 0;
 }
 
+.my-sub-row-lead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .my-sub-row-label {
   color: #BE7200;
   min-width: 0;
+}
+
+.my-sub-row-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.my-sub-row-action .my-sub-edit-link {
+  margin-left: 0;
+  min-height: 44px;
 }
 
 .my-sub-row--next,
@@ -647,19 +818,6 @@
   border-top: 1px solid #D9C7B0;
 }
 
-.my-sub-plan-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.my-sub-fulfillment {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #D9C7B0;
-}
-
 .my-sub-notes-edit {
   margin-top: 16px;
   padding-top: 16px;
@@ -673,30 +831,21 @@
   max-width: 100%;
 }
 
-.my-sub-fulfill-radios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin: 0 0 16px;
-  font-family: var(--body-font);
-  font-size: 15px;
-}
-
-.my-sub-fulfill-radios label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  cursor: pointer;
-}
-
 .my-sub-fee-line {
   font-family: var(--body-font);
   font-weight: 400;
   font-size: 15px;
   line-height: 1.4;
   color: #BE7200;
-  margin: 8px 0 16px;
+  margin: 8px 0 0;
+}
+
+.my-sub-fee-line--muted {
+  color: #757575;
+}
+
+.my-sub-fee-line--alert {
+  color: #b30000;
 }
 
 .my-subscriptions-page .order-history-button {
@@ -728,7 +877,7 @@
   .my-sub-text-link,
   .my-sub-status-note--alert .my-sub-edit-link,
   .my-sub-plan-list .order-history-button,
-  .my-sub-fulfillment .order-history-button,
+  .my-sub-fulfillment--inline .order-history-button,
   .my-subscriptions-page .order-history-empty .order-history-button,
   .my-subscriptions-page .order-history-empty .order-history-cta {
     width: 100%;
@@ -778,12 +927,16 @@
 
   .my-sub-meals,
   .my-sub-aside,
-  .my-sub-fulfillment,
+  .my-sub-fulfillment--inline,
+  .my-sub-fulfillment-block,
+  .my-sub-plan-block,
+  .my-sub-plan-list,
   .my-sub-notes-edit,
   .my-sub-notes-inline,
-  .my-sub-fulfillment .special-note-input,
+  .my-sub-fulfillment--inline .special-note-input,
   .my-sub-notes-edit .special-note-input,
   .my-sub-notes-inline .special-note-input,
+  .my-sub-fulfillment--inline .order-history-button,
   .my-sub-notes-edit .order-history-button,
   .my-sub-notes-inline .order-history-button,
   .my-sub-status-note,

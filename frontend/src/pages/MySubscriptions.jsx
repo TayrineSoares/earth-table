@@ -6,7 +6,14 @@ import checkoutImage from '../assets/images/checkoutImage.png'
 import loadingAnimation from '../assets/loading.json'
 import PickupSelector from '../components/PickupSelector'
 import DeliverySelector from '../components/DeliverySelector'
+import SpecialNoteFields from '../components/SpecialNoteFields'
 import FeedbackDialog from '../components/FeedbackDialog'
+import {
+  composeSpecialNote,
+  deliveryAddressReady,
+  formatSpecialNoteDisplay,
+  parseSpecialNote,
+} from '../helpers/specialNote'
 import {
   fetchMySubscriptions,
   fetchSubscriptionPlans,
@@ -228,10 +235,13 @@ function LineItem({ item, fallbackName, priceCents }) {
   )
 }
 
-function DetailRow({ label, emphasize, children }) {
+function DetailRow({ label, emphasize, action, children }) {
   return (
     <div className={emphasize ? 'my-sub-row my-sub-row--next' : 'my-sub-row'}>
-      <span className="my-sub-row-label">{label}</span>
+      <div className="my-sub-row-lead">
+        <span className="my-sub-row-label">{label}</span>
+        {action ? <div className="my-sub-row-action">{action}</div> : null}
+      </div>
       <span className="my-sub-row-value">{children}</span>
     </div>
   )
@@ -411,7 +421,8 @@ const MySubscriptions = ({ user }) => {
   const [deliveryFeeCents, setDeliveryFeeCents] = useState(0)
   const [deliveryDate, setDeliveryDate] = useState('')
   const [quoteStatus, setQuoteStatus] = useState('idle')
-  const [specialNote, setSpecialNote] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [orderNotes, setOrderNotes] = useState('')
 
   const rowsRef = useRef(rows)
   rowsRef.current = rows
@@ -678,10 +689,8 @@ const MySubscriptions = ({ user }) => {
 
   useEffect(() => {
     if (fulfillment !== 'delivery' || !postalValid) {
-      if (fulfillment !== 'delivery') {
-        setQuoteStatus('idle')
-        setDeliveryFeeCents(0)
-      }
+      setQuoteStatus('idle')
+      setDeliveryFeeCents(0)
       return undefined
     }
     let cancelled = false
@@ -727,19 +736,42 @@ const MySubscriptions = ({ user }) => {
       : (isDelivery ? 'delivery' : 'pickup')
     setEditingId(row.id)
     setNotesEditingId(null)
+    setChangingId(null)
     setFulfillment(nextMethod)
     setPickupDate(locked)
     setPickupTime(cycle.pickup_time_slot || '')
     setDeliveryDate(locked)
     setPostalCode(cycle.delivery_postal_code || '')
-    setSpecialNote(cycle.special_note || '')
+    {
+      const parsed = parseSpecialNote(cycle.special_note, {
+        delivery: nextMethod === 'delivery',
+      })
+      setDeliveryAddress(parsed.address)
+      setOrderNotes(parsed.notes)
+    }
   }
 
   const startNotesEdit = (row) => {
     const cycle = row.edit_cycle || row.cycle || {}
+    const isDelivery = !!cycle.delivery
     setNotesEditingId(row.id)
     setEditingId(null)
-    setSpecialNote(cycle.special_note || '')
+    setChangingId(null)
+    {
+      const parsed = parseSpecialNote(cycle.special_note, { delivery: isDelivery })
+      setDeliveryAddress(parsed.address)
+      setOrderNotes(parsed.notes)
+    }
+  }
+
+  const togglePlanPicker = (row) => {
+    if (changingId === row.id) {
+      setChangingId(null)
+      return
+    }
+    setChangingId(row.id)
+    setEditingId(null)
+    setNotesEditingId(null)
   }
 
   const fulfillmentReady =
@@ -748,15 +780,15 @@ const MySubscriptions = ({ user }) => {
       : postalValid &&
         quoteStatus === 'ok' &&
         deliveryFeeCents > 0 &&
-        specialNote.trim().length >= 8
+        deliveryAddressReady(deliveryAddress)
 
   const persistNotes = async (row) => {
     const isDelivery = !!(row.edit_cycle || row.cycle || {}).delivery
-    if (isDelivery && specialNote.trim().length < 8) {
+    if (isDelivery && !deliveryAddressReady(deliveryAddress)) {
       setDialog({
         icon: 'alert',
         title: 'One more step',
-        body: 'Add your full delivery address in Notes.',
+        body: 'Add your full delivery address.',
         primaryLabel: 'Got it',
       })
       return
@@ -765,7 +797,11 @@ const MySubscriptions = ({ user }) => {
     try {
       await updateSubscriptionFulfillment(row.id, {
         notes_only: true,
-        special_note: specialNote,
+        special_note: composeSpecialNote({
+          delivery: isDelivery,
+          address: deliveryAddress,
+          notes: orderNotes,
+        }),
       })
       await load()
       setNotesEditingId(null)
@@ -806,7 +842,11 @@ const MySubscriptions = ({ user }) => {
         delivery: fulfillment === 'delivery',
         delivery_postal_code: postalCode,
         pickup_time_slot: pickupTime,
-        special_note: specialNote,
+        special_note: composeSpecialNote({
+          delivery: fulfillment === 'delivery',
+          address: deliveryAddress,
+          notes: orderNotes,
+        }),
       })
       await load()
       setEditingId(null)
@@ -1359,7 +1399,9 @@ const MySubscriptions = ({ user }) => {
             const boxForDetails = nextBoxCycle || cycle
             const notesEditCycle = editCycle || cycle
             // Notes are per cycle — never fall back to subscription.special_note.
-            const note = String(boxForDetails.special_note || '').trim()
+            const note = formatSpecialNoteDisplay(boxForDetails.special_note, {
+              delivery: isDelivery,
+            })
             const notesEditFollowing = Boolean(
               canEdit
               && notesEditCycle?.id
@@ -1516,13 +1558,40 @@ const MySubscriptions = ({ user }) => {
                 <aside className="my-sub-aside">
                   <div className="my-sub-card">
                     <div className="my-sub-card-top">
-                      <div className="my-sub-card-title-row">
-                        <h2 className="my-sub-card-title">{mealsAWeek(plan.meal_count)}</h2>
-                        <span className={statusChipClass}>{statusLabel}</span>
+                      <div className="my-sub-plan-block">
+                        <div className="my-sub-card-title-row">
+                          <h2 className="my-sub-card-title">{mealsAWeek(plan.meal_count)}</h2>
+                          <span className={statusChipClass}>{statusLabel}</span>
+                          {canEdit && !isPaused && otherPlans.length ? (
+                            <button
+                              type="button"
+                              className="my-sub-edit-link"
+                              disabled={savingId === row.id}
+                              onClick={() => togglePlanPicker(row)}
+                            >
+                              {changingId === row.id ? 'Close' : 'Change plan'}
+                            </button>
+                          ) : null}
+                        </div>
+                        <p className="my-sub-price-badge" aria-label="Plan price and fulfillment">
+                          {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
+                        </p>
+                        {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
+                          <div className="my-sub-plan-list">
+                            {otherPlans.map((planRow) => (
+                              <button
+                                key={planRow.id}
+                                type="button"
+                                className="order-history-button"
+                                disabled={savingId === row.id}
+                                onClick={() => confirmPlan(row, planRow)}
+                              >
+                                {mealsAWeek(planRow.meal_count)} — {formatPlanPrice(planRow.price_cents)}/week
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
-                      <p className="my-sub-price-badge" aria-label="Plan price and fulfillment">
-                        {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
-                      </p>
                       {row.created_at ? (
                         <p className="my-sub-card-since">
                           Subscribed since {subscribedSince(row.created_at)}
@@ -1606,12 +1675,141 @@ const MySubscriptions = ({ user }) => {
                               ? shortWeekdayDate(ymd)
                               : '—'))}
                       </DetailRow>
-                      <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
-                      <DetailRow label="Location">{location}</DetailRow>
+                      <div className="my-sub-fulfillment-block">
+                        <DetailRow
+                          label={isDelivery ? 'Delivery' : 'Pickup'}
+                          action={canEdit ? (
+                            <button
+                              type="button"
+                              className="my-sub-edit-link"
+                              disabled={savingId === row.id}
+                              onClick={() => (
+                                editingId === row.id
+                                  ? setEditingId(null)
+                                  : startEdit(row, {
+                                    switchTo: isDelivery ? 'pickup' : 'delivery',
+                                  })
+                              )}
+                            >
+                              {editingId === row.id
+                                ? 'Close'
+                                : (isDelivery ? 'Change to pickup' : 'Change to delivery')}
+                            </button>
+                          ) : null}
+                        >
+                          {windowLabel}
+                        </DetailRow>
+                        <DetailRow label="Location">{location}</DetailRow>
+                        {editingId === row.id && canEdit ? (
+                          <div className="my-sub-fulfillment my-sub-fulfillment--inline">
+                            <div className="my-sub-fulfill-chooser">
+                              <p className="my-sub-fulfill-heading">How you&apos;ll get it</p>
+                              <div
+                                className="my-sub-fulfill-row"
+                                role="radiogroup"
+                                aria-label="How you'll get it"
+                              >
+                                <label className="my-sub-fulfill-option">
+                                  <input
+                                    type="radio"
+                                    name={`sub-fulfillment-${row.id}`}
+                                    value="pickup"
+                                    checked={fulfillment === 'pickup'}
+                                    onChange={() => setFulfillment('pickup')}
+                                  />
+                                  Pickup
+                                </label>
+                                <label className="my-sub-fulfill-option">
+                                  <input
+                                    type="radio"
+                                    name={`sub-fulfillment-${row.id}`}
+                                    value="delivery"
+                                    checked={fulfillment === 'delivery'}
+                                    onChange={() => setFulfillment('delivery')}
+                                  />
+                                  Delivery
+                                </label>
+                              </div>
+                            </div>
+
+                            {fulfillment === 'pickup' ? (
+                              <PickupSelector
+                                pickupDate={pickupDate}
+                                pickupTime={pickupTime}
+                                onDateChange={setPickupDate}
+                                onTimeChange={setPickupTime}
+                                lockedDate={lockedDate}
+                                showReviewNotes={false}
+                              />
+                            ) : (
+                              <DeliverySelector
+                                postalCode={postalCode}
+                                onPostalCodeChange={setPostalCode}
+                                feeCents={deliveryFeeCents}
+                                onValidate={({ valid }) => setPostalValid(valid)}
+                                deliveryDate={deliveryDate}
+                                onDeliveryDateChange={setDeliveryDate}
+                                lockedDate={lockedDate}
+                                showReviewNotes={false}
+                                feeLine={
+                                  quoteStatus === 'loading' ? (
+                                    <p className="my-sub-fee-line my-sub-fee-line--muted" role="status">
+                                      Calculating delivery fee…
+                                    </p>
+                                  ) : quoteStatus === 'ok' && deliveryFeeCents > 0 ? (
+                                    <p className="my-sub-fee-line">
+                                      Delivery {formatPlanPrice(deliveryFeeCents)} + HST {formatPlanPrice(deliveryWithTax - deliveryFeeCents)} = {formatPlanPrice(deliveryWithTax)}
+                                    </p>
+                                  ) : quoteStatus === 'out' ? (
+                                    <p className="my-sub-fee-line my-sub-fee-line--alert" role="alert">
+                                      Delivery not available for this area. Questions? Email hello@earthtableco.ca.
+                                    </p>
+                                  ) : quoteStatus === 'error' ? (
+                                    <p className="my-sub-fee-line my-sub-fee-line--alert" role="alert">
+                                      Couldn&apos;t calculate delivery. Check the postal code and try again. Questions? Email hello@earthtableco.ca.
+                                    </p>
+                                  ) : null
+                                }
+                              />
+                            )}
+
+                            <div className="my-sub-fulfill-notes">
+                              {notesEditFollowing ? (
+                                <p className="my-sub-repeat-note">
+                                  This Sunday&apos;s locked box keeps its current notes. Saving here updates only next Sunday
+                                  {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                                </p>
+                              ) : (
+                                <p className="my-sub-repeat-note">
+                                  Address and notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
+                                </p>
+                              )}
+                              <SpecialNoteFields
+                                fulfillment={fulfillment}
+                                address={deliveryAddress}
+                                notes={orderNotes}
+                                onAddressChange={setDeliveryAddress}
+                                onNotesChange={setOrderNotes}
+                                idPrefix={`sub-fulfill-${row.id}`}
+                                className="my-sub-special-note-stack"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              className="order-history-button"
+                              disabled={!fulfillmentReady || savingId === row.id}
+                              onClick={() => saveFulfillment(row)}
+                            >
+                              {savingId === row.id ? 'Saving…' : 'Save pickup / delivery'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                       <div className="my-sub-notes-block">
-                        <DetailRow label="Notes">
-                          {note || 'None'}
-                          {canEdit ? (
+                        <DetailRow
+                          label={isDelivery ? 'Address & notes' : 'Notes'}
+                          action={canEdit ? (
                             <button
                               type="button"
                               className="my-sub-edit-link"
@@ -1627,6 +1825,8 @@ const MySubscriptions = ({ user }) => {
                                 : (notesEditFollowing ? 'Edit for next Sunday' : 'Edit')}
                             </button>
                           ) : null}
+                        >
+                          {note || 'None'}
                         </DetailRow>
                         {notesEditFollowing && notesEditingId !== row.id ? (
                           <p className="my-sub-repeat-note">
@@ -1643,33 +1843,27 @@ const MySubscriptions = ({ user }) => {
                               </p>
                             ) : (
                               <p className="my-sub-repeat-note">
-                                Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
+                                {isDelivery
+                                  ? 'Address and notes are for this Sunday\'s box. If you don\'t change them, they carry over next week. Questions? Email hello@earthtableco.ca.'
+                                  : 'Notes are for this Sunday\'s box. If you don\'t change them, they carry over next week. Questions? Email hello@earthtableco.ca.'}
                               </p>
                             )}
-                            <textarea
-                              className="special-note-input"
-                              id={`sub-notes-${row.id}`}
-                              aria-label={
-                                notesEditFollowing
-                                  ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
-                                  : 'Notes'
-                              }
-                              value={specialNote}
-                              onChange={(e) => setSpecialNote(e.target.value)}
-                              placeholder={
-                                isDelivery
-                                  ? 'Delivery address, allergies, special instructions...'
-                                  : 'Allergies, special instructions...'
-                              }
-                              rows="4"
+                            <SpecialNoteFields
+                              fulfillment={isDelivery ? 'delivery' : 'pickup'}
+                              address={deliveryAddress}
+                              notes={orderNotes}
+                              onAddressChange={setDeliveryAddress}
+                              onNotesChange={setOrderNotes}
+                              idPrefix={`sub-notes-${row.id}`}
+                              className="my-sub-special-note-stack"
                             />
                             <button
                               type="button"
                               className="order-history-button"
-                              disabled={savingId === row.id || (isDelivery && specialNote.trim().length < 8)}
+                              disabled={savingId === row.id || (isDelivery && !deliveryAddressReady(deliveryAddress))}
                               onClick={() => persistNotes(row)}
                             >
-                              {savingId === row.id ? 'Saving…' : 'Save notes'}
+                              {savingId === row.id ? 'Saving…' : (isDelivery ? 'Save address & notes' : 'Save notes')}
                             </button>
                           </div>
                         ) : null}
@@ -1704,36 +1898,8 @@ const MySubscriptions = ({ user }) => {
                       ) : null}
                     </div>
 
-                    <div className="my-sub-card-actions">
-                      {canEdit ? (
-                        <>
-                          <button
-                            type="button"
-                            className="my-sub-text-link"
-                            onClick={() => (
-                              editingId === row.id
-                                ? setEditingId(null)
-                                : startEdit(row, {
-                                  switchTo: isDelivery ? 'pickup' : 'delivery',
-                                })
-                            )}
-                          >
-                            {editingId === row.id
-                              ? 'Close'
-                              : (isDelivery ? 'Change to pickup' : 'Change to delivery')}
-                          </button>
-                          {!isPaused ? (
-                            <button
-                              type="button"
-                              className="my-sub-text-link"
-                              onClick={() => setChangingId(changingId === row.id ? null : row.id)}
-                            >
-                              {changingId === row.id ? 'Close plans' : 'Change plan'}
-                            </button>
-                          ) : null}
-                        </>
-                      ) : null}
-                      {isPaused ? (
+                    {isPaused ? (
+                      <div className="my-sub-card-actions">
                         <button
                           type="button"
                           className="my-sub-primary"
@@ -1744,8 +1910,8 @@ const MySubscriptions = ({ user }) => {
                             ? 'Resuming…'
                             : 'Resume'}
                         </button>
-                      ) : null}
-                    </div>
+                      </div>
+                    ) : null}
 
                     <div className="my-sub-card-danger">
                       {canEdit && pending && row.cancelled_reason !== 'plan_discontinued' ? (
@@ -1792,122 +1958,6 @@ const MySubscriptions = ({ user }) => {
                       </button>
                     </div>
                   </div>
-
-                  {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
-                    <div className="my-sub-plan-list">
-                      {otherPlans.map((planRow) => (
-                        <button
-                          key={planRow.id}
-                          type="button"
-                          className="order-history-button"
-                          disabled={savingId === row.id}
-                          onClick={() => confirmPlan(row, planRow)}
-                        >
-                          {mealsAWeek(planRow.meal_count)} — {formatPlanPrice(planRow.price_cents)}/week
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  {editingId === row.id && canEdit ? (
-                    <div className="my-sub-fulfillment">
-                      <div className="my-sub-fulfill-radios">
-                        <label>
-                          <input
-                            type="radio"
-                            name={`sub-fulfillment-${row.id}`}
-                            value="pickup"
-                            checked={fulfillment === 'pickup'}
-                            onChange={() => setFulfillment('pickup')}
-                          />
-                          Pickup
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name={`sub-fulfillment-${row.id}`}
-                            value="delivery"
-                            checked={fulfillment === 'delivery'}
-                            onChange={() => setFulfillment('delivery')}
-                          />
-                          Delivery
-                        </label>
-                      </div>
-
-                      {fulfillment === 'pickup' ? (
-                        <PickupSelector
-                          pickupDate={pickupDate}
-                          pickupTime={pickupTime}
-                          onDateChange={setPickupDate}
-                          onTimeChange={setPickupTime}
-                          lockedDate={lockedDate}
-                          showReviewNotes={false}
-                        />
-                      ) : (
-                        <>
-                          <DeliverySelector
-                            postalCode={postalCode}
-                            onPostalCodeChange={setPostalCode}
-                            feeCents={deliveryFeeCents}
-                            onValidate={({ valid }) => setPostalValid(valid)}
-                            deliveryDate={deliveryDate}
-                            onDeliveryDateChange={setDeliveryDate}
-                            lockedDate={lockedDate}
-                          />
-                          {quoteStatus === 'ok' && deliveryFeeCents > 0 ? (
-                            <p className="my-sub-fee-line">
-                              Delivery {formatPlanPrice(deliveryFeeCents)} + HST {formatPlanPrice(deliveryWithTax - deliveryFeeCents)} = {formatPlanPrice(deliveryWithTax)}
-                            </p>
-                          ) : null}
-                        </>
-                      )}
-
-                      <div className="special-note-container">
-                        <label htmlFor={`sub-note-${row.id}`} className="general-text">
-                          {notesEditFollowing
-                            ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
-                            : 'Special Instructions '}
-                        </label>
-                        {notesEditFollowing ? (
-                          <p className="my-sub-repeat-note">
-                            This Sunday&apos;s locked box keeps its current notes. Saving here updates only next Sunday
-                            {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
-                          </p>
-                        ) : (
-                          <p className="my-sub-repeat-note">
-                            Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
-                          </p>
-                        )}
-                        <textarea
-                          className="special-note-input"
-                          id={`sub-note-${row.id}`}
-                          value={specialNote}
-                          onChange={(e) => setSpecialNote(e.target.value)}
-                          placeholder={
-                            fulfillment === 'delivery'
-                              ? 'Delivery address, allergies, special instructions...'
-                              : 'Allergies, special instructions...'
-                          }
-                          rows="3"
-                        />
-                      </div>
-
-                      {quoteStatus === 'out' ? (
-                        <p className="general-text" style={{ color: '#b30000' }}>
-                          Delivery not available for this area.
-                        </p>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        className="order-history-button"
-                        disabled={!fulfillmentReady || savingId === row.id}
-                        onClick={() => saveFulfillment(row)}
-                      >
-                        {savingId === row.id ? 'Saving…' : 'Save pickup / delivery'}
-                      </button>
-                    </div>
-                  ) : null}
                 </aside>
               </section>
             )

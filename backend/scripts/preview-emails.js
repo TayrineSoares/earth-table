@@ -247,8 +247,10 @@ write('12j-subscription-delivery.html', renderSubscriptionManageEmail({
 write('12j2-subscription-delivery-paid.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'fulfillment_delivery',
-  address: subMail.address,
+  address: 'Address:\n12 Bartlett Ave, Toronto\n\nNotes:\nLeave at side door',
   planAlreadyPaid: true,
+  chargedDeltaCents: 3390,
+  deliveryFeeCents: 3000,
 }).html);
 write('12k-subscription-pickup.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -400,9 +402,12 @@ write('19-owner-fulfillment.html', renderOwnerFulfillmentEmail({
   oldMethod: 'pickup',
   newMethod: 'delivery',
   fulfillmentDate: 'Sunday, November 22',
-  address: '12 Bartlett Ave, Toronto',
+  address: 'Address:\n12 Bartlett Ave, Toronto\n\nNotes:\nLeave at side door',
   windowStart: '11:00 AM',
   windowEnd: '6:00 PM',
+  planAlreadyPaid: true,
+  chargedDeltaCents: 3390,
+  deliveryFeeCents: 3000,
 }).html);
 write('20-owner-payment-failed.html', renderOwnerPaymentFailedEmail({
   customerName: 'Tayrine Soares',

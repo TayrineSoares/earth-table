@@ -11,6 +11,7 @@ import {
 } from '../helpers/subscriptionHelpers'
 import { CHARGE_DAY_TIME, MEAL_LOCK_BY, howItWorksPause } from '../helpers/subscriptionCadence'
 import { DELIVERY_WINDOW, formatYmdLong, PICKUP_ADDRESS } from '../helpers/orderHelpers'
+import { parseSpecialNote } from '../helpers/specialNote'
 import '../styles/Cart.css'
 import '../styles/Confirmation.css'
 
@@ -133,7 +134,9 @@ export default function SubscribeConfirmation({ clearSubCart }) {
     : (formatPickupSlot(cycle.pickup_time_slot) || DELIVERY_WINDOW)
   const { start: windowStart, end: windowEnd } = splitWindow(windowLabel)
   const windowRange = windowEnd ? `${windowStart} – ${windowEnd}` : windowStart
-  const note = String(cycle.special_note || '').trim()
+  const noteParts = parseSpecialNote(cycle.special_note, { delivery: isDelivery })
+  const deliveryStreet = noteParts.address
+  const note = noteParts.notes
   const postal = cycle.delivery_postal_code || customer.postal_code || ''
   const price = formatPlanPrice(plan.price_cents)
   const dates = payload?.dates || {}
@@ -306,9 +309,17 @@ export default function SubscribeConfirmation({ clearSubCart }) {
                     {postal ? (
                       <p className="subscribe-confirm-card-copy">{postal}</p>
                     ) : null}
+                    {deliveryStreet ? (
+                      <>
+                        <p className="subscribe-confirm-card-sublabel">Address</p>
+                        <p className="subscribe-confirm-card-copy subscribe-confirm-card-copy--block">
+                          {deliveryStreet}
+                        </p>
+                      </>
+                    ) : null}
                     {note ? (
                       <>
-                        <p className="subscribe-confirm-card-sublabel">Address &amp; notes</p>
+                        <p className="subscribe-confirm-card-sublabel">Notes</p>
                         <p className="subscribe-confirm-card-copy subscribe-confirm-card-copy--block">
                           {note}
                         </p>

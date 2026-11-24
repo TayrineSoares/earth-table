@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   renderSubscriptionManageEmail,
   renderOwnerSubscriptionEventEmail,
+  renderOwnerFulfillmentEmail,
 } = require('../src/utils/emailTemplates');
 
 describe('pause / plan / fulfillment refund emails', () => {
@@ -71,7 +72,40 @@ describe('pause / plan / fulfillment refund emails', () => {
       refundedCents: 1695,
       pickupSlot: '11:00 AM - 1:00 PM',
     });
-    assert.match(msg.text, /refunded/i);
+    assert.match(msg.text, /A refund of \$16\.95 \(including tax\) has been issued/i);
     assert.doesNotMatch(msg.text, /email hello@earthtableco\.ca to ask about a refund/i);
+  });
+
+  it('fulfillment_delivery paid shows charge amount and splits address/notes', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'fulfillment_delivery',
+      firstName: 'Alex',
+      deliveryLabel: 'Sunday, November 22',
+      planAlreadyPaid: true,
+      chargedDeltaCents: 3390,
+      address: 'Address:\ntesting address\n\nNotes:\ntesting notes',
+    });
+    assert.match(msg.text, /delivery fee of \$33\.90 \(including tax\) has been charged/i);
+    assert.match(msg.text, /Address: testing address/);
+    assert.match(msg.text, /Notes: testing notes/);
+    assert.doesNotMatch(msg.text, /Delivery Address:/);
+  });
+
+  it('owner fulfillment mentions charge and splits address/notes', () => {
+    const msg = renderOwnerFulfillmentEmail({
+      customerName: 'Alex Kim',
+      oldMethod: 'pickup',
+      newMethod: 'delivery',
+      fulfillmentDate: 'Sunday, November 22',
+      address: 'Address:\ntesting address\n\nNotes:\ntesting notes',
+      windowStart: '11:00 AM',
+      windowEnd: '6:00 PM',
+      planAlreadyPaid: true,
+      chargedDeltaCents: 3390,
+    });
+    assert.match(msg.text, /delivery fee of \$33\.90 \(incl\. tax\) has been charged/i);
+    assert.match(msg.text, /Address: testing address/);
+    assert.match(msg.text, /Notes: testing notes/);
+    assert.doesNotMatch(msg.text, /Delivery Address:/);
   });
 });

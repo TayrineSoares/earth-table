@@ -46,7 +46,7 @@ export function howItWorksMeals() {
 }
 
 export function howItWorksNotes() {
-  return `Notes (address, allergies, instructions) are saved per Sunday. If you don't change them, they carry over to the next week. After Wednesday at 5:00 PM ET, any edit applies only to the following week — this Sunday's locked box keeps the notes it already had. Questions? Email ${SUPPORT_EMAIL}.`
+  return `For delivery, Address and Notes are saved per Sunday (street address in Address; allergies and drop-off instructions in Notes). For pickup, Notes covers allergies and special instructions. If you don't change them, they carry over to the next week. After Wednesday at 5:00 PM ET, any edit applies only to the following week — this Sunday's locked box keeps what it already had. Questions? Email ${SUPPORT_EMAIL}.`
 }
 
 export function howItWorksSupport() {

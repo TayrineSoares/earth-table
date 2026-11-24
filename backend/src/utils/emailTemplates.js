@@ -27,6 +27,41 @@ function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 }
 
+/** Split delivery special_note into Address + Notes (matches frontend specialNote.js). */
+function splitDeliverySpecialNote(raw) {
+  const text = String(raw || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return { address: '', notes: '' };
+  if (/^Address:\s*/i.test(text) || /^Notes:\s*/i.test(text)) {
+    if (/^Address:\s*/i.test(text)) {
+      const after = text.replace(/^Address:\s*/i, '');
+      const parts = after.split(/\n\s*Notes:\s*/i);
+      return {
+        address: String(parts[0] || '').trim(),
+        notes: String(parts[1] || '').trim(),
+      };
+    }
+    return { address: '', notes: text.replace(/^Notes:\s*/i, '').trim() };
+  }
+  return { address: text, notes: '' };
+}
+
+/** KV rows for delivery street address + optional notes (no "Address:" markers). */
+function deliveryAddressNotesRows(raw, { last = true } = {}) {
+  const { address, notes } = splitDeliverySpecialNote(raw);
+  const street = address || '—';
+  if (notes) {
+    return `${kvRow('Address', street)}${kvRow('Notes', notes, { last })}`;
+  }
+  return `${kvRow('Address', street, { last })}`;
+}
+
+function deliveryAddressNotesText(raw) {
+  const { address, notes } = splitDeliverySpecialNote(raw);
+  const street = address || '—';
+  if (notes) return `Address: ${street}\nNotes: ${notes}`;
+  return `Address: ${street}`;
+}
+
 function appUrl(path) {
   const base = String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
@@ -462,56 +497,62 @@ function deliveryFeeLine(order) {
 }
 
 function fulfillmentHtml(order) {
-  const note = (order.special_note || "").trim();
+  const rawNote = (order.special_note || "").trim();
   if (order.delivery === true) {
     const postal = getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
     const date = order.delivery_date_formatted ?? "—";
     const fee = deliveryFeeLine(order);
+    const { address, notes } = splitDeliverySpecialNote(rawNote);
+    const hasAddress = Boolean(address);
+    const hasNotes = Boolean(notes);
     return `
       ${h2("Delivery")}
-      ${card(`
-        ${kvTable(`
+      ${card(kvTable(`
           ${rowHtml("Delivery Date & Time", `${date}, between 11:00 AM – 6:00 PM`)}
           ${fee.html}
-          ${rowHtml("Delivery postal (quote)", postal, !note)}
-        `)}
-        ${note
-          ? `<p style="margin:14px 0 6px; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:${C_AMBER}; font-weight:700; font-family:${FONT};">Address &amp; instructions</p>
-             <p style="margin:0; font-size:14px; line-height:1.5; color:${C_INK}; font-family:${FONT};">${nl2br(note)}</p>`
-          : mutedHtml("No special instructions.")}
-      `)}
+          ${rowHtml("Delivery postal (quote)", postal, !(hasAddress || hasNotes))}
+          ${hasAddress ? rowHtml("Address", nl2br(address), !hasNotes) : ""}
+          ${hasNotes ? rowHtml("Notes", nl2br(notes), true) : ""}
+          ${!hasAddress && !hasNotes ? rowHtml("Address", "—", true) : ""}
+      `))}
     `;
   }
   const date = order.pickup_date_formatted ?? "—";
   const time = order.pickup_time_slot ?? "—";
+  const pickupNotes = splitDeliverySpecialNote(rawNote).notes || rawNote;
   return `
     ${h2("Pickup")}
     ${card(kvTable(`
       ${rowHtml("Pickup Date & Time", `${date}, between ${time}`)}
-      ${rowHtml("Pickup Address", "77 Woodstream Blvd, Vaughan, ON L4L 7Y7", !note)}
-      ${note ? rowHtml("Special Instructions", nl2br(note), true) : ""}
+      ${rowHtml("Pickup Address", "77 Woodstream Blvd, Vaughan, ON L4L 7Y7", !pickupNotes)}
+      ${pickupNotes ? rowHtml("Notes", nl2br(pickupNotes), true) : ""}
     `))}
   `;
 }
 
 function fulfillmentText(order) {
-  const note = (order.special_note || "").trim();
+  const rawNote = (order.special_note || "").trim();
   if (order.delivery === true) {
     const postal = getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
     const date = order.delivery_date_formatted ?? "—";
     const fee = deliveryFeeLine(order);
-    return `Delivery
-Delivery Date & Time: ${date}, between 11:00 AM – 6:00 PM
-${fee.text ? `${fee.text}\n` : ""}Delivery Postal Code (used for Quote) ${postal}
-
-Full Address and Special Instructions:
-${note || "—"}`;
+    const { address, notes } = splitDeliverySpecialNote(rawNote);
+    const lines = [
+      "Delivery",
+      `Delivery Date & Time: ${date}, between 11:00 AM – 6:00 PM`,
+    ];
+    if (fee.text) lines.push(fee.text);
+    lines.push(`Delivery postal (quote): ${postal || "—"}`);
+    lines.push(`Address: ${address || "—"}`);
+    if (notes) lines.push(`Notes: ${notes}`);
+    return lines.join("\n");
   }
   const date = order.pickup_date_formatted ?? "—";
   const time = order.pickup_time_slot ?? "—";
+  const pickupNotes = splitDeliverySpecialNote(rawNote).notes || rawNote;
   return `Pickup
 Pickup Date & Time: ${date}, between ${time}
-Pickup Address: 77 Woodstream Blvd, Vaughan, ON L4L 7Y7${note ? `\nSpecial Instructions: ${note}` : ""}`;
+Pickup Address: 77 Woodstream Blvd, Vaughan, ON L4L 7Y7${pickupNotes ? `\nNotes: ${pickupNotes}` : ""}`;
 }
 
 /**
@@ -1399,7 +1440,8 @@ function renderSubscriptionManageEmail(payload = {}) {
       deliveryLabel: sunday,
       pickupSlot,
     });
-    const loc = toDelivery ? (String(address || '').trim() || '—') : PICKUP_ADDRESS;
+    const chargedDelivery = Number(chargedDeltaCents) || 0;
+    const feePreTax = Number(payload.deliveryFeeCents) || 0;
     const subject = toDelivery ? "You're switched to delivery" : "You're switched to pickup";
     const heading = toDelivery ? "You've switched to delivery" : "You've switched to pickup";
     const introText = toDelivery
@@ -1407,16 +1449,19 @@ function renderSubscriptionManageEmail(payload = {}) {
       : `Starting with ${sunday}, your box will be labeled and waiting at:`;
     const after = toDelivery
       ? (planAlreadyPaid
-        ? `This Sunday's plan is already charged, so the delivery fee was charged to your card now. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
-        : `If this Sunday is still unpaid, delivery is charged with your plan on ${CHARGE_DAY_TIME} — switch back to pickup before ${PAUSE_CANCEL_BY} if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`)
+        ? (chargedDelivery > 0
+          ? `This Sunday's plan is already charged, so a delivery fee of ${formatDollars(chargedDelivery)} (including tax) has been charged to your card. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
+          : `This Sunday's plan is already charged, so the delivery fee was charged to your card now. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`)
+        : (feePreTax > 0
+          ? `This Sunday is still unpaid, so delivery (${formatDollars(feePreTax)} plus 13% HST) will be charged with your plan on ${CHARGE_DAY_TIME} — switch back to pickup before ${PAUSE_CANCEL_BY} if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
+          : `If this Sunday is still unpaid, delivery is charged with your plan on ${CHARGE_DAY_TIME} — switch back to pickup before ${PAUSE_CANCEL_BY} if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`))
       : planAlreadyPaid
         ? (refunded > 0
-          ? `The delivery fee for this Sunday was refunded to your card. You can switch back to delivery any time before ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
+          ? `A refund of ${formatDollars(refunded)} (including tax) has been issued to your card for this Sunday's delivery fee. You can switch back to delivery any time before ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
           : `You can switch back to delivery any time before ${cutoff}. If a delivery fee was charged for this Sunday, it was cleared from this box. Questions? Email us at hello@earthtableco.ca.`)
         : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email us at hello@earthtableco.ca.`;
-    // Delivery address lives in special_note — one row only (don't duplicate as Notes).
     const detail = toDelivery
-      ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc, { last: true })}`
+      ? `${kvRow('Next box', fulfillment)}${deliveryAddressNotesRows(address)}`
       : `${kvRow('Next box', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: true })}`;
     const html = wrapEmail(`
       ${eyebrow('Weekly subscription')}
@@ -1427,7 +1472,7 @@ function renderSubscriptionManageEmail(payload = {}) {
       ${ctaLink(manageHref, 'My Subscriptions →')}
     `, { preheader: subject, replyOk: true, title: subject });
     const text = toDelivery
-      ? `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nDelivery Address: ${loc}\n\n${after}\n\nMy Subscriptions: ${manageHref}`
+      ? `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\n${deliveryAddressNotesText(address)}\n\n${after}\n\nMy Subscriptions: ${manageHref}`
       : `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nAddress: ${PICKUP_ADDRESS}\n\n${after}\n\nMy Subscriptions: ${manageHref}`;
     return { subject, html, text };
   }
@@ -2111,22 +2156,41 @@ function renderOwnerFulfillmentEmail({
   address,
   windowStart,
   windowEnd,
+  planAlreadyPaid = false,
+  refundedCents = 0,
+  chargedDeltaCents = 0,
+  deliveryFeeCents = 0,
 } = {}) {
   const name = customerName || 'Customer';
   const when = fulfillmentDate || 'this Sunday';
   const method = newMethod === 'delivery' ? 'Delivery' : 'Pickup';
   const start = windowStart || '—';
   const end = windowEnd || '—';
-  const loc = newMethod === 'delivery' ? (String(address || '').trim() || '—') : PICKUP_ADDRESS;
+  const toDelivery = newMethod === 'delivery';
+  const refunded = Number(refundedCents) || 0;
+  const charged = Number(chargedDeltaCents) || 0;
+  const feePreTax = Number(deliveryFeeCents) || 0;
+  let moneyNote = '';
+  if (toDelivery) {
+    if (planAlreadyPaid && charged > 0) {
+      moneyNote = ` A delivery fee of ${formatDollars(charged)} (incl. tax) has been charged.`;
+    } else if (!planAlreadyPaid && feePreTax > 0) {
+      moneyNote = ` Delivery fee ${formatDollars(feePreTax)} + HST will be charged with the Tuesday plan charge.`;
+    }
+  } else if (refunded > 0) {
+    moneyNote = ` A refund of ${formatDollars(refunded)} (incl. tax) has been issued for the delivery fee.`;
+  } else if (planAlreadyPaid && oldMethod === 'delivery') {
+    moneyNote = ' Delivery fee cleared from this box (no refund amount recorded).';
+  }
   const subject = `Switched to ${newMethod || 'pickup'} — ${name}, ${when}`;
   const html = wrapEmail(`
       ${eyebrow('Weekly subscription')}
       ${h1('Fulfillment changed')}
-      ${intro(`<strong>${name}</strong> — ${oldMethod || 'pickup'} → <strong>${newMethod || 'pickup'}</strong>`)}
+      ${intro(`<strong>${name}</strong> — ${oldMethod || 'pickup'} → <strong>${newMethod || 'pickup'}</strong>.${moneyNote}`)}
       ${card(kvTable(`
-        ${kvRow('Next box', `${method} ${when}, ${start} – ${end}`)}
-        ${newMethod === 'delivery'
-          ? `${kvRow('Delivery Address', loc, { last: true })}`
+        ${kvRow('Next box', `${method} ${when}, ${start} – ${end}`, { last: !toDelivery })}
+        ${toDelivery
+          ? deliveryAddressNotesRows(address)
           : `${kvRow('Address', PICKUP_ADDRESS, { last: true })}`}
       `))}
       ${ctaLink(appUrl('/admin'), 'View subscription →')}
@@ -2135,7 +2199,7 @@ function renderOwnerFulfillmentEmail({
     replyOk: true,
     title: subject,
   });
-  const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}\n${method} ${when}, ${start} – ${end}\n${newMethod === 'delivery' ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`}\n`;
+  const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}.${moneyNote}\n${method} ${when}, ${start} – ${end}\n${toDelivery ? deliveryAddressNotesText(address) : `Address: ${PICKUP_ADDRESS}`}\n`;
   return { subject, html, text };
 }
 

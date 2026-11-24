@@ -517,8 +517,13 @@
   box-shadow: 0 0 0 2px rgba(237, 164, 19, 0.25);
 }
 
-.subscribe-cart-page .special-note-container {
+.subscribe-cart-page .special-note-stack {
   margin-top: 28px;
+  max-width: 100%;
+}
+
+.subscribe-cart-page .special-note-container {
+  margin-top: 0;
 }
 
 .subscribe-cart-page .promo-wrap {
@@ -1149,6 +1154,7 @@
   .subscribe-checkout-hero,
   .subscribe-fulfill-block,
   .subscribe-fulfill-row,
+  .subscribe-cart-page .special-note-stack,
   .subscribe-cart-page .special-note-container,
   .subscribe-cart-page .promo-wrap,
   .subscribe-locked-date {

@@ -5,6 +5,7 @@ import checkoutImage from "../assets/images/checkoutImage.png"
 import { supabase } from '../supabaseClient';
 import PickupSelector from '../components/PickupSelector';
 import DeliverySelector from '../components/DeliverySelector';
+import SpecialNoteFields from '../components/SpecialNoteFields';
 import FeedbackDialog from '../components/FeedbackDialog';
 import { Trash2 } from 'lucide-react';
 import "../styles/Cart.css"
@@ -12,6 +13,10 @@ import "../styles/SubscribeFlow.css"
 import { Link } from "react-router-dom";
 import { fetchPartnerWalletByUser } from '../helpers/partnerHelpers';
 import { optionalAuthFetch } from '../helpers/authFetch';
+import {
+  composeSpecialNote,
+  deliveryAddressReady,
+} from '../helpers/specialNote';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -21,7 +26,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
-  const [specialNote, setSpecialNote] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -224,8 +230,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
         missing.push('Enter a postal code we can deliver to.');
       }
       if (!deliveryDate) missing.push('Select a delivery date.');
-      if (specialNote.trim().length < 8) {
-        missing.push('Add your full delivery address in Special Instructions.');
+      if (!deliveryAddressReady(deliveryAddress)) {
+        missing.push('Add your full delivery address.');
       }
     }
     if (!agreedToPrivacy) {
@@ -280,7 +286,8 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
     console.log("[checkout] click", {
       fulfillment,
       postalCode,
-      specialNoteLen: specialNote?.length || 0,
+      addressLen: deliveryAddress?.length || 0,
+      notesLen: orderNotes?.length || 0,
     });
 
     const { data: { session }, error } = await supabase.auth.getSession();
@@ -334,7 +341,11 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
       // server recomputes the fee, so this is ignored but harmless to send
       delivery_fee_cents: fulfillment === "delivery" ? deliveryFeeCents : 0,
       delivery_date: fulfillment === "delivery" ? deliveryDate : null,
-      special_note: specialNote,
+      special_note: composeSpecialNote({
+        delivery: fulfillment === 'delivery',
+        address: deliveryAddress,
+        notes: orderNotes,
+      }),
       ...(checkoutPromoCode ? { promoCode: checkoutPromoCode } : {}),
     };
 
@@ -495,25 +506,14 @@ const Cart = ({ cart, removeOneFromCart, addOneFromCart, removeAll }) => {
               )}
             </div>
 
-            <div className="special-note-container">
-              <label htmlFor="special-note" className="general-text">
-                {fulfillment === 'delivery'
-                  ? 'Special Instructions + Delivery Address'
-                  : 'Special Instructions'}
-              </label>
-              <textarea
-                className="special-note-input"
-                id="special-note"
-                value={specialNote}
-                onChange={(e) => setSpecialNote(e.target.value)}
-                placeholder={
-                  fulfillment === 'delivery'
-                    ? 'Delivery address, allergies, special instructions...'
-                    : 'Allergies, special instructions...'
-                }
-                rows="3"
-              />
-            </div>
+            <SpecialNoteFields
+              fulfillment={fulfillment}
+              address={deliveryAddress}
+              notes={orderNotes}
+              onAddressChange={setDeliveryAddress}
+              onNotesChange={setOrderNotes}
+              idPrefix="cart"
+            />
 
             <div className="promo-wrap general-text">
               <p className="subscribe-summary-heading">Promo code</p>

@@ -1537,6 +1537,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
   const delivery = !!body.delivery;
   const pickupSlot = String(body.pickup_time_slot || '').trim();
   const wasPickup = !cycle.delivery;
+  let deliveryFeeChargedCents = 0;
 
   const patch = {
     delivery,
@@ -1567,6 +1568,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     const chargeNow = week.applies_to === 'this_sunday' && wasPickup && Number(cycle.plan_paid_cents) > 0;
     if (chargeNow) {
       await chargeDeliveryFee(sub, cycle, quote.fee_cents);
+      deliveryFeeChargedCents = Math.round(Number(quote.fee_cents) * 1.13);
     }
   } else {
     if (!PICKUP_SLOTS.has(pickupSlot)) {
@@ -1652,6 +1654,8 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
       const { formatPickupSlot } = require('./subscriptionWeek');
       const { PICKUP_ADDRESS, DELIVERY_WINDOW } = require('../emails/subscriptionEmailSpec');
       const user = await getUserByAuthId(userId);
+      const planAlreadyPaid = Number(cycle.plan_paid_cents) > 0;
+      const deliveryFeeCents = Number(patch.delivery_fee_cents) || 0;
       if (user?.email) {
         const msg = renderSubscriptionManageEmail({
           kind: delivery ? 'fulfillment_delivery' : 'fulfillment_pickup',
@@ -1661,8 +1665,10 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
           cutoffLabel: week.cutoff_label,
           address: delivery ? specialNote : PICKUP_ADDRESS,
           pickupSlot,
-          planAlreadyPaid: Number(cycle.plan_paid_cents) > 0,
+          planAlreadyPaid,
           refundedCents: deliveryFeeRefundedCents,
+          chargedDeltaCents: deliveryFeeChargedCents,
+          deliveryFeeCents,
         });
         await sendCustomerEmail({ to: user.email, msg });
       }
@@ -1677,6 +1683,10 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
         address: delivery ? specialNote : PICKUP_ADDRESS,
         windowStart: (parts[0] || '').trim(),
         windowEnd: (parts.slice(1).join(' – ') || '').trim(),
+        planAlreadyPaid,
+        refundedCents: deliveryFeeRefundedCents,
+        chargedDeltaCents: deliveryFeeChargedCents,
+        deliveryFeeCents,
       }));
     }
   } catch (err) {
@@ -1688,6 +1698,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     week,
     delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
     refunded_cents: deliveryFeeRefundedCents,
+    charged_delta_cents: deliveryFeeChargedCents,
   };
 }
 
