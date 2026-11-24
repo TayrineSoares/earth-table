@@ -392,7 +392,8 @@ const CYCLE_SELECT = `
   delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
   plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
   meal_count, meals_confirmed_at, stripe_payment_intent_id,
-  stripe_delivery_payment_intent_id, stripe_plan_delta_payment_intent_id
+  stripe_delivery_payment_intent_id, stripe_plan_delta_payment_intent_id,
+  stripe_plan_delta_payment_intent_ids
 `;
 
 /** Best-effort audit row — never fail the customer-facing change. */
@@ -1585,14 +1586,28 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     if (postal.length === 6) postal = `${postal.slice(0, 3)} ${postal.slice(3)}`;
     patch.delivery_postal_code = postal;
     patch.pickup_time_slot = null;
-    patch.delivery_fee_cents = quote.fee_cents;
+    // Paid delivery week: freeze the fee already billed — postal/address can change
+    // without a mid-week Stripe settle for a different quote.
+    if (
+      week.applies_to === 'this_sunday'
+      && !wasPickup
+      && Number(cycle.plan_paid_cents) > 0
+      && Number(cycle.delivery_fee_cents) > 0
+    ) {
+      patch.delivery_fee_cents = Number(cycle.delivery_fee_cents);
+    } else {
+      patch.delivery_fee_cents = quote.fee_cents;
+    }
 
     // Unpaid weeks: fee stays on the cycle and is billed with Tuesday's plan charge.
     // Already-paid this Sunday: charge delivery now (idempotent) so the kitchen is covered.
     const chargeNow = week.applies_to === 'this_sunday' && wasPickup && Number(cycle.plan_paid_cents) > 0;
     if (chargeNow) {
-      await chargeDeliveryFee(sub, cycle, quote.fee_cents);
-      deliveryFeeChargedCents = Math.round(Number(quote.fee_cents) * 1.13);
+      const charged = await chargeDeliveryFee(sub, cycle, quote.fee_cents);
+      // Don't claim a new charge when Stripe reused an already-captured delivery PI.
+      deliveryFeeChargedCents = charged?.already
+        ? 0
+        : Math.round(Number(quote.fee_cents) * 1.13);
     }
   } else {
     if (!PICKUP_SLOTS.has(pickupSlot)) {

@@ -204,29 +204,26 @@ async function applyPauseRefundAndSkip(userId, sub, week, charge, cycle) {
     };
   }
 
-  const { refundCyclePaymentIntents } = require('./subscriptionRefunds');
-  const refund = await refundCyclePaymentIntents(cycle, {
-    kind: 'subscription_pause_refund',
-    subscription_id: sub.id,
-    cycle_id: String(cycle.id),
-  });
-  if (!refund.ok) {
-    throw new SubscriptionError(
-      402,
-      'We could not refund this week\'s charge, so the box was not skipped. Try again or email hello@earthtableco.ca.'
-    );
-  }
+  const {
+    refundCyclePaymentIntents,
+    clearPlanDeltaPiFields,
+  } = require('./subscriptionRefunds');
 
+  // Claim skip WHILE still open — before Stripe refund — so a lock race never
+  // refunds a box that still ships. Keep delivery_fee_cents for same-week resume.
+  const paidSnapshot = {
+    plan_paid_cents: Number(cycle.plan_paid_cents) || 0,
+    stripe_payment_intent_id: cycle.stripe_payment_intent_id || null,
+    stripe_delivery_payment_intent_id: cycle.stripe_delivery_payment_intent_id || null,
+    stripe_plan_delta_payment_intent_id: cycle.stripe_plan_delta_payment_intent_id || null,
+    stripe_plan_delta_payment_intent_ids: cycle.stripe_plan_delta_payment_intent_ids || [],
+  };
   const { data: skipped, error: skipErr } = await supabase
     .from('subscription_cycles')
     .update({
       status: 'skipped',
       plan_paid_cents: 0,
-      delivery_fee_cents: 0,
-      // Clear so a later resume re-charge stores a fresh PI (pause refund already issued).
-      stripe_payment_intent_id: null,
-      stripe_delivery_payment_intent_id: null,
-      stripe_plan_delta_payment_intent_id: null,
+      // Keep delivery_fee_cents when delivery so resume can re-bill plan + fee.
     })
     .eq('id', cycle.id)
     .eq('status', 'open')
@@ -240,6 +237,7 @@ async function applyPauseRefundAndSkip(userId, sub, week, charge, cycle) {
       .eq('id', cycle.id)
       .maybeSingle();
     if (fresh?.status === 'locked') {
+      // Never refunded — box still ships.
       return applyPauseKeepingThisSunday(userId, sub, week, charge, { keepCycleId: fresh.id });
     }
     if (fresh?.status !== 'skipped') {
@@ -249,6 +247,44 @@ async function applyPauseRefundAndSkip(userId, sub, week, charge, cycle) {
       );
     }
   }
+
+  const refund = await refundCyclePaymentIntents({
+    ...cycle,
+    ...paidSnapshot,
+  }, {
+    kind: 'subscription_pause_refund',
+    subscription_id: sub.id,
+    cycle_id: String(cycle.id),
+  });
+  if (!refund.ok) {
+    // Re-open the cook week so they keep the paid box; pause aborted.
+    await supabase
+      .from('subscription_cycles')
+      .update({
+        status: 'open',
+        plan_paid_cents: paidSnapshot.plan_paid_cents,
+        stripe_payment_intent_id: paidSnapshot.stripe_payment_intent_id,
+        stripe_delivery_payment_intent_id: paidSnapshot.stripe_delivery_payment_intent_id,
+        stripe_plan_delta_payment_intent_id: paidSnapshot.stripe_plan_delta_payment_intent_id,
+        stripe_plan_delta_payment_intent_ids: paidSnapshot.stripe_plan_delta_payment_intent_ids,
+      })
+      .eq('id', cycle.id)
+      .eq('status', 'skipped');
+    throw new SubscriptionError(
+      402,
+      'We could not refund this week\'s charge, so the box was not skipped. Try again or email hello@earthtableco.ca.'
+    );
+  }
+
+  // Clear PI pointers after a successful refund so resume stores fresh ones.
+  await supabase
+    .from('subscription_cycles')
+    .update({
+      stripe_payment_intent_id: null,
+      stripe_delivery_payment_intent_id: null,
+      ...clearPlanDeltaPiFields(),
+    })
+    .eq('id', cycle.id);
 
   await abandonDeferredPlanChange(sub);
   const { error } = await supabase
@@ -1260,15 +1296,12 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       refundPlanDelta,
       chargePlanDelta,
       reconcileRefundedPlanDelta,
+      planDeltaPiWriteFields,
     } = require('./subscriptionRefunds');
-    // If a prior upgrade PI was fully refunded, peel it off plan_paid so re-upgrade charges.
-    // Keep the refunded PI id — chargePlanDelta chains after-{id} so switchbacks always bill.
+    // plan_paid_cents is source of truth (no peel). Keep delta PI id(s) for after- keys + pause.
     const reconciled = await reconcileRefundedPlanDelta(cycle);
     cycle = reconciled.cycle;
     const fromPaid = Number(reconciled.planPaidCents) || alreadyPaid;
-    if (reconciled.peeledPlanPaid) {
-      cycle.plan_paid_cents = fromPaid;
-    }
     if (newPrice < fromPaid) {
       const refund = await refundPlanDelta(cycle, {
         fromPreTax: fromPaid,
@@ -1286,7 +1319,6 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
         );
       }
       refundedCents = Number(refund.refundedCents) || 0;
-      // Do not null stripe_plan_delta_payment_intent_id — next upgrade needs it for after- keys.
     } else if (newPrice > fromPaid) {
       const charged = await chargePlanDelta(sub, cycle, {
         fromPreTax: fromPaid,
@@ -1304,7 +1336,7 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       }
       chargedDeltaCents = Number(charged.chargedCents) || 0;
       if (charged.paymentIntentId) {
-        cycle.stripe_plan_delta_payment_intent_id = charged.paymentIntentId;
+        Object.assign(cycle, planDeltaPiWriteFields(cycle, charged.paymentIntentId));
       }
     }
   }
@@ -1333,6 +1365,11 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
   }
   if (Object.prototype.hasOwnProperty.call(cycle, 'stripe_plan_delta_payment_intent_id')) {
     cyclePatch.stripe_plan_delta_payment_intent_id = cycle.stripe_plan_delta_payment_intent_id || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(cycle, 'stripe_plan_delta_payment_intent_ids')) {
+    cyclePatch.stripe_plan_delta_payment_intent_ids = Array.isArray(cycle.stripe_plan_delta_payment_intent_ids)
+      ? cycle.stripe_plan_delta_payment_intent_ids
+      : [];
   }
   const { error: cycleErr } = await supabase
     .from('subscription_cycles')

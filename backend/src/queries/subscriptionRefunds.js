@@ -2,6 +2,9 @@
  * Stripe money moves for mid-week pause / plan / fulfillment (before Wed lock).
  * Amounts charged are HST-inclusive: Math.round(preTax * HST).
  * plan_paid_cents / delivery_fee_cents on the cycle stay pre-tax.
+ *
+ * Mid-week upgrades: prefer stripe_plan_delta_payment_intent_ids (jsonb array).
+ * Falls back to singular stripe_plan_delta_payment_intent_id for older rows.
  */
 
 const HST = 1.13;
@@ -17,6 +20,65 @@ function hstDelta(fromPreTax, toPreTax) {
 
 function getStripe() {
   return require('stripe')(process.env.STRIPE_SECRET_SK);
+}
+
+function uniqIds(ids) {
+  return [...new Set((ids || []).map((id) => String(id || '').trim()).filter(Boolean))];
+}
+
+/** All mid-week upgrade PI ids on this cycle (array column, else singular). */
+function listPlanDeltaPaymentIntentIds(cycleOrRaw) {
+  if (cycleOrRaw == null || cycleOrRaw === '') return [];
+  // Called with the cycle row (preferred).
+  if (typeof cycleOrRaw === 'object' && !Array.isArray(cycleOrRaw)) {
+    const arr = cycleOrRaw.stripe_plan_delta_payment_intent_ids;
+    if (Array.isArray(arr) && arr.length) return uniqIds(arr);
+    if (typeof arr === 'string' && arr.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(arr);
+        if (Array.isArray(parsed) && parsed.length) return uniqIds(parsed);
+      } catch (_) {
+        /* fall through */
+      }
+    }
+    const singular = cycleOrRaw.stripe_plan_delta_payment_intent_id;
+    return singular ? [String(singular)] : [];
+  }
+  // Called with raw singular / JSON string (legacy helpers).
+  const s = String(cycleOrRaw).trim();
+  if (!s) return [];
+  if (s.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return uniqIds(parsed);
+    } catch (_) {
+      /* fall through */
+    }
+  }
+  return [s];
+}
+
+function latestPlanDeltaPaymentIntentId(cycleOrRaw) {
+  const ids = listPlanDeltaPaymentIntentIds(cycleOrRaw);
+  return ids.length ? ids[ids.length - 1] : '';
+}
+
+/** Patch fields to persist after appending a new upgrade PI. */
+function planDeltaPiWriteFields(cycle, newId) {
+  const ids = listPlanDeltaPaymentIntentIds(cycle);
+  if (newId && !ids.includes(String(newId))) ids.push(String(newId));
+  const latest = ids.length ? ids[ids.length - 1] : null;
+  return {
+    stripe_plan_delta_payment_intent_ids: ids,
+    stripe_plan_delta_payment_intent_id: latest,
+  };
+}
+
+function clearPlanDeltaPiFields() {
+  return {
+    stripe_plan_delta_payment_intent_ids: [],
+    stripe_plan_delta_payment_intent_id: null,
+  };
 }
 
 /**
@@ -47,13 +109,13 @@ async function createRefund({ paymentIntentId, amountCents, metadata = {} }) {
   } catch (err) {
     const msg = String(err?.message || err || '');
     const code = err?.code || err?.raw?.code;
-    // Idempotent: PI already fully refunded, or amount exceeds remaining.
+    // Idempotent: already fully refunded — 0 new cents so dialog/email aren't inflated.
     if (
       code === 'charge_already_refunded'
       || /already been refunded/i.test(msg)
       || /has already been refunded/i.test(msg)
     ) {
-      return { ok: true, refundedCents: amountCents != null ? Math.round(Number(amountCents)) : 0, alreadyRefunded: true };
+      return { ok: true, refundedCents: 0, alreadyRefunded: true };
     }
     console.warn('[subscriptions] refund failed:', paymentIntentId, msg);
     return { ok: false, error: msg || 'refund_failed' };
@@ -61,7 +123,7 @@ async function createRefund({ paymentIntentId, amountCents, metadata = {} }) {
 }
 
 /**
- * Full refund of this week's plan PI + optional mid-week delivery / upgrade PIs.
+ * Full refund of this week's plan PI + all mid-week delivery / upgrade PIs.
  * Used for paid+open pause/cancel before lock.
  */
 async function refundCyclePaymentIntents(cycle, metadata = {}) {
@@ -70,7 +132,7 @@ async function refundCyclePaymentIntents(cycle, metadata = {}) {
   const seen = new Set();
   const pis = [
     { id: cycle?.stripe_payment_intent_id, role: 'plan' },
-    { id: cycle?.stripe_plan_delta_payment_intent_id, role: 'plan_delta' },
+    ...listPlanDeltaPaymentIntentIds(cycle).map((id) => ({ id, role: 'plan_delta' })),
     { id: cycle?.stripe_delivery_payment_intent_id, role: 'delivery' },
   ];
   for (const { id, role } of pis) {
@@ -92,38 +154,36 @@ async function refundCyclePaymentIntents(cycle, metadata = {}) {
 
 /**
  * Partial refund of plan-price delta (+ tax).
- * Prefer the mid-week upgrade PI when present (avoids over-refund on later pause),
- * then the Tuesday plan PI.
+ * Prefer mid-week upgrade PIs newest-first, then the Tuesday plan PI.
  */
 async function refundPlanDelta(cycle, { fromPreTax, toPreTax, metadata = {} } = {}) {
   const amount = hstDelta(fromPreTax, toPreTax);
   if (amount <= 0) return { ok: true, refundedCents: 0, skipped: true };
-  const deltaPi = cycle?.stripe_plan_delta_payment_intent_id;
+  const deltaIds = listPlanDeltaPaymentIntentIds(cycle);
   const planPi = cycle?.stripe_payment_intent_id;
-  if (!deltaPi && !planPi) return { ok: false, error: 'missing_payment_intent' };
+  if (!deltaIds.length && !planPi) return { ok: false, error: 'missing_payment_intent' };
 
   let remaining = amount;
   let total = 0;
   let clearedDeltaPi = false;
 
-  if (deltaPi && remaining > 0) {
+  for (let i = deltaIds.length - 1; i >= 0 && remaining > 0; i -= 1) {
+    const deltaPi = deltaIds[i];
     const r = await createRefund({
       paymentIntentId: deltaPi,
       amountCents: remaining,
       metadata: { ...metadata, pi_role: 'plan_delta_upgrade' },
     });
     if (!r.ok) {
-      // Amount may exceed remaining on delta PI — fall through to plan PI for the rest.
       if (!/amount.*greater|exceeds/i.test(String(r.error || ''))) {
         return r;
       }
-    } else {
-      const got = Number(r.refundedCents) || 0;
-      total += got;
-      remaining = Math.max(0, remaining - got);
-      // If we took the whole upgrade charge, clear the pointer after caller updates.
-      if (remaining === 0 || got > 0) clearedDeltaPi = remaining === 0;
+      continue;
     }
+    const got = Number(r.refundedCents) || 0;
+    total += got;
+    remaining = Math.max(0, remaining - got);
+    if (remaining === 0) clearedDeltaPi = true;
   }
 
   if (remaining > 0) {
@@ -146,8 +206,6 @@ async function refundPlanDelta(cycle, { fromPreTax, toPreTax, metadata = {} } = 
 
 /**
  * How much of a PaymentIntent is still captured (amount − refunded).
- * @returns {{ ok: true, amount: number, refunded: number, remaining: number, status: string }
- *           | { ok: false, error: string }}
  */
 async function paymentIntentCaptureState(paymentIntentId) {
   if (!paymentIntentId) return { ok: false, error: 'missing_payment_intent' };
@@ -174,40 +232,23 @@ async function paymentIntentCaptureState(paymentIntentId) {
 }
 
 /**
- * If the stored upgrade PI is fully refunded, peel its pre-tax amount off
- * plan_paid_cents so a re-upgrade actually charges again.
- * Keep the PI id on the cycle — clearing it made Stripe replay attempt `0`
- * (the first refunded upgrade) on every later switch.
+ * plan_paid_cents is source of truth after upgrade/downgrade stamps.
+ * Do not peel refunded upgrade amounts — that double-counted after downgrade.
+ * Keep delta PI id(s) so chargePlanDelta can chain after-{id} keys.
  */
 async function reconcileRefundedPlanDelta(cycle) {
-  const deltaId = cycle?.stripe_plan_delta_payment_intent_id;
-  if (!deltaId) {
-    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
-  }
-  const state = await paymentIntentCaptureState(deltaId);
-  if (!state.ok) {
-    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
-  }
-  // Still holding money on the upgrade PI — keep stamp + pointer.
-  if (state.status === 'succeeded' && state.remaining > 0) {
-    return { cycle, peeledPlanPaid: false, clearedDeltaPi: false, planPaidCents: Number(cycle?.plan_paid_cents) || 0 };
-  }
-  // Fully refunded (or canceled) — peel pre-tax delta off plan_paid; keep PI for after- keys.
-  const preTaxDelta = Math.round(state.amount / HST);
   const paid = Number(cycle?.plan_paid_cents) || 0;
-  const nextPaid = Math.max(0, paid - preTaxDelta);
-  const next = {
-    ...cycle,
-    plan_paid_cents: nextPaid,
+  return {
+    cycle,
+    peeledPlanPaid: false,
+    clearedDeltaPi: false,
+    planPaidCents: paid,
   };
-  return { cycle: next, peeledPlanPaid: true, clearedDeltaPi: false, planPaidCents: nextPaid };
 }
 
 /**
  * Charge plan-price upgrade delta (+ tax) as a new off-session PI.
- * Caller stamps plan_paid_cents after success.
- * Walks an after-{pi} idempotency chain so refunded replays never fake a charge,
- * no matter how many upgrade↔downgrade rounds ran this week.
+ * Caller stamps plan_paid_cents and appends the PI via planDeltaPiWriteFields.
  */
 async function chargePlanDelta(sub, cycle, { fromPreTax, toPreTax, metadata = {} } = {}) {
   const amount = hstDelta(toPreTax, fromPreTax);
@@ -219,14 +260,11 @@ async function chargePlanDelta(sub, cycle, { fromPreTax, toPreTax, metadata = {}
     return { ok: false, error: 'no_card' };
   }
   const stripe = getStripe();
-  const seedId = cycle?.stripe_plan_delta_payment_intent_id
-    ? String(cycle.stripe_plan_delta_payment_intent_id)
-    : '';
+  const seedId = latestPlanDeltaPaymentIntentId(cycle);
 
   if (seedId) {
     const state = await paymentIntentCaptureState(seedId);
     if (state.ok && state.status === 'succeeded' && state.remaining >= amount) {
-      // Same upgrade already captured and not refunded — idempotent no-op.
       return {
         ok: true,
         chargedCents: 0,
@@ -265,7 +303,6 @@ async function chargePlanDelta(sub, cycle, { fromPreTax, toPreTax, metadata = {}
       if (state.ok && state.remaining >= amount) {
         return { ok: true, chargedCents: amount, paymentIntentId: createdId };
       }
-      // Idempotency handed back a refunded (or short) PI — chain a new key off it.
       console.warn(
         '[subscriptions] plan upgrade PI has insufficient capture; chaining after',
         createdId,
@@ -302,6 +339,10 @@ module.exports = {
   HST,
   withHst,
   hstDelta,
+  listPlanDeltaPaymentIntentIds,
+  latestPlanDeltaPaymentIntentId,
+  planDeltaPiWriteFields,
+  clearPlanDeltaPiFields,
   createRefund,
   refundCyclePaymentIntents,
   refundPlanDelta,
