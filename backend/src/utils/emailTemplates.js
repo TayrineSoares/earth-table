@@ -1402,8 +1402,9 @@ function renderSubscriptionManageEmail(payload = {}) {
       : planAlreadyPaid
         ? `You can switch back to delivery any time before ${cutoff}. If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.`
         : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email us at hello@earthtableco.ca.`;
+    // Delivery address lives in special_note — one row only (don't duplicate as Notes).
     const detail = toDelivery
-      ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
+      ? `${kvRow('Next box', fulfillment)}${kvRow('Delivery Address', loc, { last: true })}`
       : `${kvRow('Next box', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: true })}`;
     const html = wrapEmail(`
       ${eyebrow('Weekly subscription')}
@@ -1414,7 +1415,7 @@ function renderSubscriptionManageEmail(payload = {}) {
       ${ctaLink(manageHref, 'My Subscriptions →')}
     `, { preheader: subject, replyOk: true, title: subject });
     const text = toDelivery
-      ? `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nDelivery Address: ${loc}\nNotes: ${loc}\n\n${after}\n\nMy Subscriptions: ${manageHref}`
+      ? `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nDelivery Address: ${loc}\n\n${after}\n\nMy Subscriptions: ${manageHref}`
       : `${heading}\n\n${introText}\n\nNext box: ${fulfillment}\nAddress: ${PICKUP_ADDRESS}\n\n${after}\n\nMy Subscriptions: ${manageHref}`;
     return { subject, html, text };
   }
@@ -1493,9 +1494,14 @@ My Subscriptions: ${manageHref}`;
     notes_updated: {
       subject: `Notes saved for ${sunday}`,
       heading: `Notes updated, ${name}`,
-      intro: String(payload.notes || '').trim()
-        ? `We saved your notes for ${thisSundayPhrase(sunday)}. Here's a copy — change them again anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`
-        : `We cleared notes for ${thisSundayPhrase(sunday)}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`,
+      intro: (() => {
+        const when = payload.appliesTo === 'next_week'
+          ? nextSundayPhrase(sunday)
+          : thisSundayPhrase(sunday);
+        return String(payload.notes || '').trim()
+          ? `We saved your notes for ${when}. Here's a copy — change them again anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`
+          : `We cleared notes for ${when}. Add new notes anytime before ${cutoff} in My Subscriptions. Questions? Email us at hello@earthtableco.ca.`;
+      })(),
     },
     resume: {
       subject: `Your weekly plan is active again`,
@@ -1893,8 +1899,10 @@ function renderSubscriptionLockEmail({
     : 'Pick it up in the window below.'}`;
 
   const subject = `This Sunday's box is locked — ${sunday}`;
+  // Delivery address is often stored in special_note — only show Notes when it differs.
+  const deliveryExtraNote = delivery && note && note !== loc ? note : '';
   const fulfillRows = delivery
-    ? `${kvRow('Plan', planWeek)}${kvRow('Delivery', fulfillment)}${kvRow('Delivery Address', loc)}${kvRow('Notes', note || loc, { last: true })}`
+    ? `${kvRow('Plan', planWeek)}${kvRow('Delivery', fulfillment)}${kvRow('Delivery Address', loc, { last: !deliveryExtraNote })}${deliveryExtraNote ? kvRow('Notes', deliveryExtraNote, { last: true }) : ''}`
     : `${kvRow('Plan', planWeek)}${kvRow('Pickup', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: !note && !postal })}${note ? kvRow('Notes', note, { last: !postal }) : ''}${postal ? kvRow('Postal code', postal, { last: true }) : ''}`;
 
   const html = wrapEmail(`
@@ -1920,7 +1928,7 @@ ${introText}
 
 Plan: ${planWeek}
 ${delivery ? 'Delivery' : 'Pickup'}: ${fulfillment}
-${delivery ? `Delivery Address: ${loc}\nNotes: ${note || loc}\n` : `Address: ${PICKUP_ADDRESS}\n${note ? `Notes: ${note}\n` : ''}${postal ? `Postal code: ${postal}\n` : ''}`}
+${delivery ? `Delivery Address: ${loc}\n${deliveryExtraNote ? `Notes: ${deliveryExtraNote}\n` : ''}` : `Address: ${PICKUP_ADDRESS}\n${note ? `Notes: ${note}\n` : ''}${postal ? `Postal code: ${postal}\n` : ''}`}
 ${chargedAddons ? `Add-ons charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
 ${itemLinesText(meals) || '—'}
 
@@ -2083,7 +2091,7 @@ function renderOwnerFulfillmentEmail({
       ${card(kvTable(`
         ${kvRow('Next box', `${method} ${when}, ${start} – ${end}`)}
         ${newMethod === 'delivery'
-          ? `${kvRow('Delivery Address', loc)}${kvRow('Notes', loc, { last: true })}`
+          ? `${kvRow('Delivery Address', loc, { last: true })}`
           : `${kvRow('Address', PICKUP_ADDRESS, { last: true })}`}
       `))}
       ${ctaLink(appUrl('/admin'), 'View subscription →')}
@@ -2092,7 +2100,7 @@ function renderOwnerFulfillmentEmail({
     replyOk: true,
     title: subject,
   });
-  const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}\n${method} ${when}, ${start} – ${end}\n${newMethod === 'delivery' ? `Delivery Address: ${loc}\nNotes: ${loc}` : `Address: ${PICKUP_ADDRESS}`}\n`;
+  const text = `${subject}\n\n${name} — ${oldMethod || 'pickup'} → ${newMethod || 'pickup'}\n${method} ${when}, ${start} – ${end}\n${newMethod === 'delivery' ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`}\n`;
   return { subject, html, text };
 }
 

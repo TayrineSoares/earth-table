@@ -150,11 +150,9 @@ const customerName = (customer) => {
   return name || customer?.email || 'Customer';
 };
 
-const subscriptionNote = (row) => String(row?.special_note || '').trim();
-
 // Prefer the cycle's own notes — each Sunday keeps its box notes.
 const cycleNote = (row, cycle) => {
-  if (cycle?.id) return String(cycle.special_note || '').trim();
+  if (cycle) return String(cycle.special_note || '').trim();
   return String(row?.special_note || '').trim();
 };
 
@@ -277,10 +275,13 @@ const matchesSearch = (row, term) => {
     customer.email,
     customer.phone_number,
     plan.name,
+    row.pending_plan?.name,
     row.status,
     statusLabel(row),
     row.id,
     row.special_note,
+    row.this_cycle?.special_note,
+    row.next_cycle?.special_note,
   ].join(' ').toLowerCase();
   return hay.includes(term);
 };
@@ -381,16 +382,30 @@ const SubscriberAdmin = () => {
   const sundayView = view === 'next' || view === 'this';
   const totalsWeekRows = view === 'next' ? nextSundayBoxes : thisSundayBoxes;
 
+  const weekCycleCents = (row) => {
+    const cycle = view === 'next' ? row.next_cycle : row.this_cycle;
+    return Number(cycle?.plan_price_cents)
+      || Number(row.subscription_plans?.price_cents)
+      || 0;
+  };
+  const weekCycleMeals = (row) => {
+    const cycle = view === 'next' ? row.next_cycle : row.this_cycle;
+    return Number(cycle?.meal_count)
+      || Number(row.subscription_plans?.meal_count)
+      || 0;
+  };
+
   const totals = {
     activeCount: activeRows.length,
-    weeklyCents: activeRows.reduce(
-      (sum, row) => sum + (Number(row.subscription_plans?.price_cents) || 0),
-      0,
-    ),
-    meals: totalsWeekRows.reduce(
-      (sum, row) => sum + (Number(row.subscription_plans?.meal_count) || 0),
-      0,
-    ),
+    weeklyCents: sundayView
+      ? totalsWeekRows.reduce((sum, row) => sum + weekCycleCents(row), 0)
+      : activeRows.reduce(
+        (sum, row) => sum + (Number(row.subscription_plans?.price_cents) || 0),
+        0,
+      ),
+    meals: sundayView
+      ? totalsWeekRows.reduce((sum, row) => sum + weekCycleMeals(row), 0)
+      : 0,
   };
 
   const visibleRows = useMemo(() => {
@@ -483,12 +498,23 @@ const SubscriberAdmin = () => {
               {formatPlanPrice(totals.weeklyCents)}
               <span className="sub-admin-total-hst"> + hst</span>
             </span>
-            <span className="sub-admin-total-label">total</span>
+            <span className="sub-admin-total-label">
+              {view === 'next'
+                ? 'next Sunday plans'
+                : view === 'this'
+                  ? 'this Sunday plans'
+                  : 'active plan total'}
+            </span>
           </div>
           <div className="sub-admin-total">
             <span className="sub-admin-total-value">{totals.meals}</span>
             <span className="sub-admin-total-label">
-              {view === 'next' ? 'meals next Sunday' : 'meals this Sunday'} (not including add-ons)
+              {view === 'next'
+                ? 'meals next Sunday'
+                : view === 'this'
+                  ? 'meals this Sunday'
+                  : 'meals'}
+              {' '}(not including add-ons)
             </span>
           </div>
         </div>
@@ -588,7 +614,9 @@ const SubscriberAdmin = () => {
                 {groups.map((group) => {
                   const { customer, plans, userId } = group;
                   const isOpen = expandedId === userId;
-                  const hasNote = plans.some((row) => subscriptionNote(row));
+                  const hasNote = plans.some((row) => (
+                    Boolean(cycleNote(row, cycleForRow(row, view)))
+                  ));
                   const lines = planLines(plans, view);
                   const statuses = [...new Set(plans.map(statusLabel))];
                   const cycle = cycleForRow(plans[0], view) || {};

@@ -955,14 +955,25 @@ function adminDisplayCycle(sub, list, thisCycle, nextCycle) {
 /**
  * Non-persisted cycle so admin "Next Sunday" lists active subscribers before openNextWeek runs.
  * Meals/fulfillment mirror the latest known cycle (usually this Sunday).
+ * Deferred plan changes use pending_plan size — never preview the old plan's meal count.
  */
 function previewNextSundayCycle(sub, source, nextSunday, settings, now = new Date()) {
   const delivery = source ? !!source.delivery : !!sub.delivery;
-  const planItems = planMealItems(source).map((item, index) => ({
-    ...item,
-    id: item?.id != null ? `preview-${item.id}` : `preview-item-${index}`,
-    cycle_id: null,
-  }));
+  const pending = sub.pending_plan || null;
+  const usePending = Boolean(sub.pending_plan_id && pending);
+  const need = usePending
+    ? (Number(pending.meal_count) || 0)
+    : (Number(source?.meal_count) || Number(sub.subscription_plans?.meal_count) || 0);
+  const sourceItems = planMealItems(source);
+  const sourceQty = sourceItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  // Only mirror this Sunday's meals when the qty still matches next week's plan size.
+  const planItems = (need <= 0 || sourceQty === need)
+    ? sourceItems.map((item, index) => ({
+      ...item,
+      id: item?.id != null ? `preview-${item.id}` : `preview-item-${index}`,
+      cycle_id: null,
+    }))
+    : [];
   return {
     id: null,
     subscription_id: sub.id,
@@ -979,10 +990,15 @@ function previewNextSundayCycle(sub, source, nextSunday, settings, now = new Dat
     plan_paid_cents: 0,
     addon_paid_cents: 0,
     promo_percent: 0,
-    plan_price_cents:
-      Number(sub.subscription_plans?.price_cents)
-      || Number(source?.plan_price_cents)
-      || 0,
+    plan_id: usePending ? sub.pending_plan_id : (source?.plan_id || sub.plan_id || null),
+    meal_count: need || null,
+    plan_price_cents: usePending
+      ? (Number(pending.price_cents) || 0)
+      : (
+        Number(sub.subscription_plans?.price_cents)
+        || Number(source?.plan_price_cents)
+        || 0
+      ),
     subscription_cycle_items: planItems,
     is_preview: true,
   };
@@ -1484,6 +1500,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
           firstName: user.first_name,
           mealCount: (sub.subscription_plans || {}).meal_count,
           deliveryLabel: week.delivery_label,
+          appliesTo: week.applies_to,
           notes: specialNote || '',
         });
         await sendCustomerEmail({ to: user.email, msg });
@@ -1763,4 +1780,5 @@ module.exports = {
   planMealItems,
   labeledBoxItemsForCycle,
   reopenSkippedCycle,
+  previewNextSundayCycle,
 };

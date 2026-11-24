@@ -1189,7 +1189,12 @@ async function runMealLock({ force = false, now = new Date() } = {}) {
       }
       if (sub.status !== 'paused' && sub.status !== 'cancelled') {
         try {
-          await openNextWeek(sub, cycle, nextSunday, settings);
+          // Same order as the fresh-lock path: promote pending plan/pause before opening next week.
+          const pending = await applyPendingAfterLock(sub);
+          if (!pending.cancelled && !pending.paused) {
+            const latest = pending.plan ? { ...sub, plan_id: sub.plan_id } : sub;
+            await openNextWeek(latest, cycle, nextSunday, settings);
+          }
         } catch (err) {
           failures.push({ subscription_id: sub.id, error: `next: ${err.message || err}` });
         }

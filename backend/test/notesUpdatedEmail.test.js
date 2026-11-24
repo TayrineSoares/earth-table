@@ -30,3 +30,26 @@ test('notes_updated cleared notes shows none copy', () => {
   assert.match(msg.html, /None — notes cleared/);
   assert.match(msg.text, /None — notes cleared/);
 });
+
+test('notes_updated after cutoff says next Sunday', () => {
+  const msg = renderSubscriptionManageEmail({
+    kind: 'notes_updated',
+    firstName: 'Justina',
+    deliveryLabel: 'Sunday, December 6',
+    appliesTo: 'next_week',
+    notes: 'Leave at the side door',
+  });
+  assert.match(msg.text, /next Sunday, December 6/i);
+  assert.doesNotMatch(msg.text, /this Sunday, December 6/i);
+});
+
+test('notes_updated before cutoff says this Sunday', () => {
+  const msg = renderSubscriptionManageEmail({
+    kind: 'notes_updated',
+    firstName: 'Justina',
+    deliveryLabel: 'Sunday, November 29',
+    appliesTo: 'this_sunday',
+    notes: 'Leave at the side door',
+  });
+  assert.match(msg.text, /this Sunday, November 29/i);
+});

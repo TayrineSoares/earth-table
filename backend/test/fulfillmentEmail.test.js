@@ -30,4 +30,16 @@ describe('fulfillment switch emails', () => {
     assert.match(msg.text, /charged to your card now/i);
     assert.doesNotMatch(msg.text, /still unpaid/i);
   });
+
+  it('pickup→delivery lists address once (not duplicated as Notes)', () => {
+    const msg = renderSubscriptionManageEmail({
+      kind: 'fulfillment_delivery',
+      firstName: 'Tayrine',
+      deliveryLabel: 'Sunday, November 22',
+      address: '123 Main St',
+      planAlreadyPaid: false,
+    });
+    assert.match(msg.text, /Delivery Address: 123 Main St/);
+    assert.doesNotMatch(msg.text, /Notes: 123 Main St/);
+  });
 });
