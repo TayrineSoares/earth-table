@@ -11,7 +11,7 @@ Support email in all copy: **hello@earthtableco.ca**.
 
 | Layer | Start here |
 |---|---|
-| Schema | `backend/sql/subscriptions.sql` (+ `alter_subscription_notes_history.sql`, `alter_subscription_ops_events.sql`) |
+| Schema | `backend/sql/subscriptions.sql` (+ `alter_subscription_notes_history.sql`, `alter_subscription_ops_events.sql`, `alter_stripe_delivery_pi.sql`) |
 | Clock / holidays / week math | `backend/src/queries/subscriptionWeek.js` |
 | HTTP API | `backend/src/routes/subscriptionRoutes.js` |
 | Cron | `backend/src/routes/cronRoutes.js` + `backend/vercel.json` + `backend/vercel.crons.md` |
@@ -111,10 +111,12 @@ One row per Sunday box (`unique (subscription_id, delivery_date)`).
 - **Signup (first box):** plan + delivery charged in Stripe Checkout; add-ons wait for Wednesday. First box **can't be cancelled** — pausing that week still keeps it shipping; later weeks stop. Resume later is **not** a new first box.
 - **Resume / card-retry charge:** idempotency key adds a decline/pause suffix so a cached Tuesday decline is not replayed. If two writers race after Stripe succeeds, a sibling that already stored the same PaymentIntent is **not** refunded.
 - **Delivery fee**
-  - Unpaid week: fee stored on cycle → billed with Tuesday plan charge. Customer can switch back to pickup before Tuesday.
-  - Paid week, pickup → delivery: charge delivery **now** (`idempotencyKey: sub-delivery-{cycleId}`).
-  - Delivery → pickup: always clear `delivery_fee_cents`. If the fee was already charged, **no auto-refund** — copy tells them to email hello@ about a **delivery-fee refund only**.
-- **Plan size change:** unpaid and before that week’s Tuesday charge → apply this Sunday; paid/first box **or after Tuesday charge** (even if unpaid) → defer to next Sunday. No mid-week upgrade charge or downgrade refund.
+  - Unpaid week: fee stored on cycle → billed with Tuesday plan charge. Customer can switch back to pickup before Wednesday meal lock.
+  - Paid week, pickup → delivery: charge delivery **now** (`idempotencyKey: sub-delivery-{cycleId}`); store `stripe_delivery_payment_intent_id`.
+  - Delivery → pickup (paid, before lock): clear `delivery_fee_cents` and **auto-refund** delivery fee + tax from the delivery PI (or plan PI). Abort switch if refund fails.
+- **Plan size change:** until Wednesday meal lock on an **open** cycle → apply this Sunday. Paid open weeks take a Stripe **downgrade refund** or **upgrade charge** (HST-aware delta from amounts actually paid). **Locked** → defer to next Sunday (`pending_plan_id`).
+- **Pause / cancel (after first box):** until Wednesday meal lock — unpaid open → skip; **paid open → full Stripe refund** of plan (+ mid-week delivery) PIs then skip; **locked → keep** this Sunday (no refund). Cancel = pause.
+- **Resume after refunded skip (before lock):** reopen that Sunday and charge again (`retryFailedCharge`).
 - **Discontinue:** no refunds (`refunded_cents: 0`); paid/locked Sunday still ships.
 - **Charge/pause race:** PI succeeds but cycle already skipped → Stripe refund (`subscription_charge_race_refund`). If another writer already marked the cycle paid with the same PI, do **not** refund.
 
@@ -146,9 +148,10 @@ Second active/paused plan: UI **warns** (does not hard-block).
 ### 4. Pause / cancel / resume
 - `PATCH /subscriptions/:id/status` `{ action: pause|resume|cancel }` → `subscriptionManage.js`
 - **Unpaid** open week: pause **skips** this Sunday (no charge)
-- **Paid / locked**: this Sunday still ships; pause starts following week
+- **Paid open (before Wed lock):** full Stripe refund → skip → pause (`subscription_pause_refund`)
+- **Locked:** this Sunday still ships; pause starts following week
 - **Resume before Tue charge (manual):** reopen meals if needed, set `active` — **do not** charge now (customer may pause again). Tuesday job bills the open week.
-- **Resume after Tue charge / before Wed lock (manual unpaid):** **`retryFailedCharge`** bills this cook week now so “resume by Wed” still gets the box.
+- **Resume after Tue charge / before Wed lock (manual unpaid or refunded skip):** **`retryFailedCharge`** bills this cook week now so “resume by Wed” still gets the box.
 - **`payment_failed` resume / card-update before Wed lock:** always **`retryFailedCharge`** now. Decline → stay paused (**402**).
 - **`payment_failed` + Tuesday job:** paused plans are **not** auto-charged. No weekly retry — customer must update card or resume (for this Sunday before Wed lock, or later when ready).
 - Customer copy: resume by **Wednesday 5:00 PM ET** for that Sunday’s box.
@@ -158,7 +161,8 @@ Second active/paused plan: UI **warns** (does not hard-block).
 ### 5. Plan change
 - `PATCH /subscriptions/:id/plan` → `changeSubscriptionPlan`
 - Exact meal count required (`mealCountMatch.js`)
-- Emails: `plan_now` vs `plan_next`
+- Open week (paid or unpaid) until lock → `plan_now` (+ delta refund/charge when paid)
+- Locked → `plan_next` / `pending_plan_id`
 
 ### 6. Pickup / delivery / notes
 - `PATCH /subscriptions/:id/fulfillment` → `updateOpenCycleFulfillment`
@@ -295,11 +299,11 @@ Price change and discontinue are **env-gated** and UI-routed through Tayrine app
 
 1. Signup → confirm first Sunday, card on file, welcome mail; first box can't be cancelled (still ships if you pause that week).
 2. Unpaid week: pause → skip; manual resume before Tue charge → activate only (Tue job bills); manual resume after Tue / before Wed lock → charge now; payment_failed resume/card-update before Wed lock → charge now.
-3. After Tuesday charge: pause → this Sunday still ships; following week paused.
-4. Deferred plan upgrade → next Sunday has new count; Edit meals after cutoff keeps new size; pause clears deferred prep.
+3. After Tuesday charge, before Wed lock: pause → refund + skip; resume → re-charge. After lock: pause → this Sunday still ships.
+4. Paid open plan change → this Sunday with delta refund/charge; locked → deferred next Sunday.
 5. Payment-failed → update card with `wednesday_reminder` off → still get charge/resume confirmation.
 6. Pickup → delivery unpaid → fee waits for Tuesday; switch back clears fee.
-7. Paid week pickup → delivery → immediate delivery charge; delivery → pickup → hello@ refund-of-fee-only copy.
+7. Paid week pickup → delivery → immediate delivery charge (+ stored delivery PI); delivery → pickup → auto-refund delivery fee.
 8. Add-on charge fail at lock → extras stripped, plan meals lock, customer emailed.
 9. Force charge/lock from Admin requires admin session (or cron secret).
 10. Unsubscribe → no Tue meal reminder / pause nudges; receipts still arrive.

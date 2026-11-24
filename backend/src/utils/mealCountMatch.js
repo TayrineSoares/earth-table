@@ -61,13 +61,13 @@ function planChangeMealsOk(mealQty, nextCount) {
 }
 
 /**
- * Defer size change to the following week when this Sunday is already charged
- * (first box at signup, or after Tuesday charge) — never mid-week upgrade/refund.
- * Immediate only when before charge and this week is still unpaid.
+ * Defer size change to the following week only when this Sunday's box is locked
+ * (or there is no open cycle). Paid+open weeks apply now with a Stripe delta
+ * refund/charge — see changeSubscriptionPlan.
  */
-function planChangeDefersToNextWeek({ beforeCharge, planPaidCents } = {}) {
-  if (beforeCharge === false) return true;
-  return (Number(planPaidCents) || 0) > 0;
+function planChangeDefersToNextWeek({ cycleStatus } = {}) {
+  if (!cycleStatus) return true;
+  return cycleStatus !== 'open';
 }
 
 /** Admin / print warning — empty when no real mismatch. */

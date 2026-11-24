@@ -7,6 +7,7 @@ import '../styles/SubscribeFlow.css'
 import loadingAnimation from '../assets/loading.json'
 import FeedbackDialog from '../components/FeedbackDialog'
 import SubscribeCatalog from '../components/SubscribeCatalog'
+import SubscribeCartPopup from '../components/SubscribeCartPopup'
 import {
   fetchMySubscriptions,
   formatPlanPrice,
@@ -16,6 +17,7 @@ import {
   addonCategories,
   addonSubtotalCents,
   bumpAddon,
+  bumpMeal,
   clearEditCart,
   emptyEditCart,
   lineQty,
@@ -134,6 +136,17 @@ const SubscribeEditAddons = ({ user }) => {
       return next
     })
   }
+
+  const bumpEditMeal = (product, delta) => {
+    setEditCart((prev) => {
+      const next = {
+        ...bumpMeal(prev, product, delta),
+        resumeAfter: Boolean(shouldResume || prev.resumeAfter),
+      }
+      writeEditCart(userId, subscriptionId, next)
+      return next
+    })
+  }
   const goToCart = () => navigate(`/my-subscriptions/${subscriptionId}/cart`, {
     state: shouldResume ? { resumeAfter: true } : undefined,
   })
@@ -210,6 +223,13 @@ const SubscribeEditAddons = ({ user }) => {
         </div>
       </div>
       <FeedbackDialog dialog={dialog} onClose={() => setDialog(null)} />
+      {(totalQty(editCart.meals) + totalQty(editCart.addons)) > 0 ? (
+        <SubscribeCartPopup
+          subCart={editCart}
+          bumpSubMeal={bumpEditMeal}
+          bumpSubAddon={(product, delta) => bump(product, delta)}
+        />
+      ) : null}
     </div>
   )
 }

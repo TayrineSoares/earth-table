@@ -71,6 +71,8 @@ function SubscribeCartPopup({
   const addonTotalLabel = moneyLabel(addonCents)
   const exact = mealsExact(subCart)
   const onAddons = location.pathname.includes('/addons')
+  const editMatch = location.pathname.match(/^\/my-subscriptions\/([^/]+)\/(meals|addons)/)
+  const editSubscriptionId = editMatch?.[1] || null
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 480)
@@ -84,6 +86,19 @@ function SubscribeCartPopup({
 
   const goNext = () => {
     setIsMinimized(true)
+    const resumeState = (subCart.resumeAfter || location.state?.resumeAfter)
+      ? { resumeAfter: true }
+      : undefined
+    if (editSubscriptionId) {
+      if (onAddons) {
+        navigate(`/my-subscriptions/${editSubscriptionId}/cart`, { state: resumeState })
+        return
+      }
+      if (exact) {
+        navigate(`/my-subscriptions/${editSubscriptionId}/addons`, { state: resumeState })
+      }
+      return
+    }
     if (onAddons) {
       navigate('/subscribe/cart')
       return

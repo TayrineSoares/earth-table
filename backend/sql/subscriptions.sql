@@ -99,6 +99,8 @@ create table if not exists public.subscription_cycles (
   addon_paid_cents int not null default 0,
   promo_percent int not null default 0,
   stripe_payment_intent_id text,
+  stripe_delivery_payment_intent_id text,
+  stripe_plan_delta_payment_intent_id text,
   order_id int references public.orders (id),
   charged_at timestamptz,
   created_at timestamptz not null default now(),

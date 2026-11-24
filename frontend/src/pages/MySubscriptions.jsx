@@ -159,6 +159,26 @@ function unpaidOpenCookCycle(row) {
   )) || null
 }
 
+/** Refunded pause-skip for this cook Sunday — resume can reopen and charge before lock. */
+function unpaidSkippedCookCycle(row) {
+  const cookYmd = row?.week?.cutoff_passed
+    ? (row.this_week_date || null)
+    : (row.week?.delivery_date || null)
+  if (!cookYmd) return null
+  const candidates = [
+    row.next_box_cycle,
+    row.this_week_cycle,
+    row.edit_cycle,
+    row.cycle,
+  ]
+  return candidates.find((cycle) => (
+    cycle
+    && cycle.status === 'skipped'
+    && Number(cycle.plan_paid_cents) <= 0
+    && String(cycle.delivery_date) === String(cookYmd)
+  )) || null
+}
+
 /** "November 23" for the Sunday meal/fulfillment edits currently target. */
 function editTargetSundayDate(row) {
   const ymd = row?.edit_cycle?.delivery_date || row?.week?.delivery_date
@@ -458,12 +478,19 @@ const MySubscriptions = ({ user }) => {
     const resumeId = location.state.resumeAfter ? (location.state.resumeSubscriptionId || null) : null
     if (location.state.planChanged) {
       const planLabel = location.state.planLabel || 'your new plan'
+      const refundedCents = Number(location.state.refundedCents) || 0
+      const chargedDeltaCents = Number(location.state.chargedDeltaCents) || 0
+      const moneyLine = refundedCents > 0
+        ? ` A refund of ${formatPlanPrice(refundedCents)} (including tax) has been issued to your card.`
+        : chargedDeltaCents > 0
+          ? ` An additional charge of ${formatPlanPrice(chargedDeltaCents)} (including tax) was made to your card.`
+          : ''
       setDialog({
         icon: 'mail',
         title: location.state.pendingPlan ? 'Plan change saved' : 'Plan updated',
         body: location.state.pendingPlan
-          ? `This Sunday stays as-is. ${planLabel} and these meals start the following week.`
-          : `You're now on ${planLabel}. Your meals for this Sunday are saved.`,
+          ? `This Sunday stays as-is. ${planLabel} and these meals start the following week. Questions? Email hello@earthtableco.ca.`
+          : `You're now on ${planLabel}. Your meals for this Sunday are saved.${moneyLine} Questions? Email hello@earthtableco.ca.`,
         primaryLabel: 'OK',
       })
       navigate('/my-subscriptions', { replace: true, state: {} })
@@ -691,13 +718,16 @@ const MySubscriptions = ({ user }) => {
     }
   }, [fulfillment, postalCode, postalValid])
 
-  const startEdit = (row) => {
+  const startEdit = (row, { switchTo } = {}) => {
     const cycle = row.edit_cycle || row.cycle || {}
     const isDelivery = !!cycle.delivery
     const locked = row.week?.delivery_date || cycle.delivery_date || ''
+    const nextMethod = switchTo === 'delivery' || switchTo === 'pickup'
+      ? switchTo
+      : (isDelivery ? 'delivery' : 'pickup')
     setEditingId(row.id)
     setNotesEditingId(null)
-    setFulfillment(isDelivery ? 'delivery' : 'pickup')
+    setFulfillment(nextMethod)
     setPickupDate(locked)
     setPickupTime(cycle.pickup_time_slot || '')
     setDeliveryDate(locked)
@@ -822,12 +852,15 @@ const MySubscriptions = ({ user }) => {
         })
       } else if (result?.message) {
         const kept = Boolean(result.pending || result.first_box_kept)
+        const refunded = Boolean(result.refunded || Number(result.refunded_cents) > 0)
         setDialog({
           icon: 'mail',
           title: action === 'cancel'
             ? (kept ? 'Cancel starts next week' : 'Plan cancelled')
             : (kept ? 'Pause starts next week' : 'Plan paused'),
-          body: result.message,
+          body: refunded && !result.message.includes('refund')
+            ? `${result.message} Your charge for that box was refunded.`
+            : result.message,
           primaryLabel: 'OK',
         })
       } else {
@@ -866,13 +899,9 @@ const MySubscriptions = ({ user }) => {
       const mealCount = Number(row.subscription_plans?.meal_count) || 0
       const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
       const keptCycle = row.next_box_cycle || row.this_week_cycle || null
-      // Pause-after-charge/lock: this Sunday already ships — don't say we'll charge it again.
-      const keptCommitted = Boolean(
-        keptCycle
-        && (keptCycle.status === 'locked' || Number(keptCycle.plan_paid_cents) > 0)
-      )
-      const keptLocked = keptCommitted && keptCycle.status === 'locked'
-      const keptLabel = keptCommitted
+      // Keep-Sunday pause only after lock — paid+open pauses refund and skip.
+      const keptLocked = Boolean(keptCycle && keptCycle.status === 'locked')
+      const keptLabel = keptLocked
         ? (
           shortMonthDay(keptCycle.delivery_date)
           || shortMonthDay(row.next_box_date)
@@ -888,29 +917,36 @@ const MySubscriptions = ({ user }) => {
         || sundayDatePart(row.week?.delivery_label)
         || shortMonthDay(row.next_box_date)
         || 'this Sunday'
-      const when = keptCommitted
-        ? `${thisSundayCopy(keptLabel)} is already charged (or locked), so that box still goes out. Resume turns the plan back on for later weeks.`
+      const when = keptLocked
+        ? `${thisSundayCopy(keptLabel)} is already locked, so that box still goes out. Resume turns the plan back on for later weeks.`
         : row.week?.cutoff_passed
           ? `Because this week's cutoff has passed, resume only applies to the following week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
           : `Resume applies to this week${sunday && sunday !== 'this Sunday' ? ` (${sunday})` : ''}.`
       const beforeTuesdayCharge = row.charge?.before_wednesday !== false
-      // Match retryFailedCharge: only promise a charge when an unpaid open cook week remains.
-      const chargeNow = !keptCommitted
-        && Boolean(unpaidOpenCookCycle(row))
+      // Match retryFailedCharge: charge unpaid open / reopenable skip cook weeks.
+      // After a refunded pause-skip, mine may hide the skipped cycle — still charge
+      // after Tuesday when there is no locked/paid next box and lock has not passed.
+      const chargeNow = !keptLocked
         && (row.pause_reason === 'payment_failed' || !beforeTuesdayCharge)
+        && (
+          Boolean(unpaidOpenCookCycle(row) || unpaidSkippedCookCycle(row))
+          || (
+            !beforeTuesdayCharge
+            && !row.next_box_date
+            && !row.week?.cutoff_passed
+          )
+        )
       const mealsLine = keptLocked
         ? (
           mealCount
             ? `That Sunday's meals are locked. Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for ${followingLabel} before ${lockBy}. The plan resumes after you save.`
             : `That Sunday's meals are locked. Confirm meals for ${followingLabel} before ${lockBy}. The plan resumes after you save.`
         )
-        : keptCommitted
-          ? `You can still update this Sunday's meals until ${lockBy}. The plan resumes after you save.`
-          : (
-            mealCount
-              ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
-              : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`
-          )
+        : (
+          mealCount
+            ? `Confirm exactly ${mealCount} meal${mealCount === 1 ? '' : 's'} for that box before ${lockBy}. The plan resumes after you save.`
+            : `Confirm your meals for that box before ${lockBy}. The plan resumes after you save.`
+        )
       setDialog({
         icon: 'mail',
         title: 'Review your meals first',
@@ -931,30 +967,36 @@ const MySubscriptions = ({ user }) => {
     }
 
     const boxCycle = row.next_box_cycle || row.this_week_cycle || null
-    // Same rule as the API: keep this Sunday only if already charged or locked.
-    const thisSundayCommitted = Boolean(
+    // Same rule as the API: keep this Sunday only when locked; paid+open refunds and skips.
+    const thisSundayLocked = Boolean(boxCycle && boxCycle.status === 'locked')
+    const thisSundayPaidOpen = Boolean(
       boxCycle
-      && (boxCycle.status === 'locked' || Number(boxCycle.plan_paid_cents) > 0)
+      && boxCycle.status === 'open'
+      && Number(boxCycle.plan_paid_cents) > 0
     )
     const firstProtected = Boolean(row.first_box_protected)
     const firstSunday = row.first_delivery_label
       || sundayDatePart(row.week?.delivery_label)
       || 'this Sunday'
-    // After lock, row.week is the following Sunday — name the committed shipping box instead.
-    const committedSunday = thisSundayCommitted
+    // After lock, row.week is the following Sunday — name the locked shipping box instead.
+    const lockedSunday = thisSundayLocked
       ? (
         shortMonthDay(boxCycle.delivery_date)
         || shortMonthDay(row.this_week_date)
         || ''
       )
       : null
-    const sunday = committedSunday
+    const sunday = lockedSunday
       || shortMonthDay(row.week?.delivery_date)
       || sundayDatePart(row.week?.delivery_label)
       || shortMonthDay(row.next_box_date)
       || 'this Sunday'
     const resumeBy = resumeByLock(row.week?.cutoff_label)
-    const keepSundayBody = `${thisSundayCopy(sunday)} is already charged (or locked), so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
+    const keepSundayBody = `${thisSundayCopy(sunday)} is already locked, so it still goes out. The plan is paused starting the following week — your meals and card stay ready so you can resume anytime.`
+    const refundSkipBody = [
+      `${thisSundayCopy(sunday)} will be skipped and your charge for that box will be refunded. Your meals and card stay ready so you can resume anytime.`,
+      resumeBy,
+    ]
     const skipSundayBody = [
       `${thisSundayCopy(sunday)} will be skipped. Your meals and card stay ready so you can resume anytime.`,
       resumeBy,
@@ -968,14 +1010,14 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : thisSundayCommitted
+        : thisSundayLocked
         ? {
           title: 'Pause after this Sunday?',
           body: keepSundayBody,
         }
         : {
           title: 'Pause this plan?',
-          body: skipSundayBody,
+          body: thisSundayPaidOpen ? refundSkipBody : skipSundayBody,
         },
       cancel: firstProtected
         ? {
@@ -985,23 +1027,28 @@ const MySubscriptions = ({ user }) => {
             resumeBy,
           ],
         }
-        : thisSundayCommitted
+        : thisSundayLocked
         ? {
           title: 'Cancel after this Sunday?',
           body: keepSundayBody,
         }
         : {
           title: 'Cancel this plan?',
-          body: [
-            `${thisSundayCopy(sunday)} will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
-            resumeBy,
-          ],
+          body: thisSundayPaidOpen
+            ? [
+              `${thisSundayCopy(sunday)} will be skipped and your charge for that box will be refunded. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+              resumeBy,
+            ]
+            : [
+              `${thisSundayCopy(sunday)} will be skipped. Cancel works like pause — your meals and card stay ready so you can resume anytime.`,
+              resumeBy,
+            ],
         },
       resume: {
         // Only pending-pause / pending-cancel clear reaches here (meal review is above).
         title: 'Resume this plan?',
-        body: committedSunday
-          ? `${thisSundayCopy(committedSunday)} still goes out, and the pending change will be cleared.`
+        body: lockedSunday
+          ? `${thisSundayCopy(lockedSunday)} still goes out, and the pending change will be cleared.`
           : 'This Sunday still goes out, and the pending change will be cleared.',
       },
     }[action]
@@ -1015,12 +1062,10 @@ const MySubscriptions = ({ user }) => {
     })
   }
 
-  /** Already-paid / first box stays this size; new plan starts next week (no mid-week charge). */
+  /** Defer plan size only after meal lock — paid+open applies this Sunday with a Stripe delta. */
   const planChangePendingFor = (row) => {
-    const beforeCharge = row.charge?.before_wednesday !== false
     const box = row.this_week_cycle || row.cycle || row.edit_cycle || {}
-    const paid = Number(box.plan_paid_cents) > 0 || Boolean(row.first_box_protected)
-    return !beforeCharge || paid
+    return box.status === 'locked' || Boolean(row.week?.cutoff_passed)
   }
 
   const editsApplyNextWeek = (row) => Boolean(
@@ -1071,8 +1116,10 @@ const MySubscriptions = ({ user }) => {
       title: `Switch to ${mealsAWeek(plan.meal_count)}?`,
       body: [
         pending
-          ? `${thisSundayCopy(sunday)} stays on your current plan (already paid or charged). ${mealsAWeek(plan.meal_count)} starts the following week.`
-          : `${thisSundayCopy(sunday)} will use the new plan.`,
+          ? `${thisSundayCopy(sunday)} stays on your current plan (already locked). ${mealsAWeek(plan.meal_count)} starts the following week.`
+          : Number((row.this_week_cycle || row.cycle || {}).plan_paid_cents) > 0
+            ? `${thisSundayCopy(sunday)} will use the new plan. If the price is lower we refund the difference; if higher we charge the difference (including tax).`
+            : `${thisSundayCopy(sunday)} will use the new plan.`,
         downgrade
           ? `Next you'll review meals and remove extras until exactly ${nextCount} remain — you can't continue until the count matches.`
           : `Next you'll review meals and leave exactly ${nextCount} for that box — the change only finishes when you confirm.`,
@@ -1256,7 +1303,6 @@ const MySubscriptions = ({ user }) => {
             const pendingPlan = row.pending_plan
             const lockedDate = row.week?.delivery_date || cycle.delivery_date || cycle.pickup_date || ''
             const lockCadence = row.week?.cadence_label || MEAL_LOCK_BY
-            const chargeCadence = row.charge?.cadence_label || CHARGE_DAY_TIME
             const lockBy = row.week?.cutoff_label || MEAL_LOCK_BY
             const followingWeekLabel = (row.edit_cycle?.delivery_date || row.week?.delivery_date || row.week?.delivery_label)
               ? `Following week, ${editTargetSundayDate(row)}`
@@ -1336,7 +1382,7 @@ const MySubscriptions = ({ user }) => {
               ? DELIVERY_WINDOW
               : (formatPickupSlot(boxForDetails.pickup_time_slot) || '—')
             const mealsBy = everyWeekBy(lockCadence)
-            const pauseBy = everyWeekBy(chargeCadence)
+            const pauseBy = everyWeekBy(lockCadence || PAUSE_CANCEL_BY)
             const expiry = cardExpiryState(row.card)
             const isNextOpen = Boolean(nextWeekOpen[row.id])
             const nextWeekPanelId = `next-week-${row.id}`
@@ -1474,7 +1520,7 @@ const MySubscriptions = ({ user }) => {
                         <h2 className="my-sub-card-title">{mealsAWeek(plan.meal_count)}</h2>
                         <span className={statusChipClass}>{statusLabel}</span>
                       </div>
-                      <p className="my-sub-card-price">
+                      <p className="my-sub-price-badge" aria-label="Plan price and fulfillment">
                         {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
                       </p>
                       {row.created_at ? (
@@ -1562,31 +1608,72 @@ const MySubscriptions = ({ user }) => {
                       </DetailRow>
                       <DetailRow label={isDelivery ? 'Delivery' : 'Pickup'}>{windowLabel}</DetailRow>
                       <DetailRow label="Location">{location}</DetailRow>
-                      <DetailRow label="Notes">
-                        {note || 'None'}
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            className="my-sub-edit-link"
-                            disabled={savingId === row.id}
-                            onClick={() => (
-                              notesEditingId === row.id
-                                ? setNotesEditingId(null)
-                                : startNotesEdit(row)
-                            )}
-                          >
-                            {notesEditingId === row.id
-                              ? 'Close'
-                              : (notesEditFollowing ? 'Edit for next Sunday' : 'Edit')}
-                          </button>
+                      <div className="my-sub-notes-block">
+                        <DetailRow label="Notes">
+                          {note || 'None'}
+                          {canEdit ? (
+                            <button
+                              type="button"
+                              className="my-sub-edit-link"
+                              disabled={savingId === row.id}
+                              onClick={() => (
+                                notesEditingId === row.id
+                                  ? setNotesEditingId(null)
+                                  : startNotesEdit(row)
+                              )}
+                            >
+                              {notesEditingId === row.id
+                                ? 'Close'
+                                : (notesEditFollowing ? 'Edit for next Sunday' : 'Edit')}
+                            </button>
+                          ) : null}
+                        </DetailRow>
+                        {notesEditFollowing && notesEditingId !== row.id ? (
+                          <p className="my-sub-repeat-note">
+                            This Sunday&apos;s box is locked — its notes stay as shown. Edits apply only to next Sunday
+                            {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                          </p>
                         ) : null}
-                      </DetailRow>
-                      {notesEditFollowing && notesEditingId !== row.id ? (
-                        <p className="my-sub-repeat-note">
-                          This Sunday&apos;s box is locked — its notes stay as shown. Edits apply only to next Sunday
-                          {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
-                        </p>
-                      ) : null}
+                        {notesEditingId === row.id && canEdit ? (
+                          <div className="my-sub-notes-inline">
+                            {notesEditFollowing ? (
+                              <p className="my-sub-repeat-note">
+                                This Sunday&apos;s locked box keeps the notes shown above. Saving here updates only next Sunday
+                                {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
+                              </p>
+                            ) : (
+                              <p className="my-sub-repeat-note">
+                                Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
+                              </p>
+                            )}
+                            <textarea
+                              className="special-note-input"
+                              id={`sub-notes-${row.id}`}
+                              aria-label={
+                                notesEditFollowing
+                                  ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
+                                  : 'Notes'
+                              }
+                              value={specialNote}
+                              onChange={(e) => setSpecialNote(e.target.value)}
+                              placeholder={
+                                isDelivery
+                                  ? 'Delivery address, allergies, special instructions...'
+                                  : 'Allergies, special instructions...'
+                              }
+                              rows="4"
+                            />
+                            <button
+                              type="button"
+                              className="order-history-button"
+                              disabled={savingId === row.id || (isDelivery && specialNote.trim().length < 8)}
+                              onClick={() => persistNotes(row)}
+                            >
+                              {savingId === row.id ? 'Saving…' : 'Save notes'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                       <DetailRow label="Change meals by">{mealsBy}</DetailRow>
                       <p className="my-sub-repeat-note">{UNCHANGED_MEALS}</p>
                       <DetailRow label="Pause or cancel by">
@@ -1623,9 +1710,17 @@ const MySubscriptions = ({ user }) => {
                           <button
                             type="button"
                             className="my-sub-text-link"
-                            onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
+                            onClick={() => (
+                              editingId === row.id
+                                ? setEditingId(null)
+                                : startEdit(row, {
+                                  switchTo: isDelivery ? 'pickup' : 'delivery',
+                                })
+                            )}
                           >
-                            {editingId === row.id ? 'Close pickup or delivery' : 'Change pickup or delivery'}
+                            {editingId === row.id
+                              ? 'Close'
+                              : (isDelivery ? 'Change to pickup' : 'Change to delivery')}
                           </button>
                           {!isPaused ? (
                             <button
@@ -1697,48 +1792,6 @@ const MySubscriptions = ({ user }) => {
                       </button>
                     </div>
                   </div>
-
-                  {notesEditingId === row.id && canEdit ? (
-                    <div className="my-sub-notes-edit">
-                      <div className="special-note-container">
-                        <label htmlFor={`sub-notes-${row.id}`} className="general-text">
-                          {notesEditFollowing
-                            ? `Notes for next Sunday${notesEditSunday ? `, ${notesEditSunday}` : ''}`
-                            : 'Notes'}
-                        </label>
-                        {notesEditFollowing ? (
-                          <p className="my-sub-repeat-note">
-                            This Sunday&apos;s locked box keeps the notes shown above. Saving here updates only next Sunday
-                            {notesEditSunday ? `, ${notesEditSunday}` : ''}. Questions? Email hello@earthtableco.ca.
-                          </p>
-                        ) : (
-                          <p className="my-sub-repeat-note">
-                            Notes are for this Sunday&apos;s box. If you don&apos;t change them, they carry over next week. Questions? Email hello@earthtableco.ca.
-                          </p>
-                        )}
-                        <textarea
-                          className="special-note-input"
-                          id={`sub-notes-${row.id}`}
-                          value={specialNote}
-                          onChange={(e) => setSpecialNote(e.target.value)}
-                          placeholder={
-                            isDelivery
-                              ? 'Delivery address, allergies, special instructions...'
-                              : 'Allergies, special instructions...'
-                          }
-                          rows="4"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="order-history-button"
-                        disabled={savingId === row.id || (isDelivery && specialNote.trim().length < 8)}
-                        onClick={() => persistNotes(row)}
-                      >
-                        {savingId === row.id ? 'Saving…' : 'Save notes'}
-                      </button>
-                    </div>
-                  ) : null}
 
                   {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
                     <div className="my-sub-plan-list">

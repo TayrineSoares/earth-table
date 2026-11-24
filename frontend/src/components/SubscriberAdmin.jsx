@@ -75,7 +75,8 @@ const declineAdminLabel = (code) => {
   return map[key] || key.replace(/_/g, ' ');
 };
 
-// A pause after the box is committed does not pull it off this Sunday.
+// Locked box, or first-box pause (paid open still ships). Paid+open pause after
+ // the first box refunds and skips — those cycles are status=skipped.
 const receivesSundayBox = (row, cycle) => {
   if (!cycle || cycle.status === 'skipped') return false;
   if (row?.status === 'active') return true;
@@ -84,8 +85,8 @@ const receivesSundayBox = (row, cycle) => {
 };
 
 /**
- * Paused or cancelled after Tuesday charge / Wednesday lock — kitchen still packs
- * this Sunday. Never flag past weeks (same date guard as the earlier stale-note bug).
+ * Paused/cancelled while this Sunday still ships (locked, or first-box paid).
+ * Never flag past weeks (same date guard as the earlier stale-note bug).
  */
 const keepsCommittedSundayNote = (row, cycle) => {
   if (row?.status !== 'paused' && row?.status !== 'cancelled') return '';
@@ -94,8 +95,8 @@ const keepsCommittedSundayNote = (row, cycle) => {
   // Past locked/paid weeks stay on the paused/cancelled tab for history — don't flag those.
   if (!ymd || ymd < todayYmdToronto()) return '';
   return row.status === 'cancelled'
-    ? 'Still delivering this Sunday — cancelled after charge/lock'
-    : 'Still delivering this Sunday — paused after charge/lock';
+    ? 'Still delivering this Sunday — cancelled after lock / first box'
+    : 'Still delivering this Sunday — paused after lock / first box'
 };
 
 /** Status-change lines for View Details (only stamps that exist). */

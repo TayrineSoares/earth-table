@@ -128,8 +128,9 @@ const SubscribeEditCart = ({ user }) => {
     const addons = editCart.addons.map((item) => ({ id: item.id, quantity: item.quantity }))
     const resumeFlow = Boolean(shouldResume || editCart.resumeAfter || location.state?.resumeAfter)
     try {
+      let planResult = null
       if (changingPlan) {
-        await changeSubscriptionPlan(subscriptionId, editCart.planChangeId, { meals, addons })
+        planResult = await changeSubscriptionPlan(subscriptionId, editCart.planChangeId, { meals, addons })
       } else {
         await updateSubscriptionItems(subscriptionId, meals, addons)
       }
@@ -139,8 +140,10 @@ const SubscribeEditCart = ({ user }) => {
           ? {
             saved: true,
             planChanged: true,
-            pendingPlan: Boolean(editCart.planChangePending),
+            pendingPlan: Boolean(editCart.planChangePending || planResult?.pending),
             planLabel: mealsAWeek(editCart.mealCount),
+            refundedCents: Number(planResult?.refunded_cents) || 0,
+            chargedDeltaCents: Number(planResult?.charged_delta_cents) || 0,
           }
           : {
             saved: true,

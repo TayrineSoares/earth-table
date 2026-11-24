@@ -1,6 +1,7 @@
 /**
  * Pause / resume / cancel / change plan.
- * Tuesday 9:00 AM ET is the deadline for this Sunday; after that the change waits.
+ * Charge: Tuesday 9:00 AM ET. Pause/cancel/plan/fulfillment deadline: Wednesday
+ * 5:00 PM ET meal lock. Paid+open before lock → Stripe refund/delta; locked → keep/defer.
  */
 
 const supabase = require('../../supabase/db');
@@ -123,10 +124,18 @@ async function skipOpenCycle(cycle) {
 
 function pendingNotice(pending) {
   const verb = pending === 'cancelled' ? 'cancelled' : 'paused';
-  return `This Sunday's box is already charged (or locked), so it still goes out. The plan will be ${verb} starting the following week.`;
+  return `This Sunday's box is already locked, so it still goes out. The plan will be ${verb} starting the following week.`;
 }
 
-/** Pause now when this Sunday is already paid/locked — box still ships; later weeks stop. */
+function refundSkipNotice(week, refundedCents) {
+  const label = week?.delivery_label || 'This Sunday';
+  if (refundedCents > 0) {
+    return `${label} will be skipped and your charge for that box was refunded. Your meals and card stay ready so you can resume anytime.`;
+  }
+  return `${label} will be skipped. Your meals and card stay ready so you can resume anytime.`;
+}
+
+/** Pause now when this Sunday is already locked — box still ships; later weeks stop. */
 async function applyPauseKeepingThisSunday(userId, sub, week, charge, { keepCycleId } = {}) {
   await abandonDeferredPlanChange(sub, { keepCycleId });
   const { error } = await supabase
@@ -160,13 +169,129 @@ async function applyPauseKeepingThisSunday(userId, sub, week, charge, { keepCycl
   };
 }
 
+/**
+ * Paid+open before lock: full Stripe refund → skip cycle → pause.
+ * Aborts (no skip) if refund fails. Idempotent when already skipped.
+ */
+async function applyPauseRefundAndSkip(userId, sub, week, charge, cycle) {
+  if (!cycle?.id) {
+    throw new SubscriptionError(400, 'No open box to pause for this Sunday.');
+  }
+
+  // Idempotent: already refund-skipped this week.
+  if (cycle.status === 'skipped') {
+    await abandonDeferredPlanChange(sub);
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'paused',
+        pause_reason: 'manual',
+        paused_at: new Date().toISOString(),
+        pending_status: null,
+        pending_plan_id: null,
+      })
+      .eq('id', sub.id);
+    if (error) throw error;
+    return {
+      ok: true,
+      status: 'paused',
+      pending: false,
+      week,
+      charge,
+      refunded: true,
+      refunded_cents: 0,
+      message: refundSkipNotice(week, 0),
+    };
+  }
+
+  const { refundCyclePaymentIntents } = require('./subscriptionRefunds');
+  const refund = await refundCyclePaymentIntents(cycle, {
+    kind: 'subscription_pause_refund',
+    subscription_id: sub.id,
+    cycle_id: String(cycle.id),
+  });
+  if (!refund.ok) {
+    throw new SubscriptionError(
+      402,
+      'We could not refund this week\'s charge, so the box was not skipped. Try again or email hello@earthtableco.ca.'
+    );
+  }
+
+  const { data: skipped, error: skipErr } = await supabase
+    .from('subscription_cycles')
+    .update({
+      status: 'skipped',
+      plan_paid_cents: 0,
+      delivery_fee_cents: 0,
+      // Clear so a later resume re-charge stores a fresh PI (pause refund already issued).
+      stripe_payment_intent_id: null,
+      stripe_delivery_payment_intent_id: null,
+      stripe_plan_delta_payment_intent_id: null,
+    })
+    .eq('id', cycle.id)
+    .eq('status', 'open')
+    .select('*')
+    .maybeSingle();
+  if (skipErr) throw skipErr;
+  if (!skipped) {
+    const { data: fresh } = await supabase
+      .from('subscription_cycles')
+      .select('*')
+      .eq('id', cycle.id)
+      .maybeSingle();
+    if (fresh?.status === 'locked') {
+      return applyPauseKeepingThisSunday(userId, sub, week, charge, { keepCycleId: fresh.id });
+    }
+    if (fresh?.status !== 'skipped') {
+      throw new SubscriptionError(
+        409,
+        'This box changed while we were pausing. Refresh and try again, or email hello@earthtableco.ca.'
+      );
+    }
+  }
+
+  await abandonDeferredPlanChange(sub);
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'paused',
+      pause_reason: 'manual',
+      paused_at: new Date().toISOString(),
+      pending_status: null,
+      pending_plan_id: null,
+    })
+    .eq('id', sub.id);
+  if (error) throw error;
+
+  const refundedCents = Number(refund.refundedCents) || 0;
+  try {
+    await notifyManage(userId, {
+      kind: 'pause_now',
+      mealCount: sub.subscription_plans?.meal_count,
+      deliveryLabel: week.delivery_label,
+      chargeLabel: charge.charge_label,
+      refundedCents,
+    });
+  } catch (err) {
+    console.warn('[subscriptions] pause email failed:', err.message);
+  }
+
+  return {
+    ok: true,
+    status: 'paused',
+    pending: false,
+    week,
+    charge,
+    refunded: true,
+    refunded_cents: refundedCents,
+    message: refundSkipNotice(week, refundedCents),
+  };
+}
+
 async function applyPendingStatus(userId, sub, pending, week, charge, { cycle } = {}) {
-  const paidOrLocked = Boolean(
-    cycle
-    && (Number(cycle.plan_paid_cents) > 0 || cycle.status === 'locked')
-  );
+  const locked = Boolean(cycle && cycle.status === 'locked');
   // Cancel from the customer button is pause. True pending cancel is plan-discontinue only.
-  if (pending === 'paused' && paidOrLocked) {
+  if (pending === 'paused' && locked) {
     return applyPauseKeepingThisSunday(userId, sub, week, charge, {
       keepCycleId: cycle?.id,
     });
@@ -390,33 +515,40 @@ async function pauseSubscription(userId, subscriptionId) {
   const target = openForWeek || cycle;
   const { pauseKeepsThisSunday } = require('./subscriptionPauseResumeRules');
 
-  // Keep vs skip is decided by money/lock, not the clock — avoids the Tue 9:00 AM
-  // race with the charge job. Clock copy still says "before Tuesday 9am"; after
-  // that the charge usually lands first so pause keeps the box.
+  // Locked → keep this Sunday (no refund). Paid+open → refund + skip.
   if (pauseKeepsThisSunday(target)) {
     return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: target });
+  }
+  if (target && target.status === 'open' && Number(target.plan_paid_cents) > 0) {
+    return applyPauseRefundAndSkip(userId, sub, week, charge, target);
   }
 
   const firstYmd = firstBoxSunday(sub, settings || {}, now, cycles);
   // Skip every unpaid open week so a resumed plan can pause again before Tuesday
   // without leaving a chargeable box behind.
-  let keptAfterRace = null;
+  let raceWinner = null;
   for (const row of cycles) {
     if (!row || row.status !== 'open' || Number(row.plan_paid_cents) > 0) continue;
     if (firstYmd && String(row.delivery_date) === String(firstYmd)) continue;
     const skipResult = await skipOpenCycle(row);
     const after = skipResult.cycle || row;
-    if (
-      !skipResult.skipped
-      && after
-      && (Number(after.plan_paid_cents) > 0 || after.status === 'locked')
-    ) {
-      keptAfterRace = after;
+    if (!skipResult.skipped && after) {
+      if (after.status === 'locked') {
+        raceWinner = after;
+        break;
+      }
+      if (Number(after.plan_paid_cents) > 0) {
+        raceWinner = after;
+        break;
+      }
     }
   }
-  if (keptAfterRace) {
-    // Charge (or lock) won the race while we paused — keep this Sunday.
-    return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: keptAfterRace });
+  if (raceWinner) {
+    if (raceWinner.status === 'locked') {
+      return applyPendingStatus(userId, sub, 'paused', week, charge, { cycle: raceWinner });
+    }
+    // Charge won the race — refund + skip under the new paid+open rule.
+    return applyPauseRefundAndSkip(userId, sub, week, charge, raceWinner);
   }
 
   await abandonDeferredPlanChange(sub);
@@ -449,7 +581,7 @@ async function pauseSubscription(userId, subscriptionId) {
     pending: false,
     week,
     charge,
-    message: `${week.delivery_label || 'This Sunday'} will be skipped. Your meals and card stay ready so you can resume anytime.`,
+    message: refundSkipNotice(week, 0),
   };
 }
 
@@ -1060,12 +1192,10 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     );
   }
 
-  // Already-paid weeks (first box at signup, or after Tuesday charge) keep this Sunday's
-  // size — same idea as first-box pause. No mid-week upgrade charge / downgrade refund.
+  // Locked (or no open cycle) → following week. Open (paid or unpaid) → this Sunday.
   const alreadyPaid = Number(cycle?.plan_paid_cents) || 0;
   const deferNext = planChangeDefersToNextWeek({
-    beforeCharge: charge.before_wednesday,
-    planPaidCents: alreadyPaid,
+    cycleStatus: cycle?.status,
   });
 
   if (deferNext) {
@@ -1118,8 +1248,56 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     throw new SubscriptionError(400, 'This week\'s box is locked. You can still change next week\'s meals from My Subscriptions.');
   }
 
-  // Unpaid week before charge: swap plan now; Tuesday charges the new price.
   const newPrice = Number(nextPlan.price_cents) || 0;
+  // Paid+open: apply this Sunday with Stripe delta (downgrade refund / upgrade charge).
+  // Use amounts actually paid (promo) as the from-side for refunds.
+  let refundedCents = 0;
+  let chargedDeltaCents = 0;
+  if (alreadyPaid > 0) {
+    const { refundPlanDelta, chargePlanDelta } = require('./subscriptionRefunds');
+    const fromPaid = alreadyPaid;
+    if (newPrice < fromPaid) {
+      const refund = await refundPlanDelta(cycle, {
+        fromPreTax: fromPaid,
+        toPreTax: newPrice,
+        metadata: {
+          kind: 'subscription_plan_downgrade_refund',
+          subscription_id: sub.id,
+          cycle_id: String(cycle.id),
+        },
+      });
+      if (!refund.ok) {
+        throw new SubscriptionError(
+          402,
+          'We could not refund the plan difference. Your plan size was not changed. Try again or email hello@earthtableco.ca.'
+        );
+      }
+      refundedCents = Number(refund.refundedCents) || 0;
+      if (refund.clearedDeltaPi) {
+        cycle.stripe_plan_delta_payment_intent_id = null;
+      }
+    } else if (newPrice > fromPaid) {
+      const charged = await chargePlanDelta(sub, cycle, {
+        fromPreTax: fromPaid,
+        toPreTax: newPrice,
+        metadata: {
+          kind: 'subscription_plan_upgrade',
+          subscription_id: sub.id,
+        },
+      });
+      if (!charged.ok) {
+        throw new SubscriptionError(
+          402,
+          'We could not charge the plan upgrade. Your plan size was not changed. Try another card or email hello@earthtableco.ca.'
+        );
+      }
+      chargedDeltaCents = Number(charged.chargedCents) || 0;
+      if (charged.paymentIntentId) {
+        cycle.stripe_plan_delta_payment_intent_id = charged.paymentIntentId;
+      }
+    }
+  }
+
   await writeCyclePlanAndAddons(cycle.id, meals, addons || [], { mealCount: nextCount });
 
   const { error: subErr } = await supabase
@@ -1133,13 +1311,21 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     .eq('id', sub.id);
   if (subErr) throw subErr;
 
+  const cyclePatch = {
+    plan_id: nextPlan.id,
+    plan_price_cents: newPrice,
+    meal_count: nextCount,
+  };
+  if (alreadyPaid > 0) {
+    // Keep delivery portion of what was paid; stamp new plan amount as paid.
+    cyclePatch.plan_paid_cents = newPrice;
+  }
+  if (Object.prototype.hasOwnProperty.call(cycle, 'stripe_plan_delta_payment_intent_id')) {
+    cyclePatch.stripe_plan_delta_payment_intent_id = cycle.stripe_plan_delta_payment_intent_id || null;
+  }
   const { error: cycleErr } = await supabase
     .from('subscription_cycles')
-    .update({
-      plan_id: nextPlan.id,
-      plan_price_cents: newPrice,
-      meal_count: nextCount,
-    })
+    .update(cyclePatch)
     .eq('id', cycle.id);
   if (cycleErr) throw cycleErr;
 
@@ -1164,6 +1350,8 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
       cutoffLabel: week.cutoff_label,
       meals: box.meals,
       addons: box.addons,
+      refundedCents,
+      chargedDeltaCents,
     });
   } catch (err) {
     console.warn('[subscriptions] plan-change email failed:', err.message);
@@ -1176,6 +1364,8 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
     week,
     charge,
     plan: nextPlan,
+    refunded_cents: refundedCents,
+    charged_delta_cents: chargedDeltaCents,
   };
 }
 

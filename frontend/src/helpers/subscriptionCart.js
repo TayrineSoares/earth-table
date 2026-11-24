@@ -212,16 +212,20 @@ function lineQty(lines, productId) {
 
 function bumpLines(lines, product, delta, maxTotal) {
   const next = (lines || []).map((line) => ({ ...line }));
-  const index = next.findIndex((line) => line.id === product.id);
-  const current = index === -1 ? 0 : next[index].quantity;
-  let wanted = current + delta;
+  const index = next.findIndex((line) => String(line.id) === String(product.id));
+  const current = index === -1 ? 0 : (Number(next[index].quantity) || 0);
+  let wanted = current + (Number(delta) || 0);
   if (wanted < 0) wanted = 0;
 
-  const others = next.reduce((sum, line, i) => (
-    i === index ? sum : sum + (Number(line.quantity) || 0)
-  ), 0);
-  if (maxTotal != null && others + wanted > maxTotal) {
-    wanted = Math.max(0, maxTotal - others);
+  // Cap only when adding — on plan downgrade the box can be over the new
+  // mealCount; clamping on minus would wipe a whole line in one click.
+  if (maxTotal != null && delta > 0) {
+    const others = next.reduce((sum, line, i) => (
+      i === index ? sum : sum + (Number(line.quantity) || 0)
+    ), 0);
+    if (others + wanted > maxTotal) {
+      wanted = Math.max(0, maxTotal - others);
+    }
   }
 
   if (wanted === 0) {

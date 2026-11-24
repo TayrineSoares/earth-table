@@ -3,6 +3,9 @@ import { Vegan, LeafyGreen, Ham, MilkOff, BeanOff, WheatOff } from 'lucide-react
 import ProductCard from '../pages/ProductCard'
 import '../styles/Products.css'
 
+/** Subscribe meal / add-on grids: load 8 cards at a time. */
+const PRODUCTS_PER_PAGE = 8
+
 const SUBSCRIBE_TAG_ICONS = {
   vegan: <Vegan size={12} />,
   vegetarian: <LeafyGreen size={12} />,
@@ -33,6 +36,7 @@ const SubscribeCatalog = ({
 }) => {
   // null = All (default)
   const [selectedId, setSelectedId] = useState(null)
+  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
 
   useEffect(() => {
     if (selectedId == null) return
@@ -44,14 +48,20 @@ const SubscribeCatalog = ({
     if (!stillThere) setSelectedId(null)
   }, [categories, selectedId])
 
+  // Reset pagination when the category chip changes (Products page pattern).
+  useEffect(() => {
+    setVisibleCount(PRODUCTS_PER_PAGE)
+  }, [selectedId])
+
   const selected = categories.find((cat) => cat.id === selectedId) || null
   const categoryIds = new Set((categories || []).map((cat) => cat.id))
-  const visible = products.filter((product) => {
+  const filtered = products.filter((product) => {
     if (!product.is_active) return false
     // All = every product in the catalog's categories only (plan meals or add-ons).
     if (selectedId == null) return categoryIds.has(product.category_id)
     return product.category_id === selectedId
   })
+  const visible = filtered.slice(0, visibleCount)
 
   return (
     <>
@@ -97,7 +107,19 @@ const SubscribeCatalog = ({
         ))}
       </div>
 
-      {visible.length === 0 ? (
+      {visibleCount < filtered.length ? (
+        <div className="load-more-container">
+          <button
+            type="button"
+            className="load-more-button"
+            onClick={() => setVisibleCount((prev) => prev + PRODUCTS_PER_PAGE)}
+          >
+            Load More
+          </button>
+        </div>
+      ) : null}
+
+      {filtered.length === 0 ? (
         <p className="subscribe-empty">Nothing in this category right now.</p>
       ) : null}
     </>

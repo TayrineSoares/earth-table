@@ -278,7 +278,7 @@ const weekSaveCopy = (week, {
         ? ` This Sunday's plan is already charged, so delivery (${formatPlanPrice(fee)} plus 13% HST) will be charged to your card now. Questions? Email hello@earthtableco.ca.`
         : ` Delivery (${formatPlanPrice(fee)} plus 13% HST) will be charged with your plan on Tuesday at 9:00 AM ET. Switch back to pickup before then if you change your mind. Questions? Email hello@earthtableco.ca.`
     : switchingToPickup && planAlreadyPaid && !nextWeek
-      ? ' If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.'
+      ? ' If the delivery fee was already charged for this Sunday, we refund it to your card when you save pickup.'
       : '';
   if (nextWeek) {
     return {

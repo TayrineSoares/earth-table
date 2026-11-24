@@ -183,6 +183,11 @@ write('12-subscription-paused.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'pause_now',
 }).html);
+write('12-subscription-paused-refund.html', renderSubscriptionManageEmail({
+  ...subMail,
+  kind: 'pause_now',
+  refundedCents: 30510,
+}).html);
 write('12b-subscription-paused-next.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'pause_next',
@@ -225,6 +230,7 @@ write('12i-subscription-plan-down.html', renderSubscriptionManageEmail({
   mealCount: 10,
   oldMealCount: 15,
   nextMealCount: 10,
+  refundedCents: 10170,
 }).html);
 write('12m-subscription-plan-next.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -252,6 +258,7 @@ write('12k2-subscription-pickup-paid.html', renderSubscriptionManageEmail({
   ...subMail,
   kind: 'fulfillment_pickup',
   planAlreadyPaid: true,
+  refundedCents: 1695,
 }).html);
 write('12l-subscription-card-expiry.html', renderSubscriptionManageEmail({
   ...subMail,
@@ -336,6 +343,16 @@ write('18-owner-plan.html', renderOwnerSubscriptionEventEmail({
   mealCount: 15,
   oldMealCount: 10,
   nextMealCount: 15,
+}).html);
+write('18c-owner-plan-down-refund.html', renderOwnerSubscriptionEventEmail({
+  ...subMail,
+  kind: 'plan_now',
+  customerName: 'Tayrine Soares',
+  email: subMail.email,
+  mealCount: 10,
+  oldMealCount: 15,
+  nextMealCount: 10,
+  refundedCents: 10170,
 }).html);
 write('18b-owner-plan-next.html', renderOwnerSubscriptionEventEmail({
   ...subMail,

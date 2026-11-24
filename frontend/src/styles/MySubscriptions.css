@@ -330,6 +330,58 @@
   margin: 0;
 }
 
+.my-sub-price-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ABC586;
+  background: #EAF3DC;
+  color: #202211;
+  font-family: var(--body-font);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.my-sub-notes-block {
+  border-bottom: 1px solid #D9C7B0;
+  padding-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.my-sub-notes-block .my-sub-row {
+  border-bottom: none;
+}
+
+.my-sub-notes-block .my-sub-repeat-note {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.my-sub-notes-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.my-sub-notes-inline .special-note-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+}
+
+.my-sub-notes-inline .order-history-button {
+  align-self: flex-start;
+  min-height: 44px;
+}
+
 .my-sub-card-since {
   font-family: var(--body-font);
   font-size: 14px;
@@ -728,9 +780,12 @@
   .my-sub-aside,
   .my-sub-fulfillment,
   .my-sub-notes-edit,
+  .my-sub-notes-inline,
   .my-sub-fulfillment .special-note-input,
   .my-sub-notes-edit .special-note-input,
+  .my-sub-notes-inline .special-note-input,
   .my-sub-notes-edit .order-history-button,
+  .my-sub-notes-inline .order-history-button,
   .my-sub-status-note,
   .my-sub-card-since,
   .my-sub-repeat-note,

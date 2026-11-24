@@ -3,19 +3,17 @@
  * Keep in sync with frontend/src/helpers/subscriptionCadence.js
  *
  * Charge: Tuesday 9:00 AM ET (plan + delivery together).
- * Lock: Wednesday 5:00 PM ET (add-ons + meal lock).
- * Pause / cancel to skip this Sunday: before Tuesday 9:00 AM ET while unpaid.
+ * Lock / pause-cancel / plan / fulfillment deadline: Wednesday 5:00 PM ET.
+ * Pause / cancel to skip this Sunday: before Wednesday meal lock (refund if
+ * already charged and still open). After lock, that Sunday still ships.
  * Resume for that Sunday's box: by Wednesday 5:00 PM ET (meal lock). Manual
  * resume before Tuesday while unpaid → activate only (Tue job bills). After
- * Tuesday while unpaid (or payment_failed) → charge now. Once charged or locked
- * the box still goes out.
- * Plan size for this Sunday: while unpaid and before that week's Tuesday charge;
- * once paid (including first box) or after Tuesday charge → following week
- * (no mid-week upgrade charge / downgrade refund).
+ * Tuesday while unpaid (or payment_failed / refunded skip) → charge now.
+ * Plan size for this Sunday: until meal lock (paid weeks = Stripe delta).
+ * After lock → following week.
  * Fulfillment: unpaid week — delivery fee sits on the cycle until Tuesday
- * charge; paid week — pickup→delivery charges delivery now (idempotent).
- * Delivery→pickup always clears delivery_fee_cents; if already charged,
- * customer copy points them to hello@earthtableco.ca about a delivery-fee refund only.
+ * charge; paid week — pickup→delivery charges delivery now; delivery→pickup
+ * auto-refunds the delivery fee before lock.
  */
 
 const CADENCE = {
@@ -34,10 +32,13 @@ const CADENCE = {
   CARD_EXPIRY_DAYS: 30,
 };
 
-const PAUSE_CANCEL_BY = 'Tuesday at 9:00 AM ET';
+/** Pause / cancel / plan / fulfillment deadline (meal lock). */
+const PAUSE_CANCEL_BY = 'Wednesday at 5:00 PM ET';
 const MEAL_LOCK_BY = 'Wednesday at 5:00 PM ET';
 /** Resume deadline for a paused Sunday's box (same standing time as meal lock). */
 const RESUME_BY = MEAL_LOCK_BY;
+/** Tuesday charge — never reuse PAUSE_CANCEL_BY for billing copy. */
+const CHARGE_DAY_TIME = 'Tuesday at 9:00 AM ET';
 const UNCHANGED_MEALS = "If you don't change anything, we repeat last week's meals. Add-ons don't repeat unless you add them again.";
 const PICKUP_ADDRESS = '77 Woodstream Blvd, Vaughan, ON L4L 7Y7';
 const DELIVERY_WINDOW = '11:00 AM – 6:00 PM';
@@ -47,6 +48,7 @@ module.exports = {
   PAUSE_CANCEL_BY,
   MEAL_LOCK_BY,
   RESUME_BY,
+  CHARGE_DAY_TIME,
   UNCHANGED_MEALS,
   PICKUP_ADDRESS,
   DELIVERY_WINDOW,

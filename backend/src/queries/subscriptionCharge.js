@@ -457,7 +457,8 @@ async function chargePlanDelivery(sub, cycle, sunday, opts = {}) {
     plan_paid_cents: planCents,
     charged_at: new Date().toISOString(),
   };
-  if (!row.stripe_payment_intent_id && pi?.id) patch.stripe_payment_intent_id = pi.id;
+  // Always stamp the latest successful PI (resume after refund-skip needs a fresh id).
+  if (pi?.id) patch.stripe_payment_intent_id = pi.id;
   // Only mark paid if still open/unpaid — pause may have skipped between PI and write.
   const { data: paidRow, error } = await supabase
     .from('subscription_cycles')
@@ -1299,22 +1300,47 @@ async function unpauseAfterPayment(subId) {
 }
 
 /**
+ * Re-open a refunded-skip cook week so resume can charge again before lock.
+ */
+async function reopenSkippedUnpaidCycle(cycle) {
+  if (!cycle?.id || cycle.status !== 'skipped') return cycle;
+  if (Number(cycle.plan_paid_cents) > 0) return cycle;
+  const { data, error } = await supabase
+    .from('subscription_cycles')
+    .update({ status: 'open' })
+    .eq('id', cycle.id)
+    .eq('status', 'skipped')
+    .lte('plan_paid_cents', 0)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data || cycle;
+}
+
+/**
  * Open unpaid cycle whose kitchen lock has not passed.
  * When onlySunday is set (cook week), never pull next Tuesday's week forward.
+ * Also re-opens a same-Sunday refunded skip (pause then resume before lock).
  */
 async function findChargeableUnpaidCycle(subscriptionId, settings, now = new Date(), { onlySunday } = {}) {
   const { data, error } = await supabase
     .from('subscription_cycles')
     .select('*')
     .eq('subscription_id', subscriptionId)
-    .eq('status', 'open')
+    .in('status', ['open', 'skipped'])
     .order('delivery_date', { ascending: true });
   if (error) throw error;
   for (const row of data || []) {
     if (onlySunday != null && String(row.delivery_date) !== String(onlySunday)) continue;
     if (Number(row.plan_paid_cents) > 0) continue;
+    if (row.status === 'skipped' && onlySunday == null) continue;
     if (lockPassedForSunday(row.delivery_date, now, settings)) continue;
-    return { cycle: await withCycleItems(row), sunday: row.delivery_date };
+    let cycle = row;
+    if (cycle.status === 'skipped') {
+      cycle = await reopenSkippedUnpaidCycle(cycle);
+      if (!cycle || cycle.status !== 'open') continue;
+    }
+    return { cycle: await withCycleItems(cycle), sunday: cycle.delivery_date };
   }
   return null;
 }

@@ -391,7 +391,8 @@ const CYCLE_SELECT = `
   id, subscription_id, status, order_id, cutoff_at, delivery_date, pickup_date, delivery,
   delivery_postal_code, pickup_time_slot, special_note, delivery_fee_cents,
   plan_paid_cents, addon_paid_cents, promo_percent, plan_price_cents,
-  meal_count, meals_confirmed_at
+  meal_count, meals_confirmed_at, stripe_payment_intent_id,
+  stripe_delivery_payment_intent_id, stripe_plan_delta_payment_intent_id
 `;
 
 /** Best-effort audit row — never fail the customer-facing change. */
@@ -1419,6 +1420,7 @@ async function replaceOpenCyclePlanAndAddons(userId, subscriptionId, meals, addo
 /**
  * Mid-week pickup→delivery after the plan is already paid for this Sunday.
  * Unpaid weeks do not use this — delivery rides with Tuesday's plan charge.
+ * Persists stripe_delivery_payment_intent_id so pause / delivery→pickup can refund it.
  */
 async function chargeDeliveryFee(sub, cycle, feeCents) {
   const amount = Math.round(Number(feeCents) * 1.13);
@@ -1428,9 +1430,13 @@ async function chargeDeliveryFee(sub, cycle, feeCents) {
   if (!sub.stripe_customer_id || !sub.stripe_payment_method_id) {
     throw new SubscriptionError(400, 'No card on file for the delivery fee. Email hello@earthtableco.ca.');
   }
+  // Already charged this cycle — idempotent no-op for double-submit.
+  if (cycle?.stripe_delivery_payment_intent_id) {
+    return { id: cycle.stripe_delivery_payment_intent_id, already: true };
+  }
   const stripe = require('stripe')(process.env.STRIPE_SECRET_SK);
   try {
-    return await stripe.paymentIntents.create({
+    const pi = await stripe.paymentIntents.create({
       amount,
       currency: 'cad',
       customer: sub.stripe_customer_id,
@@ -1446,6 +1452,18 @@ async function chargeDeliveryFee(sub, cycle, feeCents) {
     }, {
       idempotencyKey: `sub-delivery-${cycle.id}`,
     });
+    if (pi?.id) {
+      const { error } = await supabase
+        .from('subscription_cycles')
+        .update({ stripe_delivery_payment_intent_id: pi.id })
+        .eq('id', cycle.id);
+      if (error) {
+        console.warn('[subscriptions] failed to store delivery PI:', cycle.id, error.message);
+      } else {
+        cycle.stripe_delivery_payment_intent_id = pi.id;
+      }
+    }
+    return pi;
   } catch (err) {
     console.error('[subscriptions] delivery fee charge failed', err.message);
     throw new SubscriptionError(
@@ -1558,7 +1576,37 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     patch.pickup_time_slot = pickupSlot;
     // Always clear — otherwise a prior delivery quote stays and Tuesday can still bill it.
     patch.delivery_fee_cents = 0;
+
+    // Paid this Sunday delivery→pickup: auto-refund delivery fee (+ tax) before lock.
+    const refundFeeNow = (
+      week.applies_to === 'this_sunday'
+      && !wasPickup
+      && Number(cycle.plan_paid_cents) > 0
+      && (Number(cycle.delivery_fee_cents) > 0 || cycle.stripe_delivery_payment_intent_id)
+    );
+    if (refundFeeNow) {
+      const { refundDeliveryFee } = require('./subscriptionRefunds');
+      const feePreTax = Number(cycle.delivery_fee_cents) || 0;
+      const refund = await refundDeliveryFee(cycle, {
+        feePreTax,
+        metadata: {
+          kind: 'subscription_delivery_fee_refund',
+          subscription_id: sub.id,
+          cycle_id: String(cycle.id),
+        },
+      });
+      if (!refund.ok) {
+        throw new SubscriptionError(
+          402,
+          'We could not refund the delivery fee, so pickup was not saved. Try again or email hello@earthtableco.ca.'
+        );
+      }
+      patch._deliveryFeeRefundedCents = Number(refund.refundedCents) || 0;
+    }
   }
+
+  const deliveryFeeRefundedCents = Number(patch._deliveryFeeRefundedCents) || 0;
+  delete patch._deliveryFeeRefundedCents;
 
   // Delivery prefs stay on the subscription as defaults for new weeks.
   // special_note stays on the cycle only so each Sunday keeps its own notes.
@@ -1614,6 +1662,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
           address: delivery ? specialNote : PICKUP_ADDRESS,
           pickupSlot,
           planAlreadyPaid: Number(cycle.plan_paid_cents) > 0,
+          refundedCents: deliveryFeeRefundedCents,
         });
         await sendCustomerEmail({ to: user.email, msg });
       }
@@ -1638,6 +1687,7 @@ async function updateOpenCycleFulfillment(userId, subscriptionId, body = {}) {
     ok: true,
     week,
     delivery_fee_cents: patch.delivery_fee_cents ?? cycle.delivery_fee_cents,
+    refunded_cents: deliveryFeeRefundedCents,
   };
 }
 

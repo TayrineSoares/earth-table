@@ -14,9 +14,10 @@ describe('pause / resume decision rules', () => {
     assert.equal(cycleIsCommitted(null), false);
   });
 
-  it('pauseKeepsThisSunday matches committed cycles', () => {
+  it('pauseKeepsThisSunday is locked-only (paid+open refunds and skips)', () => {
     assert.equal(pauseKeepsThisSunday({ status: 'locked', plan_paid_cents: 0 }), true);
-    assert.equal(pauseKeepsThisSunday({ status: 'open', plan_paid_cents: 100 }), true);
+    assert.equal(pauseKeepsThisSunday({ status: 'locked', plan_paid_cents: 100 }), true);
+    assert.equal(pauseKeepsThisSunday({ status: 'open', plan_paid_cents: 100 }), false);
     assert.equal(pauseKeepsThisSunday({ status: 'open', plan_paid_cents: 0 }), false);
   });
 

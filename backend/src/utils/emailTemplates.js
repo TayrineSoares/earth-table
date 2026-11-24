@@ -14,7 +14,14 @@ function formatMoneyHst(cents) {
 }
 
 const { mealsAWeek, mealPlanPhrase, formatFulfillmentLine } = require('../queries/subscriptionWeek');
-const { PAUSE_CANCEL_BY, MEAL_LOCK_BY, RESUME_BY, PICKUP_ADDRESS, UNCHANGED_MEALS } = require('../emails/subscriptionEmailSpec');
+const {
+  PAUSE_CANCEL_BY,
+  MEAL_LOCK_BY,
+  RESUME_BY,
+  CHARGE_DAY_TIME,
+  PICKUP_ADDRESS,
+  UNCHANGED_MEALS,
+} = require('../emails/subscriptionEmailSpec');
 
 function formatDollars(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
@@ -1122,7 +1129,7 @@ function renderSubscriptionWelcomeEmail({
       ${itemListHtml(meals, '—')}
       ${showAddons ? `${h2("Add-ons")}${addonHtml ? itemListHtml(addons, '') : ''}${card(kvTable(addonRows))}` : `${h2("Add-ons")}${itemListHtml([], 'None this week.')}`}
       ${ctaLink(manageHref, "Manage my subscription")}
-      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every ${PAUSE_CANCEL_BY}. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}</p>
+      <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:${C_MUTED}; font-family:${FONT};">Your plan renews every week. Plan and delivery are charged every ${CHARGE_DAY_TIME}. Pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}</p>
   `, {
     preheader: `Your first box is ${sunday}.`,
     replyOk: true,
@@ -1147,7 +1154,7 @@ ${itemLinesText(meals) || '—'}
 ${addonText}
 Manage my subscription: ${manageHref}
 
-Your plan renews every week. Plan and delivery are charged every ${PAUSE_CANCEL_BY}. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}
+Your plan renews every week. Plan and delivery are charged every ${CHARGE_DAY_TIME}. Pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday. Change meals and extras until ${MEAL_LOCK_BY}. ${UNCHANGED_MEALS}
 
 Questions? Email us at hello@earthtableco.ca.`;
 
@@ -1367,11 +1374,12 @@ function renderSubscriptionManageEmail(payload = {}) {
     address,
     pickupSlot,
     planAlreadyPaid = false,
+    refundedCents = 0,
+    chargedDeltaCents = 0,
   } = payload;
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
   const sunday = fulfillmentDate || deliveryLabel || 'Sunday';
-  const charge = PAUSE_CANCEL_BY;
   const cutoff = MEAL_LOCK_BY;
   const resumeBy = RESUME_BY;
   const manageHref = appUrl('/my-subscriptions');
@@ -1381,6 +1389,8 @@ function renderSubscriptionManageEmail(payload = {}) {
       ? oldMealCount
       : (kind === 'plan_next' ? mealCount : null)
   );
+  const refunded = Number(refundedCents) || 0;
+  const chargedDelta = Number(chargedDeltaCents) || 0;
 
   if (kind === 'fulfillment_delivery' || kind === 'fulfillment_pickup') {
     const toDelivery = kind === 'fulfillment_delivery';
@@ -1398,9 +1408,11 @@ function renderSubscriptionManageEmail(payload = {}) {
     const after = toDelivery
       ? (planAlreadyPaid
         ? `This Sunday's plan is already charged, so the delivery fee was charged to your card now. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
-        : `If this Sunday is still unpaid, delivery is charged with your plan on Tuesday at 9:00 AM ET — switch back to pickup before then if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`)
+        : `If this Sunday is still unpaid, delivery is charged with your plan on ${CHARGE_DAY_TIME} — switch back to pickup before ${PAUSE_CANCEL_BY} if you change your mind. You can still update meals until ${cutoff}. Questions? Email us at hello@earthtableco.ca.`)
       : planAlreadyPaid
-        ? `You can switch back to delivery any time before ${cutoff}. If the delivery fee was already charged for this Sunday, email hello@earthtableco.ca to ask about a refund of the delivery fee only.`
+        ? (refunded > 0
+          ? `The delivery fee for this Sunday was refunded to your card. You can switch back to delivery any time before ${cutoff}. Questions? Email us at hello@earthtableco.ca.`
+          : `You can switch back to delivery any time before ${cutoff}. If a delivery fee was charged for this Sunday, it was cleared from this box. Questions? Email us at hello@earthtableco.ca.`)
         : `You can switch back to delivery any time before ${cutoff}. If this Sunday is still unpaid, no delivery fee will be charged on Tuesday. Questions? Email us at hello@earthtableco.ca.`;
     // Delivery address lives in special_note — one row only (don't duplicate as Notes).
     const detail = toDelivery
@@ -1449,11 +1461,20 @@ My Subscriptions: ${manageHref}`;
     return { subject, html, text };
   }
 
+  const pauseNowIntro = refunded > 0
+    ? `${ThisSundayPhrase(sunday)} will not go out, and your charge for that box was refunded. The plan stays paused until you tap Resume.`
+    : `${ThisSundayPhrase(sunday)} will not go out. The plan stays paused until you tap Resume.`;
+  const planNowMoney = refunded > 0
+    ? ` A refund of ${formatDollars(refunded)} (including tax) has been issued to your card.`
+    : chargedDelta > 0
+      ? ` An additional charge of ${formatDollars(chargedDelta)} (including tax) was made to your card.`
+      : '';
+
   const copy = {
     pause_now: {
       subject: `Your weekly plan is paused until you resume`,
       heading: `You're paused, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} will not go out. The plan stays paused until you tap Resume.`,
+      intro: pauseNowIntro,
     },
     pause_first: {
       subject: `Your weekly plan is paused — first box still runs`,
@@ -1463,18 +1484,20 @@ My Subscriptions: ${manageHref}`;
     pause_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `This Sunday is already charged (or locked), so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
+      intro: `This Sunday's box is already locked, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     // Cancel button = pause (plan + card kept). Same outcome as pause_now / pause_next.
     cancel_now: {
       subject: `Your weekly plan is paused until you resume`,
       heading: `You're paused, ${name}`,
-      intro: `${ThisSundayPhrase(sunday)} will not go out. Your meals and card stay ready for when you resume.`,
+      intro: refunded > 0
+        ? `${ThisSundayPhrase(sunday)} will not go out, and your charge for that box was refunded. Your meals and card stay ready for when you resume.`
+        : `${ThisSundayPhrase(sunday)} will not go out. Your meals and card stay ready for when you resume.`,
     },
     cancel_next: {
       subject: `Pause confirmed — this Sunday still runs`,
       heading: `Pause starts after this Sunday, ${name}`,
-      intro: `This Sunday is already charged (or locked), so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
+      intro: `This Sunday's box is already locked, so ${thisSundayPhrase(sunday)} still goes out. The plan is paused starting the following week until you resume.`,
     },
     pause_nudge: {
       subject: `Your weekly plan is still paused — ready when you are`,
@@ -1509,13 +1532,13 @@ My Subscriptions: ${manageHref}`;
       intro: payload.charged
         ? `Your ${planWeek} is active again. We charged this box for ${thisSundayPhrase(sunday)}. Here's what's set.`
         : payload.followingWeek
-          ? `Your ${planWeek} is active again. Here's what's set for ${nextSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`
-          : `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}. Next charge is ${PAUSE_CANCEL_BY}.`,
+          ? `Your ${planWeek} is active again. Here's what's set for ${nextSundayPhrase(sunday)}. Next charge is ${CHARGE_DAY_TIME}.`
+          : `Your ${planWeek} is active again. Here's what's set for ${thisSundayPhrase(sunday)}. Next charge is ${CHARGE_DAY_TIME}.`,
     },
     plan_now: {
       subject: `You're on a ${nextPlan}`,
       heading: `Plan updated, ${name}`,
-      intro: `You're moving from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Here's what's set for ${thisSundayPhrase(sunday)}. Questions? Email us at hello@earthtableco.ca.`,
+      intro: `You're moving from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Here's what's set for ${thisSundayPhrase(sunday)}.${planNowMoney} Questions? Email us at hello@earthtableco.ca.`,
     },
     plan_next: {
       subject: `Plan change saved — starts after this Sunday`,
@@ -1604,7 +1627,7 @@ function renderSubscriptionHolidaySkipEmail({
   const name = firstName || 'there';
   const skipped = skippedSunday || 'this Sunday';
   const next = nextSunday || 'the next Sunday';
-  const charge = PAUSE_CANCEL_BY;
+  const charge = CHARGE_DAY_TIME;
   const subject = owner
     ? `Holiday skip — no boxes ${skipped}`
     : `No box this Sunday — next delivery is ${next}`;
@@ -1962,6 +1985,8 @@ function renderOwnerSubscriptionEventEmail({
   charged,
   meals,
   addons,
+  refundedCents = 0,
+  chargedDeltaCents = 0,
 } = {}) {
   const name = customerName || 'Customer';
   const contact = String(email || '').trim() || '—';
@@ -1978,12 +2003,22 @@ function renderOwnerSubscriptionEventEmail({
   const chargedNote = charged
     ? ` Charged for ${sunday}.`
     : '';
+  const refunded = Number(refundedCents) || 0;
+  const chargedDelta = Number(chargedDeltaCents) || 0;
+  const pauseRefundNote = refunded > 0
+    ? ` Charge refunded (${formatDollars(refunded)} incl. tax).`
+    : '';
+  const planDeltaNote = refunded > 0
+    ? ` A refund of ${formatDollars(refunded)} (incl. tax) has been issued.`
+    : chargedDelta > 0
+      ? ` An additional charge of ${formatDollars(chargedDelta)} (incl. tax) was issued.`
+      : '';
 
   const copy = {
     pause_now: {
       subject: `Paused — ${name}`,
       heading: 'Subscription paused',
-      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} will not go out.`,
+      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} will not go out.${pauseRefundNote}`,
     },
     pause_first: {
       subject: `Paused after first box — ${name}`,
@@ -1993,17 +2028,17 @@ function renderOwnerSubscriptionEventEmail({
     pause_next: {
       subject: `Paused after this Sunday — ${name}`,
       heading: 'Subscription paused',
-      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} still goes out; later weeks are paused.`,
+      intro: `<strong>${name}</strong> paused. ${ThisSundayPhrase(sunday)} still goes out (locked); later weeks are paused.`,
     },
     cancel_now: {
       subject: `Paused — ${name}`,
       heading: 'Subscription paused',
-      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} will not go out.`,
+      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} will not go out.${pauseRefundNote}`,
     },
     cancel_next: {
       subject: `Paused after this Sunday — ${name}`,
       heading: 'Subscription paused',
-      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} still goes out; later weeks are paused.`,
+      intro: `<strong>${name}</strong> paused (Cancel). ${ThisSundayPhrase(sunday)} still goes out (locked); later weeks are paused.`,
     },
     resume: {
       subject: `Resumed — ${name}`,
@@ -2013,7 +2048,7 @@ function renderOwnerSubscriptionEventEmail({
     plan_now: {
       subject: `Plan changed — ${name}`,
       heading: 'Plan changed',
-      intro: `<strong>${name}</strong> moved from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Applies to ${sunday}.`,
+      intro: `<strong>${name}</strong> moved from a ${previousPlan || 'previous plan'} to a ${nextPlan}. Applies to ${sunday}.${planDeltaNote}`,
     },
     plan_next: {
       subject: `Plan change next week — ${name}`,
@@ -2218,7 +2253,7 @@ function renderSubscriptionDeadlineEmail({ firstName } = {}) {
   const subject = 'Subscription Plans - New weekly deadlines';
   const preheader = 'Starting next week, your weekly deadlines move one day earlier.';
   const lead = preheader;
-  const charge = `Plan and delivery are charged ${PAUSE_CANCEL_BY}. Pause or cancel anytime before then. No fees.`;
+  const charge = `Plan and delivery are charged ${CHARGE_DAY_TIME}. Pause or cancel before ${PAUSE_CANCEL_BY} to skip that Sunday (we refund if you already paid and the box is still open). No fees.`;
   const meals = `Change meals and add extras in My Subscriptions until ${MEAL_LOCK_BY}. Add-ons still on the box are charged then.`;
   const signoff = '— Selena & the Earth Table team';
 
@@ -2264,7 +2299,7 @@ function renderSubscriptionPriceEmail({
 } = {}) {
   const name = firstName || 'there';
   const planWeek = mealsAWeek(mealCount);
-  const charge = PAUSE_CANCEL_BY;
+  const charge = CHARGE_DAY_TIME;
   const subject = `Your ${planWeek} is now ${formatDollars(newPriceCents)}/week`;
   const introText = `Your ${planWeek} is changing from ${formatDollars(oldPriceCents)} to ${formatDollars(newPriceCents)} per week (before tax). The new price applies at the next ${charge} charge — this Sunday stays at the amount already billed if you already paid.`;
   const html = wrapEmail(`

@@ -137,17 +137,18 @@ describe('planChangeMealsOk', () => {
 });
 
 describe('planChangeDefersToNextWeek', () => {
-  it('defers after Tuesday charge', () => {
-    assert.equal(planChangeDefersToNextWeek({ beforeCharge: false, planPaidCents: 0 }), true);
-    assert.equal(planChangeDefersToNextWeek({ beforeCharge: false, planPaidCents: 27000 }), true);
+  it('defers when locked or missing cycle', () => {
+    assert.equal(planChangeDefersToNextWeek({ cycleStatus: 'locked' }), true);
+    assert.equal(planChangeDefersToNextWeek({}), true);
+    assert.equal(planChangeDefersToNextWeek({ cycleStatus: null }), true);
   });
 
-  it('defers when this Sunday is already paid (first box)', () => {
-    assert.equal(planChangeDefersToNextWeek({ beforeCharge: true, planPaidCents: 27000 }), true);
+  it('applies now for open weeks (paid or unpaid)', () => {
+    assert.equal(planChangeDefersToNextWeek({ cycleStatus: 'open' }), false);
   });
 
-  it('applies now only when before charge and unpaid', () => {
-    assert.equal(planChangeDefersToNextWeek({ beforeCharge: true, planPaidCents: 0 }), false);
+  it('defers skipped / other non-open statuses', () => {
+    assert.equal(planChangeDefersToNextWeek({ cycleStatus: 'skipped' }), true);
   });
 });
 
