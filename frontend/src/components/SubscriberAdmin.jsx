@@ -221,11 +221,22 @@ const splitWindow = (delivery, pickupSlot) => {
   };
 };
 
-const planLines = (plans) => {
+/** Plan size for the Sunday tab in view — prefer that week's cycle, not the live subscription plan. */
+const planSizeForView = (row, view) => {
+  const cycle = cycleForRow(row, view);
+  const meal = Number(cycle?.meal_count)
+    || Number(row.subscription_plans?.meal_count)
+    || 0;
+  const price = Number(cycle?.plan_price_cents)
+    || Number(row.subscription_plans?.price_cents)
+    || 0;
+  return { meal, price };
+};
+
+const planLines = (plans, view) => {
   const byKey = new Map();
   for (const row of plans) {
-    const meal = Number(row.subscription_plans?.meal_count) || 0;
-    const price = Number(row.subscription_plans?.price_cents) || 0;
+    const { meal, price } = planSizeForView(row, view);
     const key = `${meal}-${price}`;
     const current = byKey.get(key) || { meal, price, qty: 0 };
     current.qty += 1;
@@ -578,9 +589,10 @@ const SubscriberAdmin = () => {
                   const { customer, plans, userId } = group;
                   const isOpen = expandedId === userId;
                   const hasNote = plans.some((row) => subscriptionNote(row));
-                  const lines = planLines(plans);
+                  const lines = planLines(plans, view);
                   const statuses = [...new Set(plans.map(statusLabel))];
                   const cycle = cycleForRow(plans[0], view) || {};
+                  const primaryPlanSize = planSizeForView(plans[0], view);
                   const sundayYmd = cycle.delivery_date || cycle.pickup_date;
                   const sunday = formatDueShort(sundayYmd) || '—';
                   const fulfill = fulfillmentParts(cycle);
@@ -618,9 +630,9 @@ const SubscriberAdmin = () => {
                             </>
                           ) : (
                             <>
-                              {mealLabel(plans[0].subscription_plans?.meal_count)}
+                              {mealLabel(primaryPlanSize.meal)}
                               <div className="sub-admin-muted">
-                                {formatPlanPrice(plans[0].subscription_plans?.price_cents)}
+                                {formatPlanPrice(primaryPlanSize.price)}
                               </div>
                             </>
                           )}
@@ -644,6 +656,10 @@ const SubscriberAdmin = () => {
                               <div key={`${row.id}-pending`} className="sub-admin-muted">
                                 pending {row.pending_status}
                                 {row.pending_plan ? ` · next: ${mealLabel(row.pending_plan.meal_count)}` : ''}
+                              </div>
+                            ) : (row.pending_plan && view !== 'next') ? (
+                              <div key={`${row.id}-pending-plan`} className="sub-admin-muted">
+                                Next Sunday · {mealLabel(row.pending_plan.meal_count)}
                               </div>
                             ) : null
                           ))}
@@ -710,7 +726,7 @@ const SubscriberAdmin = () => {
                                       <div key={`${row.id}-signup`} className="sub-admin-signup">
                                         {plans.length > 1 ? (
                                           <p className="order-details-muted">
-                                            {mealLabel(row.subscription_plans?.meal_count)}
+                                            {mealLabel(planSizeForView(row, view).meal)}
                                           </p>
                                         ) : null}
                                         <p className="order-details-body">
