@@ -235,11 +235,12 @@ function LineItem({ item, fallbackName, priceCents }) {
   )
 }
 
-function DetailRow({ label, emphasize, action, children }) {
+function DetailRow({ label, sublabel, emphasize, action, children }) {
   return (
     <div className={emphasize ? 'my-sub-row my-sub-row--next' : 'my-sub-row'}>
       <div className="my-sub-row-lead">
         <span className="my-sub-row-label">{label}</span>
+        {sublabel ? <span className="my-sub-row-sublabel">{sublabel}</span> : null}
         {action ? <div className="my-sub-row-action">{action}</div> : null}
       </div>
       <span className="my-sub-row-value">{children}</span>
@@ -1593,11 +1594,6 @@ const MySubscriptions = ({ user }) => {
                         <p className="my-sub-price-badge" aria-label="Plan price and fulfillment">
                           {formatPlanPrice(plan.price_cents)}/week · {isDelivery ? 'delivery' : 'pickup'}
                         </p>
-                        {isDelivery && savedDeliveryFeeCents > 0 ? (
-                          <p className="my-sub-delivery-fee-line">
-                            Delivery {formatPlanPrice(savedDeliveryFeeCents)} + HST = {formatPlanPrice(savedDeliveryWithTax)}
-                          </p>
-                        ) : null}
                         {changingId === row.id && canEdit && !isPaused && otherPlans.length ? (
                           <div className="my-sub-plan-list">
                             {otherPlans.map((planRow) => (
@@ -1700,6 +1696,11 @@ const MySubscriptions = ({ user }) => {
                       <div className="my-sub-fulfillment-block">
                         <DetailRow
                           label={isDelivery ? 'Delivery' : 'Pickup'}
+                          sublabel={
+                            isDelivery && savedDeliveryFeeCents > 0
+                              ? `${formatPlanPrice(savedDeliveryFeeCents)} + HST = ${formatPlanPrice(savedDeliveryWithTax)}`
+                              : null
+                          }
                           action={canEdit ? (
                             <button
                               type="button"

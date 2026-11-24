@@ -346,15 +346,6 @@
   letter-spacing: 0.02em;
 }
 
-.my-sub-delivery-fee-line {
-  margin: 8px 0 0;
-  font-family: var(--body-font);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: #757575;
-}
-
 .my-sub-plan-block {
   width: 100%;
 }
@@ -631,6 +622,13 @@
 .my-sub-row-label {
   color: #BE7200;
   min-width: 0;
+}
+
+.my-sub-row-sublabel {
+  color: #757575;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .my-sub-row-action {
