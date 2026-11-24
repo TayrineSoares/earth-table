@@ -838,7 +838,7 @@ const MySubscriptions = ({ user }) => {
     setSavingId(row.id)
     setDialog(null)
     try {
-      await updateSubscriptionFulfillment(row.id, {
+      const result = await updateSubscriptionFulfillment(row.id, {
         delivery: fulfillment === 'delivery',
         delivery_postal_code: postalCode,
         pickup_time_slot: pickupTime,
@@ -851,7 +851,19 @@ const MySubscriptions = ({ user }) => {
       await load()
       setEditingId(null)
       setNotesEditingId(null)
-      setDialog(SAVED_DIALOG)
+      const refundedCents = Number(result?.refunded_cents) || 0
+      const chargedCents = Number(result?.charged_delta_cents) || 0
+      const moneyLine = refundedCents > 0
+        ? ` A refund of ${formatPlanPrice(refundedCents)} (including tax) has been issued to your card.`
+        : chargedCents > 0
+          ? ` A delivery fee of ${formatPlanPrice(chargedCents)} (including tax) was charged to your card.`
+          : ''
+      setDialog({
+        icon: 'mail',
+        title: fulfillment === 'delivery' ? 'Switched to delivery' : 'Switched to pickup',
+        body: `This week's box is updated.${moneyLine} Questions? Email hello@earthtableco.ca.`,
+        primaryLabel: 'OK',
+      })
     } catch (err) {
       console.error(err)
       setDialog({
@@ -1801,7 +1813,9 @@ const MySubscriptions = ({ user }) => {
                               disabled={!fulfillmentReady || savingId === row.id}
                               onClick={() => saveFulfillment(row)}
                             >
-                              {savingId === row.id ? 'Saving…' : 'Save pickup / delivery'}
+                              {savingId === row.id
+                                ? 'Saving…'
+                                : (fulfillment === 'delivery' ? 'Save delivery' : 'Save pickup')}
                             </button>
                           </div>
                         ) : null}
