@@ -238,18 +238,6 @@ const planSizeForView = (row, view) => {
   return { meal, price };
 };
 
-const planLines = (plans, view) => {
-  const byKey = new Map();
-  for (const row of plans) {
-    const { meal, price } = planSizeForView(row, view);
-    const key = `${meal}-${price}`;
-    const current = byKey.get(key) || { meal, price, qty: 0 };
-    current.qty += 1;
-    byKey.set(key, current);
-  }
-  return [...byKey.values()];
-};
-
 const cycleIsClosed = (cycle) => {
   const status = cycle?.status;
   return status === 'locked' || status === 'skipped';
@@ -413,7 +401,7 @@ const SubscriberAdmin = () => {
 
   const visibleRows = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return rows.filter((row) => {
+    const filtered = rows.filter((row) => {
       if (view === 'paused') {
         if (row.status === 'active') return false;
       } else {
@@ -422,21 +410,31 @@ const SubscriberAdmin = () => {
       }
       return matchesSearch(row, term);
     });
-  }, [rows, searchTerm, view]);
 
-  const groups = useMemo(() => {
+    // Keep one row per subscription, but group the same customer together.
     const byUser = new Map();
-    for (const row of visibleRows) {
+    for (const row of filtered) {
       const key = row.user_id || row.id;
       if (!byUser.has(key)) byUser.set(key, []);
       byUser.get(key).push(row);
     }
-    return [...byUser.entries()].map(([userId, plans]) => ({
-      userId,
-      plans,
-      customer: plans[0]?.customer || {},
-    }));
-  }, [visibleRows]);
+    const ordered = [];
+    for (const plans of byUser.values()) {
+      plans.sort((a, b) => (
+        String(a.created_at || '').localeCompare(String(b.created_at || ''))
+        || String(a.id).localeCompare(String(b.id))
+      ));
+      const total = plans.length;
+      plans.forEach((row, index) => {
+        ordered.push({
+          ...row,
+          siblingIndex: index + 1,
+          siblingTotal: total,
+        });
+      });
+    }
+    return ordered;
+  }, [rows, searchTerm, view]);
 
   const printBoxes = useMemo(() => (
     view === 'next'
@@ -562,7 +560,7 @@ const SubscriberAdmin = () => {
               </button>
             </div>
           )}
-          resultLabel={`${groups.length} ${groups.length === 1 ? 'customer' : 'customers'}`}
+          resultLabel={`${visibleRows.length} ${visibleRows.length === 1 ? 'subscription' : 'subscriptions'}`}
         />
 
         {sundayView ? (
@@ -598,7 +596,7 @@ const SubscriberAdmin = () => {
 
         {error ? <p className="sub-admin-error">{error}</p> : null}
 
-        {groups.length === 0 ? (
+        {visibleRows.length === 0 ? (
           <p className="promo-empty">No subscriptions match.</p>
         ) : (
           <div className="sub-admin-table-wrap order-admin-table-wrap">
@@ -614,28 +612,34 @@ const SubscriberAdmin = () => {
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => {
-                  const { customer, plans, userId } = group;
-                  const isOpen = expandedId === userId;
-                  const hasNote = plans.some((row) => (
-                    Boolean(cycleNote(row, cycleForRow(row, view)))
-                  ));
-                  const lines = planLines(plans, view);
-                  const statuses = [...new Set(plans.map(statusLabel))];
-                  const cycle = cycleForRow(plans[0], view) || {};
-                  const primaryPlanSize = planSizeForView(plans[0], view);
-                  const sundayYmd = cycle.delivery_date || cycle.pickup_date;
+                {visibleRows.map((row) => {
+                  const customer = row.customer || {};
+                  const isOpen = expandedId === row.id;
+                  const planCycle = cycleForRow(row, view) || {};
+                  const hasNote = Boolean(cycleNote(row, planCycle));
+                  const planSize = planSizeForView(row, view);
+                  const status = statusLabel(row);
+                  const sundayYmd = planCycle.delivery_date || planCycle.pickup_date;
                   const sunday = formatDueShort(sundayYmd) || '—';
-                  const fulfill = fulfillmentParts(cycle);
+                  const fulfill = fulfillmentParts(planCycle);
                   const phone = formatPhone(customer.phone_number);
+                  const keepSundayNote = keepsCommittedSundayNote(row, planCycle);
 
                   return (
-                    <Fragment key={userId}>
+                    <Fragment key={row.id}>
                       <tr className={isOpen ? 'order-row-open' : undefined}>
                         <td>
                           <div className="admin-person-cell">
                             <span className="admin-person-name">
                               {customerName(customer)}
+                              {row.siblingTotal > 1 ? (
+                                <>
+                                  {' '}
+                                  <Badge tone="muted">
+                                    Plan {row.siblingIndex}/{row.siblingTotal}
+                                  </Badge>
+                                </>
+                              ) : null}
                               {hasNote ? (
                                 <>
                                   {' '}
@@ -649,60 +653,37 @@ const SubscriberAdmin = () => {
                           </div>
                         </td>
                         <td>
-                          {plans.length > 1 ? (
-                            <>
-                              <div>{plans.length} plans:</div>
-                              {lines.map((line) => (
-                                <div key={`${line.meal}-${line.price}`} className="sub-admin-plan-line">
-                                  <div>{mealLabel(line.meal)} x {line.qty}</div>
-                                  <div className="sub-admin-muted">{formatPlanPrice(line.price)}</div>
-                                </div>
-                              ))}
-                            </>
-                          ) : (
-                            <>
-                              {mealLabel(primaryPlanSize.meal)}
-                              <div className="sub-admin-muted">
-                                {formatPlanPrice(primaryPlanSize.price)}
-                              </div>
-                            </>
-                          )}
+                          {mealLabel(planSize.meal)}
+                          <div className="sub-admin-muted">
+                            {formatPlanPrice(planSize.price)}
+                          </div>
                         </td>
                         <td>
                           <div className="admin-fulfillment-cell">
-                            {statuses.map((label) => (
-                              <Badge key={label} tone={statusBadgeTone(label)}>{label}</Badge>
-                            ))}
+                            <Badge tone={statusBadgeTone(status)}>{status}</Badge>
                           </div>
-                          {plans.map((row) => {
-                            const note = keepsCommittedSundayNote(row, cycleForRow(row, view));
-                            return note ? (
-                              <div key={`${row.id}-keep-sunday`} className="sub-admin-keep-sunday" role="status">
-                                {note}
-                              </div>
-                            ) : null;
-                          })}
-                          {plans.map((row) => (
-                            row.pending_status ? (
-                              <div key={`${row.id}-pending`} className="sub-admin-muted">
-                                pending {row.pending_status}
-                                {row.pending_plan ? ` · next: ${mealLabel(row.pending_plan.meal_count)}` : ''}
-                              </div>
-                            ) : (row.pending_plan && view !== 'next') ? (
-                              <div key={`${row.id}-pending-plan`} className="sub-admin-muted">
-                                Next Sunday · {mealLabel(row.pending_plan.meal_count)}
-                              </div>
-                            ) : null
-                          ))}
-                          {plans.map((row) => (
-                            row.pause_reason === 'payment_failed' && row.last_decline_code ? (
-                              <div key={`${row.id}-decline`} className="sub-admin-muted">
-                                {declineAdminLabel(row.last_decline_code)}
-                                {' '}
-                                ({row.last_decline_code})
-                              </div>
-                            ) : null
-                          ))}
+                          {keepSundayNote ? (
+                            <div className="sub-admin-keep-sunday" role="status">
+                              {keepSundayNote}
+                            </div>
+                          ) : null}
+                          {row.pending_status ? (
+                            <div className="sub-admin-muted">
+                              pending {row.pending_status}
+                              {row.pending_plan ? ` · next: ${mealLabel(row.pending_plan.meal_count)}` : ''}
+                            </div>
+                          ) : (row.pending_plan && view !== 'next') ? (
+                            <div className="sub-admin-muted">
+                              Next Sunday · {mealLabel(row.pending_plan.meal_count)}
+                            </div>
+                          ) : null}
+                          {row.pause_reason === 'payment_failed' && row.last_decline_code ? (
+                            <div className="sub-admin-muted">
+                              {declineAdminLabel(row.last_decline_code)}
+                              {' '}
+                              ({row.last_decline_code})
+                            </div>
+                          ) : null}
                         </td>
                         <td>{sunday}</td>
                         <td>
@@ -724,7 +705,7 @@ const SubscriberAdmin = () => {
                             variant="secondary"
                             size="sm"
                             className={isOpen ? 'view-items-button is-open' : 'view-items-button'}
-                            onClick={() => setExpandedId(isOpen ? null : userId)}
+                            onClick={() => setExpandedId(isOpen ? null : row.id)}
                           >
                             {isOpen ? 'Hide' : 'View Details'}
                           </AdminButton>
@@ -748,34 +729,20 @@ const SubscriberAdmin = () => {
                                       {phone}
                                     </a>
                                   ) : null}
-                                  {plans.map((row) => {
-                                    const planCycle = cycleForRow(row, view);
-                                    const signedUp = formatAdminStamp(row.created_at);
-                                    const statusLines = planStatusLines(row, planCycle);
-                                    const postal = quotePostal(row, planCycle);
-                                    return (
-                                      <div key={`${row.id}-signup`} className="sub-admin-signup">
-                                        {plans.length > 1 ? (
-                                          <p className="order-details-muted">
-                                            {mealLabel(planSizeForView(row, view).meal)}
-                                          </p>
-                                        ) : null}
-                                        <p className="order-details-body">
-                                          Signed up {signedUp || '—'}
-                                        </p>
-                                        {statusLines.map((line) => (
-                                          <p key={line} className="order-details-body">{line}</p>
-                                        ))}
-                                        <p className="order-details-body">
-                                          Postal code {postal || '—'}
-                                        </p>
-                                      </div>
-                                    );
-                                  })}
+                                  <div className="sub-admin-signup">
+                                    <p className="order-details-body">
+                                      Signed up {formatAdminStamp(row.created_at) || '—'}
+                                    </p>
+                                    {planStatusLines(row, planCycle).map((line) => (
+                                      <p key={line} className="order-details-body">{line}</p>
+                                    ))}
+                                    <p className="order-details-body">
+                                      Postal code {quotePostal(row, planCycle) || '—'}
+                                    </p>
+                                  </div>
                                 </section>
                                 <section className="order-details-col" style={{ gridColumn: 'span 2' }}>
-                                  {plans.map((row) => {
-                                    const planCycle = cycleForRow(row, view) || {};
+                                  {(() => {
                                     const hasCycle = Boolean(planCycle.id);
                                     const items = cycleItems(planCycle);
                                     const meals = items.filter((item) => item.kind === 'plan');
@@ -789,29 +756,11 @@ const SubscriberAdmin = () => {
                                       || Number(row.subscription_plans?.meal_count)
                                       || 0;
                                     const selected = mealQty(meals);
-                                    // No cycle in this Sunday view → don't alarm on "0 of plan".
                                     const mismatch = hasCycle && planCycle.status !== 'skipped'
                                       ? mealMismatchNote(selected, mealCount)
                                       : '';
-                                    const planFulfill = fulfillmentParts(planCycle);
-                                    const keepSundayNote = keepsCommittedSundayNote(row, planCycle);
                                     return (
-                                      <div key={row.id} className="sub-admin-plan-block">
-                                        {plans.length > 1 ? (
-                                          <p className="order-details-col-title">
-                                            {mealLabel(mealCount)}
-                                            {' · '}
-                                            <Badge tone={statusBadgeTone(statusLabel(row))}>{statusLabel(row)}</Badge>
-                                            {planFulfill.kind ? (
-                                              <>
-                                                {' '}
-                                                <Badge tone={planFulfill.kind === 'Delivery' ? 'delivery' : 'pickup'}>
-                                                  {planFulfill.kind}
-                                                </Badge>
-                                              </>
-                                            ) : null}
-                                          </p>
-                                        ) : null}
+                                      <div className="sub-admin-plan-block">
                                         {keepSundayNote ? (
                                           <p className="sub-admin-keep-sunday" role="status">
                                             {keepSundayNote}
@@ -838,7 +787,7 @@ const SubscriberAdmin = () => {
                                               {[
                                                 `Plan ${formatPlanPrice(
                                                   Number(planCycle.plan_price_cents)
-                                                  || planSizeForView(row, view).price
+                                                  || planSize.price
                                                   || 0
                                                 )}`,
                                                 Number(planCycle.plan_paid_cents) > 0
@@ -894,7 +843,7 @@ const SubscriberAdmin = () => {
                                         ) : null}
                                       </div>
                                     );
-                                  })}
+                                  })()}
                                 </section>
                               </div>
                             </div>
