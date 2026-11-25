@@ -39,7 +39,7 @@ describe('fulfillment switch emails', () => {
       address: '123 Main St',
       planAlreadyPaid: false,
     });
-    assert.match(msg.text, /Delivery Address: 123 Main St/);
+    assert.match(msg.text, /Address: 123 Main St/);
     assert.doesNotMatch(msg.text, /Notes: 123 Main St/);
   });
 });

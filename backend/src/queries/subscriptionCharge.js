@@ -31,6 +31,7 @@ const {
   renderOwnerMealMismatchEmail,
   renderOwnerPaymentFailedEmail,
   formatDollars,
+  splitDeliverySpecialNote,
 } = require('../utils/emailTemplates');
 const {
   sendCustomerEmail,
@@ -244,26 +245,30 @@ async function ownerBoxFrom(sub, cycle) {
   const labeled = await labeledItemsForCycle(cycle.id);
   const win = splitWin(!!cycle.delivery, cycle.pickup_time_slot);
   // Paused/cancelled after charge/lock still ships — flag it on the kitchen summary.
+  const when = sundayLabelFromYmd(cycle.delivery_date) || 'this Sunday';
   const keepSundayNote = sub.status === 'cancelled'
-    ? 'Still delivering this Sunday — cancelled after charge/lock'
+    ? `Still delivering ${when} — cancelled after charge/lock`
     : sub.status === 'paused'
-      ? 'Still delivering this Sunday — paused after charge/lock'
+      ? `Still delivering ${when} — paused after charge/lock`
       : '';
+  const isDelivery = !!cycle.delivery;
+  const rawNote = String(cycle.special_note || '').trim();
+  const parts = splitDeliverySpecialNote(rawNote);
   return {
     name: [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer',
     mealCount: Number(cycle.meal_count) || sub.subscription_plans?.meal_count,
     orderId: cycle.order_id || null,
     cycleId: cycle.id,
-    delivery: !!cycle.delivery,
-    method: cycle.delivery ? 'Delivery' : 'Pickup',
+    delivery: isDelivery,
+    method: isDelivery ? 'Delivery' : 'Pickup',
     windowStart: win.start,
     windowEnd: win.end,
-    address: cycle.delivery
-      ? (cycle.special_note || cycle.delivery_postal_code || '—')
+    address: isDelivery
+      ? (parts.address || cycle.delivery_postal_code || '—')
       : PICKUP_ADDRESS,
     phone: user?.phone_number,
     email: user?.email,
-    notes: cycle.special_note,
+    notes: isDelivery ? parts.notes : rawNote,
     keepSundayNote,
     meals: itemsByKind(labeled, 'plan'),
     extras: itemsByKind(labeled, 'addon'),
@@ -500,7 +505,7 @@ async function chargePlanDelivery(sub, cycle, sunday, opts = {}) {
   return { charged: true, skipped: false, amount, planCents: due, deliveryCents: fee };
 }
 
-async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
+async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr, cycle = null) {
   const declineReason = declineReasonFrom(stripeErr);
   await supabase
     .from('subscriptions')
@@ -513,16 +518,25 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
     })
     .eq('id', sub.id);
   const card = await cardForPaymentMethod(sub.stripe_payment_method_id);
-  const planPrice = formatDollars(sub.subscription_plans?.price_cents || 0);
+  // Same math as chargePlanDelivery — owner needs the attempted total (plan + fee + tax).
+  const planCents = Number(cycle?.plan_price_cents) || Number(sub.subscription_plans?.price_cents) || 0;
+  const already = Number(cycle?.plan_paid_cents) || 0;
+  const due = Math.max(0, planCents - already);
+  const fee = cycle?.delivery ? (Number(cycle.delivery_fee_cents) || 0) : 0;
+  const attemptedCents = Math.round(due * HST) + Math.round(fee * HST);
+  const amountLabel = formatDollars(
+    attemptedCents > 0 ? attemptedCents : Math.round(planCents * HST)
+  );
+  const mealCount = Number(cycle?.meal_count) || Number(sub.subscription_plans?.meal_count) || 0;
   const fulfillmentDate = sundayLabelFromYmd(sunday);
   try {
     await notifyUser(sub.user_id, {
       kind: 'payment_failed',
-      mealCount: sub.subscription_plans?.meal_count,
+      mealCount,
       fulfillmentDate,
       deliveryLabel: fulfillmentDate,
       cutoffLabel,
-      planPrice,
+      planPrice: amountLabel,
       card,
     });
   } catch (err) {
@@ -533,7 +547,7 @@ async function markPaymentFailed(sub, sunday, cutoffLabel, stripeErr) {
     const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'Customer';
     const msg = renderOwnerPaymentFailedEmail({
       customerName: name,
-      amount: planPrice,
+      amount: amountLabel,
       fulfillmentDate,
       cardBrand: card?.brand,
       last4: card?.last4,
@@ -557,7 +571,7 @@ async function sendChargeNotice(sub, cycle, sunday, dates, chargeResult) {
   const card = charged ? await cardForPaymentMethod(sub.stripe_payment_method_id) : null;
   const msg = renderSubscriptionChargeEmail({
     firstName: user.first_name,
-    mealCount: sub.subscription_plans?.meal_count,
+    mealCount: Number(cycle?.meal_count) || Number(sub.subscription_plans?.meal_count) || 0,
     delivery: !!cycle.delivery,
     deliveryLabel: sundayLabelFromYmd(sunday),
     pickupSlot: cycle.pickup_time_slot,
@@ -746,7 +760,7 @@ async function runPlanCharge({ force = false, now = new Date() } = {}) {
       } catch (err) {
         failures.push({ subscription_id: sub.id, error: err.message || String(err) });
         console.warn('[subscriptions] Plan charge failed:', sub.id, err.message);
-        await markPaymentFailed(sub, weekSunday, dates.cutoff_label, err);
+        await markPaymentFailed(sub, weekSunday, dates.cutoff_label, err, cycle);
         continue;
       }
     }

@@ -11,6 +11,7 @@ import {
 } from '../helpers/subscriptionHelpers';
 import { DELIVERY_WINDOW, PICKUP_ADDRESS, setOrderPickedUp } from '../helpers/orderHelpers';
 import { formatDueShort, todayYmdToronto } from '../helpers/orderAdminHelpers';
+import { parseSpecialNote } from '../helpers/specialNote';
 import '../styles/PromoAdmin.css';
 import '../styles/SubscriptionAdmin.css';
 import '../styles/AdminShared.css';
@@ -22,13 +23,11 @@ const formatPostal = (value) => {
   return String(value || '').trim();
 };
 
+/** Postal for the cycle in view — never borrow the other week’s code. */
 const quotePostal = (row, cycle) => {
   const candidates = [
     cycle?.delivery_postal_code,
     row?.delivery_postal_code,
-    row?.this_cycle?.delivery_postal_code,
-    row?.next_cycle?.delivery_postal_code,
-    row?.cycle?.delivery_postal_code,
   ];
   return candidates.map(formatPostal).find(Boolean) || '';
 };
@@ -94,9 +93,10 @@ const keepsCommittedSundayNote = (row, cycle) => {
   const ymd = String(cycle?.delivery_date || '');
   // Past locked/paid weeks stay on the paused/cancelled tab for history — don't flag those.
   if (!ymd || ymd < todayYmdToronto()) return '';
+  const when = formatDueShort(ymd) || 'this Sunday';
   return row.status === 'cancelled'
-    ? 'Still delivering this Sunday — cancelled after lock / first box'
-    : 'Still delivering this Sunday — paused after lock / first box'
+    ? `Still delivering ${when} — cancelled after lock / first box`
+    : `Still delivering ${when} — paused after lock / first box`;
 };
 
 /** Status-change lines for View Details (only stamps that exist). */
@@ -220,13 +220,19 @@ const splitWindow = (delivery, pickupSlot) => {
   };
 };
 
-/** Plan size for the Sunday tab in view — prefer that week's cycle, not the live subscription plan. */
+/**
+ * Plan size for the Sunday tab in view.
+ * Prefer that week's cycle; on Next, fall back to pending_plan before the live plan.
+ */
 const planSizeForView = (row, view) => {
   const cycle = cycleForRow(row, view);
+  const pending = view === 'next' ? row.pending_plan : null;
   const meal = Number(cycle?.meal_count)
+    || Number(pending?.meal_count)
     || Number(row.subscription_plans?.meal_count)
     || 0;
   const price = Number(cycle?.plan_price_cents)
+    || Number(pending?.price_cents)
     || Number(row.subscription_plans?.price_cents)
     || 0;
   return { meal, price };
@@ -293,20 +299,26 @@ const toPrintBoxes = (weekRows, cycleKey) => {
     const items = cycleItems(cycle);
     const win = splitWindow(!!cycle.delivery, cycle.pickup_time_slot);
     const customer = row.customer || {};
+    const rawNote = cycleNote(row, cycle);
+    const isDelivery = !!cycle.delivery;
+    const { address, notes } = parseSpecialNote(rawNote, { delivery: isDelivery });
     return {
       id: row.id,
       name: customerName(customer),
-      mealCount: Number(cycle.meal_count) || Number(row.subscription_plans?.meal_count) || 0,
-      delivery: !!cycle.delivery,
-      method: cycle.delivery ? 'Delivery' : 'Pickup',
+      mealCount: Number(cycle.meal_count)
+        || Number(row.pending_plan?.meal_count)
+        || Number(row.subscription_plans?.meal_count)
+        || 0,
+      delivery: isDelivery,
+      method: isDelivery ? 'Delivery' : 'Pickup',
       windowStart: win.start,
       windowEnd: win.end,
-      address: cycle.delivery
-        ? (cycle.special_note || cycle.delivery_postal_code || '—')
+      address: isDelivery
+        ? (address || cycle.delivery_postal_code || '—')
         : PICKUP_ADDRESS,
       phone: formatPhone(customer.phone_number),
       email: customer.email || '—',
-      notes: cycleNote(row, cycle),
+      notes: isDelivery ? notes : (notes || rawNote),
       keepSundayNote: keepsCommittedSundayNote(row, cycle),
       orderId: cycle.order_id || null,
       meals: items.filter((item) => item.kind === 'plan'),
@@ -383,18 +395,8 @@ const SubscriberAdmin = () => {
   const sundayView = view === 'next' || view === 'this';
   const totalsWeekRows = view === 'next' ? nextSundayBoxes : thisSundayBoxes;
 
-  const weekCycleCents = (row) => {
-    const cycle = view === 'next' ? row.next_cycle : row.this_cycle;
-    return Number(cycle?.plan_price_cents)
-      || Number(row.subscription_plans?.price_cents)
-      || 0;
-  };
-  const weekCycleMeals = (row) => {
-    const cycle = view === 'next' ? row.next_cycle : row.this_cycle;
-    return Number(cycle?.meal_count)
-      || Number(row.subscription_plans?.meal_count)
-      || 0;
-  };
+  const weekCycleCents = (row) => planSizeForView(row, view).price;
+  const weekCycleMeals = (row) => planSizeForView(row, view).meal;
 
   const totals = {
     activeCount: activeRows.length,
@@ -778,9 +780,12 @@ const SubscriberAdmin = () => {
                                     const items = cycleItems(planCycle);
                                     const meals = items.filter((item) => item.kind === 'plan');
                                     const addons = items.filter((item) => item.kind === 'addon');
-                                    const noteText = cycleNote(row, planCycle);
+                                    const rawNote = cycleNote(row, planCycle);
+                                    const isDelivery = !!planCycle.delivery;
+                                    const noteParts = parseSpecialNote(rawNote, { delivery: isDelivery });
                                     const kitchen = kitchenForRow(row, view);
                                     const mealCount = Number(planCycle.meal_count)
+                                      || (view === 'next' ? Number(row.pending_plan?.meal_count) : 0)
                                       || Number(row.subscription_plans?.meal_count)
                                       || 0;
                                     const selected = mealQty(meals);
@@ -812,10 +817,41 @@ const SubscriberAdmin = () => {
                                             {keepSundayNote}
                                           </p>
                                         ) : null}
-                                        {noteText ? (
+                                        {isDelivery && noteParts.address ? (
                                           <div className="order-details-note">
-                                            <div className="order-details-note-label">Special Note</div>
-                                            <div className="order-details-note-box">{noteText}</div>
+                                            <div className="order-details-note-label">Address</div>
+                                            <div className="order-details-note-box">{noteParts.address}</div>
+                                          </div>
+                                        ) : null}
+                                        {(isDelivery ? noteParts.notes : rawNote) ? (
+                                          <div className="order-details-note">
+                                            <div className="order-details-note-label">Notes</div>
+                                            <div className="order-details-note-box">
+                                              {isDelivery ? noteParts.notes : rawNote}
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                        {hasCycle ? (
+                                          <div className="order-details-note">
+                                            <div className="order-details-note-label">This box (money)</div>
+                                            <div className="order-details-note-box">
+                                              {[
+                                                `Plan ${formatPlanPrice(
+                                                  Number(planCycle.plan_price_cents)
+                                                  || planSizeForView(row, view).price
+                                                  || 0
+                                                )}`,
+                                                Number(planCycle.plan_paid_cents) > 0
+                                                  ? `Paid ${formatPlanPrice(planCycle.plan_paid_cents)}`
+                                                  : 'Unpaid',
+                                                planCycle.delivery && Number(planCycle.delivery_fee_cents) > 0
+                                                  ? `Delivery fee ${formatPlanPrice(planCycle.delivery_fee_cents)} + HST`
+                                                  : null,
+                                                Number(planCycle.addon_paid_cents) > 0
+                                                  ? `Add-ons paid ${formatPlanPrice(planCycle.addon_paid_cents)}`
+                                                  : null,
+                                              ].filter(Boolean).join(' · ')}
+                                            </div>
                                           </div>
                                         ) : null}
                                         <p className="order-details-col-title">Meals</p>
@@ -910,13 +946,17 @@ const SubscriberAdmin = () => {
               {row.phone} · {row.email}{row.orderId ? ` · order #${row.orderId}` : ''}
             </p>
             {row.delivery ? (
-              <p><strong>Delivery Address:</strong> {row.address}</p>
+              <p><strong>Address:</strong> {row.address}</p>
             ) : (
               <p>{PICKUP_ADDRESS}</p>
             )}
-            <p className={row.notes ? 'sub-admin-print-notes' : undefined}>
-              <strong>Notes:</strong> {row.notes || '-'}
-            </p>
+            {row.notes ? (
+              <p className="sub-admin-print-notes">
+                <strong>Notes:</strong> {row.notes}
+              </p>
+            ) : (
+              <p><strong>Notes:</strong> -</p>
+            )}
             <p><strong>Meals</strong></p>
             {row.meals.length ? (
               <ul>

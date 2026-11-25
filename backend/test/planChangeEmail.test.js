@@ -43,6 +43,9 @@ describe('plan change manage emails', () => {
       oldMealCount: 10,
       nextMealCount: 15,
       deliveryLabel: 'Sunday, November 16',
+      boxDeliveryLabel: 'Sunday, November 23',
+      delivery: true,
+      specialNote: 'Address:\n12 Main St\n\nNotes:\ngate',
       meals: [{ slug: 'Herb Chicken Plate', quantity: 15 }],
       addons: [],
     });
@@ -55,5 +58,9 @@ describe('plan change manage emails', () => {
     assert.doesNotMatch(msg.text, /Previous plan:/);
     assert.match(msg.text, /Herb Chicken Plate x 15/);
     assert.match(msg.text, /None this week\./);
+    // Intro keeps this Sunday; Next box uses the following week label.
+    assert.match(msg.text, /This Sunday, November 16 stays as-is/i);
+    assert.match(msg.text, /Next box: Delivery — Sunday, November 23/);
+    assert.doesNotMatch(msg.text, /Next box: Delivery — Sunday, November 16/);
   });
 });

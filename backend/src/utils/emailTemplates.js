@@ -1162,7 +1162,13 @@ function renderSubscriptionWelcomeEmail({
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const manageHref = appUrl(`/my-subscriptions/${subscriptionId || ''}`);
   const cutoff = MEAL_LOCK_BY;
-  const note = String(notes || '').trim() || '—';
+  const rawNote = String(notes || '').trim();
+  const noteHtmlRows = delivery
+    ? deliveryAddressNotesRows(rawNote, { last: false })
+    : kvRow('Notes', rawNote || '—');
+  const noteTextLines = delivery
+    ? (rawNote ? deliveryAddressNotesText(rawNote) : 'Address: —')
+    : `Notes: ${rawNote || '—'}`;
   const planOff = Math.max(0, Number(planSavedCents) || 0);
   const addonOff = Math.max(0, Number(addonSavedCents) || 0);
   const addonRegular = Math.max(0, Number(addonRegularCents) || 0);
@@ -1199,7 +1205,7 @@ function renderSubscriptionWelcomeEmail({
         ${planPriceCents != null ? kvRow('Price', `${formatDollars(planPriceCents)}/week + HST`) : ''}
         ${planDiscountRow}
         ${kvRow("This Sunday", fulfillment)}
-        ${kvRow("Notes", note)}
+        ${noteHtmlRows}
         ${kvRow("Change your meals by", cutoff, { last: true })}
       `))}
       ${h2("Meals")}
@@ -1223,7 +1229,7 @@ Your ${planPhrase} is confirmed. Plan and delivery are paid. Add-ons still on th
 ${savingsLine ? `\n${savingsLine}\n` : ''}
 Plan: ${planWeek}${planPriceCents != null ? `\nPrice: ${formatDollars(planPriceCents)}/week + HST` : ''}${planOff > 0 && label ? `\n${label} · first week only: −${formatDollars(planOff)}` : (planOff === 0 && addonOff === 0 && saved > 0 && label ? `\n${label} · first week only: −${formatDollars(saved)}` : '')}
 This Sunday: ${fulfillment}
-Notes: ${note}
+${noteTextLines}
 Change your meals by: ${cutoff}
 
 Meals
@@ -1273,7 +1279,13 @@ function renderOwnerSubscriptionEmail({
   const cutoff = MEAL_LOCK_BY;
   const paid = formatDollars(paidCents);
   const stripeRef = chargeId || '—';
-  const note = String(notes || '').trim() || '—';
+  const rawNote = String(notes || '').trim();
+  const noteHtmlRows = delivery
+    ? deliveryAddressNotesRows(rawNote, { last: true })
+    : kvRow('Notes', rawNote || '—', { last: true });
+  const noteTextLines = delivery
+    ? (rawNote ? deliveryAddressNotesText(rawNote) : 'Address: —')
+    : `Notes: ${rawNote || '—'}`;
   const planOff = Math.max(0, Number(planSavedCents) || 0);
   const addonOff = Math.max(0, Number(addonSavedCents) || 0);
   const addonRegular = Math.max(0, Number(addonRegularCents) || 0);
@@ -1336,7 +1348,7 @@ function renderOwnerSubscriptionEmail({
       <p style="margin:0 0 24px; font-size:13px; line-height:1.5; color:${C_MUTED}; font-family:${FONT};">Maybe change by ${cutoff}</p>
       ${card(kvTable(`
         ${kvRow("Customer", `${email || '—'} · ${formatPhone(phone)}`)}
-        ${kvRow("Notes", note, { last: true })}
+        ${noteHtmlRows}
       `))}
   `, {
     preheader: `${fullName} subscribed — first box ${sunday}.`,
@@ -1357,7 +1369,7 @@ ${addonHtml ? `\nAdd-ons\n${addonText}\n` : ''}
 Maybe change by ${cutoff}
 
 Customer: ${email || '—'} · ${formatPhone(phone)}
-Notes: ${note}`;
+${noteTextLines}`;
 
   return { subject, html, text };
 }
@@ -1640,9 +1652,10 @@ My Subscriptions: ${manageHref}`;
   const notesCopy = String(payload.notes || '').trim();
   const meals = payload.meals || [];
   const addons = payload.addons || [];
+  const boxSunday = payload.boxDeliveryLabel || sunday;
   const fulfillOpts = {
     delivery: payload.delivery,
-    deliveryLabel: sunday,
+    deliveryLabel: boxSunday,
     pickupSlot: payload.pickupSlot || payload.pickup_time_slot,
     specialNote: payload.specialNote != null ? payload.specialNote : payload.special_note,
   };
@@ -1788,8 +1801,8 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
     const boxLine = `${method} ${sunday || 'Sunday'}, ${start} – ${end}`;
     const orderLine = row.orderId ? ` · order #${row.orderId}` : '';
     const place = row.delivery
-      ? `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Delivery Address:</strong> ${loc}</p>
-      <p style="margin:0 0 10px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes || loc}</p>`
+      ? `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Address:</strong> ${loc}</p>
+      ${notes ? `<p style="margin:0 0 10px; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes}</p>` : ''}`
       : `<p style="margin:0 0 6px; font-size:14px; color:${C_INK}; font-family:${FONT};">${PICKUP_ADDRESS}</p>
       ${notes ? `<p style="margin:0 0 10px; padding:8px 10px; background-color:${C_CREAM}; font-size:14px; color:${C_INK}; font-family:${FONT};"><strong>Notes:</strong> ${notes}</p>` : ''}`;
     const warn = mismatch
@@ -1832,8 +1845,8 @@ function renderOwnerLockEmail({ sunday, boxes = [] } = {}) {
       mismatch || '',
       `${method} ${sunday || 'Sunday'}, ${row.windowStart || '—'} – ${row.windowEnd || '—'}`,
       `${formatPhone(row.phone)} · ${row.email || '—'}${row.orderId ? ` · order #${row.orderId}` : ''}`,
-      row.delivery ? `Delivery Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
-      row.delivery ? `Notes: ${notes || loc}` : (notes ? `Notes: ${notes}` : ''),
+      row.delivery ? `Address: ${loc}` : `Address: ${PICKUP_ADDRESS}`,
+      notes ? `Notes: ${notes}` : '',
       itemLinesText(row.meals, 'Meal') || '—',
       row.extras?.length ? `Extras:\n${itemLinesText(row.extras, 'Add-on')}` : '',
     ].filter(Boolean).join('\n');
@@ -2006,10 +2019,12 @@ function renderSubscriptionLockEmail({
   const sunday = deliveryLabel || 'Sunday';
   const fulfillment = formatFulfillmentLine({ delivery, deliveryLabel: sunday, pickupSlot });
   const postal = String(postalCode || '').trim();
-  const note = String(notes || '').trim();
-  const loc = delivery
-    ? (String(address || note || postal || '').trim() || '—')
+  const rawNote = String(notes || address || '').trim();
+  const parts = splitDeliverySpecialNote(rawNote);
+  const street = delivery
+    ? (parts.address || String(address || '').trim() || postal || '—')
     : PICKUP_ADDRESS;
+  const extraNotes = delivery ? parts.notes : (parts.notes || rawNote);
   const chargeLines = chargedAddons
     ? receiptLines({ addonCents, chargedCents, discountCents, discountLabel })
     : [];
@@ -2018,11 +2033,9 @@ function renderSubscriptionLockEmail({
     : 'Pick it up in the window below.'}`;
 
   const subject = `This Sunday's box is locked — ${sunday}`;
-  // Delivery address is often stored in special_note — only show Notes when it differs.
-  const deliveryExtraNote = delivery && note && note !== loc ? note : '';
   const fulfillRows = delivery
-    ? `${kvRow('Plan', planWeek)}${kvRow('Delivery', fulfillment)}${kvRow('Delivery Address', loc, { last: !deliveryExtraNote })}${deliveryExtraNote ? kvRow('Notes', deliveryExtraNote, { last: true }) : ''}`
-    : `${kvRow('Plan', planWeek)}${kvRow('Pickup', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: !note && !postal })}${note ? kvRow('Notes', note, { last: !postal }) : ''}${postal ? kvRow('Postal code', postal, { last: true }) : ''}`;
+    ? `${kvRow('Plan', planWeek)}${kvRow('Delivery', fulfillment)}${kvRow('Address', street, { last: !extraNotes })}${extraNotes ? kvRow('Notes', extraNotes, { last: true }) : ''}`
+    : `${kvRow('Plan', planWeek)}${kvRow('Pickup', fulfillment)}${kvRow('Address', PICKUP_ADDRESS, { last: !extraNotes && !postal })}${extraNotes ? kvRow('Notes', extraNotes, { last: !postal }) : ''}${postal ? kvRow('Postal code', postal, { last: true }) : ''}`;
 
   const html = wrapEmail(`
       ${eyebrow("Weekly subscription")}
@@ -2047,7 +2060,7 @@ ${introText}
 
 Plan: ${planWeek}
 ${delivery ? 'Delivery' : 'Pickup'}: ${fulfillment}
-${delivery ? `Delivery Address: ${loc}\n${deliveryExtraNote ? `Notes: ${deliveryExtraNote}\n` : ''}` : `Address: ${PICKUP_ADDRESS}\n${note ? `Notes: ${note}\n` : ''}${postal ? `Postal code: ${postal}\n` : ''}`}
+${delivery ? `Address: ${street}\n${extraNotes ? `Notes: ${extraNotes}\n` : ''}` : `Address: ${PICKUP_ADDRESS}\n${extraNotes ? `Notes: ${extraNotes}\n` : ''}${postal ? `Postal code: ${postal}\n` : ''}`}
 ${chargedAddons ? `Add-ons charged today\n${moneyReceiptText(chargeLines, 'Charged to your card', chargedCents)}\n\n` : ''}Meals
 ${itemLinesText(meals) || '—'}
 
@@ -2078,6 +2091,7 @@ function renderOwnerSubscriptionEventEmail({
   oldMealCount,
   nextMealCount,
   deliveryLabel,
+  boxDeliveryLabel,
   charged,
   meals,
   addons,
@@ -2171,9 +2185,10 @@ function renderOwnerSubscriptionEventEmail({
   const planHtml = showPlan
     ? card(kvTable(`${kvRow('New plan', nextPlan || '—', { last: true })}`))
     : '';
+  const boxSunday = boxDeliveryLabel || sunday;
   const fulfillOpts = {
     delivery,
-    deliveryLabel: sunday,
+    deliveryLabel: boxSunday,
     pickupSlot: pickupSlot || pickup_time_slot,
     specialNote: specialNote != null ? specialNote : special_note,
   };
@@ -2658,6 +2673,7 @@ module.exports = {
   renderCustomerOrderEmail,
   formatMoney,
   formatDollars,
+  splitDeliverySpecialNote,
   renderOwnerOrderEmail,
   renderPartnerWelcomeEmail,
   renderAdminPartnerWelcomeEmail,

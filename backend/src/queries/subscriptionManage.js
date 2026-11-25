@@ -1334,7 +1334,9 @@ async function changeSubscriptionPlan(userId, subscriptionId, planId, { meals, a
         mealCount: currentCount,
         oldMealCount: currentCount,
         nextMealCount: nextCount,
+        // Intro keeps this Sunday; box/fulfillment is the following week.
         deliveryLabel: week.delivery_label,
+        boxDeliveryLabel: sundayLabelFromYmd(following.delivery_date) || week.delivery_label,
         chargeLabel: charge.charge_label,
         meals: box.meals,
         addons: box.addons,

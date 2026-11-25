@@ -18,6 +18,7 @@ import {
   isDueToday,
   splitAndSortOrders,
 } from '../helpers/orderAdminHelpers';
+import { parseSpecialNote } from '../helpers/specialNote';
 import AdminTabLoading from './AdminTabLoading';
 import AdminToolbar from './admin/AdminToolbar';
 import AdminButton from './admin/AdminButton';
@@ -304,11 +305,12 @@ const OrderAdmin = () => {
                 const dueYmd = getOrderDueYmd(order);
                 const dueLabel = dueYmd ? formatDueShort(dueYmd) : '—';
                 const showToday = view === 'upcoming' && isDueToday(order);
-                const hasNote = Boolean(String(order.special_note || '').trim());
+                const rawNote = String(order.special_note || '').trim();
+                const noteParts = parseSpecialNote(rawNote, { delivery: !!order.delivery });
+                const hasNote = Boolean(rawNote);
                 const listName = listCustomerName(order);
                 const listEmail = String(order.buyer_email || '').trim();
                 const postal = breakdown?.postalCode || getPostalFromBuyerInfo(order.buyer_stripe_payment_info);
-                const noteText = String(order.special_note || '').trim();
 
                 return (
                   <Fragment key={order.id}>
@@ -398,10 +400,18 @@ const OrderAdmin = () => {
                                   ) : (
                                     <p className="order-details-muted">No phone</p>
                                   )}
-                                  {noteText ? (
+                                  {order.delivery && noteParts.address ? (
                                     <div className="order-details-note">
-                                      <span className="order-details-note-label">Special Note</span>
-                                      <div className="order-details-note-box">{noteText}</div>
+                                      <span className="order-details-note-label">Address</span>
+                                      <div className="order-details-note-box">{noteParts.address}</div>
+                                    </div>
+                                  ) : null}
+                                  {(order.delivery ? noteParts.notes : rawNote) ? (
+                                    <div className="order-details-note">
+                                      <span className="order-details-note-label">Notes</span>
+                                      <div className="order-details-note-box">
+                                        {order.delivery ? noteParts.notes : rawNote}
+                                      </div>
                                     </div>
                                   ) : null}
                                 </section>

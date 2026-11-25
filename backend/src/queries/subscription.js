@@ -1377,7 +1377,7 @@ async function sendBoxUpdatedEmail(userId, sub, cycle, week, plan) {
   const box = await labeledBoxItemsForCycle(cycle?.id);
   const msg = renderSubscriptionUpdatedEmail({
     firstName: user.first_name,
-    mealCount: plan?.meal_count ?? sub.subscription_plans?.meal_count,
+    mealCount: Number(cycle?.meal_count) || Number(plan?.meal_count) || Number(sub.subscription_plans?.meal_count) || 0,
     delivery: !!cycle?.delivery,
     deliveryLabel: week?.delivery_label,
     pickupSlot: cycle?.pickup_time_slot,

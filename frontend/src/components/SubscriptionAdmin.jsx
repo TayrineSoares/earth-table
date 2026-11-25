@@ -218,7 +218,7 @@ const SubscriptionAdmin = () => {
     const charge = kind === 'charge';
     const confirmed = window.confirm(
       charge
-        ? 'Run Tuesday charge now? Unpaid active plans for this Sunday will be charged plan + delivery at the 9:00 AM ET cadence. Already-paid first weeks are skipped.'
+        ? 'Run Tuesday charge now? Unpaid active plans for the open cook week are charged plan + delivery (this Sunday, or next Sunday if this week is already locked/skipped). Already-paid weeks are skipped.'
         : 'Run Wednesday lock now? Unpaid add-ons are charged, this Sunday is locked, and kitchen orders are created on the Subscriptions tab.'
     );
     if (!confirmed) return;
